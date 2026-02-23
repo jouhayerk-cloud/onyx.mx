@@ -1,0 +1,63 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+/* tslint:disable */
+// Copyright 2024 Google LLC
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import React from 'react';
+
+const balls = [
+  {color: '#ff6347', i: '13px', d: '6.8s'},
+  {color: '#00ced1', i: '19px', d: '3.5s'},
+  {color: '#adff2f', i: '11px', d: '4.9s'},
+  {color: '#9370db', i: '17px', d: '9.3s'},
+  {color: '#ff1493', i: '14px', d: '2.7s'},
+  {color: '#00bfff', i: '10px', d: '5.1s'},
+  {color: '#7fff00', i: '16px', d: '6.6s'},
+  {color: '#dc143c', i: '18px', d: '7.2s'},
+  {color: '#8a2be2', i: '12px', d: '8.4s'},
+  {color: '#48d1cc', i: '20px', d: '3.9s'},
+  {color: '#ff4500', i: '15px', d: '4.6s'},
+  {color: '#00ff7f', i: '19px', d: '5.7s'},
+  {color: '#ba55d3', i: '11px', d: '7.1s'},
+  {color: '#1e90ff', i: '13px', d: '9.7s'},
+  {color: '#ffa500', i: '10px', d: '6.2s'},
+  {color: '#ff69b4', i: '14px', d: '3.4s'},
+  {color: '#00fa9a', i: '17px', d: '8.9s'},
+  {color: '#9400d3', i: '12px', d: '7.6s'},
+  {color: '#ffb6c1', i: '16px', d: '4.3s'},
+  {color: '#20b2aa', i: '18px', d: '2.8s'},
+];
+
+export function LoadingIndicator() {
+  return (
+    <div className="container-loader">
+      {balls.map((ball, index) => (
+        <article
+          key={index}
+          style={
+            {
+              '--color': ball.color,
+              '--i': ball.i,
+              '--d': ball.d,
+            } as React.CSSProperties
+          }
+          className="ball"
+        />
+      ))}
+    </div>
+  );
+}

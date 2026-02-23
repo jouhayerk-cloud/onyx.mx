@@ -1,0 +1,174 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+/* tslint:disable */
+// Copyright 2024 Google LLC
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import {useSetAtom, useAtomValue} from 'jotai/react';
+import React, {useEffect, useState} from 'react';
+import toast from 'react-hot-toast';
+import {
+  ImageSrcAtom,
+  IsUploadedImageAtom,
+  SelectedItemDataAtom,
+  workflowStepAtom,
+  allAnnotationDataAtom,
+  editingMaskIndexAtom,
+} from '../../lib/atoms';
+import {LoadingIndicator} from '../../components/LoadingIndicator';
+import { createCurvePath, imageCache, fetchImageBatch } from '../../lib/utils';
+import { BoundingBoxMaskType } from '../../lib/Types';
+
+const MediaThumbnail: React.FC<{
+  url: string;
+  onClick: (dataUrl: string) => void;
+}> = ({url, onClick}) => {
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const imageSrc = useAtomValue(ImageSrcAtom);
+  const isSelected = !!(imageDataUrl && imageDataUrl === imageSrc);
+
+  useEffect(() => {
+    setImageDataUrl(null);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const driveUrl = new URL(url);
+      const fileId = driveUrl.searchParams.get('id');
+
+      if (fileId) {
+        if (imageCache.has(fileId)) {
+          setImageDataUrl(imageCache.get(fileId)!);
+          setIsLoading(false);
+          return;
+        }
+
+        fetchImageBatch(fileId)
+          .then((data) => {
+            const dataUrl = `data:${data.mimeType};base64,${data.base64}`;
+            imageCache.set(fileId, dataUrl);
+            setImageDataUrl(dataUrl);
+          })
+          .catch((e) => {
+            console.error(`[MediaThumbnail] Failed to fetch image (fileId: ${fileId}, url: ${url}):`, e.message);
+            setError('Load failed');
+          })
+          .finally(() => setIsLoading(false));
+      } else {
+        setIsLoading(false);
+      }
+    } catch (e) {
+      setError('Invalid URL');
+      setIsLoading(false);
+    }
+  }, [url]);
+
+  return (
+    <button
+      className={`aspect-square h-14 relative rounded-md overflow-hidden border-2 shrink-0 transition-colors flex items-center justify-center ${
+        isSelected
+          ? 'border-[var(--accent-color)]'
+          : 'border-transparent hover:border-white/20'
+      }`}
+      onClick={() => imageDataUrl && onClick(imageDataUrl)}
+      disabled={isLoading || !imageDataUrl}>
+      {isLoading && (
+        <div className="scale-50">
+          <LoadingIndicator />
+        </div>
+      )}
+      {error && <div className="text-red-500 text-[9px]">{error}</div>}
+      {imageDataUrl && (
+        <img src={imageDataUrl} className="w-full h-full object-cover" />
+      )}
+    </button>
+  );
+};
+
+export function ItemMediaPanel() {
+  const selectedItemData = useAtomValue(SelectedItemDataAtom);
+  const setImageSrc = useSetAtom(ImageSrcAtom);
+  const setIsUploadedImage = useSetAtom(IsUploadedImageAtom);
+  const setWorkflowStep = useSetAtom(workflowStepAtom);
+  const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
+  const setEditingMaskIndex = useSetAtom(editingMaskIndexAtom);
+
+  const mediaUrls =
+    selectedItemData?.mediaUrls
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) || [];
+
+  const handleThumbnailClick = (dataUrl: string) => {
+    setImageSrc(dataUrl);
+    setIsUploadedImage(false); // When clicking existing media, it's not a new upload.
+
+    // If the selected item has masks, launch the editor.
+    if (selectedItemData?.spatialMasks) {
+      try {
+        const parsedMasks = JSON.parse(selectedItemData.spatialMasks);
+        if (parsedMasks.length > 0) {
+          const parsedBoxes = selectedItemData.spatialBoxes2d ? JSON.parse(selectedItemData.spatialBoxes2d) : [];
+          const parsedPoints = selectedItemData.spatialPoints ? JSON.parse(selectedItemData.spatialPoints) : [];
+
+          // Re-create the full mask objects with SVG paths for the editor
+          const fullMasks: BoundingBoxMaskType[] = parsedMasks.map((mask: any) => ({
+            ...mask,
+            path: mask.points ? createCurvePath(mask.points) : '',
+          }));
+
+          setAllAnnotationData({
+            boxes: parsedBoxes,
+            points: parsedPoints,
+            masks: fullMasks,
+          });
+          setEditingMaskIndex(0);
+          setWorkflowStep('fullscreenEdit');
+        }
+      } catch (e) {
+        console.error("Failed to parse mask data for editing:", e);
+        toast.error("Failed to load mask data for editing.");
+      }
+    }
+  };
+
+  if (mediaUrls.length === 0) {
+    return (
+      <div className="text-center text-xs text-[var(--text-color-secondary)] h-full flex items-center justify-center">
+        No media found for this item.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-sm font-bold uppercase text-[var(--text-color-secondary)]">
+        Media Gallery
+      </h3>
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {mediaUrls.map((url, index) => (
+          <MediaThumbnail
+            key={index}
+            url={url}
+            onClick={handleThumbnailClick}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
