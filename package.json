@@ -1,0 +1,43 @@
+{
+  "name": "ge-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000 --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && npx gh-pages -d dist"
+  },
+  "dependencies": {
+    "@google/genai": "^1.25.0",
+    "@supabase/supabase-js": "^2.97.0",
+    "@tailwindcss/browser": "^4.1.15",
+    "dexie": "^4.3.0",
+    "gsap": "^3.13.0",
+    "jotai": "^2.15.0",
+    "jszip": "^3.10.1",
+    "perfect-freehand": "^1.2.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-resize-detector": "^12.3.0",
+    "rxdb": "^16.21.1",
+    "rxjs": "^7.8.2",
+    "three": "^0.167.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/gsap": "^3.0.0",
+    "@types/jszip": "^3.4.1",
+    "@types/node": "^20.14.12",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.166.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "baseline-browser-mapping": "^2.9.17",
+    "gh-pages": "^6.3.0",
+    "typescript": "^5.5.4",
+    "vite": "^7.2.2"
+  }
+}

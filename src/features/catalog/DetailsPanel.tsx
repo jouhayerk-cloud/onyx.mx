@@ -1,0 +1,400 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+/* tslint:disable */
+// Copyright 2024 Google LLC
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import { GoogleGenAI } from '@google/genai';
+import { useAtom, useSetAtom } from 'jotai/react';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import {
+  allAnnotationDataAtom,
+  detailsPanelDataAtom,
+  detailsPanelFilesAtom,
+  detailsPanelModeAtom,
+  editingMaskIndexAtom,
+  ImageSrcAtom,
+  InventoryVersionAtom,
+  is3DViewerOpenAtom,
+  isDetailsPanelOpenAtom,
+  marketActiveTabAtom,
+  newItemGeneratedFilesAtom,
+  SelectedItemDataAtom,
+  SelectedItemRowAtom,
+  userAtom,
+  workflowStepAtom,
+} from '../../lib/atoms';
+import { SCRIPT_URL } from '../../lib/consts';
+import { useItemImage, useTranslation } from '../../lib/hooks';
+import { InventoryForm, type FormState } from '../../components/InventoryForm';
+import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { ProductPoster } from '../../components/ProductPoster';
+import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/Types';
+import { createCurvePath, imageCache } from '../../lib/utils';
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+type DescriptionType = 'short' | 'normal' | 'detailed';
+
+const DetailRow = ({ label, value }: { label: string; value: any }) => {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">{label}</p>
+      <p className="text-sm text-[var(--text-color-primary)]">{value}</p>
+    </div>
+  );
+};
+
+const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
+    const { imageUrl, isLoading } = useItemImage(data);
+    const dimensions = [data.widthCm, data.heightCm, data.lengthCm].filter(Boolean).join(' x ');
+
+    const setWorkflowStep = useSetAtom(workflowStepAtom);
+    const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
+    const setEditingMaskIndex = useSetAtom(editingMaskIndexAtom);
+    const setImageSrc = useSetAtom(ImageSrcAtom);
+
+
+    const handleEditMasks = async () => {
+        if (!data.spatialMasks) {
+            toast.error("No masks available to edit for this item.");
+            return;
+        }
+        
+        const originalImageUrl = data.mediaUrls?.split(',')[0].trim();
+        if (!originalImageUrl) {
+            toast.error("Original source image not found for this item.");
+            return;
+        }
+
+        const toastId = toast.loading("Loading original image for editor...");
+
+        try {
+            const url = new URL(originalImageUrl);
+            const fileId = url.searchParams.get('id');
+            if (!fileId) throw new Error("Invalid image URL");
+
+            let originalImageDataUrl: string;
+            if (imageCache.has(fileId)) {
+                originalImageDataUrl = imageCache.get(fileId)!;
+            } else {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'getImageBase64FromDriveId', fileId }),
+                });
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message);
+                originalImageDataUrl = `data:${result.data.mimeType};base64,${result.data.base64}`;
+                imageCache.set(fileId, originalImageDataUrl);
+            }
+            
+            setImageSrc(originalImageDataUrl);
+            toast.dismiss(toastId);
+
+            const parsedMasks = JSON.parse(data.spatialMasks);
+            if (parsedMasks.length === 0) {
+                 toast.error("No masks found to edit.");
+                 return;
+            }
+            const parsedBoxes = data.spatialBoxes2d ? JSON.parse(data.spatialBoxes2d) : [];
+            const parsedPoints = data.spatialPoints ? JSON.parse(data.spatialPoints) : [];
+
+            // Re-create the full mask objects with SVG paths
+            const fullMasks: BoundingBoxMaskType[] = parsedMasks.map((mask: any) => ({
+              ...mask,
+              path: mask.points ? createCurvePath(mask.points) : '',
+            }));
+            
+            setAllAnnotationData({
+                boxes: parsedBoxes,
+                points: parsedPoints,
+                masks: fullMasks,
+            });
+
+            setEditingMaskIndex(0);
+            setWorkflowStep('fullscreenEdit');
+
+        } catch (e: any) {
+            console.error("Failed to load original image for editing:", e);
+            toast.error(`Failed to load editor: ${e.message}`, { id: toastId });
+        }
+    };
+
+
+    return (
+        <div className="space-y-4">
+            {isLoading ? <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><LoadingIndicator /></div> :
+             imageUrl && <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
+            }
+            <DetailRow label="Vendor ID" value={data.itemId} />
+            <DetailRow label="Item #" value={data.itemNumber} />
+            <DetailRow label="Shape" value={data.shape} />
+            <DetailRow label="Material" value={data.material} />
+            <DetailRow label="Description" value={data.description} />
+            <DetailRow label="Dimensions" value={dimensions ? `${dimensions} cm` : 'Not specified'} />
+            <DetailRow label="Weight" value={data.weightKg ? `${data.weightKg} kg` : 'Not specified'} />
+            <DetailRow label="Price" value={data.price ? `$${data.price} MXN` : 'Not specified'} />
+            <DetailRow label="Quantity" value={data.quantity} />
+            {data.color && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">Color</p>
+                <div className="w-10 h-5 rounded" style={{ background: data.color }}></div>
+              </div>
+            )}
+            {data.shortDescription && <DetailRow label="Short Description" value={data.shortDescription} />}
+            {data.generatedDescription && <DetailRow label="Bullet Points" value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
+            {data.detailedDescription && <DetailRow label="Detailed Description" value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
+            {data.spatialMasks && (
+                <div className="pt-4 border-t border-[var(--border-color)]">
+                    <button onClick={handleEditMasks} className="button w-full">Edit Masks</button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// MAIN COMPONENT
+export function DetailsPanel() {
+  const t = useTranslation();
+  const [isOpen, setIsOpen] = useAtom(isDetailsPanelOpenAtom);
+  const setIs3DViewerOpen = useSetAtom(is3DViewerOpenAtom);
+  const [mode, setMode] = useAtom(detailsPanelModeAtom);
+  const [itemData, setItemData] = useAtom(SelectedItemDataAtom);
+  const [itemRow] = useAtom(SelectedItemRowAtom);
+  const [user] = useAtom(userAtom);
+  const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+
+  const [createModeData, setCreateModeData] = useAtom(detailsPanelDataAtom);
+  const [createModeFiles, setCreateModeFiles] = useAtom(detailsPanelFilesAtom);
+  const [newItemFiles, setNewItemFiles] = useAtom(newItemGeneratedFilesAtom);
+
+  const [activeTab, setActiveTab] = useState<'description' | 'poster'>('description');
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState<DescriptionType | 'image' | false>(false);
+  const [generatedDesc, setGeneratedDesc] = useState('');
+
+  const { imageUrl: currentItemImageUrl, isLoading: isImageLoading } = useItemImage(itemData);
+
+  const data = mode === 'create' ? createModeData : itemData;
+  const mainImage = mode === 'create' ? createModeFiles?.find(f => f.type === 'image')?.dataUrl : currentItemImageUrl;
+
+  const handleClose = () => {
+    if (isSaving || isGenerating) return;
+    if (mode === 'edit') {
+        setMode('view');
+        return;
+    }
+    setIsOpen(false);
+    setActiveTab('description');
+  };
+
+  const handleTabClick = (tab: 'description' | '3d' | 'poster') => {
+      if (mode === 'create' || mode === 'edit') return;
+      if (tab === '3d') {
+          if (itemData?.spatialMasks || itemData?.generatedSvgUrl) {
+              setIs3DViewerOpen(true);
+          } else {
+              toast.error('3D preview requires generated mask or SVG data.');
+          }
+      } else {
+          setActiveTab(tab as any);
+      }
+  };
+
+  const handleGenerateDescription = async (type: DescriptionType) => {
+    if (!data || !mainImage) return;
+    setIsGenerating(type);
+    setGeneratedDesc('');
+
+    const itemInfo = `Shape: ${data.shape}, Material: ${data.material}, Dimensions: ${data.widthCm}x${data.lengthCm}x${data.heightCm}cm.`;
+    let prompt: string;
+    switch (type) {
+      case 'short':
+        prompt = `Write a short, one-sentence product description for an item with these details: ${itemInfo}.`;
+        break;
+      case 'normal':
+        prompt = `Write 3 to 5 advertisement-style selling bullet points for an item with these details: ${itemInfo}. Each bullet point must be a short, single phrase. Format as a single string, with each bullet point starting with a '*' and separated by a newline. Do not use HTML tags.`;
+        break;
+      case 'detailed':
+        prompt = `Write a detailed product description for an item with these details: ${itemInfo}. Use simple HTML tags like <p>, <ul>, <li>, and <strong> for formatting.`;
+        break;
+    }
+    
+    try {
+      const response = await ai.models.generateContentStream({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      for await (const chunk of response) {
+        setGeneratedDesc(prev => prev + chunk.text);
+      }
+    } catch (error: any) {
+      toast.error(`Description generation failed: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const saveDescription = async (type: 'shortDescription' | 'generatedDescription' | 'detailedDescription') => {
+    if (!itemData || !itemRow) return;
+    setIsSaving(true);
+    try {
+      const payload = { [type]: generatedDesc };
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user }),
+      });
+      const result = await response.json();
+      if (result.status !== 'success') throw new Error(result.message);
+      
+      setItemData(prev => prev ? { ...prev, ...payload } : null);
+      setGeneratedDesc('');
+      toast.success('Description saved!');
+    } catch (error: any) {
+      toast.error(`Save failed: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFormSubmit = async ({ formState, newFiles }: { formState: FormState, newFiles: UploadedFile[] }) => {
+    setIsSaving(true);
+    const toastId = toast.loading(t.saving);
+
+    try {
+        const existingPhotos = (mode === 'edit' && itemData?.mediaUrls)
+            ? itemData.mediaUrls.split(',').map(url => url.trim()).filter(Boolean)
+            : [];
+        
+        const payload = {
+            ...formState,
+            ...newItemFiles,
+            photos: mode === 'edit' 
+                ? [...existingPhotos, ...newFiles] 
+                : createModeFiles || []
+        };
+        const action = mode === 'edit' ? 'updateFullItem' : 'appendInventory';
+        const body = mode === 'edit'
+            ? JSON.stringify({ action, row: itemRow, itemData: payload, user })
+            : JSON.stringify({ action, inventory: [payload], user });
+        
+        const response = await fetch(SCRIPT_URL, { method: 'POST', body });
+        const result = await response.json();
+        if (result.status !== 'success') throw new Error(result.message);
+
+        toast.success(t.itemSavedSuccess, { id: toastId });
+        setInventoryVersion(v => v + 1);
+        handleClose();
+    } catch (error: any) {
+        toast.error(`${t.saveFailed} ${error.message}`, { id: toastId });
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+      if (!itemData || !itemRow || !window.confirm(t.deleteConfirm(itemData.shape))) return;
+
+      setIsSaving(true);
+      const toastId = toast.loading('Deleting...');
+      try {
+          const response = await fetch(SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'deleteItem', row: itemRow, user })
+          });
+          const result = await response.json();
+          if (result.status !== 'success') throw new Error(result.message);
+          toast.success(t.deleteSuccess, { id: toastId });
+          setInventoryVersion(v => v + 1);
+          setIsOpen(false);
+      } catch (error: any) {
+          toast.error(`${t.deleteError} ${error.message}`, { id: toastId });
+      } finally {
+          setIsSaving(false);
+      }
+  };
+
+  const title = mode === 'create' ? t.createNewItem : mode === 'edit' ? t.editItem : t.itemDetails;
+  const TABS = [
+      { id: 'description', label: 'Description' },
+      { id: '3d', label: '3D' },
+      { id: 'poster', label: 'Poster' }
+  ];
+
+  const renderContent = () => {
+    if (mode === 'market') {
+        if (!data) return <div className="p-4 text-center text-sm text-[var(--text-color-secondary)]">Select an item to see its details.</div>;
+        return <FullDetailsDisplay data={data as InventoryItemData} />;
+    }
+
+    switch (activeTab) {
+      case 'poster':
+        return <ProductPoster item={itemData!} imageUrl={mainImage || null} />;
+      case 'description':
+      default:
+        if (mode === 'create' || mode === 'edit') {
+            return <InventoryForm 
+              initialData={data || {}} 
+              onSubmit={handleFormSubmit} 
+              isSaving={isSaving} 
+              submitButtonText={t.saveItemToSheet} 
+              isEditMode={mode === 'edit'}
+            />;
+        }
+        if (!itemData) return <div className="p-4 text-center text-sm text-[var(--text-color-secondary)]">Select an item to see its details.</div>;
+        return <FullDetailsDisplay data={itemData} />;
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={`glass-panel rounded-xl shrink-0
+        w-[85vw] max-w-sm h-full
+        fixed top-0 right-0 z-50
+        lg:static lg:w-[420px] lg:h-full lg:transform-none
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+        <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
+                <h2 className="font-bold">{title}</h2>
+                <button onClick={handleClose} className="lg:hidden text-2xl">&times;</button>
+            </div>
+            <div className="grow overflow-y-auto">
+                <div className="p-4">
+                  {isImageLoading && mode !== 'create' ? <LoadingIndicator /> : renderContent()}
+                </div>
+            </div>
+            {(mode === 'view' && user?.role === 'Admin') && (
+                <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
+                    <button className="button grow" onClick={() => setMode('edit')}>Edit Item</button>
+                    <button className="button !bg-red-500" onClick={handleDelete} disabled={isSaving}>Delete</button>
+                </div>
+            )}
+            {mode === 'edit' && (
+                <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
+                    <button className="button secondary grow" onClick={handleClose}>Cancel</button>
+                </div>
+            )}
+        </div>
+    </div>
+  );
+}

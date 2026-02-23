@@ -1,0 +1,85 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+*/
+/* tslint:disable */
+// Copyright 2024 Google LLC
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+import React from 'react';
+
+/**
+ * Onyx.mx Logo Component.
+ * This is the full, detailed vector logo from OnyxOS.svg.
+ * It is theme-aware and will adapt its colors based on the parent's CSS `color` property.
+ */
+export const OnyxLogo = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
+  return (
+    <svg 
+        width="100%" 
+        height="100%" 
+        viewBox="0 0 2513 2928" 
+        version="1.1" 
+        xmlns="http://www.w3.org/2000/svg" 
+        xmlnsXlink="http://www.w3.org/1999/xlink" 
+        xmlSpace="preserve" 
+        style={{fillRule: 'evenodd', clipRule: 'evenodd', strokeLinejoin: 'round', strokeMiterlimit: 2}}
+        className={`onyx-logo ${className || ''}`}
+        {...props}
+    >
+        <path d="M2512.48,774.267l0,1189.92c0,66.364 -40.709,97.088 -90.85,68.568l-1040.29,-591.699c-50.142,-28.52 -90.851,-105.553 -90.851,-171.916l-0,-1189.92c-0,-66.363 40.709,-97.087 90.851,-68.568l1040.29,591.699c50.141,28.52 90.85,105.553 90.85,171.916Z" fill="var(--main-color)" fillOpacity="0.2"/>
+        <path d="M1351.61,1573.19l1108.94,612.947c61.847,34.184 69.553,85.23 17.199,113.918l-1109.95,608.22c-52.355,28.688 -145.071,24.226 -206.918,-9.959l-1108.94,-612.947c-61.847,-34.185 -69.553,-85.23 -17.199,-113.919l1109.95,-608.219c52.355,-28.689 145.072,-24.226 206.918,9.959Z" fill="var(--secondary-color)" fillOpacity="0.3"/>
+        <path id="Select" d="M333.508,2173.53l900.137,486.336l907.486,-496.323l-900.138,-486.336l-907.485,496.323Z" fill="var(--text-color)" fillOpacity="0.4"/>
+        <path d="M0,767.537l0,1196.23c0,66.716 40.925,97.603 91.332,68.932l1014.25,-576.886c50.408,-28.671 91.332,-106.113 91.332,-172.828l0,-1196.23c0,-66.715 -40.924,-97.602 -91.332,-68.931l-1014.25,576.886c-50.407,28.671 -91.332,106.112 -91.332,172.827Z" fill="var(--main-color)" fillOpacity="0.5"/>
+        <path d="M1224.31,1451.52l-0,903.041l-797.051,-435.924l0,-903.041l797.051,435.924Z" fill="currentColor" fillOpacity="0.6"/>
+        <path d="M1224.31,1442.91l-0,925.882l823.072,-450.156l-0,-925.881l-823.072,450.155Z" fill="var(--text-color)" fillOpacity="0.75"/>
+        <path d="M427.258,1014.63l797.051,430.639l823.072,-450.156l-797.051,-430.639l-823.072,450.156Z" fill="var(--text-color)" fillOpacity="0.9"/>
+        <path d="M636.767,1773.66c-57.047,-30.952 -103.537,-74.744 -139.47,-131.377c-35.932,-56.632 -53.899,-114.768 -53.899,-174.409c0,-62.975 18.244,-104.011 54.733,-123.11c36.488,-19.099 84.83,-12.318 145.026,20.342c56.863,30.852 102.844,74.414 137.943,130.687c35.099,56.272 52.648,114.877 52.648,175.815c0,62.604 -18.198,103.203 -54.593,121.796c-36.396,18.593 -83.858,12.012 -142.388,-19.744Zm3.89,-332.674c-31.487,-17.084 -56.492,-18.843 -75.014,-5.277c-18.522,13.567 -27.783,39.798 -27.783,78.694c0,39.451 9.261,75.686 27.783,108.702c18.522,33.017 42.786,57.665 72.791,73.945c30.932,16.783 55.474,18.939 73.625,6.468c18.152,-12.471 27.227,-38.524 27.227,-78.161c0,-41.304 -8.798,-78.213 -26.393,-110.727c-17.596,-32.514 -41.675,-57.062 -72.236,-73.644Zm568.112,636.077l-90.573,-49.142l-164.197,-339.411c-9.631,-19.858 -16.299,-34.497 -20.003,-43.915l-1.112,-0.603c1.482,14.88 2.223,36.768 2.223,65.662l-0,218.929l-84.738,-45.976l0,-398.407l96.685,52.458l158.084,328.316c7.224,14.848 13.892,29.301 20.004,43.36l1.111,0.603c-1.481,-10.065 -2.222,-28.711 -2.222,-55.939l-0,-220.318l84.738,45.976l-0,398.407Zm410.286,-581.591l-129.747,327.538l0,141.693l-89.738,48.985l-0,-140.025l-126.413,-189.377l102.519,-55.962l64.179,113.606c1.111,2.171 4.167,11.338 9.168,27.501l1.112,-0.607c2.407,-14.65 5.278,-26.682 8.612,-36.096l65.29,-185.389l95.018,-51.867Zm390.261,185.376l-106.409,58.085l-68.624,-92.287c-2.593,-3.4 -5.278,-10.825 -8.057,-22.274l-1.111,0.607c-1.297,6.82 -4.353,17.749 -9.168,32.788l-68.902,166.246l-106.964,58.388l126.968,-268.511l-116.133,-135.811l109.187,-59.601l56.955,88.376c4.445,7.02 8.427,16.052 11.947,27.097l1.111,-0.607c2.223,-8.993 6.39,-22.844 12.502,-41.553l63.345,-152.934l100.019,-54.597l-119.467,262.75l122.801,133.838Z" fill="var(--text-color)"/>
+    </svg>
+  );
+};
+
+/**
+ * Onyx OS Miniature Logo Component.
+ * This is the simplified vector logo from OnyxMini.svg.
+ * It is theme-aware and will adapt its colors based on the parent's CSS `color` property.
+ */
+export const OnyxMiniLogo = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => {
+    return (
+        <svg 
+            width="100%" 
+            height="100%" 
+            viewBox="0 0 1808 2096" 
+            version="1.1" 
+            xmlns="http://www.w3.org/2000/svg" 
+            xmlnsXlink="http://www.w3.org/1999/xlink" 
+            xmlSpace="preserve" 
+            style={{fillRule: 'evenodd', clipRule: 'evenodd', strokeLinejoin: 'round', strokeMiterlimit: 2}}
+            className={`onyx-logo ${className || ''}`}
+            {...props}
+        >
+            <path d="M-0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill="var(--secondary-color)" fillOpacity="0.3"/>
+            <path d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill="var(--main-color)" fillOpacity="0.5"/>
+            <path d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill="currentColor" fillOpacity="0.75"/>
+            <path d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill="currentColor" fillOpacity="0.5"/>
+            <path d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill="var(--main-color)" fillOpacity="0.5"/>
+            <g transform="matrix(0.878961,0.476894,-0,0.878961,179.953,-570.815)">
+                <text x="-103.102" y="1941.1" style={{fontFamily:'"Ebrima-Bold", "Ebrima"', fontWeight:700, fontSize:'647.349px'}} fill="var(--text-color)" fillOpacity="0.5">O<tspan x="331.464" y="1941.1">N</tspan></text>
+            </g>
+            <g transform="matrix(0.877743,-0.479132,-0,0.877743,285.721,1126.22)">
+                <text x="745.011" y="853.282" style={{fontFamily:'"Ebrima-Bold", "Ebrima"', fontWeight:700, fontSize:'648.247px'}} fill="var(--text-color)" fillOpacity="0.5">Y<tspan x="1161.14" y="853.282">X</tspan></text>
+            </g>
+        </svg>
+    );
+};
