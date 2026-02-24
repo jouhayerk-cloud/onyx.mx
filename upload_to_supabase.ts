@@ -37,33 +37,40 @@ async function uploadData() {
             const chunk = allItems.slice(i, i + CHUNK_SIZE);
 
             const uploadPayload = chunk.map(item => {
-                // Map common fields to Supabase schema
+                const itemId = item.item_id || 'UNK';
+                const itemNum = item.item_number || '0';
+
+                // Generate a deterministic hex string that looks like a UUID
+                // UUID format: 8-4-4-4-12
+                // We'll use the vendor + number to create a unique enough hex string
+                const hashBase = `${itemId}-${itemNum}`.padEnd(20, '0');
+                const hex = Buffer.from(hashBase).toString('hex').slice(0, 32);
+                const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+
                 return {
-                    item_id: item.item_id,
-                    item_number: item.item_number ? parseInt(item.item_number) : null,
-                    shape: item.shape || item.metadata?.shape,
-                    material: item.material || item.metadata?.material,
-                    description: item.description,
-                    color: item.color,
+                    id: uuid,
+                    item_id: itemId,
+                    item_number: parseInt(itemNum) || 0,
+                    shape: item.shape || item.metadata?.shape || null,
+                    material: item.material || item.metadata?.material || null,
+                    description: item.description || null,
+                    color: item.color || null,
                     quantity: item.quantity ? parseInt(item.quantity) : 1,
                     price_mxn: item.price_mxn ? parseFloat(item.price_mxn) : 0,
                     weight_kg: item.weight_kg ? parseFloat(item.weight_kg) : 0,
-                    height_cm: item.height_cm ? parseFloat(item.height_cm) : 0,
-                    width_cm: item.width_cm ? parseFloat(item.width_cm) : 0,
-                    length_cm: item.length_cm ? parseFloat(item.length_cm) : 0,
-                    media_urls: item.media_urls || [],
-                    workbook: item.workbook,
+                    media_urls: Array.isArray(item.media_urls) ? item.media_urls.join(',') : (item.media_urls || ''),
+                    workbook: item.workbook || '326',
                     status: item.status || 'YES',
-                    timestamp: item.timestamp,
-                    // Handle structured metadata for dimensions if needed
+                    timestamp: item.timestamp || new Date().toISOString(),
                     length_cm: item.length_cm || (item.metadata?.dimensions?.split('x')[0] ? parseFloat(item.metadata.dimensions.split('x')[0]) : 0),
                     width_cm: item.width_cm || (item.metadata?.dimensions?.split('x')[1] ? parseFloat(item.metadata.dimensions.split('x')[1]) : 0),
                     height_cm: item.height_cm || (item.metadata?.dimensions?.split('x')[2] ? parseFloat(item.metadata.dimensions.split('x')[2]) : 0),
+                    created_by: 'system_migration'
                 };
             });
 
             console.log(`📤 Uploading chunk ${Math.floor(i / CHUNK_SIZE) + 1}...`);
-            const { error } = await supabase.from('inventory').upsert(uploadPayload, { onConflict: 'item_id,item_number' });
+            const { error } = await supabase.from('inventory').upsert(uploadPayload, { onConflict: 'id' });
 
             if (error) {
                 console.error(`❌ Error in chunk ${i}:`, error.message);
