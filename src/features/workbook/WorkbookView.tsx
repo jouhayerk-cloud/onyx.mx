@@ -445,10 +445,6 @@ export const WorkbookView: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col">
                         <h1 className="text-xl font-black tracking-tighter text-white/90">POWER WORKBOOK</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{isSyncing ? 'Syncing Cloud Engine...' : 'Real-time Linked'}</span>
-                        </div>
                     </div>
 
                     <div className="flex gap-8 items-center">
@@ -470,13 +466,9 @@ export const WorkbookView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                    <div className="flex gap-1 bg-black/20 p-1 rounded-xl border border-white/5">
-                        {visibleTabs.map(t => (
-                            <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-4 py-2 text-[9px] font-black tracking-[0.1em] transition-all rounded-lg ${activeTab === t.id ? 'text-black bg-[var(--main-color)] shadow-[0_0_15px_rgba(127,187,255,0.3)]' : 'text-white/40 hover:text-white/70 hover:bg-white/5'}`}>
-                                {t.label}
-                                {!!t.badge && t.badge > 0 && <span className={`ml-2 px-1 rounded text-[7px] font-mono ${activeTab === t.id ? 'bg-black/20 text-black' : 'bg-white/10 text-white/30'}`}>{t.badge}</span>}
-                            </button>
-                        ))}
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`} />
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{isSyncing ? 'Syncing Cloud Engine...' : 'Real-time Linked'}</span>
                     </div>
 
                     <div className="flex items-center gap-3">

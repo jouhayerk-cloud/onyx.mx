@@ -204,9 +204,9 @@ export function MainHeader() {
 
     return (
         <div className="main-header">
-            <button className="sidebar-toggle group relative flex items-center gap-2" onClick={toggleSidebar}>
-                <OnyxLogo />
-                <span className="text-[9px] font-black text-white/20 tracking-tighter absolute -bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">v2.1.0</span>
+            <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/5 mr-2" onClick={toggleSidebar}>
+                <OnyxLogo className="w-8 h-8" />
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.1.0</span>
             </button>
 
             <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
@@ -245,40 +245,31 @@ export function MainHeader() {
 
             {isWorkbook && (
                 <div className="flex items-center gap-4 ml-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                    <select
-                        value={workbookVersion}
-                        onChange={(e) => {
-                            setWorkbookVersion(e.target.value as '825' | '326');
-                            setWorkbook(null);
-                        }}
-                        className="bg-[var(--glass-bg)] border border-[var(--border-color)] text-[var(--text-color)] rounded px-3 py-1 text-[10px] font-bold uppercase tracking-widest focus:outline-none focus:border-[var(--main-color)] transition-colors"
-                    >
-                        <option value="825">v825 (DASH)</option>
-                        <option value="326">v326 (NEW)</option>
-                    </select>
-
-                    <div className="flex bg-[var(--input-color)] p-1 rounded-full border border-[var(--border-color)] backdrop-blur-md gap-1">
-                        {(workbookVersion === '326'
-                            ? (['log', 'production', 'supplies', 'crates', 'paylog', 'inventory'] as const)
-                            : (['inventory', 'expenses', 'shipping', 'payments'] as const)
-                        ).map((tab) => {
-                            const colors: Record<string, string> = {
-                                inventory: '#a9d08e', expenses: '#e06666', shipping: '#00b0f0', payments: '#ffe699',
-                                log: '#6BCEBB', production: '#FFED00', supplies: '#F7941D', crates: '#8DC63F', paylog: '#00AEEF'
-                            };
-                            const color = colors[tab];
-                            const isActive = workbookActiveTab === tab;
+                    <div className="flex bg-[var(--input-color)] p-1 rounded-full border border-white/5 backdrop-blur-2xl shadow-xl gap-1">
+                        {[
+                            { label: 'WORKBOOK 326', version: '326', tab: 'inventory', color: '#6BCEBB', roles: ['Developer', 'Admin', 'Vendor'] },
+                            { label: 'ARCHIVE 825', version: '825', tab: 'archive', color: '#a9d08e', roles: ['Developer', 'Admin', 'Client'] },
+                            { label: 'PRODUCTION', version: '326', tab: 'production', color: '#FFED00', roles: ['Developer', 'Admin', 'Vendor'] },
+                            { label: 'LOGISTICS', version: '326', tab: 'crates', color: '#8DC63F', roles: ['Developer', 'Admin', 'Client'] }
+                        ].filter(item => item.roles.includes(user?.role || 'Vendor')).map((item) => {
+                            const isActive = (item.tab === 'inventory' && workbookVersion === item.version && workbookActiveTab === 'inventory') ||
+                                (item.tab === 'archive' && workbookVersion === item.version && workbookActiveTab === 'archive') ||
+                                (item.tab !== 'inventory' && item.tab !== 'archive' && workbookActiveTab === item.tab);
                             return (
                                 <button
-                                    key={tab}
-                                    onClick={() => setWorkbookActiveTab(tab)}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black transition-all duration-300 uppercase tracking-tighter ${isActive ? 'shadow-lg scale-105' : 'hover:opacity-60'}`}
+                                    key={item.label}
+                                    onClick={() => {
+                                        setWorkbookVersion(item.version as '825' | '326');
+                                        setWorkbookActiveTab(item.tab as any);
+                                        setWorkbook(null);
+                                    }}
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all duration-300 uppercase tracking-widest ${isActive ? 'shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-105' : 'hover:bg-white/5 opacity-40 hover:opacity-100'}`}
                                     style={{
-                                        backgroundColor: isActive ? color : 'transparent',
+                                        backgroundColor: isActive ? item.color : 'transparent',
                                         color: isActive ? '#000' : 'var(--text-color-secondary)',
                                     }}
                                 >
-                                    {tab}
+                                    {item.label}
                                 </button>
                             );
                         })}
