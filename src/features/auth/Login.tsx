@@ -41,13 +41,31 @@ export function Login() {
     setLoading(true);
     setError('');
 
-    import('../../lib/supabase').then(async ({ supabase }) => {
+    const loginTimeout = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError('Connection timed out. Check your internet or configuration.');
+      }
+    }, 10000);
+
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase || (supabase as any).supabaseUrl.includes('placeholder')) {
+        throw new Error('Supabase client not initialized. Check environment variables.');
+      }
+
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      clearTimeout(loginTimeout);
+
       if (error) {
         setError(error.message);
         setLoading(false);
       }
-    });
+    } catch (err: any) {
+      clearTimeout(loginTimeout);
+      setError(err.message || 'Failed to connect to authentication server');
+      setLoading(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
