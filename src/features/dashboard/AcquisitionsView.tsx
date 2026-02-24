@@ -88,7 +88,10 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     }, [notify, db]);
 
     useEffect(() => {
-        if (!db) return;
+        if (!db) {
+            setIsLoading(false);
+            return;
+        }
         const sub = db.inventory.find().$.subscribe((docs: any) => {
             setAllAcquisitions(docs.map((doc: any) => ({
                 row: doc.id,

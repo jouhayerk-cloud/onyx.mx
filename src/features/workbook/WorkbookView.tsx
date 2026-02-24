@@ -380,7 +380,8 @@ export const WorkbookView: React.FC = () => {
                 invTimer = setTimeout(() => {
                     const items = d.map(x => x.toJSON());
                     setData(p => ({ ...p, inv: items }));
-                    if (items.length > 0) setIsSyncing(false);
+                    // Set syncing to false once we have at least one valid response from RxDB (even if empty)
+                    setIsSyncing(false);
                 }, 200);
             }),
             db.production.find().$.subscribe(d => {
