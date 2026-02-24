@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { workbookActiveTabAtom, exchangeRateAtom } from '../../lib/atoms';
+import { workbookActiveTabAtom, exchangeRateAtom, userAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -28,6 +28,7 @@ const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US'
 
 // 1. INVENTORY & ARCHIVE (Shared Logic)
 const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: boolean; onRefresh: () => void }> = ({ docs, exchangeRate, isArchive, onRefresh }) => {
+    const user = useAtomValue(userAtom);
     const [search, setSearch] = useState('');
     const [filterVendor, setFilterVendor] = useState('ALL');
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -51,10 +52,16 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter items..." className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all" />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-20"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
                 </div>
-                <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest text-white/60 focus:outline-none">
-                    <option value="ALL">ALL VENDORS</option>
-                    {[...new Set(docs.map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
+                {user?.role !== 'Vendor' ? (
+                    <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest text-white/60 focus:outline-none">
+                        <option value="ALL">ALL VENDORS</option>
+                        {[...new Set(docs.map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                ) : (
+                    <div className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest text-[var(--main-color)] uppercase">
+                        VENDOR: {user.id}
+                    </div>
+                )}
                 <div className="ml-auto text-[10px] uppercase font-black tracking-widest text-white/20">{filtered.length} Items Listed</div>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-3">
@@ -113,9 +120,10 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
 
 // 2. PAYMENTS & PAY LOG
 const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, finDocs, exchangeRate, onRefresh }) => {
+    const user = useAtomValue(userAtom);
+    const [filterVendor, setFilterVendor] = useState(user?.role === 'Vendor' ? user.id : 'ALL');
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [dest, setDest] = useState<PaymentDestination | null>(null);
-    const [filterVendor, setFilterVendor] = useState('ALL');
 
     const unpaid = useMemo(() => docs.filter(d => (filterVendor === 'ALL' || d.item_id === filterVendor) && !d.paid), [docs, filterVendor]);
     const totalSelected = unpaid.filter(u => selected.has(u.id)).reduce((s, u) => s + (u.price_mxn || 0), 0);
@@ -127,7 +135,12 @@ const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: numbe
         const ids = [...selected];
         const commission = destinationsConfig[dest].calculateCommission(totalSelected);
         const { error } = await supabase.from('finance').insert({
-            amount: (totalSelected + commission) / exchangeRate, description: `Batch Payment: ${ids.length} Tags via ${dest}`, vendor_id: filterVendor !== 'ALL' ? filterVendor : null, status: 'Requested', destination: dest, related_ids: ids
+            amount: (totalSelected + commission) / exchangeRate,
+            description: `Batch Payment: ${ids.length} Tags via ${dest}`,
+            vendor_id: user?.role === 'Vendor' ? user.id : (filterVendor !== 'ALL' ? filterVendor : null),
+            status: 'Requested',
+            destination: dest,
+            related_ids: ids
         });
         if (!error) {
             await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
@@ -141,10 +154,16 @@ const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: numbe
         <div className="flex h-full p-3 gap-3">
             <div className="flex-1 flex flex-col rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl overflow-hidden shadow-2xl">
                 <div className="flex p-3 bg-white/[0.03] border-b border-white/5 gap-3 items-center">
-                    <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold tracking-widest text-white/70">
-                        <option value="ALL">ALL VENDORS</option>
-                        {[...new Set(docs.filter(d => !d.paid).map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
+                    {user?.role !== 'Vendor' ? (
+                        <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold tracking-widest text-white/70">
+                            <option value="ALL">ALL VENDORS</option>
+                            {[...new Set(docs.filter(d => !d.paid).map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                    ) : (
+                        <div className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold tracking-widest text-[var(--main-color)] uppercase">
+                            VENDOR ID: {user.id}
+                        </div>
+                    )}
                     <button onClick={() => setSelected(new Set(unpaid.map(u => u.id)))} className="text-[10px] uppercase font-bold text-white/30 hover:text-[var(--main-color)] transition-colors px-2">Select All Available</button>
                     <div className="ml-auto text-[10px] text-white/20 font-mono uppercase tracking-widest">{selected.size} / {unpaid.length} Selected</div>
                 </div>
@@ -205,67 +224,84 @@ const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: numbe
 };
 
 // 3. PRODUCTION
-const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => (
-    <div className="h-full p-4 overflow-y-auto custom-scrollbar">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {docs.map(p => {
-                const color = vendors[p.vendor_id as keyof typeof vendors]?.color || '#555';
-                return (
-                    <div key={p.id} className="glass-panel p-5 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col gap-4 group hover:bg-white/[0.05] transition-all shadow-xl backdrop-blur-xl">
-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-80" style={{ backgroundColor: color }} />
-                        <div className="flex justify-between items-start">
-                            <span className="px-3 py-1 rounded-full text-[10px] font-black text-black shadow-md tracking-tighter" style={{ backgroundColor: color }}>{p.vendor_id}</span>
-                            <div className="text-right">
-                                <div className="text-sm font-black text-white/90 font-mono">{fmtMXN(p.total)}</div>
-                                <div className="text-[9px] text-white/30 uppercase font-black tracking-widest">{p.quantity} Units Total</div>
+const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
+    const user = useAtomValue(userAtom);
+    const filtered = useMemo(() => {
+        if (user?.role === 'Vendor') return docs.filter(d => d.vendor_id === user.id);
+        return docs;
+    }, [docs, user]);
+
+    return (
+        <div className="h-full p-4 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filtered.map(p => {
+                    const color = vendors[p.vendor_id as keyof typeof vendors]?.color || '#555';
+                    return (
+                        <div key={p.id} className="glass-panel p-5 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col gap-4 group hover:bg-white/[0.05] transition-all shadow-xl backdrop-blur-xl">
+                            <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-80" style={{ backgroundColor: color }} />
+                            <div className="flex justify-between items-start">
+                                <span className="px-3 py-1 rounded-full text-[10px] font-black text-black shadow-md tracking-tighter" style={{ backgroundColor: color }}>{p.vendor_id}</span>
+                                <div className="text-right">
+                                    <div className="text-sm font-black text-white/90 font-mono">{fmtMXN(p.total)}</div>
+                                    <div className="text-[9px] text-white/30 uppercase font-black tracking-widest">{p.quantity} Units Total</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-white group-hover:text-[var(--main-color)] transition-colors line-clamp-2">{p.description}</h4>
+                                <div className="mt-1 font-mono text-[10px] text-white/20 uppercase tracking-widest">ORDER TAG: {p.tag_id}</div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-[10px] font-black tracking-tighter text-white/30 uppercase"><span>Progress</span><span>{Math.round(p.progress || 0)}% Complete</span></div>
+                                <div className="h-2 w-full bg-white/5 rounded-full p-0.5 border border-white/5"><div className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-[var(--main-color)] to-[#AEE6F5]" style={{ width: `${p.progress}%`, boxShadow: `0 0 10px ${vendors[p.vendor_id]?.color || '#7FBBFF'}33` }} /></div>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase font-bold">Advance Paid</span><span className="text-xs font-mono font-bold text-[#8DC63F]">{fmtMXN(p.advance)}</span></div>
+                                <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-bold">Estimated Ready</span><span className="text-xs font-mono font-bold text-white/60">{fmtDate(p.ready_date)}</span></div>
                             </div>
                         </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-white group-hover:text-[var(--main-color)] transition-colors line-clamp-2">{p.description}</h4>
-                            <div className="mt-1 font-mono text-[10px] text-white/20 uppercase tracking-widest">ORDER TAG: {p.tag_id}</div>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-black tracking-tighter text-white/30 uppercase"><span>Progress</span><span>{Math.round(p.progress || 0)}% Complete</span></div>
-                            <div className="h-2 w-full bg-white/5 rounded-full p-0.5 border border-white/5"><div className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-[var(--main-color)] to-[#AEE6F5]" style={{ width: `${p.progress}%`, boxShadow: `0 0 10px ${vendors[p.vendor_id]?.color || '#7FBBFF'}33` }} /></div>
-                        </div>
-                        <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase font-bold">Advance Paid</span><span className="text-xs font-mono font-bold text-[#8DC63F]">{fmtMXN(p.advance)}</span></div>
-                            <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-bold">Estimated Ready</span><span className="text-xs font-mono font-bold text-white/60">{fmtDate(p.ready_date)}</span></div>
-                        </div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // 4. CRATES (LOGISTICS)
-const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => (
-    <div className="flex flex-col h-full bg-black/20 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto custom-scrollbar">
-            {docs.map(c => {
-                const color = vendors[c.vendor_id as keyof typeof vendors]?.color || '#555';
-                return (
-                    <div key={c.id} className="glass-panel p-4 rounded-xl border border-white/5 flex flex-col gap-2 hover:bg-white/[0.02] transition-colors relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
-                        <div className="flex justify-between items-center"><span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: color }}>{c.vendor_id}</span><span className="text-[10px] text-white/40 font-mono">{fmtDate(c.date)}</span></div>
-                        <div className="text-xs font-bold text-white line-clamp-1">{c.description}</div>
-                        <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg}kg</span></div>
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Units</span><span className="text-[10px] font-mono font-bold text-white">{c.quantity}</span></div>
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Cost</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.cost_mxn)}</span></div>
+const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
+    const user = useAtomValue(userAtom);
+    const filtered = useMemo(() => {
+        if (user?.role === 'Vendor') return docs.filter(d => d.vendor_id === user.id);
+        return docs;
+    }, [docs, user]);
+
+    return (
+        <div className="flex flex-col h-full bg-black/20 p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto custom-scrollbar">
+                {filtered.map(c => {
+                    const color = vendors[c.vendor_id as keyof typeof vendors]?.color || '#555';
+                    return (
+                        <div key={c.id} className="glass-panel p-4 rounded-xl border border-white/5 flex flex-col gap-2 hover:bg-white/[0.02] transition-colors relative">
+                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
+                            <div className="flex justify-between items-center"><span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: color }}>{c.vendor_id}</span><span className="text-[10px] text-white/40 font-mono">{fmtDate(c.date)}</span></div>
+                            <div className="text-xs font-bold text-white line-clamp-1">{c.description}</div>
+                            <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg}kg</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Units</span><span className="text-[10px] font-mono font-bold text-white">{c.quantity}</span></div>
+                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Cost</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.cost_mxn)}</span></div>
+                            </div>
+                            <div className="text-[9px] text-white/30 font-mono">{c.l_cm}×{c.w_cm}×{c.d_cm}cm</div>
                         </div>
-                        <div className="text-[9px] text-white/30 font-mono">{c.l_cm}×{c.w_cm}×{c.d_cm}cm</div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export const WorkbookView: React.FC = () => {
+    const user = useAtomValue(userAtom);
     const [activeTab, setActiveTab] = useAtom(workbookActiveTabAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
@@ -317,10 +353,38 @@ export const WorkbookView: React.FC = () => {
         };
     }, [db, ver]);
 
-    const docs326 = useMemo(() => data.inv.filter(d => d.workbook === '326' || !d.workbook), [data.inv]);
-    const docs825 = useMemo(() => data.inv.filter(d => d.workbook === '825'), [data.inv]);
+    // Role-Based Data Filtering
+    const docs = useMemo(() => {
+        if (user?.role === 'Vendor') {
+            return data.inv.filter(d => d.item_id === user.id);
+        }
+        return data.inv;
+    }, [data.inv, user]);
+
+    const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
+    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
     const supplies = useMemo(() => data.fin.filter(d => d.category === 'Supplies'), [data.fin]);
-    const paylog = useMemo(() => data.fin.filter(d => d.type === 'Payment' || d.category === 'Log'), [data.fin]);
+
+    // Role-Based Tab Visibility
+    const allTabs = [
+        { id: 'inventory', label: 'WORKBOOK 326', badge: docs326.filter(d => !d.shipped).length, roles: ['Developer', 'Admin', 'Vendor'] },
+        { id: 'archive', label: 'ARCHIVE 825', badge: null, roles: ['Developer', 'Admin', 'Client'] },
+        { id: 'payments', label: 'FINANCE & PAY', badge: docs326.filter(d => !d.paid).length, roles: ['Developer', 'Admin', 'Vendor'] },
+        { id: 'production', label: 'PRODUCTION', badge: data.prod.length, roles: ['Developer', 'Admin', 'Vendor'] },
+        { id: 'crates', label: 'LOGISTICS', badge: data.log.length, roles: ['Developer', 'Admin', 'Client'] },
+        { id: 'supplies', label: 'SUPPLIES', badge: supplies.length, roles: ['Developer', 'Admin'] }
+    ];
+
+    const visibleTabs = useMemo(() => {
+        return allTabs.filter(t => t.roles.includes(user?.role || 'Vendor'));
+    }, [user?.role, docs326, data.prod, data.log, supplies]);
+
+    // Redirect if current tab is hidden
+    useEffect(() => {
+        if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
+            setActiveTab(visibleTabs[0].id as any);
+        }
+    }, [visibleTabs, activeTab, setActiveTab]);
 
     const isEmpty = data.inv.length === 0;
 
@@ -328,15 +392,7 @@ export const WorkbookView: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden bg-transparent">
             {/* Header Tabs Area */}
             <div className="flex items-end px-4 pt-4 gap-2 border-b border-white/[0.03] bg-white/[0.02] backdrop-blur-xl shrink-0">
-                {[
-                    { id: 'inventory', label: 'WORKBOOK 326', badge: docs326.filter(d => !d.shipped).length },
-                    { id: 'archive', label: 'ARCHIVE 825', badge: null },
-                    { id: 'payments', label: 'FINANCE & PAY', badge: docs326.filter(d => !d.paid).length },
-                    { id: 'production', label: 'PRODUCTION', badge: data.prod.length },
-                    { id: 'crates', label: 'LOGISTICS', badge: data.log.length },
-                    { id: 'supplies', label: 'SUPPLIES', badge: supplies.length }
-                    // Removed redundant Pay Log tab, integrated into Finance
-                ].map(t => (
+                {visibleTabs.map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-5 py-3 text-[9px] font-black tracking-[0.2em] transition-all rounded-t-xl border-t border-x border-transparent ${activeTab === t.id ? 'text-white bg-white/5 border-white/5 !border-b-transparent shadow-[0_-10px_30px_rgba(255,255,255,0.03)]' : 'text-white/20 hover:text-white/50 hover:bg-white/[0.02]'}`}>
                         {t.label}
                         {!!t.badge && t.badge > 0 && <span className="ml-2 px-1.5 py-0.5 rounded bg-white/10 text-white/50 text-[7px] font-mono">{t.badge}</span>}

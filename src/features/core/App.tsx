@@ -21,6 +21,7 @@ import React, { useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, userAtom, performanceModeAtom } from '../../lib/atoms';
+import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
@@ -34,22 +35,24 @@ export default function App() {
     import('../../lib/supabase').then(({ supabase }) => {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
+          const email = session.user.email || '';
           setUser({
             id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'User',
-            role: (session.user.user_metadata.role as any) || 'Vendor',
+            email: email,
+            name: session.user.user_metadata.name || email.split('@')[0] || 'User',
+            role: resolveUserRole(email),
           });
         }
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session) {
+          const email = session.user.email || '';
           setUser({
             id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'User',
-            role: (session.user.user_metadata.role as any) || 'Vendor',
+            email: email,
+            name: session.user.user_metadata.name || email.split('@')[0] || 'User',
+            role: resolveUserRole(email),
           });
         } else {
           setUser(null);
