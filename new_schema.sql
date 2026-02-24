@@ -9,7 +9,9 @@ CREATE TABLE inventory (
     item_id TEXT, -- Vendor ID (e.g., EM, JM)
     item_number INTEGER,
     created_by TEXT,
-    status TEXT DEFAULT 'Draft',
+    acquired_by TEXT, -- Email of the Admin/Client who acquired it
+    acquired_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'Draft', -- 'Draft', 'Catalog', 'Acquired', 'Paid', 'Shipped'
     shape TEXT,
     material TEXT,
     description TEXT,
@@ -31,7 +33,7 @@ CREATE TABLE inventory (
     pay_req BOOLEAN DEFAULT FALSE,
     pay_date TIMESTAMPTZ,
     shipped BOOLEAN DEFAULT FALSE,
-    workbook TEXT DEFAULT '326', -- '326' or '825'
+    workbook TEXT DEFAULT '326', -- '326' (Active) or '825' (Archive)
     crate_id TEXT,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -41,12 +43,16 @@ DROP TABLE IF EXISTS finance CASCADE;
 CREATE TABLE finance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    type TEXT, -- 'Payment', 'Withdrawal', 'Recurring', 'Invoice'
-    category TEXT, -- Logistics, Labor, Supplies, etc.
+    type TEXT, -- 'Payment', 'Withdrawal', 'Recurring', 'Invoice', 'Expense'
+    category TEXT, -- Logistics, Labor, Supplies, Monthly, Crates, Pallets, Laborers
     amount NUMERIC,
     commission NUMERIC DEFAULT 0,
     currency TEXT DEFAULT 'USD',
-    status TEXT DEFAULT 'Requested',
+    bank_account TEXT, -- 'Ramses BBVA', 'Martha BBVA', 'BOA', 'Direct Client Wire'
+    status TEXT DEFAULT 'Requested', -- 'Requested', 'Sent', 'Dispersed'
+    requested_by TEXT, -- Email of the Admin who requested
+    sent_at TIMESTAMPTZ,
+    dispersed_at TIMESTAMPTZ,
     destination TEXT,
     vendor_id TEXT,
     related_ids UUID[], -- Array of inventory IDs

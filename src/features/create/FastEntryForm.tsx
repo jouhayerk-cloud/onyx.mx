@@ -16,6 +16,7 @@ const initialFormState = {
     itemId: '', itemNumber: '', shape: '', material: '', description: '',
     weightKg: '', heightCm: '', widthCm: '', lengthCm: '', price: '',
     quantity: '1', color: '', expires: new Date().toISOString().slice(0, 10),
+    status: 'Catalog', workbook: '326',
     shortDescription: '', generatedDescription: '', detailedDescription: '',
 };
 
@@ -279,6 +280,8 @@ export function FastEntryForm() {
             const payload = {
                 ...formState,
                 id: selectedItemRow,
+                status: 'Catalog',
+                workbook: '326',
                 mediaUrls: publicMediaUrl,
                 generatedPngUrl: pngPublicUrl,
                 spatialBoxes2d: JSON.stringify(generatedData?.boxes || []),

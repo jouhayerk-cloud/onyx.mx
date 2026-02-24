@@ -192,7 +192,7 @@ export function MainAppView() {
 
     const createSubItems = [
         {
-            id: 'new', label: t.newFastEntry, icon: 'layout-grid', isActive: createTab === 'new' && workflowStep === 'fastEntry', action: () => {
+            id: 'new', label: t.newFastEntry, icon: 'plus', isActive: activeView === 'create' && createTab === 'new', action: () => {
                 setActiveView('create');
                 setCreateTab('new');
                 setWorkflowStep('fastEntry');
@@ -200,16 +200,16 @@ export function MainAppView() {
             }
         },
         {
-            id: 'batchEntry', label: t.batchEntry, icon: 'archive', isActive: createTab === 'batchEntry', action: () => {
+            id: 'batch', label: t.batchEntry, icon: 'layers', isActive: activeView === 'create' && createTab === 'batchEntry', action: () => {
                 setActiveView('create');
                 setCreateTab('batchEntry');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'videoBatch', label: t.videoBatch, icon: 'file-plus', isActive: createTab === 'videoBatch', action: () => {
+            id: 'video', label: t.videoAnalysis, icon: 'video', isActive: activeView === 'create' && createTab === 'video', action: () => {
                 setActiveView('create');
-                setCreateTab('videoBatch');
+                setCreateTab('video');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
@@ -254,7 +254,6 @@ export function MainAppView() {
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
-
     ];
 
     const handleSidebarStateToggle = () => {
