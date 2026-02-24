@@ -2,7 +2,6 @@ import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
-import { replicateRxCollection } from 'rxdb/plugins/replication';
 import { supabase } from './supabase';
 
 // Add plugins
@@ -10,7 +9,6 @@ if (import.meta.env.DEV) {
     addRxPlugin(RxDBDevModePlugin);
 }
 addRxPlugin(RxDBQueryBuilderPlugin);
-// addRxPlugin(RxDBReplicationPlugin); // Removed as it might be wrong import
 
 const financeSchema = {
     title: 'finance schema',
@@ -86,6 +84,7 @@ const inventorySchema = {
         payDate: { type: 'string' },
         payReq: { type: 'string' },
         sentDate: { type: 'string' },
+        workbook: { type: 'string' },
         updatedAt: { type: 'string' }
     },
     required: ['itemId', 'itemNumber']
@@ -103,6 +102,16 @@ export type OnyxDatabase = RxDatabase<{
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
 
+// Helper to chunk arrays for paginated upserts — prevents Chrome IndexedDB transaction timeouts
+async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 100) {
+    for (let i = 0; i < docs.length; i += chunkSize) {
+        const chunk = docs.slice(i, i + chunkSize);
+        await collection.bulkUpsert(chunk);
+        // Yield to the event loop between chunks so other UI work can proceed
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+}
+
 const createDatabase = async () => {
     const db = await createRxDatabase<OnyxDatabase>({
         name: 'onyxdb',
@@ -115,20 +124,41 @@ const createDatabase = async () => {
         crates: { schema: cratesSchema }
     });
 
+    // Non-blocking background sync — does NOT block DB initialization
     const pullReplication = async () => {
-        // Pull Inventory
-        const inv = await supabase.from('inventory').select('*');
-        if (inv.data) await db.inventory.bulkUpsert(inv.data);
+        try {
+            // Pull Inventory in pages to avoid large single-transaction locks
+            let page = 0;
+            const pageSize = 500;
+            while (true) {
+                const { data, error } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .range(page * pageSize, (page + 1) * pageSize - 1);
 
-        // Pull Finance
-        const fin = await supabase.from('finance').select('*');
-        if (fin.data) await db.finance.bulkUpsert(fin.data);
+                if (error) { console.error('[DB] Inventory pull error:', error); break; }
+                if (!data || data.length === 0) break;
 
-        // Pull Crates (if table exists)
-        const crates = await supabase.from('logistics').select('*');
-        if (crates.data) await db.crates.bulkUpsert(crates.data);
+                await bulkUpsertChunked(db.inventory, data, 100);
+                if (data.length < pageSize) break;
+                page++;
+            }
+
+            // Pull Finance
+            const { data: finData, error: finError } = await supabase.from('finance').select('*');
+            if (!finError && finData) await db.finance.bulkUpsert(finData);
+
+            // Pull logistics/crates
+            const { data: cratesData, error: cratesError } = await supabase.from('logistics').select('*');
+            if (!cratesError && cratesData) await db.crates.bulkUpsert(cratesData);
+
+            console.log('[DB] Background sync complete');
+        } catch (err) {
+            console.error('[DB] Background sync failed:', err);
+        }
     };
 
+    // Fire-and-forget — DB is returned immediately, data syncs in background
     pullReplication();
     return db;
 };
