@@ -2,6 +2,7 @@ import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
+import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 import { supabase } from './supabase';
 
 // Add plugins
@@ -9,6 +10,7 @@ if (import.meta.env.DEV) {
     addRxPlugin(RxDBDevModePlugin);
 }
 addRxPlugin(RxDBQueryBuilderPlugin);
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 const financeSchema = {
     title: 'finance schema',
@@ -190,33 +192,42 @@ const createDatabase = async () => {
                 // PHASE 1: ACTIVE DATA (Workbook 326)
                 console.log('[DB] Paging active items (326)...');
                 const activeData = await fetchPaginated('inventory', 'workbook', '326');
+                console.log(`[DB] Fetched ${activeData.length} active items (326) from Supabase.`);
                 if (activeData.length > 0) {
-                    console.log(`✅ [DB] Syncing ${activeData.length} active items...`);
+                    console.log(`✅ [DB] Syncing active items into RxDB...`);
                     await bulkUpsertChunked(db.inventory, activeData, 50, 50);
                 } else {
-                    console.warn('⚠️ [DB] No items found for workbook 326. checking for raw data...');
-                    const raw = await supabase.from('inventory').select('*').limit(50);
-                    if (raw.data) await bulkUpsertChunked(db.inventory, raw.data, 50, 50);
+                    console.warn('⚠️ [DB] No items found for workbook 326. Testing connectivity with raw select...');
+                    const raw = await supabase.from('inventory').select('*').limit(5);
+                    if (raw.error) console.error('❌ [DB] Connectivity Test Error:', raw.error.message);
+                    if (raw.data) {
+                        console.log(`📡 [DB] Connectivity test returned ${raw.data.length} items. Syncing raw sample...`);
+                        await bulkUpsertChunked(db.inventory, raw.data, 5, 50);
+                    }
                 }
 
                 // PHASE 2: ARCHIVE DATA (Workbook 825)
                 console.log('[DB] Paging archive items (825)...');
                 const archiveData = await fetchPaginated('inventory', 'workbook', '825');
+                console.log(`[DB] Fetched ${archiveData.length} archive items (825) from Supabase.`);
                 if (archiveData.length > 0) {
-                    console.log(`✅ [DB] Syncing ${archiveData.length} archive records (background)...`);
+                    console.log(`✅ [DB] Syncing archive records (background)...`);
                     await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
                 }
 
                 // Finance
                 const finData = await fetchPaginated('finance');
+                console.log(`[DB] Fetched ${finData.length} finance items.`);
                 if (finData.length > 0) await bulkUpsertChunked(db.finance, finData, 50, 50);
 
                 // Logistics
                 const logData = await fetchPaginated('logistics');
+                console.log(`[DB] Fetched ${logData.length} logistics items.`);
                 if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData, 50, 50);
 
                 // Production
                 const prodData = await fetchPaginated('production');
+                console.log(`[DB] Fetched ${prodData.length} production items.`);
                 if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData, 50, 50);
 
                 console.log('🏁 [DB] Prioritized paginated sync complete.');
