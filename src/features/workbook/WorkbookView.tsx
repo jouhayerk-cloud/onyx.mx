@@ -209,23 +209,37 @@ export const WorkbookView: React.FC = () => {
 
     const [data, setData] = useState<{ inv: any[], fin: any[], prod: any[], log: any[] }>({ inv: [], fin: [], prod: [], log: [] });
     const [ver, setVer] = useState(0);
+    const [isSyncing, setIsSyncing] = useState(true);
     const refresh = () => setVer(v => v + 1);
 
     useEffect(() => {
         if (!db) return;
         const subs = [
-            db.inventory.find().$.subscribe(d => setData(p => ({ ...p, inv: d.map(x => x.toJSON()) }))),
+            db.inventory.find().$.subscribe(d => {
+                const items = d.map(x => x.toJSON());
+                setData(p => ({ ...p, inv: items }));
+                if (items.length > 0) setIsSyncing(false);
+            }),
             db.finance.find().$.subscribe(d => setData(p => ({ ...p, fin: d.map(x => x.toJSON()) }))),
             db.production.find().$.subscribe(d => setData(p => ({ ...p, prod: d.map(x => x.toJSON()) }))),
             db.logistics.find().$.subscribe(d => setData(p => ({ ...p, log: d.map(x => x.toJSON()) })))
         ];
-        return () => subs.forEach(s => s.unsubscribe());
+
+        // Timeout to stop showing "Syncing" even if empty
+        const timer = setTimeout(() => setIsSyncing(false), 5000);
+
+        return () => {
+            subs.forEach(s => s.unsubscribe());
+            clearTimeout(timer);
+        };
     }, [db, ver]);
 
-    const docs326 = useMemo(() => data.inv.filter(d => d.workbook === '326'), [data.inv]);
+    const docs326 = useMemo(() => data.inv.filter(d => d.workbook === '326' || !d.workbook), [data.inv]);
     const docs825 = useMemo(() => data.inv.filter(d => d.workbook === '825'), [data.inv]);
     const supplies = useMemo(() => data.fin.filter(d => d.category === 'Supplies'), [data.fin]);
     const paylog = useMemo(() => data.fin.filter(d => d.type === 'Payment' || d.category === 'Log'), [data.fin]);
+
+    const isEmpty = data.inv.length === 0;
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-[#0A0A0A]">
@@ -241,11 +255,27 @@ export const WorkbookView: React.FC = () => {
                 ].map(t => (
                     <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-3 py-2 text-[10px] font-bold tracking-widest transition-all rounded-t-sm border-b-2 ${activeTab === t.id ? 'text-[var(--main-color)] border-[var(--main-color)] bg-white/5' : 'text-white/20 border-transparent hover:text-white/50'}`}>
                         {t.label}
-                        {t.badge ? <span className="ml-1.5 px-1 py-0.5 rounded-sm bg-white/10 text-white/40 text-[8px] font-mono">{t.badge}</span> : null}
+                        {!!t.badge && t.badge > 0 && <span className="ml-1.5 px-1 py-0.5 rounded-sm bg-white/10 text-white/40 text-[8px] font-mono">{t.badge}</span>}
                     </button>
                 ))}
+
+                {isSyncing && (
+                    <div className="ml-auto px-4 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-[var(--main-color)] animate-pulse" />
+                        <span className="text-[10px] text-white/25 uppercase">Syncing Cloud DB...</span>
+                    </div>
+                )}
             </div>
-            <div className="flex-1 overflow-hidden">
+
+            <div className="flex-1 overflow-hidden relative">
+                {!isSyncing && isEmpty && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 gap-4">
+                        <svg className="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                        <div className="text-sm">No data found in local database.</div>
+                        <button onClick={refresh} className="px-4 py-1.5 rounded-full border border-white/10 text-[10px] hover:bg-white/5 uppercase tracking-widest transition-all">Retry Sync</button>
+                    </div>
+                )}
+
                 {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
                 {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
                 {activeTab === 'payments' && <PaymentsPanel docs={data.inv} finDocs={data.fin} exchangeRate={exchangeRate} onRefresh={refresh} />}
