@@ -1,0 +1,3 @@
+[dotenv@17.3.1] injecting env (3) from .env.local -- tip: ??????  suppress all logs with { quiet: true }
+SUCCESS ??? all core columns exist
+Probe row deleted.

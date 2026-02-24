@@ -1,40 +1,76 @@
--- Onyx.mx Unified Schema v4 (Aligned with Legacy Google Sheets)
--- This script drops existing tables and recreates them with the structure mapped in database.md
+-- Onyx.mx Unified Schema v5 (Aligned with Legacy Google Sheets + database.md)
+-- Run this in: Supabase Dashboard > SQL Editor > New Query > Run
+-- WARNING: DROP TABLE will delete all existing data!
 
 -- 1. Master Inventory
 DROP TABLE IF EXISTS inventory CASCADE;
 CREATE TABLE inventory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    item_id TEXT, -- Vendor ID (e.g., EM, JM)
+    -- Core Identity
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    timestamp TEXT,
+    item_id TEXT,
     item_number INTEGER,
+    workbook TEXT DEFAULT '326',         -- '326' (Active) or '825' (Archive)
+    status TEXT DEFAULT 'available',
+
+    -- Provenance
     created_by TEXT,
-    acquired_by TEXT, -- Email of the Admin/Client who acquired it
-    acquired_at TIMESTAMPTZ,
-    status TEXT DEFAULT 'Draft', -- 'Draft', 'Catalog', 'Acquired', 'Paid', 'Shipped'
+    marked_by TEXT,                      -- NEW: who flagged/marked the item
+    acquired_by TEXT,
+    acquired_at TEXT,
+
+    -- Physical Attributes
     shape TEXT,
     material TEXT,
     description TEXT,
     color TEXT,
     quantity INTEGER DEFAULT 1,
-    price_mxn NUMERIC,
+    short_description TEXT,
+    detailed_description TEXT,
+    generated_description TEXT,          -- NEW: AI-generated description
+
+    -- Dimensions & Weight
     weight_kg NUMERIC,
     height_cm NUMERIC,
     width_cm NUMERIC,
     length_cm NUMERIC,
+
+    -- Pricing
+    price_mxn NUMERIC,
+    book_landed NUMERIC,                 -- NEW: landed cost in USD
+    book_retail NUMERIC,                 -- NEW: retail price in USD
+
+    -- Book & Barcode Reference
+    book_barcode TEXT,                   -- NEW: physical barcode
+    book_aq_code TEXT,                   -- NEW: acquisition code (AQC column)
+    book_land_code TEXT,                 -- NEW: landing/customs code (LC column)
+    invoice_id TEXT,                     -- NEW: associated invoice/PO number
+    print_date TEXT,                     -- NEW: label print date
+
+    -- Media & Visuals
     media_urls TEXT,
-    short_description TEXT,
-    detailed_description TEXT,
+    generated_image_urls TEXT,           -- NEW: AI-generated image URL list
     generated_png_url TEXT,
     generated_svg_url TEXT,
+
+    -- Spatial / AI Data
     spatial_boxes_2d JSONB,
     spatial_points JSONB,
     spatial_masks JSONB,
+    spatial_boxes_3d JSONB,              -- NEW: 3D bounding boxes
+
+    -- Payment
     pay_req BOOLEAN DEFAULT FALSE,
-    pay_date TIMESTAMPTZ,
+    pay_date TEXT,
+
+    -- Shipping & Logistics
     shipped BOOLEAN DEFAULT FALSE,
-    workbook TEXT DEFAULT '326', -- '326' (Active) or '825' (Archive)
     crate_id TEXT,
+    sent_notes TEXT,                     -- NEW: shipping notes
+    sent_pack TEXT,                      -- NEW: packing reference
+    sent_date TEXT,                      -- NEW: actual ship date
+
+    -- System
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 

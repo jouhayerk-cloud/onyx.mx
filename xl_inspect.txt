@@ -1,0 +1,7 @@
+SHEETS: ['EM', 'JM', 'TE', 'DH', 'ML', 'GE', 'FR', 'ET', 'AM', 'BT', 'RF', 'GS', 'CP', 'AN']
+
+HEADER: ['#', 'Date', 'Description                                                 Color - Object Type', 'TAG-ID', 'Q', 'KG', 'H CM', 'W CM', 'D CM ', 'Per piece MXN$', 'TOTAL PESOS', 'AQC', 'LC']
+
+ROW1: ['01', nan, 'GREY RUSTIC ROCK FTN', 'EM325055OHL', 1, 228, 129, 42, 21, 2850, 2850, 'MEA', 'OOM']
+
+ROW2: ['02', nan, 'GREY RUSTIC ROCK FTN', 'EM325056OFF', 1, 257, 95, 45, 27, 3212.5, 3212.5, 'MFN', 'OEM']
