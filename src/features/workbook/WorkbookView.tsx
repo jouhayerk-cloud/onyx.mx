@@ -361,10 +361,12 @@ const DatabasePanel: React.FC = () => {
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!db) return;
         setLoading(true);
+        setSelectedIds(new Set()); // Reset selections on collection change
         const sub = db[collectionName].find().$.subscribe(d => {
             setDocs(d.map(x => x.toJSON()));
             setLoading(false);
@@ -390,9 +392,42 @@ const DatabasePanel: React.FC = () => {
             const { error } = await supabase.from(collectionName).delete().eq('id', id);
             if (error) throw error;
             toast.success('Record deleted from Cloud');
+            setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
         } catch (e: any) {
             toast.error(e.message);
         }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) return;
+        if (!db) return;
+        try {
+            const { error } = await supabase.from(collectionName).delete().in('id', Array.from(selectedIds));
+            if (error) throw error;
+            toast.success(`${selectedIds.size} records deleted from Cloud`);
+            setSelectedIds(new Set());
+        } catch (e: any) {
+            toast.error(e.message);
+        }
+    };
+
+    const handleSelectAll = () => {
+        if (selectedIds.size === docs.length && docs.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(docs.map(d => d.id)));
+        }
+    };
+
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
     };
 
     if (loading) return <div className="p-10 text-white/20 animate-pulse font-black text-center tracking-[0.5em]">INITIALIZING CORE...</div>;
@@ -413,6 +448,17 @@ const DatabasePanel: React.FC = () => {
                         </button>
                     ))}
                 </div>
+
+                {selectedIds.size > 0 && (
+                    <div className="flex items-center gap-3 ml-4 animate-in fade-in">
+                        <span className="text-[10px] font-black text-white/50 tracking-widest uppercase">{selectedIds.size} Selected</span>
+                        <button onClick={handleBulkDelete} className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-1.5">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            Delete Selected
+                        </button>
+                    </div>
+                )}
+
                 <div className="ml-auto text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} Records Found</div>
             </div>
 
@@ -421,13 +467,27 @@ const DatabasePanel: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
+                                <th className="px-4 py-3 w-10 text-center">
+                                    <button
+                                        onClick={handleSelectAll}
+                                        className="w-4 h-4 mx-auto rounded border border-white/20 flex items-center justify-center hover:border-white transition-colors"
+                                    >
+                                        {selectedIds.size === docs.length && docs.length > 0 && <div className="w-2 h-2 rounded-sm bg-[var(--main-color)]" />}
+                                        {selectedIds.size > 0 && selectedIds.size < docs.length && <div className="w-2 h-0.5 bg-white/50" />}
+                                    </button>
+                                </th>
                                 <th className="px-4 py-3 w-10">ACT</th>
                                 {headers.map(h => <th key={h} className="px-4 py-3">{h}</th>)}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.03]">
                             {docs.map(row => (
-                                <tr key={row.id} className={`hover:bg-white/[0.04] group transition-all duration-100 ${selectedId === row.id ? 'bg-[var(--main-color)]/10' : ''}`} onClick={() => setSelectedId(row.id)}>
+                                <tr key={row.id} className={`hover:bg-white/[0.04] group transition-all duration-100 ${selectedId === row.id || selectedIds.has(row.id) ? 'bg-[var(--main-color)]/5' : ''}`} onClick={() => setSelectedId(row.id)}>
+                                    <td className="px-4 py-2 text-center" onClick={(e) => toggleSelection(row.id, e)}>
+                                        <div className="w-4 h-4 mx-auto rounded border border-white/10 flex items-center justify-center hover:border-white/40 cursor-pointer transition-colors bg-white/[0.02]">
+                                            {selectedIds.has(row.id) && <div className="w-2 h-2 rounded-sm bg-[var(--main-color)]" />}
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-2">
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }} className="p-1 rounded text-red-500 hover:bg-red-500/20"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg></button>
