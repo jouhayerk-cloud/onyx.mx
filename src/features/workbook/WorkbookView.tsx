@@ -354,6 +354,136 @@ const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     );
 };
 
+// 4. DATABASE MANAGER (Developer Only)
+const DatabasePanel: React.FC = () => {
+    const db = useDatabase();
+    const [collectionName, setCollectionName] = useState<'inventory' | 'finance' | 'logistics' | 'production'>('inventory');
+    const [docs, setDocs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!db) return;
+        setLoading(true);
+        const sub = db[collectionName].find().$.subscribe(d => {
+            setDocs(d.map(x => x.toJSON()));
+            setLoading(false);
+        });
+        return () => sub.unsubscribe();
+    }, [db, collectionName]);
+
+    const handleUpdate = async (id: string, data: any) => {
+        if (!db) return;
+        try {
+            const { error } = await supabase.from(collectionName).update(data).eq('id', id);
+            if (error) throw error;
+            toast.success('Record updated in Cloud');
+        } catch (e: any) {
+            toast.error(e.message);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this record?')) return;
+        if (!db) return;
+        try {
+            const { error } = await supabase.from(collectionName).delete().eq('id', id);
+            if (error) throw error;
+            toast.success('Record deleted from Cloud');
+        } catch (e: any) {
+            toast.error(e.message);
+        }
+    };
+
+    if (loading) return <div className="p-10 text-white/20 animate-pulse font-black text-center tracking-[0.5em]">INITIALIZING CORE...</div>;
+
+    const headers = docs.length > 0 ? Object.keys(docs[0]).filter(k => !k.startsWith('_')) : [];
+
+    return (
+        <div className="flex flex-col h-full bg-black/40">
+            <div className="flex items-center gap-4 p-4 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                    {(['inventory', 'finance', 'logistics', 'production'] as const).map(c => (
+                        <button
+                            key={c}
+                            onClick={() => { setCollectionName(c); setSelectedId(null); }}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${collectionName === c ? 'bg-[var(--main-color)] text-black shadow-lg' : 'text-white/40 hover:text-white/60'}`}
+                        >
+                            {c.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
+                <div className="ml-auto text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} Records Found</div>
+            </div>
+
+            <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.01]">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
+                                <th className="px-4 py-3 w-10">ACT</th>
+                                {headers.map(h => <th key={h} className="px-4 py-3">{h}</th>)}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.03]">
+                            {docs.map(row => (
+                                <tr key={row.id} className={`hover:bg-white/[0.04] group transition-all duration-100 ${selectedId === row.id ? 'bg-[var(--main-color)]/10' : ''}`} onClick={() => setSelectedId(row.id)}>
+                                    <td className="px-4 py-2">
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }} className="p-1 rounded text-red-500 hover:bg-red-500/20"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+                                        </div>
+                                    </td>
+                                    {headers.map(h => (
+                                        <td key={h} className="px-4 py-2 font-mono text-[10px] text-white/50 max-w-[200px] truncate group-hover:text-white transition-colors">
+                                            {typeof row[h] === 'object' ? JSON.stringify(row[h]) : String(row[h] ?? '—')}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {selectedId && (
+                <div className="h-64 border-t border-white/10 bg-black/60 backdrop-blur-3xl p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-bottom duration-300">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-[var(--main-color)] uppercase tracking-[0.3em]">Quick Forge Logic</span>
+                            <h2 className="text-sm font-black text-white uppercase tracking-widest">Editing {collectionName.slice(0, -1)} ID: {selectedId}</h2>
+                        </div>
+                        <button onClick={() => setSelectedId(null)} className="px-4 py-1.5 rounded-full border border-white/10 text-[9px] font-black text-white/40 hover:text-white hover:border-white transition-all uppercase tracking-widest">Close Editor</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                        {headers.filter(h => h !== 'id').map(h => {
+                            const val = docs.find(d => d.id === selectedId)?.[h];
+                            return (
+                                <div key={h} className="flex flex-col gap-1.5">
+                                    <label className="text-[8px] font-black text-white/20 uppercase tracking-widest">{h}</label>
+                                    <input
+                                        type="text"
+                                        className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-mono text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all"
+                                        defaultValue={typeof val === 'object' ? JSON.stringify(val) : String(val ?? '')}
+                                        onBlur={e => {
+                                            const newVal = e.target.value;
+                                            try {
+                                                const parsed = (newVal.startsWith('{') || newVal.startsWith('[')) ? JSON.parse(newVal) : newVal;
+                                                handleUpdate(selectedId, { [h]: parsed });
+                                            } catch (err) {
+                                                handleUpdate(selectedId, { [h]: newVal });
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export const WorkbookView: React.FC = () => {
@@ -424,7 +554,11 @@ export const WorkbookView: React.FC = () => {
     ];
 
     const visibleTabs = useMemo(() => {
-        return allTabs.filter(t => t.roles.includes(user?.role || 'Vendor'));
+        const tabs = allTabs.filter(t => t.roles.includes(user?.role || 'Vendor'));
+        if (user?.role === 'Developer') {
+            tabs.push({ id: 'database', label: 'DATABASE', badge: null, roles: ['Developer'] });
+        }
+        return tabs;
     }, [user?.role, docs326, data.prod, data.log]);
 
     // Redirect if current tab is hidden
@@ -495,6 +629,7 @@ export const WorkbookView: React.FC = () => {
                         {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
                         {activeTab === 'crates' && <CratesPanel docs={data.log} />}
+                        {activeTab === 'database' && <DatabasePanel />}
                     </div>
                 )}
             </div>
