@@ -107,9 +107,9 @@ const inventorySchema = {
         detailed_description: { type: ['string', 'null'] },
         generated_png_url: { type: ['string', 'null'] },
         generated_svg_url: { type: ['string', 'null'] },
-        spatial_boxes_2d: { type: ['object', 'array', 'null'] },
-        spatial_points: { type: ['object', 'array', 'null'] },
-        spatial_masks: { type: ['object', 'array', 'null'] },
+        spatial_boxes_2d: { type: ['array', 'null'], items: { type: 'object' } },
+        spatial_points: { type: ['array', 'null'], items: { type: 'object' } },
+        spatial_masks: { type: ['array', 'null'], items: { type: 'object' } },
         pay_req: { type: ['boolean', 'null'] },
         pay_date: { type: ['string', 'null'] },
         shipped: { type: ['boolean', 'null'] },
@@ -223,7 +223,10 @@ const createDatabase = async () => {
             }
         };
 
+        // Initiation: DO NOT await sync, only collect initial data check
+        console.log('✅ [DB] Collections Created. Initiating Sync...');
         pullReplication();
+
         return db;
     } catch (err) {
         console.error('❌ [DB] Creation failed (possibly version mismatch). Wiping and retrying...', err);

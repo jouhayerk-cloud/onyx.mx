@@ -192,7 +192,13 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
 export const useDatabase = () => {
   const [db, setDb] = useState<any>(null);
   useEffect(() => {
-    import('./database').then(m => m.getDatabase()).then(setDb);
+    const timer = setTimeout(() => {
+      if (!db) console.warn('🕒 [DB] Database resolution taking longer than 3s...');
+    }, 3000);
+    import('./database').then(m => m.getDatabase()).then(newDb => {
+      clearTimeout(timer);
+      setDb(newDb);
+    });
   }, []);
   return db;
 };

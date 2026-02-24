@@ -256,7 +256,11 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const user = useAtomValue(userAtom);
 
     const fetchData = useCallback(async () => {
-        if (!db) return;
+        if (!db) {
+            // If DB is null, we can't fetch, but we shouldn't hang forever
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
             const [invDocs, expDocs] = await Promise.all([
@@ -279,7 +283,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
 
     useEffect(() => {
         fetchData();
-    }, [inventoryVersion, paymentsVersion, fetchData]);
+    }, [inventoryVersion, paymentsVersion, fetchData, db]); // Added db to dependencies
 
     const itemsToRequest = useMemo<VendorGroup[]>(() => {
         const approvedItems = inventory.filter(i => i.data.status === 'YES' && !i.data.payReq);
