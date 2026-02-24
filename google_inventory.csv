@@ -1,0 +1,520 @@
+rowId,timestamp,itemId,itemNumber,createdBy,status,shape,material,description,color,quantity,price,weightKg,heightCm,widthCm,lengthCm,,mediaUrls,shortDescription,generatedDescription,detailedDescription,generatedImageUrls,generatedPngUrl,generatedSvgUrl,spatialBoxes2d,spatialPoints,spatialMasks,spatialBoxes3d,invoiceID,printDate,payReq,payDate,sentNotes,sentPack,sentDate,bookLanded,bookRetail,bookBardcode,bookAqCode,bookLandCode,crateID
+,2025-10-09T20:10:46.678Z,JM,4904,r@admin.com,YES,Canoe,Onyx,Small Onyx Nacar Canoe,"linear-gradient(90deg, #a8a89e, #a2a295, #afac8e, #b9b6a1, #c4c2a8, #aeb5af, #9ca1a0, #9ba09f, #a4aaab, #8f9b97, #9ea296, #acb7bb, #9ca8b1, #a1adb4, #999e9d, #a9bdca, #b9c1c8, #b8c1c1, #b7c4c8, #c1c8c9, #afb4b3, #a6acad, #b4b1b6, #a29781)",1,2660,2,10,23,70,,https://drive.google.com/uc?export=view&id=1ecjxq2sgWOcIr07yuexDq5rEIyolnjd8,"A beautiful Nacre Onyx canoe-shaped decorative bowl or tray, featuring unique natural patterns and a polished finish.",* Hand-carved Nacre Onyx* Unique natural patterns* Elegant and versatile decor* Perfect for display or serving* Adds a touch of luxury,"<p>Discover the exquisite beauty of this hand-carved <strong>Nacre Onyx Canoe</strong>, a stunning piece that blends natural elegance with artisanal craftsmanship. This decorative canoe-shaped bowl is made from high-quality onyx, known for its translucent properties and captivating patterns.</p><p>Each piece is unique, featuring distinct veining and a pearlescent luster that makes it a true work of art. Its smooth, polished surface and organic shape make it a versatile addition to any home or office decor. Use it as a striking centerpiece, a catch-all for precious items, or simply as an elegant sculptural element.</p><ul><li><strong>Material:</strong> Premium Nacre Onyx</li><li><strong>Dimensions:</strong> 70 cm (length) x 23 cm (width) x 10 cm (height)</li><li><strong>Design:</strong> Canoe shape with natural, flowing lines</li><li><strong>Finish:</strong> Polished for a radiant shine</li><li><strong>Versatility:</strong> Ideal for decorative display, serving, or organizing</li></ul><p>Embrace the serene beauty and sophisticated charm that this Nacre Onyx canoe brings to your space.</p>","https://drive.google.com/uc?export=view&id=1_k_iS9jnKy1dnUqDk2tD-wZXsScf7UzH, https://drive.google.com/uc?export=view&id=1jvYzeL8J4TsafwlWqA8Ko4l-S4dPJTg3",https://drive.google.com/uc?export=view&id=14X-gO_-n0Nkf9S_ojoPZtN_er5Ef8X-O,https://drive.google.com/uc?export=view&id=1TVxqd3KhwFYNcHbNsLe0aIyayfV3IMm1,"[{""x"":0.08,""y"":0.4,""width"":0.84,""height"":0.24,""label"":""Canoe""},{""x"":0.745,""y"":0.867,""width"":0.075,""height"":0.026,""label"":""Canoe""}]","[{""point"":{""x"":0.5,""y"":0.52},""label"":""Canoe""},{""point"":{""x"":0.783,""y"":0.88},""label"":""Canoe""}]","[{""x"":0.142,""y"":0.334,""width"":0.74,""height"":0.325,""label"":""Canoe"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":97.00000000000001,""y"":1},{""x"":110.00000000000001,""y"":2},{""x"":136,""y"":14},{""x"":155,""y"":11},{""x"":175,""y"":3},{""x"":191,""y"":6},{""x"":207,""y"":16},{""x"":220,""y"":28},{""x"":230,""y"":40},{""x"":242,""y"":62},{""x"":255.10036138820968,""y"":101.77294378864906},{""x"":255,""y"":134.99999999999997},{""x"":253,""y"":157.99999999999997},{""x"":240,""y"":196.99999999999997},{""x"":224,""y"":218.99999999999997},{""x"":203,""y"":232.99999999999997},{""x"":189,""y"":236.99999999999997},{""x"":150,""y"":239.99999999999997},{""x"":111,""y"":254.99999999999997},{""x"":91.00000000000001,""y"":254.99999999999997},{""x"":57,""y"":242.99999999999997},{""x"":38,""y"":232.99999999999997},{""x"":23,""y"":217.99999999999997},{""x"":11,""y"":197.99999999999997},{""x"":0,""y"":148.99999999999997},{""x"":3,""y"":97.99999999999996},{""x"":10,""y"":66},{""x"":24,""y"":41},{""x"":41,""y"":24},{""x"":51,""y"":18},{""x"":96.00000000000001,""y"":2}]}]",,,,2026-02-10T21:58:48.142Z,,,,,,,,,,
+,2025-10-09T22:28:31.406Z,JM,4907,r@admin.com,YES,Canoe,Onyx,Small Onyx Nacar Canoe,"linear-gradient(90deg, #afb6b1, #a8c3e9, #b0b3ac, #576872, #6e7372, #80868a, #c3cacc, #adb4ab, #929d9f, #6c7776, #869094, #95a39e, #a2a5a1, #9aa7a8, #9fafad, #aeb6a8, #afb1a2, #b0b2a3, #b2bdb2, #bdcce0, #616664, #a2a7a8, #b1b7b5, #96989a)",1,2660,2,10,23,70,,https://drive.google.com/uc?export=view&id=1JHN77vCMn4jTO9nZNYPBZCgauOdmrg3A,"Sculpted from luxurious onyx, this elegant 70cm canoe is a captivating piece of natural artistry.","*Exquisite Hand-Carved Onyx.
+*Graceful Canoe Silhouette.
+*A Statement of Natural Luxury.
+*Perfectly Sized for Any Display.","<p><strong>Presenting the Exquisite Hand-Carved Onyx Canoe Decorative Bowl</strong></p>
+
+<p>Elevate your home or office decor with a piece that transcends mere decoration – a stunning, hand-carved canoe-shaped bowl crafted from natural onyx. This unique item seamlessly blends organic elegance with luxurious appeal, making it a focal point in any setting.</p>
+
+<p><strong>Material: The Enduring Beauty of Onyx</strong></p>
+<p>Meticulously carved from genuine onyx, this piece showcases the stone's unparalleled beauty. Onyx is a semi-precious material renowned for its:</p>
+<ul>
+    <li><strong>Distinctive Patterns:</strong> Each bowl features unique banding, veining, and color variations, from warm creams and rich browns to subtle greens, ensuring no two pieces are exactly alike.</li>
+    <li><strong>Natural Translucence:</strong> When placed in direct light, particularly sunlight or a well-lit area, the onyx reveals a captivating, soft glow, highlighting its natural depth and intrinsic beauty.</li>
+    <li><strong>Luxurious Feel:</strong> The smooth, polished surface offers a cool and refined touch, reflecting the stone's inherent quality and the craftsmanship involved.</li>
+    <li><strong>Durability:</strong> A robust natural stone that promises longevity and enduring charm with proper care.</li>
+</ul>
+
+<p><strong>Design: Graceful Canoe Shape</strong></p>
+<p>The timeless canoe shape embodies fluidity and organic grace. Its elongated, elegant curves create a visually soothing profile that complements both modern minimalist and classic decor styles. The smooth, polished finish accentuates the stone's natural contours and highlights the intricate patterns within.</p>
+
+<p><strong>Generous Dimensions:</strong></p>
+<p>Measuring <strong>70cm (Length) x 23cm (Width) x 10cm (Height/Depth)</strong>, this substantial piece is designed to make a statement without overpowering your space. Its considerable size allows for versatile use as a decorative display or a functional accent.</p>
+
+<p><strong>Versatile & Captivating:</strong></p>
+<p>This Onyx Canoe Bowl is more than just a decorative item; it's a versatile piece of functional art:</p>
+<ul>
+    <li><strong>Stunning Centerpiece:</strong> Ideal for dining tables, coffee tables, or console tables, creating an immediate focal point.</li>
+    <li><strong>Elegant Storage:</strong> Perfect for holding decorative spheres, potpourri, keys, jewelry, or small personal treasures.</li>
+    <li><strong>Spa-like Accent:</strong> Use it in a bathroom to display luxurious soaps, rolled towels, or bath bombs for a serene ambiance.</li>
+    <li><strong>Office Sophistication:</strong> Organise desk essentials with a touch of natural elegance.</li>
+    <li><strong>Artistic Sculpture:</strong> Display it empty to fully appreciate its natural form and the unique patterns of the onyx.</li>
+</ul>
+
+<p><strong>A Unique Masterpiece for Your Home:</strong></p>
+<p>Each onyx canoe bowl is a testament to nature's artistry combined with skilled craftsmanship. Owning one means possessing a truly unique piece that brings the serene beauty of the earth directly into your living space. It also makes for an unforgettable gift for weddings, housewarmings, or any special occasion.</p>
+
+<p><strong>Care Instructions:</strong></p>
+<p>To maintain its lustrous finish, simply wipe with a soft, damp cloth. Avoid harsh chemicals or abrasive cleaners.</p>
+
+<p>Bring the tranquil luxury of natural onyx into your home with this magnificent canoe-shaped bowl – a true embodiment of timeless beauty and sophisticated design.</p>",,https://drive.google.com/uc?export=view&id=1WCV9-ape33O0PGmxIb2AujxiT43Nw4av,https://drive.google.com/uc?export=view&id=164mHnLBOZdADl_XHPXpDhjSos9oYwAfL,"[{""x"":0.13,""y"":0.297,""width"":0.749,""height"":0.305,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.501,""y"":0.561},""label"":""Canoe Onyx""}]","[{""x"":0.131,""y"":0.351,""width"":0.737,""height"":0.299,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":190.197113690511,""y"":1.0931425853856185},{""x"":202,""y"":1.000000000000008},{""x"":224.00000000000003,""y"":17.999999999999982},{""x"":240.37419282013008,""y"":39.99384876828827},{""x"":250.50107201040464,""y"":69.80141757832037},{""x"":254.12257528832382,""y"":85.72670783800982},{""x"":256.15553741540026,""y"":106.0931373728706},{""x"":256.12042175131523,""y"":143.91300343381104},{""x"":247,""y"":176.99999999999997},{""x"":238.00000000000006,""y"":198.00000000000003},{""x"":227,""y"":216},{""x"":214,""y"":231},{""x"":206.00000000000003,""y"":238.99999999999997},{""x"":191.00000000000003,""y"":248.00000000000003},{""x"":181.00000000000003,""y"":250.00000000000003},{""x"":153,""y"":243.99999999999997},{""x"":119.00000000000001,""y"":243.00000000000003},{""x"":85,""y"":253.00000000000003},{""x"":65,""y"":253.99999999999997},{""x"":49,""y"":246.99999999999997},{""x"":25.999999999999996,""y"":226.99999999999997},{""x"":7.999999999999998,""y"":190.00000000000003},{""x"":2.0000000000000013,""y"":165.00000000000003},{""x"":0,""y"":143.00000000000003},{""x"":0.9999999999999974,""y"":113.00000000000001},{""x"":7.999999999999998,""y"":78.00000000000003},{""x"":15.999999999999996,""y"":58.99999999999999},{""x"":26.120779527975944,""y"":39.4119158675072},{""x"":36.88584351375408,""y"":26.235060158605734},{""x"":49.5990556046246,""y"":13.888460211567029},{""x"":68.3771125787242,""y"":5.832670854662334},{""x"":88,""y"":7.000000000000016},{""x"":109.00000000000001,""y"":11.000000000000007},{""x"":131,""y"":12.000000000000016},{""x"":184,""y"":1.000000000000008}]}]",,,,2026-02-10T22:00:05.159Z,,,,,,,,,,
+,2025-10-10T00:57:23.159Z,JM,4491,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #969aa5, #a8aeb2, #8e8d87, #959091, #b0aba2, #bdbfc2, #babcbf, #a1a7a5, #aeafa4, #b6bcba, #caccbe, #a2a7a8, #bdb8ab, #aeb2ba, #98a4ab, #515b63, #d0cbb3, #c1c4b3, #b1b4b2, #8e7c65, #92877e, #9b9ca1, #92969f, #97938a)",1,5180,4,24,10,130,,https://drive.google.com/uc?export=view&id=1b5yAkJMkeqiQ107rrlFsgLHrDjGS-41U,"Commanding attention, this magnificent 130cm onyx canoe-shaped vessel exudes luxurious natural artistry.","*   Lustrous Onyx Masterpiece.
+*   Elegant Canoe Silhouette.
+*   Striking 1.3 Meter Presence.
+*   Unique Natural Stone Patterns.","<p><strong>Exquisite Onyx Canoe Bowl – A Masterpiece of Natural Elegance</strong></p>
+
+<p>Discover the unparalleled beauty and sophisticated charm of our handcrafted <strong>Onyx Canoe Bowl</strong>. Meticulously shaped from a single, magnificent piece of natural onyx, this extraordinary decorative accent seamlessly blends ancient geological artistry with contemporary design, promising to be a captivating focal point in any setting.</p>
+
+<p><strong>Exquisite Craftsmanship & Material: Natural Onyx</strong></p>
+<p>Forged deep within the earth over millennia, onyx is a gemstone renowned for its striking translucent qualities and dramatic banding patterns. Each canoe bowl is carefully selected from high-quality onyx, showcasing a unique palette of natural hues – from milky whites and creamy beiges to warm honey tones and deep emerald veins. The polished surface enhances the stone's inherent luminosity, allowing light to dance through its layers, revealing an ethereal glow that is truly mesmerizing. No two pieces are ever identical, ensuring your onyx canoe is a one-of-a-kind treasure.</p>
+
+<p><strong>Elegant Canoe-Inspired Design</strong></p>
+<p>The graceful, fluid lines of its canoe shape evoke a sense of calm and movement, bringing an organic yet refined aesthetic to your space. This elongated, curved form is both aesthetically pleasing and remarkably versatile, making it much more than just a decorative object – it's a piece of functional art.</p>
+
+<p><strong>Perfectly Proportioned for Impact</strong></p>
+<p>With its generous dimensions, this onyx canoe commands attention without overwhelming your decor. It’s substantial enough to make a statement, yet elegantly proportioned to fit beautifully on various surfaces.</p>
+<ul>
+    <li><strong>Length:</strong> 130 cm (approximately 51 inches)</li>
+    <li><strong>Width:</strong> 24 cm (approximately 9.5 inches)</li>
+    <li><strong>Height/Depth:</strong> 10 cm (approximately 4 inches)</li>
+</ul>
+<p>These dimensions allow it to serve as a grand centerpiece on a long dining table, a sophisticated accent on a console or coffee table, or a luxurious touch on a credenza or entryway console.</p>
+
+<p><strong>Versatile Decor Statement</strong></p>
+<p>The possibilities for showcasing this stunning onyx piece are endless:</p>
+<ul>
+    <li><strong>Dining Room Centerpiece:</strong> Elevate your dinner parties with an elegant display of fresh fruit, decorative orbs, or floating candles.</li>
+    <li><strong>Living Area Accent:</strong> Place it on your coffee table or console to house decorative stones, botanical elements, or simply admire its standalone beauty.</li>
+    <li><strong>Luxurious Catch-All:</strong> Use it in an entryway or office for mail, keys, or other essentials, adding an unexpected touch of luxury to everyday organization.</li>
+    <li><strong>Spa-like Bathroom Display:</strong> Create a serene ambiance by artfully arranging rolled towels, bath bombs, or scented soaps.</li>
+</ul>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+    <li>Hand-carved from <strong>100% genuine natural Onyx stone</strong>.</li>
+    <li>Smooth, high-polish finish that enhances the stone's natural beauty and translucence.</li>
+    <li>Unique, naturally occurring patterns and color variations, ensuring exclusivity.</li>
+    <li>Elegant and timeless canoe shape, suitable for a variety of interior styles.</li>
+    <li>Substantial size (130x24x10cm) for a commanding presence.</li>
+    <li>A durable and long-lasting decorative piece that will be cherished for generations.</li>
+</ul>
+
+<p><strong>Care Instructions:</strong></p>
+<p>To preserve the pristine beauty of your onyx canoe, simply wipe it clean with a soft, damp cloth. Avoid harsh chemicals or abrasive cleaners, which can damage the stone's natural finish.</p>
+
+<p>Transform your living space with this breathtaking <strong>Onyx Canoe Bowl</strong> – a magnificent fusion of nature's artistry and refined design. It's more than just an item; it's an investment in enduring style and a testament to exquisite taste.</p>",,https://drive.google.com/uc?export=view&id=1b5yAkJMkeqiQ107rrlFsgLHrDjGS-41U,https://drive.google.com/uc?export=view&id=1nmf5DDL1f29f9N1Luh0M5WIzvsHrjZu7,"[{""x"":0.085,""y"":0.364,""width"":0.833,""height"":0.238,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.502,""y"":0.483},""label"":""Canoe Onyx""},{""point"":{""x"":0.876,""y"":0.627},""label"":""CANOA ÓNIX NÁCAR""},{""point"":{""x"":0.5,""y"":0.656},""label"":""COD-4491""},{""point"":{""x"":0.879,""y"":0.772},""label"":""$7,400""}]","[{""x"":0.019,""y"":0.391,""width"":0.927,""height"":0.22,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":182.8116953380529,""y"":-1.77578813427284},{""x"":191,""y"":1},{""x"":205.8419606029369,""y"":11.805276877418057},{""x"":216,""y"":8},{""x"":226,""y"":13},{""x"":235,""y"":25},{""x"":244.05088817013953,""y"":43.90343162596136},{""x"":253.83116395525343,""y"":83.3316372768408},{""x"":257.2899443617616,""y"":131.4205679436279},{""x"":253.2382641398102,""y"":180.57179071376385},{""x"":242,""y"":214},{""x"":232,""y"":230},{""x"":221.49167654682515,""y"":240.7905257317218},{""x"":186.89907393683083,""y"":251.60473181161333},{""x"":173.72175854558213,""y"":253.92249488324788},{""x"":159,""y"":245},{""x"":139.6624977275478,""y"":250.76747585218033},{""x"":133.30447264768503,""y"":255.7636662006017},{""x"":128.08780901095463,""y"":256.3799326732931},{""x"":111.70910855622186,""y"":248.77128550375897},{""x"":96.17546702035912,""y"":245.15501903106755},{""x"":68.55849164175135,""y"":253.99429432019525},{""x"":49.71589915817533,""y"":249.15692385685685},{""x"":27.96465963921691,""y"":251.99810397177387},{""x"":17,""y"":238},{""x"":10.999999999999998,""y"":223},{""x"":3.6921297024742668,""y"":194.5368521313684},{""x"":1.0000000000000004,""y"":166},{""x"":1.1436729621029404,""y"":131.30432358476713},{""x"":4.636264968371322,""y"":99.15691505929367},{""x"":11.610032209194856,""y"":69.07370426273678},{""x"":21.0763891074228,""y"":44.38183310030085},{""x"":32.56898033073652,""y"":27.38374232487177},{""x"":40.74799443657721,""y"":23.075604689744456},{""x"":48.774230327572305,""y"":22.767475852180336},{""x"":69,""y"":8},{""x"":80,""y"":7},{""x"":89.82711125758763,""y"":12.94511462664559},{""x"":97.87383205266217,""y"":15.15037007111046},{""x"":127.11682543817238,""y"":4.677815762214695},{""x"":136.62149508844942,""y"":4.835334866655599},{""x"":147.98598264639674,""y"":9.362777553332831},{""x"":158.49065229667374,""y"":8.89021723558306},{""x"":166,""y"":2},{""x"":172.84856543175383,""y"":-0.5221165573589546}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,575.56,4604.44,JM82591EFL,HMO,EFL,
+,2025-10-10T00:59:11.767Z,JM,4546,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #697878, #85939a, #95a6ae, #c7faf4, #9ca9ab, #b7c7ca, #84928e, #8b9690, #a9b0a7, #818374, #b2b39b, #94a1a3, #94a099, #99a59e, #a2b1ab, #aab1a9, #919c96, #9eabaa, #929e9d, #808c8b, #899691, #a8b0a3, #7e867d, #a2a284)",1,6720,4,10,25,150,,https://drive.google.com/uc?export=view&id=1WtJI8XwE363OcGXuOE-qVYqRe5M1-Yc-,"An impressive 150cm onyx canoe sculpture, gleaming with natural luxury.","* Luxurious Onyx Canoe Craftsmanship
+* Stunning 1.5 Meter Statement Piece
+* Captivating Natural Stone Elegance
+* Graceful Flowing Sculpture","<p><strong>The Grand Onyx Canoe: A Sculptural Masterpiece & Luxurious Vessel</strong></p>
+
+<p>Unveil a breathtaking fusion of nature's artistry and refined design with our magnificent Onyx Canoe. This exquisitely hand-carved piece transcends mere decoration, serving as a powerful statement of elegance and a testament to the unparalleled beauty of natural stone. Measuring an impressive 1.5 meters in length, it is designed to captivate and transform any sophisticated space.</p>
+
+<p><strong>Exquisite Craftsmanship & Material:</strong></p>
+<ul>
+    <li><strong>Material:</strong> Crafted from 100% genuine Onyx, renowned for its luminous depth and unique translucent qualities. Each piece is a geological fingerprint, showcasing distinct banding, swirling patterns, and captivating veins that ensure no two canoes are exactly alike.</li>
+    <li><strong>Finish:</strong> Expertly polished to a high-gloss finish, the Onyx reflects light beautifully, allowing its inherent patterns and vibrant natural hues – ranging from creamy whites and golden ambers to deep browns and subtle greens – to truly come alive. When illuminated, its translucency creates a soft, ethereal glow, adding warmth and ambiance to your environment.</li>
+</ul>
+
+<p><strong>Elegant Canoe Design:</strong></p>
+<ul>
+    <li><strong>Shape:</strong> Inspired by the graceful lines of a traditional canoe, this piece features elegantly curved sides that taper to refined, pointed ends. The flowing form evokes a sense of calm and natural beauty, making it a harmonious addition to both contemporary and classic interiors.</li>
+    <li><strong>Versatility:</strong> Its shallow, elongated profile lends itself to a multitude of uses. Whether displayed as a standalone sculpture or employed as a luxurious vessel, its unique shape is both artistic and functional.</li>
+</ul>
+
+<p><strong>Impressive Dimensions:</strong></p>
+<ul>
+    <li><strong>Length:</strong> At <strong>150cm (1.5 meters)</strong>, this canoe commands attention and is perfectly scaled for grand tables, long consoles, or as a striking floor accent.</li>
+    <li><strong>Width:</strong> A substantial <strong>25cm</strong> provides a generous presence, allowing its intricate details and the richness of the Onyx to be fully appreciated.</li>
+    <li><strong>Height:</strong> Standing at <strong>10cm</strong>, its sleek, shallow profile maintains an air of understated sophistication, ensuring it complements rather than overwhelms your decor.</li>
+    <li><strong>Weight:</strong> Given its solid Onyx construction, this piece possesses a substantial weight, affirming its quality and stability.</li>
+</ul>
+
+<p><strong>A Statement Piece for Any Space:</strong></p>
+<ul>
+    <li>Imagine this magnificent Onyx Canoe adorning your dining table as an unforgettable centerpiece, filled with decorative spheres, river stones, or exotic botanicals.</li>
+    <li>Place it on a long console table in your entryway to create a grand welcoming statement, or on a credenza in your living room as a captivating sculptural element.</li>
+    <li>Its natural beauty and timeless design make it suitable for luxury homes, high-end offices, boutique hotels, or any space desiring a touch of unique natural artistry.</li>
+</ul>
+
+<p><strong>Uniqueness & Investment:</strong></p>
+<ul>
+    <li>Each Onyx Canoe is a singular work of art, hand-carved from a natural stone slab. The inherent variations in pattern and color mean that the piece you receive will be truly one-of-a-kind, an exclusive treasure that reflects the earth's natural beauty.</li>
+    <li>An investment in timeless elegance, this Onyx Canoe is not just a decorative item, but a potential heirloom to be cherished for generations.</li>
+</ul>
+
+<p><strong>Product Specifications:</strong></p>
+<ul>
+    <li><strong>Material:</strong> Natural Onyx</li>
+    <li><strong>Shape:</strong> Canoe</li>
+    <li><strong>Dimensions:</strong> Approximately 150cm (Length) x 25cm (Width) x 10cm (Height)</li>
+    <li><strong>Color:</strong> Natural variations of cream, amber, green, brown, and white.</li>
+    <li><strong>Finish:</strong> Polished</li>
+</ul>
+
+<p><strong>Care Instructions:</strong></p>
+<ul>
+    <li>Wipe clean with a soft, damp cloth. Avoid abrasive cleaners or harsh chemicals to preserve the natural beauty and polish of the Onyx.</li>
+</ul>
+
+<p>Elevate your interior design with the unparalleled beauty and serene grandeur of our Onyx Canoe. <strong>Add this magnificent sculptural vessel to your collection today and bring a piece of geological splendor into your home.</strong></p>",,https://drive.google.com/uc?export=view&id=1hr-WYCuMpzwAaroNoQuEEfKdz12GCjT3,https://drive.google.com/uc?export=view&id=1EmAV4ZN81RqTJOUaL8bcTRku8F-DKISq,"[{""x"":0.00004,""y"":0.000365,""width"":0.0009199999999999999,""height"":0.00020499999999999997,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.00045,""y"":0.0006450000000000001},""label"":""COD-4546""},{""point"":{""x"":0.000875,""y"":0.0005949999999999999},""label"":""CANOA""},{""point"":{""x"":0.000875,""y"":0.00063},""label"":""ÓNIX NÁCAR""},{""point"":{""x"":0.000875,""y"":0.000665},""label"":""59x10x4\""""},{""point"":{""x"":0.000875,""y"":0.000695},""label"":""150x25x10""},{""point"":{""x"":0.000875,""y"":0.00073},""label"":""$9,600""}]","[{""x"":0.067,""y"":0.403,""width"":0.866,""height"":0.189,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":185.2999564668343,""y"":5.443925471191558},{""x"":196.4195243092331,""y"":7.719446235314086},{""x"":212.5298934658811,""y"":18.892904963031533},{""x"":228,""y"":22.000000000000025},{""x"":236.99999999999997,""y"":32.99999999999997},{""x"":246.2724523963286,""y"":52.670973692156636},{""x"":255.05089120813406,""y"":91.76866970521807},{""x"":256.4520834449907,""y"":152.2442468358126},{""x"":248.30918606819995,""y"":190},{""x"":240.00000000000003,""y"":207.00000000000003},{""x"":231,""y"":216.00000000000006},{""x"":215,""y"":224.00000000000003},{""x"":200.1676538984233,""y"":236.40594292402952},{""x"":185.71858437542727,""y"":245.16170598372145},{""x"":160.2830697386596,""y"":231.65017986433736},{""x"":134.31085098049925,""y"":254.18808116692554},{""x"":105.67228590509865,""y"":240.5148820488354},{""x"":89.00000000000001,""y"":254.00000000000003},{""x"":72.56447996412614,""y"":260.6204322591744},{""x"":47.96461628266754,""y"":238.81190234056683},{""x"":28.000000000000004,""y"":244.00000000000003},{""x"":23.999999999999996,""y"":242},{""x"":16.999999999999996,""y"":235},{""x"":8.999999999999998,""y"":217.00000000000003},{""x"":2.9999999999999996,""y"":195},{""x"":-0.9428383073879126,""y"":156.14521772056386},{""x"":2.0000000000000004,""y"":112.00000000000001},{""x"":11.999999999999996,""y"":70},{""x"":23.999999999999996,""y"":44.00000000000005},{""x"":32.65440446999731,""y"":36.92341782227504},{""x"":47.9836149266012,""y"":29.27377285928758},{""x"":63.006184315094174,""y"":14.923417822275013},{""x"":71.44172998565502,""y"":10.624121700767468},{""x"":78.00000000000001,""y"":8.999999999999988},{""x"":95.02658177527503,""y"":16.948947280027518},{""x"":108.97341416829656,""y"":15.598592243014926},{""x"":128,""y"":3.999999999999987},{""x"":139,""y"":3.999999999999987},{""x"":157.65835858431984,""y"":12.653087799586418},{""x"":169,""y"":11.000000000000012},{""x"":170.8172349539377,""y"":10.826541272282578},{""x"":172.49369294069155,""y"":8.688786145242517},{""x"":174,""y"":7.000000000000026},{""x"":180.38777650782737,""y"":5.204113562767703}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,746.67,5973.33,JM82546FHF,EXH,FHF,
+,10/9/2025 19:18:48,JM,4932,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #88938d, #9ca094, #999a84, #a5a388, #9ea38f, #b7b7a9, #a3a78c, #bcbfa1, #999999, #e4eec9, #cacdb6, #9fa294, #a3adbc, #c6d1d9, #99a2b0, #6a767c, #989f9a, #898c8a, #858886, #b3bfc4, #9ea9a3, #acb2b3, #939689, #969c97)",1,5180,4,10,23,130,,https://drive.google.com/uc?export=view&id=1uVjucQXXcdcExV7YBsQC96Xh017h5hNl,"A breathtaking 130cm onyx canoe, an elegant and natural sculptural centerpiece for any discerning space.","*Luminous natural onyx.
+*Elegant canoe silhouette.
+*Generous, commanding presence.
+*Artisan crafted beauty.","<p>Introducing a truly magnificent and unique decorative piece that seamlessly blends natural artistry with refined design: our <strong>Exquisite Hand-Carved Onyx Canoe Decorative Tray / Sculpture</strong>. Crafted with meticulous attention to detail from a single, breathtaking block of natural onyx, this item is a testament to the beauty of geological wonders and masterful craftsmanship.</p>
+
+<p>Every curve and plane of this stunning canoe-shaped object tells a story, revealing the intricate patterns and translucent depths unique to genuine onyx. It’s more than just an ornament; it’s a functional work of art designed to elevate any living space, office, or commercial setting.</p>
+
+<h3><strong>Key Features:</strong></h3>
+<ul>
+    <li><strong>Luxurious Natural Onyx:</strong> Meticulously hand-carved from authentic onyx, each piece boasts a unique array of captivating colors, mesmerizing veining, and a distinct translucence that allows light to play beautifully across its surface. No two canoes are exactly alike, ensuring you own a truly one-of-a-kind treasure.</li>
+    <li><strong>Elegant Canoe Shape:</strong> The gracefully sculpted canoe form evokes a sense of serenity, journey, and organic harmony. Its sleek, elongated lines and subtly curved edges make it an instant focal point, adding a touch of sophisticated, natural elegance to any room.</li>
+    <li><strong>Impressive & Substantial Dimensions:</strong> This substantial piece measures an expansive <strong>130cm in length</strong>, a commanding <strong>23cm in height</strong> (at its tallest point), and a refined <strong>10cm in width</strong>. Its generous size makes it ideal for gracing longer surfaces such as dining tables, console tables, mantels, or grand display shelves, creating an undeniable presence without overwhelming your space.</li>
+    <li><strong>Masterful Hand-Craftsmanship:</strong> Expert artisans have dedicated their skill to bringing out the inherent beauty of the onyx, hand-shaping and polishing every aspect to a smooth, radiant finish that highlights the stone's natural luster and intricate patterns.</li>
+    <li><strong>Versatile & Functional Art:</strong> While undoubtedly a stunning sculptural piece, its thoughtful design also lends itself to practical uses. Utilize it as an opulent centerpiece, a unique fruit bowl, an elegant catch-all for keys and mail, a stylish display for decorative objects, or simply as a standalone artistic statement.</li>
+</ul>
+
+<p>Imagine the subtle glow as ambient light interacts with the onyx, revealing intricate layers and depths within the stone. Whether placed in a sunlit room, under focused lighting, or alongside flickering candlelight, this piece transforms its surroundings, creating an atmosphere of refined tranquility and natural splendor.</p>
+
+<h3><strong>Care Instructions:</strong></h3>
+<p>To maintain its pristine beauty and radiant finish, simply wipe the onyx canoe with a soft, damp cloth. Avoid using harsh chemicals or abrasive cleaners, which can damage the stone's natural polish and integrity.</p>
+
+<p>The <strong>Onyx Canoe Decorative Tray / Sculpture</strong> is not just a purchase; it's an investment in enduring beauty, artisanal excellence, and a piece of natural history. It's the perfect choice for those who appreciate the unique allure of natural materials, distinctive design, and the subtle luxury that only genuine, hand-carved stone can provide. Bring this extraordinary piece of geological artistry into your home or office today and let its timeless charm captivate all who behold it.</p>",,https://drive.google.com/uc?export=view&id=11JU5Bym-HxcykMqLm5miIjvD8x0Y_86G,https://drive.google.com/uc?export=view&id=1fxFdn-JIwAaQUaSdEMcOzs1Xeaz1XDXp,"[{""x"":0.027,""y"":0.432,""width"":0.951,""height"":0.114,""label"":""Canoe Onyx""}]",[],"[{""x"":0.057,""y"":0.454,""width"":0.864,""height"":0.088,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":124,""y"":6},{""x"":136,""y"":8},{""x"":150,""y"":19},{""x"":159,""y"":23},{""x"":193,""y"":25},{""x"":215,""y"":22},{""x"":227,""y"":31},{""x"":239,""y"":53},{""x"":248,""y"":82},{""x"":254,""y"":116},{""x"":254,""y"":173},{""x"":242,""y"":233},{""x"":233,""y"":249},{""x"":225,""y"":255},{""x"":216,""y"":255},{""x"":194,""y"":245},{""x"":181,""y"":243},{""x"":159,""y"":245},{""x"":134,""y"":255},{""x"":104,""y"":255},{""x"":61,""y"":240},{""x"":44,""y"":239},{""x"":29,""y"":241},{""x"":17,""y"":231},{""x"":12,""y"":220},{""x"":2,""y"":177},{""x"":0,""y"":129},{""x"":8,""y"":72},{""x"":15,""y"":51},{""x"":25,""y"":33},{""x"":24,""y"":31},{""x"":32,""y"":19},{""x"":41,""y"":13},{""x"":66,""y"":18},{""x"":81,""y"":18},{""x"":92,""y"":13},{""x"":123,""y"":7}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,575.56,4604.44,JM82532EFL,HMO,EFL,
+,2025-10-10T01:21:11.848Z,JM,4933,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #909597, #939897, #a2a9a1, #969791, #a9a592, #8e8e7f, #999c91, #a8a997, #a5a68f, #949a95, #bdc5bf, #b9bdad, #a7aaa5, #b1b4b0, #9aa09b, #9a9f9e, #a1a6a8, #959b96, #949b96, #a3aaa5, #a3aaa5, #8a9089, #939994, #969890)",1,5880,4,10,23,140,,https://drive.google.com/uc?export=view&id=1hDwRVSWr6ttVpj2r2vGdPY04ydoM6XmE,"This magnificent 140cm canoe, exquisitely carved from luminous onyx, serves as a captivating centerpiece.","* Exquisite hand-carved onyx.
+* Graceful canoe-inspired design.
+* Stunning elongated centerpiece.
+* A touch of natural luxury.","<p>Welcome to a world where ancient stone meets contemporary design. Discover our exquisite hand-carved Onyx Canoe, a true masterpiece designed to elevate any interior space with its unparalleled beauty and natural sophistication.</p>
+
+<h2><strong>Onyx Canoe: A Journey of Elegance and Light</strong></h2>
+
+<p>This stunning decorative piece is more than just an accent; it's a conversation starter, a focal point, and a testament to the Earth's enduring artistry. Crafted from magnificent natural onyx, its captivating veining and translucent qualities bring a dynamic interplay of light and shadow into your home or office.</p>
+
+<h3><strong>Key Features & Unveiling Elegance:</strong></h3>
+<ul>
+    <li><strong>Material: Natural Onyx</strong>
+        <p>Experience the luxurious depth and natural beauty of genuine onyx. Known for its mesmerizing translucence, unique swirling patterns, and rich palette of colors—from creamy whites and warm ambers to deep greens and browns—each piece is a <strong>one-of-a-kind creation</strong>. The polished surface enhances the stone's inherent glow, allowing light to gently filter through and highlight its intricate formations.</p></li>
+    <li><strong>Design: Graceful Canoe Shape</strong>
+        <p>Inspired by the serene and fluid lines of a traditional canoe, this piece embodies tranquility and movement. Its elongated, gracefully curved form adds a sense of organic elegance and peaceful harmony, making it a perfect fit for both modern minimalist and classic opulent decors.</p></li>
+    <li><strong>Dimensions: Substantial Statement Piece</strong>
+        <p>Measuring an impressive <strong>140cm (approximately 55 inches) in length</strong>, <strong>23cm (approximately 9 inches) in height</strong>, and <strong>10cm (approximately 4 inches) in width</strong>, this Onyx Canoe commands attention without overwhelming your space. Its significant length makes it an ideal centerpiece for long dining tables, console tables, or as a distinctive floor accent.</p></li>
+    <li><strong>Craftsmanship: Meticulously Hand-Carved</strong>
+        <p>Each canoe is carefully hand-carved by skilled artisans, ensuring precision and highlighting the natural contours and characteristics of the onyx. The smooth, polished finish is a testament to the dedication and expertise invested in bringing this natural wonder to life.</p></li>
+</ul>
+
+<h3><strong>Versatility & Placement:</strong></h3>
+<p>The Onyx Canoe offers endless possibilities for enhancing your decor. Its substantial yet sleek profile allows it to seamlessly integrate into various settings:</p>
+<ul>
+    <li><strong>Dining Table Centerpiece:</strong> Create a breathtaking focal point, especially when paired with subtle lighting.</li>
+    <li><strong>Console or Hallway Accent:</strong> Greet guests with a sophisticated statement piece that reflects light beautifully.</li>
+    <li><strong>Coffee Table Elegance:</strong> Elevate your living room with a unique and artistic touch.</li>
+    <li><strong>Office or Lobby Display:</strong> Impart a sense of luxury and refined taste in professional environments.</li>
+    <li><strong>Decorative Holder:</strong> While not food-safe, it can beautifully display decorative spheres, potpourri, or cherished collectibles.</li>
+</ul>
+
+<h3><strong>A Touch of Nature's Artistry:</strong></h3>
+<p>No two onyx pieces are exactly alike. The natural variations in color, banding, and translucency mean that the Onyx Canoe you receive will be truly unique, possessing its own distinct personality and charm. It’s not just a decorative item; it’s a geological wonder, a piece of Earth's history transformed into functional art.</p>
+
+<h3><strong>Why Choose Our Onyx Canoe?</strong></h3>
+<ul>
+    <li><strong>Exclusivity:</strong> Own a genuinely unique, hand-carved piece of natural art.</li>
+    <li><strong>Luxury & Sophistication:</strong> Instantly upgrade the aesthetic appeal of any room.</li>
+    <li><strong>Durability:</strong> Onyx is a robust stone, ensuring your investment will last for generations.</li>
+    <li><strong>Mesmerizing Visuals:</strong> The translucent quality of onyx provides an ever-changing visual experience under different lighting conditions.</li>
+</ul>
+
+<h3><strong>Care Instructions:</strong></h3>
+<p>To maintain its pristine beauty, simply wipe the Onyx Canoe with a soft, damp cloth. Avoid harsh chemicals or abrasive cleaners, which can dull the natural polish and damage the stone. Handle with care to prevent chipping or breaking.</p>
+
+<p><strong>Bring home this magnificent Onyx Canoe today and let its timeless beauty embark on a journey through your living space!</strong></p>",,https://drive.google.com/uc?export=view&id=18dK-6Inwfb6mkwowHsinbnmBI4o6oDgB,https://drive.google.com/uc?export=view&id=1eyvysomO__k_0HpYXhoqF5-Y9v0cUEcb,"[{""x"":0.071,""y"":0.363,""width"":0.856,""height"":0.213,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.499,""y"":0.469},""label"":""Canoe Onyx""}]","[{""x"":0.012,""y"":0.378,""width"":0.91,""height"":0.193,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":93,""y"":1.000000000000029},{""x"":107.60407331869553,""y"":-8.56786749654876},{""x"":133.40389976953398,""y"":12.95766050041645},{""x"":156.9105401538462,""y"":3.550841827482375},{""x"":168.17803329537645,""y"":-1.2034093364670029},{""x"":178.88485344589137,""y"":4.245748836050614},{""x"":194.32240679456856,""y"":16.61020699613238},{""x"":208,""y"":10.000000000000021},{""x"":215.4929983048146,""y"":7.817801145287465},{""x"":224,""y"":5.9999999999999725},{""x"":233,""y"":19.000000000000014},{""x"":243,""y"":42.00000000000001},{""x"":250.4650120403087,""y"":72.30090397608993},{""x"":256.47900859193425,""y"":126.66530168551509},{""x"":255.13445656994773,""y"":167.69495485126365},{""x"":251,""y"":194.00000000000006},{""x"":244,""y"":225},{""x"":239,""y"":236.00000000000006},{""x"":232,""y"":243},{""x"":214.78989770921592,""y"":230.51689716919756},{""x"":205,""y"":240.00000000000003},{""x"":176,""y"":251.99999999999997},{""x"":161,""y"":251.99999999999997},{""x"":130.67227601099327,""y"":232.4575677231045},{""x"":122.08680395236244,""y"":242.5168971691975},{""x"":119,""y"":249.99999999999991},{""x"":114,""y"":253},{""x"":102,""y"":254.00000000000006},{""x"":86,""y"":249.00000000000003},{""x"":70.61062684178246,""y"":233.12284629402393},{""x"":44,""y"":241.00000000000006},{""x"":39,""y"":239},{""x"":32,""y"":231.00000000000006},{""x"":25,""y"":212.00000000000003},{""x"":19.85154687842673,""y"":183.00414117264646},{""x"":15.881664261518063,""y"":124.14860057757579},{""x"":25.25509652776154,""y"":63.90696979957587},{""x"":37.22586647415752,""y"":27.017004655797678},{""x"":48,""y"":5.9999999999999725},{""x"":58.32949348586691,""y"":12.161048823614724},{""x"":66.50752678124337,""y"":15.81360582596499},{""x"":92,""y"":1.9999999999999907}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,653.33,5226.67,JM82533LEH,HLF,LEH,
+,10/24/2025 17:45:52,JM,5014,r@admin.com,YES,Plate,Onyx,Onyx Nacar Plate,"linear-gradient(90deg, #aaaba3, #a7a79c, #9ea09a, #9fa29b, #babdb8, #a4a7a6, #7f827c, #9a9b95, #a7aa97, #9b9b90, #9fa5a0, #9b9d97, #9fa19b, #9b9d97, #b1bab4, #a3aeb2, #afbec1, #8895a0, #a2a7ad, #868f9c, #b0b5bc, #b1b4ad, #aeb0a9, #a9aa9f)",1,17500,5,34,34,86,,https://drive.google.com/uc?export=view&id=1i3vCM1M2_I5BJ6lmYWtu526vRizVzzPw,"This striking 86cm onyx plate makes a luxurious statement piece, perfect for elegant display or serving.","* Exquisite Natural Onyx Craftsmanship
+* A Striking 86cm Statement Piece
+* Elevate Your Space with Timeless Elegance
+* Versatile Luxury, Designed to Impress","<p><strong>Unveiling the ""Luminosa"" Onyx Display Slab – A Masterpiece of Natural Elegance</strong></p>
+
+<p>Elevate your interior design with the breathtaking ""Luminosa"" Onyx Display Slab. More than just a plate, this magnificent piece is a testament to the Earth's artistic power, meticulously shaped from pure onyx to become a striking focal point in any sophisticated setting. Its substantial presence and inherent beauty make it an unparalleled decorative and functional element.</p>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+    <li><strong>Material Excellence:</strong> Crafted from <strong>premium natural onyx</strong>, renowned for its luxurious appearance and unique translucent properties. Each slab boasts individual veining patterns, ranging from creamy whites and golden ambers to deep greens and warm browns, ensuring that your piece is truly one-of-a-kind.</li>
+    <li><strong>Impressive Dimensions:</strong> Measuring a substantial <strong>86cm in length, 34cm in width, and an impressive 34cm in height (thickness)</strong>, this isn't merely a plate—it's a robust and imposing slab. Its significant dimensions ensure it commands attention, making it perfect for grand spaces or as a central decorative anchor.</li>
+    <li><strong>Unique ""Plate"" Shape & Robust Form:</strong> While retaining the flat, expansive surface characteristic of a plate, its extraordinary 34cm thickness transforms it into a weighty, sculptural block. This robust form allows it to serve as a sturdy display pedestal, an opulent serving platter for substantial items, or a powerful standalone decorative piece.</li>
+    <li><strong>Translucent Beauty:</strong> Onyx possesses a captivating translucency. When placed under direct light or, ideally, backlit, the stone illuminates, revealing its intricate internal patterns and casting a soft, ethereal glow that mesmerizes and transforms the ambiance of your space.</li>
+    <li><strong>Versatile Application:</strong>
+        <ul>
+            <li><strong>Luxurious Serving:</strong> Ideal for presenting large charcuterie spreads, an array of cheeses, or exquisite desserts at grand gatherings.</li>
+            <li><strong>Striking Display Pedestal:</strong> A perfect stage for showcasing art objects, sculptures, cherished collectibles, or a collection of high-end spirits.</li>
+            <li><strong>Sophisticated Centerpiece:</strong> Place it on a dining table, console, or coffee table to instantly elevate the room's aesthetic.</li>
+            <li><strong>Architectural Accent:</strong> Can be integrated into bespoke furniture designs or used as a luxurious countertop section.</li>
+        </ul>
+    </li>
+    <li><strong>Hand-Finished Quality:</strong> Expertly cut and polished to highlight the onyx's natural luster and smooth texture, ensuring a premium tactile and visual experience.</li>
+</ul>
+
+<p><strong>Experience the Difference:</strong></p>
+<p>The ""Luminosa"" Onyx Display Slab is more than an object; it's an experience. Its substantial weight symbolizes permanence and quality, while its natural beauty introduces an organic, yet undeniably opulent, element to your decor. Whether bathed in light or admired for its natural elegance, this onyx slab promises to be a conversation starter and a cherished heirloom for generations to come.</p>
+<p><strong>Add this extraordinary piece of nature's art to your collection today and transform your space with unparalleled grace and grandeur.</strong></p>",,https://drive.google.com/uc?export=view&id=1my0lRZPXCG9Qv88EJa2PhFfpq86hEf8N,https://drive.google.com/uc?export=view&id=1rJ05krVfN6D_wuyGpQ3tVclwI9c0M0cB,"[{""x"":0.126,""y"":0.201,""width"":0.657,""height"":0.603,""label"":""Plate Onyx""}]","[{""point"":{""x"":0.504,""y"":0.502},""label"":""Plate Onyx""}]","[{""x"":0.222,""y"":0.201,""width"":0.559,""height"":0.473,""label"":""plate onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":107,""y"":0},{""x"":111,""y"":0},{""x"":120,""y"":9},{""x"":126,""y"":11},{""x"":137,""y"":8},{""x"":147,""y"":0},{""x"":164,""y"":17},{""x"":175,""y"":17},{""x"":184,""y"":12},{""x"":199,""y"":32},{""x"":207,""y"":35},{""x"":217,""y"":31},{""x"":222,""y"":47},{""x"":228,""y"":57},{""x"":234,""y"":61},{""x"":240,""y"":59},{""x"":243,""y"":61},{""x"":248,""y"":95},{""x"":253,""y"":103},{""x"":254,""y"":123},{""x"":247,""y"":155},{""x"":238,""y"":178},{""x"":225,""y"":201},{""x"":213,""y"":217},{""x"":189,""y"":237},{""x"":168,""y"":248},{""x"":144,""y"":254},{""x"":120,""y"":255},{""x"":100,""y"":251},{""x"":80,""y"":243},{""x"":55,""y"":226},{""x"":37,""y"":207},{""x"":22,""y"":183},{""x"":9,""y"":150},{""x"":2,""y"":119},{""x"":0,""y"":101},{""x"":5,""y"":95},{""x"":7,""y"":88},{""x"":12,""y"":59},{""x"":24,""y"":55},{""x"":39,""y"":29},{""x"":48,""y"":31},{""x"":55,""y"":28},{""x"":71,""y"":7},{""x"":80,""y"":14},{""x"":89,""y"":14},{""x"":106,""y"":1}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,1944.44,15555.56,JM82514MNHE,MXAN,MNHE,
+,10/24/2025 17:48:12,JM,4494,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #959a9b, #a6abb1, #b9bfc1, #acada2, #d2dfe2, #959082, #b7b7a6, #b4b7b3, #a8aeaf, #adb4ac, #b4bdae, #b7c0b1, #bcc5b6, #b8c0b6, #bac1b8, #bdc0b8, #a8afa9, #a7aea9, #b2b2af, #bbbebd, #aeaeab, #aeafa8, #8e8f85, #ada595)",1,6580,4,10,25,140,,https://drive.google.com/uc?export=view&id=1DlwwhtbZKCmShK5KbS9KtiXqAjfURzOd,"Elevate your decor with this striking 140cm canoe-shaped centerpiece, exquisitely carved from radiant onyx.","* Hand-carved Onyx luxury.
+* Grand, elegant statement piece.
+* Naturally translucent and unique.
+* Graceful canoe design.","<p><strong>Introducing the 'Onyx Serenity' Hand-Carved Canoe Masterpiece</strong></p>
+
+<p>Immerse your space in timeless elegance with our stunning hand-carved Onyx Canoe. A true testament to nature's artistry and skilled craftsmanship, this unique piece transforms any room into a sanctuary of style and sophistication. Each canoe is a singular creation, showcasing the unparalleled beauty of natural onyx.</p>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+    <li><strong>Exquisite Material:</strong> Crafted from solid, genuine <strong>Natural Onyx</strong>, known for its luminous depth, mesmerizing banded patterns, and inherent translucence. Experience a captivating play of light and shadow as ambient light filters through the stone.</li>
+    <li><strong>Distinctive Canoe Shape:</strong> The gracefully elongated <strong>canoe-inspired silhouette</strong> offers an organic, flowing aesthetic. Its elegant curves and pointed ends evoke a sense of tranquility and movement, reminiscent of calm waters.</li>
+    <li><strong>Impressive Dimensions:</strong> With a significant length of <strong>140 cm (approximately 55 inches)</strong>, this piece commands attention as a magnificent centerpiece, designed to make a grand statement in any setting.</li>
+    <li><strong>Artisanal Craftsmanship:</strong> Each canoe is meticulously hand-carved and polished by skilled artisans, ensuring a smooth, luxurious finish that highlights the unique characteristics of the onyx.</li>
+    <li><strong>Versatile Decor:</strong> Perfect as a standalone sculptural artwork, a sophisticated centerpiece for a long table, or a luxurious vessel for displaying decorative items like polished river stones, dried botanicals, or floating candles.</li>
+    <li><strong>Unique Artistry:</strong> No two onyx pieces are identical. Your canoe will feature its own distinct veining, color variations, and natural inclusions, making it a truly one-of-a-kind treasure.</li>
+</ul>
+
+<p><strong>The Beauty of Onyx:</strong></p>
+<p>Our hand-carved canoe is more than just a decorative item; it's a geological artwork shaped by millennia. Onyx, a crystalline form of quartz, is celebrated for its rich spectrum of natural colors – from creamy whites and golden yellows to earthy browns, subtle greens, and even soft reds. Its characteristic banding adds depth and character, ensuring that your piece is a constant source of visual intrigue.</p>
+
+<p><strong>Ideal Placement:</strong></p>
+<p>This majestic Onyx Canoe is designed to elevate various spaces. It makes an impactful statement on a grand dining table, a long console table in an entryway, a sophisticated coffee table, or as a focal point on a credenza in a living room or office. Its substantial presence and natural beauty will undoubtedly be a conversation starter.</p>
+
+<p><strong>Product Specifications:</strong></p>
+<ul>
+    <li><strong>Material:</strong> Premium Natural Onyx</li>
+    <li><strong>Shape:</strong> Elegant Canoe</li>
+    <li><strong>Dimensions:</strong>
+        <ul>
+            <li><strong>Length:</strong> 140 cm (approx. 55 inches)</li>
+            <li><strong>Width (widest point):</strong> 25 cm (approx. 9.8 inches)</li>
+            <li><strong>Height (deepest point):</strong> 10 cm (approx. 3.9 inches)</li>
+        </ul>
+    </li>
+    <li><strong>Finish:</strong> Hand-polished smooth</li>
+    <li><strong>Color:</strong> Natural variations of white, cream, gold, brown, and green (unique to each piece)</li>
+</ul>
+
+<p>Bring home a piece of nature's finest artistry. The 'Onyx Serenity' Canoe is an investment in enduring beauty and a testament to refined taste that will captivate for years to come. Elevate your interior design today.</p>",,https://drive.google.com/uc?export=view&id=1_z4huTGR_RJL6UnQ8AnBc_sI_EibJ8-K,https://drive.google.com/uc?export=view&id=1A6fSeVqfRdQk34nxmwVPCZ5krv6Z6lcP,"[{""x"":0.059,""y"":0.188,""width"":0.866,""height"":0.552,""label"":""Canoe Onyx""}]",[],"[{""x"":0.059,""y"":0.318,""width"":0.865,""height"":0.425,""label"":""canoe onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":179,""y"":1},{""x"":226,""y"":15},{""x"":237,""y"":32},{""x"":248,""y"":63},{""x"":253,""y"":92},{""x"":253,""y"":152},{""x"":247,""y"":183},{""x"":236,""y"":206},{""x"":230,""y"":213},{""x"":212,""y"":220},{""x"":190,""y"":235},{""x"":182,""y"":237},{""x"":151,""y"":236},{""x"":130,""y"":243},{""x"":102,""y"":243},{""x"":78,""y"":254},{""x"":64,""y"":254},{""x"":51,""y"":250},{""x"":33,""y"":250},{""x"":28,""y"":248},{""x"":20,""y"":239},{""x"":11,""y"":223},{""x"":1,""y"":177},{""x"":1,""y"":130},{""x"":4,""y"":111},{""x"":10,""y"":80},{""x"":24,""y"":47},{""x"":34,""y"":37},{""x"":49,""y"":32},{""x"":77,""y"":16},{""x"":103,""y"":17},{""x"":125,""y"":9},{""x"":135,""y"":11},{""x"":156,""y"":10},{""x"":178,""y"":2}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,731.11,5848.89,JM82594FXO,EOX,FXO,
+,10/24/2025 17:49:42,JM,4542,r@admin.com,YES,Canoe,Onyx,Medium Onyx Nacar Canoe,"linear-gradient(90deg, #bab5c0, #b3aeb9, #c4bac1, #c3bac0, #ccc1c8, #c0b5c1, #bab5c0, #b3b1b5, #bab1b1, #aea7ad, #b1adb7, #b0acb6, #b1acb9, #b1adba, #b5acaf, #d0b6b7, #cebad9, #d4bdd7, #d7bad2, #d3bddf, #d6bcde, #bfb2ca, #c3a8ba, #c8b5c5)",1,3500,4,10,23,94,,https://drive.google.com/uc?export=view&id=14N802f-BLWZ00nfG-LHEhf1jbtoWXJpA,"Gracefully carved from exquisite onyx, this substantial canoe-shaped sculpture offers a luxurious statement piece for any space.","* Luminous hand-carved onyx.
+* Elegant canoe silhouette.
+* Substantial statement piece.","```html
+<p><strong>Unveiling the Serenity: Hand-Carved Onyx Canoe Decorative Bowl</strong></p>
+
+<p>Discover a masterpiece of natural elegance and exquisite craftsmanship with our Hand-Carved Onyx Canoe. This stunning decorative piece, meticulously sculpted from genuine onyx, brings a touch of tranquil luxury and organic beauty to any interior setting.</p>
+
+<p><strong>A Symphony of Form and Material:</strong></p>
+<p>Crafted from a single, magnificent block of natural onyx, this canoe-shaped bowl is a testament to the earth's artistry and human skill. Onyx is revered for its unique translucent qualities and captivating patterns of swirling veins and bands. Each piece boasts an individual character, with natural variations in color ranging from creamy whites and warm honey tones to earthy greens and deep browns, ensuring that your canoe bowl is truly one-of-a-kind.</p>
+
+<p>The graceful, fluid lines of the canoe shape evoke a sense of peaceful journey and natural harmony. Its smooth, polished surface beautifully highlights the stone's inherent luster and intricate geological formations, inviting both visual admiration and tactile appreciation.</p>
+
+<p><strong>Dimensions That Command Attention:</strong></p>
+<p>With generous proportions, this substantial piece makes an impressive statement:</p>
+<ul>
+    <li><strong>Length:</strong> 94cm (approximately 37 inches)</li>
+    <li><strong>Width:</strong> 23cm (approximately 9 inches)</li>
+    <li><strong>Height/Depth:</strong> 10cm (approximately 4 inches)</li>
+</ul>
+<p>These dimensions ensure the canoe is a prominent feature, perfect for gracing large tables, consoles, or as a standalone sculptural work of art.</p>
+
+<p><strong>Versatile Elegance for Any Space:</strong></p>
+<p>More than just a decorative object, the Onyx Canoe offers a wealth of uses:</p>
+<ul>
+    <li>Serve as a breathtaking <strong>centerpiece</strong> for your dining table, coffee table, or console, instantly elevating the room's aesthetic.</li>
+    <li>An opulent <strong>fruit bowl</strong>, displaying your fresh produce in a manner befitting a luxury setting.</li>
+    <li>A sophisticated <strong>catch-all</strong> for keys, mail, or treasured trinkets in an entryway or office.</li>
+    <li>Add a spa-like tranquility to your bathroom, holding scented soaps, rolled towels, or decorative stones.</li>
+    <li>Simply display it as a standalone <strong>sculptural art piece</strong>, celebrating the raw beauty of natural stone and the artisan's touch.</li>
+</ul>
+
+<p><strong>Exceptional Craftsmanship:</strong></p>
+<p>Each Onyx Canoe is meticulously hand-carved and polished by skilled artisans, transforming raw material into a flawless work of art. The precision and care taken in its creation are evident in every smooth curve, every refined edge, and the overall immaculate finish.</p>
+
+<p>Bring a piece of timeless beauty and natural wonder into your home or office. The Hand-Carved Onyx Canoe is not just a decorative item; it's an investment in art, nature, and enduring style that will be admired for generations.</p>
+```",,https://drive.google.com/uc?export=view&id=1nSPSMfJo2t3gAzb5clFlgYU7Ubq1qxDK,https://drive.google.com/uc?export=view&id=1RtjaiadXrjyJDwthfJK5LR1ifwIdZ9yS,"[{""x"":0.104,""y"":0.226,""width"":0.798,""height"":0.41,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.491,""y"":0.561},""label"":""Canoe Onyx""}]","[{""x"":0.106,""y"":0.226,""width"":0.802,""height"":0.412,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":163,""y"":2},{""x"":202,""y"":11},{""x"":222,""y"":20},{""x"":235,""y"":37},{""x"":243,""y"":55},{""x"":254,""y"":101},{""x"":254,""y"":145},{""x"":247,""y"":181},{""x"":234,""y"":213},{""x"":219,""y"":232},{""x"":208,""y"":238},{""x"":180,""y"":240},{""x"":159,""y"":247},{""x"":119,""y"":247},{""x"":97,""y"":254},{""x"":80,""y"":253},{""x"":61,""y"":248},{""x"":46,""y"":251},{""x"":32,""y"":247},{""x"":19,""y"":235},{""x"":12,""y"":224},{""x"":4,""y"":199},{""x"":1,""y"":179},{""x"":2,""y"":136},{""x"":6,""y"":113},{""x"":6,""y"":99},{""x"":16,""y"":64},{""x"":25,""y"":44},{""x"":43,""y"":20},{""x"":55,""y"":15},{""x"":63,""y"":15},{""x"":80,""y"":8},{""x"":99,""y"":4},{""x"":123,""y"":7},{""x"":133,""y"":4},{""x"":162,""y"":3}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,388.89,3111.11,JM82542XAN,OFA,XAN,
+,10/24/2025 17:50:56,JM,4574,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #b5ad97, #aaa18a, #b1ab85, #a39a77, #a19576, #a09274, #9b8c6f, #9e9572, #a1906d, #9a8968, #a2906c, #a28b65, #aa9167, #a08a5a, #9f8f66, #9c8356, #945d20, #9e8968, #9b8c74, #9e947a, #a29981, #9e977b, #a19881, #a17d53)",1,5180,4,11,24,140,,https://drive.google.com/uc?export=view&id=1zYCk5o5Lu5wIDKCdLLLoynegz4I3RblL,"Carved from luminous onyx, this impressive 140cm canoe-shaped piece offers a unique blend of natural elegance and sculptural design.","* Exquisite Onyx Canoe Design
+* Graceful, Flowing Silhouette
+* Luxurious Natural Stone Artistry
+* Impressive Statement Centerpiece","<p><strong>Exquisite Hand-Carved Onyx Canoe Vessel – A Masterpiece of Natural Elegance</strong></p>
+
+<p>Discover the breathtaking beauty and timeless sophistication of our <strong>Hand-Carved Onyx Canoe Vessel</strong>. This exceptional piece is more than just a decorative item; it's a testament to nature's artistry and expert craftsmanship, designed to be a captivating centerpiece in any refined interior.</p>
+
+<p><strong>Material: The Luminous Allure of Onyx</strong></p>
+<p>Crafted from genuine onyx, each vessel showcases the stone's inherent magic. Onyx is renowned for its:</p>
+<ul>
+    <li><strong>Translucent Qualities:</strong> Allowing light to filter through, revealing subtle depths and a warm, inviting glow.</li>
+    <li><strong>Unique Veining and Patterns:</strong> No two pieces are identical. Swirling bands of warm creams, rich browns, soft greens, and golden amber traverse the stone, telling a geological story millions of years in the making.</li>
+    <li><strong>Luxurious Feel:</strong> Its smooth, cool surface is a pleasure to touch, exuding an air of understated opulence.</li>
+    <li><strong>Durability:</strong> A robust natural stone that, with proper care, will last for generations, becoming a treasured heirloom.</li>
+</ul>
+
+<p><strong>Shape: The Graceful Canoe Design</strong></p>
+<p>Inspired by the serene lines of a traditional canoe, this vessel boasts a flowing, elongated form that is both ancient and strikingly modern. The elegant, upward-curving ends and gentle slope of its body create a sense of movement and tranquility. This unique shape allows it to serve as a stunning focal point, drawing the eye with its graceful contours and impressive length.</p>
+
+<p><strong>Dimensions: A Statement of Grandeur</strong></p>
+<p>With generous proportions, this onyx canoe commands attention:</p>
+<ul>
+    <li><strong>Length:</strong> 140 cm (approximately 55 inches) – An impressive span perfect for long dining tables, console tables, or large display areas.</li>
+    <li><strong>Height/Depth:</strong> 24 cm (approximately 9.5 inches) – Providing substantial depth for various decorative arrangements.</li>
+    <li><strong>Width:</strong> 11 cm (approximately 4.3 inches) – A slender profile that enhances its elegant, streamlined appearance.</li>
+</ul>
+
+<p><strong>Versatility and Usage: Elevate Any Space</strong></p>
+<p>This magnificent onyx canoe is incredibly versatile, making it an ideal addition to a multitude of settings:</p>
+<ul>
+    <li><strong>Centerpiece:</strong> A breathtaking focal point for dining tables, coffee tables, or grand entryways.</li>
+    <li><strong>Decorative Display:</strong> Showcase your favorite decorative spheres, natural elements like river stones or seashells, or dried botanical arrangements.</li>
+    <li><strong>Luxury Fruit Bowl:</strong> Present fruits in an extraordinarily elegant manner (consider using a liner for very acidic fruits to protect the stone's natural polish).</li>
+    <li><strong>Spa & Bathroom Accent:</strong> Hold luxury soaps, towels, or bath salts, transforming your bathroom into a tranquil sanctuary.</li>
+    <li><strong>Console or Shelf Decor:</strong> Add a touch of natural artistry and warmth to any wall unit or bookshelf.</li>
+</ul>
+
+<p><strong>Craftsmanship: Hand-Finished Perfection</strong></p>
+<p>Each onyx canoe is meticulously hand-carved and polished by skilled artisans, ensuring a smooth, lustrous finish that highlights the stone's natural beauty. The careful attention to detail means that every curve and surface is perfected, resulting in a piece of art that is truly one-of-a-kind.</p>
+
+<p><strong>Bring the serene beauty of nature and the luxury of handcrafted art into your home with this stunning Onyx Canoe Vessel. It's not just an object; it's an experience, a conversation starter, and an enduring symbol of sophisticated taste.</strong></p>",,https://drive.google.com/uc?export=view&id=1aNmzesNWYdc7FOJLFwVHpVCPQGNFiTew,https://drive.google.com/uc?export=view&id=14PPaAMkjROP40mTDfzVaonkE91q-7NnS,"[{""x"":0,""y"":0.097,""width"":1,""height"":0.594,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.5,""y"":0.394},""label"":""Canoe Onyx""}]","[{""x"":0.012,""y"":0.051,""width"":0.979,""height"":0.587,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":209,""y"":0},{""x"":218,""y"":1},{""x"":229,""y"":17},{""x"":247,""y"":58},{""x"":253,""y"":88},{""x"":253,""y"":143},{""x"":251,""y"":153},{""x"":240,""y"":190},{""x"":233,""y"":206},{""x"":223,""y"":221},{""x"":210,""y"":229},{""x"":179,""y"":229},{""x"":158,""y"":239},{""x"":125,""y"":237},{""x"":95,""y"":253},{""x"":65,""y"":250},{""x"":41,""y"":255},{""x"":34,""y"":252},{""x"":28,""y"":246},{""x"":10,""y"":216},{""x"":9,""y"":205},{""x"":2,""y"":185},{""x"":4,""y"":165},{""x"":1,""y"":156},{""x"":0,""y"":131},{""x"":1,""y"":104},{""x"":4,""y"":90},{""x"":27,""y"":39},{""x"":40,""y"":24},{""x"":47,""y"":20},{""x"":60,""y"":19},{""x"":75,""y"":22},{""x"":80,""y"":19},{""x"":97,""y"":16},{""x"":133,""y"":14},{""x"":139,""y"":12},{""x"":144,""y"":7},{""x"":195,""y"":10},{""x"":208,""y"":1}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,575.56,4604.44,JM82574EFL,HMO,EFL,
+,10/24/2025 17:52:26,JM,4418,r@admin.com,YES,Canoe,Onyx,Large Onyx Nacar Canoe,"linear-gradient(90deg, #b4afc0, #bbb0bc, #b4b1b2, #c6c2c4, #9b9695, #b7b7ba, #bbb8ca, #c2bed2, #bfbbc6, #c1babc, #bdbbb8, #ababb9, #afafbe, #a8acb9, #d0c5cc, #c4b9c5, #a3a3b0, #a5a2b1, #a5a1ab, #b0a4a8, #c4a8ab, #baa5a1, #838383, #a9a5af)",1,6720,5,10,24,150,,https://drive.google.com/uc?export=view&id=1vp6izqdJ1MD2XyErsnWSifpEiq8DaoJm,"Crafted from luminous onyx, this impressive 1.5-meter canoe-shaped vessel makes a breathtaking decorative statement.","*Exquisite Hand-Carved Onyx
+*Elegant Canoe-Inspired Design
+*A Natural Centerpiece Statement
+*Luxurious, Polished Stone Art","<p><strong>Exquisite Hand-Carved Onyx Canoe Vessel - A Masterpiece of Natural Elegance</strong></p>
+
+<p>Immerse your space in unparalleled luxury with our stunning Hand-Carved Onyx Canoe Vessel. This magnificent piece is not merely a decorative object, but a statement of art, blending the raw beauty of natural onyx with a graceful, timeless design. Perfect for discerning collectors and those who appreciate unique, high-quality decor.</p>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+    <li><strong>Authentic Onyx Stone:</strong> Crafted from a single, solid block of premium natural onyx. Each vessel boasts its own unique patterns, veining, and translucent qualities, ranging from creamy whites and honey ambers to subtle greens and browns. No two pieces are exactly alike, ensuring your vessel is truly one-of-a-kind.</li>
+    <li><strong>Graceful Canoe Shape:</strong> The elegant, elongated canoe silhouette is meticulously carved, featuring smooth curves and tapered ends that evoke a sense of tranquil flow and natural harmony. This classic form adds sophistication and visual interest to any setting.</li>
+    <li><strong>Impressive Dimensions:</strong> Measuring approximately <strong>150 cm in length, 24 cm in width (at its widest point), and 10 cm in height/depth</strong>, this substantial piece commands attention. Its generous size makes it a striking centerpiece without overwhelming your space.</li>
+    <li><strong>Artisanal Craftsmanship:</strong> Each vessel is painstakingly hand-carved and polished by skilled artisans. The expert finish highlights the stone's inherent luster and brings out the mesmerizing depth and translucence of the onyx, especially when light passes through it.</li>
+    <li><strong>Translucent Beauty:</strong> One of onyx's most captivating features is its translucency. When placed near a light source, the stone comes alive, revealing intricate internal patterns and casting a soft, warm glow that creates an inviting ambiance.</li>
+</ul>
+
+<p><strong>Versatile Applications:</strong></p>
+<p>The Onyx Canoe Vessel is incredibly versatile, designed to elevate various interior aesthetics. Use it as a:</p>
+<ul>
+    <li><strong>Stunning Centerpiece:</strong> Command attention on a grand dining table, coffee table, or console.</li>
+    <li><strong>Luxurious Fruit or Decorative Bowl:</strong> Showcase an array of fresh fruits, decorative orbs, or potpourri.</li>
+    <li><strong>Unique Planter:</strong> Create an exquisite home for succulents, air plants, or small orchids, bringing a touch of nature indoors with unparalleled elegance.</li>
+    <li><strong>Elegant Catch-All:</strong> Organize keys, mail, or other essentials on an entryway table with sophisticated flair.</li>
+    <li><strong>Sculptural Statement Piece:</strong> Allow its intrinsic beauty to speak for itself as a standalone work of art in a minimalist setting.</li>
+</ul>
+
+<p><strong>Why Choose Our Onyx Canoe Vessel?</strong></p>
+<p>This magnificent onyx piece is more than just decor; it's an investment in timeless beauty and natural artistry. It offers an instant upgrade to any room, adding a layer of sophistication, warmth, and natural wonder. Its durability ensures it will remain a cherished part of your home or office for generations.</p>
+
+<p><strong>Product Specifications:</strong></p>
+<ul>
+    <li><strong>Shape:</strong> Canoe</li>
+    <li><strong>Material:</strong> Natural Onyx Stone</li>
+    <li><strong>Dimensions:</strong> Approximately 150 cm (Length) x 24 cm (Width) x 10 cm (Height/Depth)</li>
+    <li><strong>Finish:</strong> Polished Smooth</li>
+    <li><strong>Color:</strong> Natural variations, typically featuring hues of cream, honey, brown, and green with distinctive veining.</li>
+</ul>",,https://drive.google.com/uc?export=view&id=17IJTbFZ94BxS2Czum_T_e-EVBirh6Zpl,https://drive.google.com/uc?export=view&id=1z20a9FSfORKz8CTWTbMQbGD852dJkP8K,"[{""x"":0.05,""y"":0.29,""width"":0.87,""height"":0.367,""label"":""Canoe Onyx""}]","[{""point"":{""x"":0.485,""y"":0.48},""label"":""Canoe Onyx""},{""point"":{""x"":0.89,""y"":0.47},""label"":""Canoe Onyx""},{""point"":{""x"":0.08,""y"":0.47},""label"":""Canoe Onyx""},{""point"":{""x"":0.5,""y"":0.3},""label"":""Canoe Onyx""},{""point"":{""x"":0.5,""y"":0.645},""label"":""Canoe Onyx""}]","[{""x"":0.065,""y"":0.334,""width"":0.853,""height"":0.329,""label"":""Canoe Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":167,""y"":0},{""x"":180,""y"":5},{""x"":184,""y"":3},{""x"":208,""y"":2},{""x"":225,""y"":5},{""x"":236,""y"":19},{""x"":245,""y"":44},{""x"":253,""y"":84},{""x"":254,""y"":149},{""x"":244,""y"":199},{""x"":231,""y"":227},{""x"":223,""y"":237},{""x"":214,""y"":242},{""x"":189,""y"":245},{""x"":173,""y"":252},{""x"":159,""y"":254},{""x"":128,""y"":242},{""x"":120,""y"":242},{""x"":101,""y"":249},{""x"":95,""y"":249},{""x"":84,""y"":244},{""x"":75,""y"":244},{""x"":63,""y"":249},{""x"":53,""y"":249},{""x"":38,""y"":240},{""x"":18,""y"":235},{""x"":9,""y"":223},{""x"":4,""y"":203},{""x"":0,""y"":157},{""x"":2,""y"":120},{""x"":9,""y"":87},{""x"":20,""y"":59},{""x"":31,""y"":48},{""x"":62,""y"":32},{""x"":80,""y"":33},{""x"":88,""y"":31},{""x"":106,""y"":19},{""x"":132,""y"":18},{""x"":166,""y"":1}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,746.67,5973.33,JM82518FHF,EXH,FHF,
+,10/24/2025 17:53:23,JM,3649,r@admin.com,YES,Plate,Onyx,Onyx Nacar Plate,"linear-gradient(90deg, #b0afa8, #bcb5b0, #b5b2b3, #7c7776, #b1aca6, #b3b3b0, #b7b7b7, #c7c7c7, #c1c1c5, #a4a4a2, #afafac, #c3c1d0, #b6b6b6, #b1b4b2, #9c9f9b, #c8bdb4, #a79e91, #a3988c, #a9a8a3, #ceccc8, #bdb6ad, #a49d8d, #bdb6b0, #bcb5b0)",1,7000,,23,23,60,,https://drive.google.com/uc?export=view&id=1wop9X1HcLU_0naDr_pBN5cBHrFHqh59H,This substantial 23x60x23cm onyx plate offers a captivating statement of natural luxury.,"* Elevate Your Space with Natural Onyx
+* A Striking 60cm Display or Serve
+* Timeless Elegance in Stone","<p>Elevate your interior design with the breathtaking beauty of our <strong>Exquisite Onyx Statement Slab - The Aurora Plate</strong>. More than just a simple plate, this substantial and captivating piece is meticulously carved from natural onyx, designed to be a focal point in any sophisticated setting. Its unique material and impressive dimensions promise to infuse your space with a touch of timeless elegance and natural wonder.</p>
+
+<p><strong>Key Features:</strong></p>
+<ul>
+    <li><strong>Peerless Natural Onyx:</strong> Crafted from genuine, high-quality onyx, this slab showcases the stone's characteristic translucent properties and mesmerizing patterns. Each piece is truly one-of-a-kind, featuring unique veins, bands of rich color – from creamy whites and golden ambers to deep browns and occasional greens – that shimmer and come alive when light passes through. The natural variations ensure your piece is an exclusive work of art.</li>
+    <li><strong>Substantial & Impressive Dimensions:</strong> Measuring an impactful <strong>23cm wide, 60cm long, and a robust 23cm high</strong>, this isn't your average serving dish. This ""plate"" is a monumental piece, designed to stand tall and command attention. Its significant thickness (height) transforms it from a flat surface into a substantial, sculptural object, perfect for creating dramatic displays and adding architectural interest to your decor.</li>
+    <li><strong>Versatile & Luxurious Design:</strong> While its shape evokes a traditional plate, its size and depth open up a world of possibilities. Use it as a stunning centerpiece on a large dining table, a grand display plinth for sculptures or treasured collectibles, an opulent vanity tray for luxury items, or even as a unique serving board for an unforgettable culinary presentation. Its polished surface is cool to the touch and exudes sophistication.</li>
+    <li><strong>Hand-Carved Craftsmanship:</strong> Each slab is carefully hand-finished, highlighting the natural beauty and smooth texture of the onyx. The inherent variations in color and pattern are celebrated, ensuring that your Aurora Plate is an exclusive work of art, reflecting millions of years of geological formation.</li>
+    <li><strong>A Statement of Elegance:</strong> This onyx slab is more than just a decorative item; it's an investment in enduring style and natural artistry. It provides an unparalleled aesthetic appeal, acts as a conversation starter, and offers a durable, luxurious surface for your most cherished items or gourmet creations.</li>
+</ul>
+
+<p><strong>Product Specifications:</strong></p>
+<ul>
+    <li><strong>Material:</strong> 100% Natural Onyx Stone</li>
+    <li><strong>Shape:</strong> Rectangular Slab / Sculptural Plate</li>
+    <li><strong>Dimensions:</strong> <strong>L60cm x W23cm x H23cm</strong> (Approximately)</li>
+    <li><strong>Finish:</strong> Polished Smooth</li>
+    <li><strong>Color:</strong> Natural variations, typically featuring translucent bands of white, cream, amber, and brown.</li>
+    <li><strong>Care Instructions:</strong> Wipe clean with a soft, damp cloth. Avoid abrasive cleaners. Onyx is a natural stone and can be porous; promptly wipe spills to prevent staining.</li>
+</ul>
+
+<p>Bring home the unparalleled elegance of the Aurora Onyx Statement Slab today and transform your space with its captivating presence and timeless appeal.</p>",,https://drive.google.com/uc?export=view&id=17YFfVaEprrVob3j8ZO09oSnxFeV_InPJ,https://drive.google.com/uc?export=view&id=1WWKV7LamwNN9YLjxENPj2zZa1J7GUqJj,"[{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""Plate Onyx""},{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""COD-3649""},{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""PLATÓN""},{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""23 DIAM x 3.5\""""},{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""60 DIAM x 9""},{""x"":null,""y"":null,""width"":null,""height"":null,""label"":""$10,000""}]",[],"[{""x"":0.163,""y"":0.121,""width"":0.659,""height"":0.68,""label"":""Plate Onyx"",""maskWidth"":256,""maskHeight"":256,""points"":[{""x"":120,""y"":0},{""x"":142,""y"":0},{""x"":162,""y"":4},{""x"":196,""y"":18},{""x"":211,""y"":29},{""x"":230,""y"":49},{""x"":245,""y"":74},{""x"":253,""y"":100},{""x"":255,""y"":118},{""x"":254,""y"":143},{""x"":250,""y"":160},{""x"":242,""y"":182},{""x"":226,""y"":207},{""x"":212,""y"":222},{""x"":190,""y"":238},{""x"":158,""y"":251},{""x"":133,""y"":255},{""x"":104,""y"":254},{""x"":82,""y"":248},{""x"":66,""y"":241},{""x"":42,""y"":224},{""x"":25,""y"":206},{""x"":15,""y"":190},{""x"":8,""y"":173},{""x"":1,""y"":144},{""x"":1,""y"":117},{""x"":8,""y"":87},{""x"":24,""y"":56},{""x"":36,""y"":41},{""x"":55,""y"":24},{""x"":75,""y"":12},{""x"":98,""y"":4},{""x"":119,""y"":1}]}]",,,,2025-10-31T17:12:20.014Z,2025-10-31T17:12:20.014Z,,,,777.78,6222.22,JM82549FFA,EEL,FFA,
+,10/29/2025 13:35:59,BT,1,r@admin.com,YES,Fountain Rock,White Onyx,FR82501XMA,,1,4088,327,61,48,55,,https://drive.google.com/uc?export=view&id=1KRimVRFG7DoUVHPPREJsHCWYmeawN_RE,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 13:44:50,BT,2,r@admin.com,YES,Fountain Rock,White Onyx,"FR82502FMA",,1,9240,770,127,48,44,,https://drive.google.com/uc?export=view&id=16z440mFk86uu29FDedqvDFPzikNAWKoJ,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 13:47:55,BT,6,r@admin.com,YES,Fountain Rock,White Onyx,FR82506ANE,,1,11508,959,124,64,33,,https://drive.google.com/uc?export=view&id=1L_pDVn7nsWp4QnMBM-f6eraSF0Xdssj-,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 13:51:23,BT,7,r@admin.com,YES,Fountain Rock,White Onyx,FR82507HEO,,1,5820,485,71,33,53,,https://drive.google.com/uc?export=view&id=1vqw2E3tq_vXspgvRsTV1jX0lcmRfdDnS,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 13:53:34,BT,9,r@admin.com,YES,Fountain Rock,Onyx,FR82509NMH,,1,11784,979,130,38,66,,https://drive.google.com/uc?export=view&id=1sw2WjB3nIg4iDRqWg-EgCyge3tvIQqe0,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 13:55:29,BT,10,r@admin.com,YES,Fountain Rock,White Onyx,FR82510MDOE,,1,13179,1098,196,41,61,,https://drive.google.com/uc?export=view&id=1VaocSkxN8NZbPy8ZnAMt4wgLOGerRfSa,,,,,,,[],[],[],,,,2025-10-30T00:46:49.626Z,2025-10-30T00:46:49.626Z,,,,,,,,,
+,10/29/2025 18:03:04,DH,5,r@admin.com,YES,Fountain Rock,White San Luis,DH82505EMA,,1,6662,507,140,52,50,,https://drive.google.com/uc?export=view&id=1TZ_STqsT6u0lCGQIYuwYP1UKI1W8BgUy,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:09:15,DH,23,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82523HLL,,1,5992,456,183,40,20,,https://drive.google.com/uc?export=view&id=1gDne9XlxW80mJ91mrhp3Ux9DLnkwzGAT,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:11:12,DH,24,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82524HEO,,1,5821,443,175,30,26,,https://drive.google.com/uc?export=view&id=1i5cSjZYzsNHHlV6DscqQ7MTR4mkKruVv,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:12:50,DH,25,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82525HNL,,1,6373,485,180,40,38,,https://drive.google.com/uc?export=view&id=1VEoOenqDA4lLJP159rqbJybrJVDeCU4T,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:14:34,DH,26,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82526HXM,,1,5545,422,190,45,25,,https://drive.google.com/uc?export=view&id=1MFj9Gcbormr5uT8866VgakZiMb2Lc0wg,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:15:55,DH,27,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82527HHH,,1,5703,434,142,37,18,,https://drive.google.com/uc?export=view&id=1u7YyjKNoUMfvPHlwgkZ6qLh0r7ko2EE9,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/29/2025 18:17:22,DH,28,r@admin.com,YES,Fountain Rock,Orange Onyx,DH82528EOO,,1,6714.54,511,192,36,33,,https://drive.google.com/uc?export=view&id=1rNDsYzHgJ0OHKbFPGUkdcAWDRPeCz5Pl,,,,,,,[],[],[],,,,2025-10-30T01:03:02.209Z,2025-10-30T01:03:02.209Z,,,,,,,,,
+,10/30/2025 18:02:49,DH,1,r@admin.com,YES,Fountain Rock,Zebra Onyx,DH82501HAF,,1,6255,476,40,34,147,,https://drive.google.com/uc?export=view&id=19hIFo5X3byr51O2Xxgi3a7AmTyW7kTlg,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:03:45,DH,2,r@admin.com,YES,Fountain Rock,Zebra Onyx,DH82502MDHD,,1,13363,1017,50,65,167,,https://drive.google.com/uc?export=view&id=1ApauMh8bwm6B62PGXgI9wXwcAK7OiK9l,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:04:53,DH,3,r@admin.com,YES,Fountain Rock,Zebra Onyx,DH82503MDFD,,1,13758,1047,56,80,165,,https://drive.google.com/uc?export=view&id=1iqVj7bJVckEy6xOcxFgETdxh8t4VC-K3,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:06:20,DH,4,r@admin.com,YES,Fountain Rock,Zebra Onyx,DH82504EEF,,1,7161,545,38,35,171,,https://drive.google.com/uc?export=view&id=1ZPCDhcCjrjNl6hmELDfOjtQorBYia_D8,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:07:13,DH,5,r@admin.com,YES,Fountain Rock,White San Luis,DH82505EMA,,1,6662,507,50,52,140,,https://drive.google.com/uc?export=view&id=1Hr6X5sYCFQnrVaGWNF0wtbiV_23ENT1A,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:08:13,DH,6,r@admin.com,YES,Fountain Rock,White San Luis,DH82506AEH,,1,10972,835,31,50,213,,https://drive.google.com/uc?export=view&id=14dB3Pv2uJroXDZcHST3ZVWLwMkBhwKfw,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:09:06,DH,7,r@admin.com,YES,Fountain Rock,White San Luis,DH82507ENN,,1,7700,586,29,55,175,,https://drive.google.com/uc?export=view&id=1niFmfU69GZaOoSdKBtsiln8JY1ZWNvK6,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:09:54,DH,8,r@admin.com,YES,Fountain Rock,White San Luis,DH82508LFM,,1,8620,656,34,50,190,,https://drive.google.com/uc?export=view&id=1K08hJsdu99Tc05_MxYVIpM4Pq_2TK4Wf,,,,,,,[],[],[],,,,2025-10-31T00:12:16.435Z,2025-10-31T00:12:16.435Z,,,,,,,,,
+,10/30/2025 18:10:52,DH,9,r@admin.com,YES,Fountain Rock,White San Luis,DH82509EFA,,1,7437,566,30,40,175,,https://drive.google.com/uc?export=view&id=11PEFL5OgCZeTSUlLgx_3dw3jdO-IqGJv,,,,,,,[],[],[],,,,2025-10-31T17:11:31.165Z,2025-10-31T17:11:31.165Z,,,,,,,,,
+,2025-10-31T17:05:16.704Z,EM,,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82576XNL,,1,5100,30,150,80,10,,https://drive.google.com/uc?export=view&id=1PPtwWCers6oGglu5bvhast42YA0qyOfT,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,2,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82576XNL,,1,5100,30,150,80,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,3,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82577XNL,,1,5100,30,150,80,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,4,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82577XNL,,1,5100,30,150,80,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,5,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82577XNL,,1,5100,30,150,80,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,6,r@admin.com,YES,RECTANGULAR MIRROR,AQUA SERPENTINE,EM82577XNL,,1,5100,30,150,80,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,2025-10-31T17:06:58.806Z,EM,7,r@admin.com,YES,RECTANGULAR MIRROR,CRISTALINO ONYX,EM82578ENM,,1,7600,40,183,102,10,,https://drive.google.com/uc?export=view&id=1hrbx1i-XZlwfPRgwWgE5x_JbrAkdPIHO,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,8,r@admin.com,YES,SQARED MIRROR,CRISTALINO/GREY ONYC,EM82579XOL,,1,4200,27,100,100,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,9,r@admin.com,YES,SQARED MIRROR,CRISTALINO/GREY ONYC,EM82579XOL,,1,4200,27,100,100,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,10,r@admin.com,YES,SQARED MIRROR,CRISTALINO/GREY ONYC,EM82579XOL,,1,4200,27,100,100,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,11,r@admin.com,YES,RECTANGULAR MIRROR,TEHUACAN/GREY ONYX,EM82580OLE,,1,3400,19,100,60,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,10/31/2025,EM,12,r@admin.com,YES,RECTANGULAR MIRROR,TEHUACAN/GREY ONYX,EM82580OLE,,1,3400,19,100,60,10,,,,,,,,,,,,,,,2025-10-31T17:10:27.725Z,2025-10-31T17:10:27.725Z,,,,,,,,,
+,2025-11-03T01:27:08.897Z,EM,13,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,14,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,15,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,16,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,17,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,18,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,19,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,20,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,21,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,22,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,23,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,24,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,25,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,26,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,27,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,28,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,29,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,30,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82588ON,,1,380,3,10,35,10,,https://drive.google.com/uc?export=view&id=109FNFpXQVMfyrVh2esKEdTNbsWoUKbav,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:28:11.378Z,EM,31,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,32,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:28:11.829Z,EM,33,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,34,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,35,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:28:12.072Z,EM,36,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,37,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,38,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,39,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,40,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,41,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,42,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,43,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/GRAY ONYX,EM82589ON,,1,380,3,10,32,10,,https://drive.google.com/uc?export=view&id=19PlkqizpJ68gV5D_K_K2cAhkbWIw_w8r,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:29:02.415Z,EM,44,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:29:02.528Z,EM,45,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1l6SsmAfQuu_DexFM_wzh9gwrxpFeHnRq,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,46,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,47,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,48,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,49,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,50,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,51,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,52,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,53,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,54,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,55,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,56,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,57,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,58,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,59,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,60,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,61,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,62,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,63,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,64,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,65,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,66,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO/AMBER ONYX,EM82590ON,,1,380,3,35,10,10,,https://drive.google.com/uc?export=view&id=1OchKlndY2iKPobc8GKE5vGWeOxnpBeXc,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,2025-11-03T01:34:44.655Z,EM,67,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,68,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,69,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,70,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,71,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,72,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,73,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,74,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,75,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,76,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,77,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,78,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,79,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/2/2025,EM,80,r@admin.com,YES,PENDANT CYLINDER,CRISTALINO ONYX,EM82591XE,,1,440,3,35,12,12,,https://drive.google.com/uc?export=view&id=1stx1nkq7p2oo3UP9OL8HGP5_bljAXOQ-,,,,,,,,,,,,,2025-11-03T01:45:40.411Z,2025-11-03T01:45:40.411Z,,,,,,,,,
+,11/3/2025 11:41:16,EM,81,r@admin.com,YES,Canoe,CRISTALINO ONYX,EM82581OFO,,1,3484,3,11,22,120,,https://drive.google.com/uc?export=view&id=1Y4nPH75hzJFsLCvJDah7YbsAvouYBdNh,,,,,,,[],[],[],,,,2025-11-03T20:52:30.522Z,2025-11-03T20:52:30.522Z,,,,,,,,,
+,11/3/2025 11:44:13,EM,82,r@admin.com,YES,Canoe,CRISTALINO ONYX,EM82582OLD,,1,3484,11,10,22,115,,https://drive.google.com/uc?export=view&id=1mQyM0PM6SmhRGTxIXVg0-56UBfrIkSn7,,,,,,,[],[],[],,,,2025-11-03T20:52:30.522Z,2025-11-03T20:52:30.522Z,,,,,,,,,
+,11/3/2025 12:04:43,EM,83,r@admin.com,YES,Canoe,CRISTALINO/AMBER ONYX,EM82583OHN,,3,3194,11,11,22,110,,https://drive.google.com/uc?export=view&id=1KJ5Lsgn7r-vZsVuZgHEZxFrkwe7242Wb,,,,,,,[],[],[],,,,2025-11-03T20:52:30.522Z,2025-11-03T20:52:30.522Z,,,,,,,,,
+,11/3/2025 14:48:28,EM,84,r@admin.com,YES,Canoe,CRISTALINO ONYX,EM82584OOE,,2,2904,11,11,22,110,,https://drive.google.com/uc?export=view&id=1vpclXsZicHd3qyyEmgz3lTWWY1ZIN00q,,,,,,,[],[],[],,,,2025-11-03T20:52:30.522Z,2025-11-03T20:52:30.522Z,,,,,,,,,
+,11/3/2025 14:50:47,EM,85,r@admin.com,YES,Canoe,CRISTALINO/GREEN ONYX,EM82585MEA,,2,2032,7,11,22,70,,https://drive.google.com/uc?export=view&id=15qxT-zbK9ZQbBiP0HEcJAw2qjn7G2EKV,,,,,,,[],[],[],,,,2025-11-03T20:52:30.522Z,2025-11-03T20:52:30.522Z,,,,,,,,,
