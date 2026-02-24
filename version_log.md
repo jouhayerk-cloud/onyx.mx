@@ -4,6 +4,17 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.1.0 - Power Workbook Redesign & Stability Improvements**
+
+### **Date:** 2026-02-24
+
+- **WORKBOOK REDESIGN**: Transformed the Workbook into a high-density "Power Tracker" with a unified HUD, adaptive layouts (Table, Gallery, Kanban), and an integrated Quick-Edit side panel.
+- **DATABASE STABILITY**: Standardized the RxDB schema and decoupled synchronization from initialization to prevent UI hangs on empty or slow databases.
+- **VERSION TRACKING**: Implemented visible version numbering in the main application header.
+- **UI POLISH**: Optimized loading states across the dashboard and workbook modules.
+
+---
+
 ## **v2.0.0 - Unified Supabase Architecture & Workflow Re-alignment**
 
 ### **Date:** 2026-02-24
