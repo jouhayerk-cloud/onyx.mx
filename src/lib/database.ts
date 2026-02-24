@@ -193,44 +193,51 @@ const createDatabase = async () => {
                 console.log('[DB] Paging active items (326)...');
                 const activeData = await fetchPaginated('inventory', 'workbook', '326');
                 console.log(`[DB] Fetched ${activeData.length} active items (326) from Supabase.`);
-                if (activeData.length > 0) {
-                    console.log(`✅ [DB] Syncing active items into RxDB...`);
-                    await bulkUpsertChunked(db.inventory, activeData, 50, 50);
-                } else {
-                    console.warn('⚠️ [DB] No items found for workbook 326. Testing connectivity with raw select...');
-                    const raw = await supabase.from('inventory').select('*').limit(5);
-                    if (raw.error) console.error('❌ [DB] Connectivity Test Error:', raw.error.message);
-                    if (raw.data) {
-                        console.log(`📡 [DB] Connectivity test returned ${raw.data.length} items. Syncing raw sample...`);
-                        await bulkUpsertChunked(db.inventory, raw.data, 5, 50);
-                    }
-                }
+                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData, 50, 50);
 
                 // PHASE 2: ARCHIVE DATA (Workbook 825)
                 console.log('[DB] Paging archive items (825)...');
                 const archiveData = await fetchPaginated('inventory', 'workbook', '825');
                 console.log(`[DB] Fetched ${archiveData.length} archive items (825) from Supabase.`);
-                if (archiveData.length > 0) {
-                    console.log(`✅ [DB] Syncing archive records (background)...`);
-                    await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
+                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
+
+                // PRUNE STALE LOCAL INVENTORY
+                const remoteInvIds = new Set([...activeData, ...archiveData].map(d => String(d.id)));
+                const localInvDocs = await db.inventory.find().exec();
+                const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
+                if (staleInv.length > 0) {
+                    await Promise.all(staleInv.map((doc: any) => doc.remove()));
+                    console.log(`🗑️ [DB] Pruned ${staleInv.length} stale inventory records.`);
                 }
 
                 // Finance
                 const finData = await fetchPaginated('finance');
                 console.log(`[DB] Fetched ${finData.length} finance items.`);
                 if (finData.length > 0) await bulkUpsertChunked(db.finance, finData, 50, 50);
+                const remoteFinIds = new Set(finData.map((d: any) => String(d.id)));
+                const localFinDocs = await db.finance.find().exec();
+                const staleFin = localFinDocs.filter((doc: any) => !remoteFinIds.has(doc.id));
+                if (staleFin.length > 0) await Promise.all(staleFin.map((doc: any) => doc.remove()));
 
                 // Logistics
                 const logData = await fetchPaginated('logistics');
                 console.log(`[DB] Fetched ${logData.length} logistics items.`);
                 if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData, 50, 50);
+                const remoteLogIds = new Set(logData.map((d: any) => String(d.id)));
+                const localLogDocs = await db.logistics.find().exec();
+                const staleLog = localLogDocs.filter((doc: any) => !remoteLogIds.has(doc.id));
+                if (staleLog.length > 0) await Promise.all(staleLog.map((doc: any) => doc.remove()));
 
                 // Production
                 const prodData = await fetchPaginated('production');
                 console.log(`[DB] Fetched ${prodData.length} production items.`);
                 if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData, 50, 50);
+                const remoteProdIds = new Set(prodData.map((d: any) => String(d.id)));
+                const localProdDocs = await db.production.find().exec();
+                const staleProd = localProdDocs.filter((doc: any) => !remoteProdIds.has(doc.id));
+                if (staleProd.length > 0) await Promise.all(staleProd.map((doc: any) => doc.remove()));
 
-                console.log('🏁 [DB] Prioritized paginated sync complete.');
+                console.log('🏁 [DB] Prioritized paginated sync with pruning complete.');
             } catch (err) {
                 console.error('🔥 [DB] Fatal Sync Crash:', err);
             }

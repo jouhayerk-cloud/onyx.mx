@@ -325,9 +325,9 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
         const db = await import('../../lib/database').then(m => m.getDatabase());
         sub = db.inventory.find().$.subscribe((docs: any) => {
           setInventory(docs.map((doc: any) => ({
-            row: doc.id, // Use id as row identifier
-            label: `${doc.shape} #${doc.itemNumber}`,
-            imageUrl: doc.generatedPngUrl || (doc.mediaUrls ? doc.mediaUrls.split(',')[0].trim() : null),
+            row: doc.id,
+            label: `${doc.shape || '?'} #${doc.item_number || '?'}`,
+            imageUrl: doc.generated_png_url || (doc.media_urls ? doc.media_urls.split(',')[0].trim() : null),
             data: doc.toJSON()
           })));
           setIsLoading(false);
