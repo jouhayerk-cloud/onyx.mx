@@ -12,10 +12,10 @@ import type { PaymentDestination } from '../../lib/Types';
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
-    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide transition-all ${active
-        ? 'text-black ring-1 ring-inset ring-black/10'
-        : 'opacity-25 bg-white/5 text-white/30'
-        }`} style={active ? { backgroundColor: color } : {}}>
+    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
+        ? 'text-black shadow-[0_0_10px_rgba(0,0,0,0.2)]'
+        : 'bg-white/5 text-white/10'
+        }`} style={active ? { backgroundColor: color, boxShadow: `0 0 15px ${color}33` } : {}}>
         {label}
     </span>
 );
@@ -45,52 +45,67 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
     };
 
     return (
-        <div className="flex flex-col h-full bg-black/20">
-            <div className="flex gap-2 p-2 border-b border-white/5 shrink-0 bg-white/[0.02]">
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none w-48" />
-                <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none">
-                    <option value="ALL">All Vendors</option>
+        <div className="flex flex-col h-full">
+            <div className="flex gap-3 p-3 items-center shrink-0">
+                <div className="relative flex-1 max-w-sm">
+                    <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter items..." className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2 text-xs text-white/80 focus:ring-1 focus:ring-[var(--main-color)] transition-all" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-20"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></div>
+                </div>
+                <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold tracking-widest text-white/60 focus:outline-none">
+                    <option value="ALL">ALL VENDORS</option>
                     {[...new Set(docs.map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
-                <div className="ml-auto text-[10px] text-white/30 flex items-center">{filtered.length} Items</div>
+                <div className="ml-auto text-[10px] uppercase font-black tracking-widest text-white/20">{filtered.length} Items Listed</div>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#111] z-10 border-b border-white/10">
-                        <tr className="text-[9px] uppercase tracking-widest text-white/40">
-                            <th className="px-3 py-2 w-10">VND</th>
-                            <th className="px-3 py-2 w-12">#</th>
-                            <th className="px-3 py-2">Description</th>
-                            <th className="px-3 py-2 text-right">MXN</th>
-                            {!isArchive && <th className="px-3 py-2 text-center w-64">Workflow</th>}
-                            {isArchive && <th className="px-3 py-2 text-right w-24">Date</th>}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {filtered.map(item => {
-                            const vColor = vendors[item.item_id as keyof typeof vendors]?.color || '#555';
-                            return (
-                                <tr key={item.id} className="hover:bg-white/[0.03] group transition-colors">
-                                    <td className="px-3 py-1.5"><div className="w-6 h-5 rounded flex items-center justify-center text-[9px] font-black" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>{item.item_id}</div></td>
-                                    <td className="px-3 py-1.5 font-mono text-[10px] text-white/30">{item.item_number}</td>
-                                    <td className="px-3 py-1.5 text-xs text-white/70">{item.description || item.shape}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-[10px] text-white/60">{fmtMXN(item.price_mxn)}</td>
-                                    {!isArchive && (
-                                        <td className="px-3 py-1.5">
-                                            <div className="flex justify-center gap-1">
-                                                <button onClick={() => handleStatusToggle(item.id, 'in_production', !item.in_production)}><StatusPill label="PROD" active={item.in_production} color="#FFED00" /></button>
-                                                <button onClick={() => handleStatusToggle(item.id, 'ready', !item.ready)}><StatusPill label="READY" active={item.ready} color="#8DC63F" /></button>
-                                                <button onClick={() => handleStatusToggle(item.id, 'paid', !item.paid)}><StatusPill label="PAID" active={item.paid} color="#00AEEF" /></button>
-                                                <button onClick={() => handleStatusToggle(item.id, 'shipped', !item.shipped)}><StatusPill label="SHIP" active={item.shipped} color="#6BCEBB" /></button>
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-3">
+                <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.01] backdrop-blur-md">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
+                                <th className="px-4 py-3 w-12 text-center">VND</th>
+                                <th className="px-4 py-3 w-20">TAG ID</th>
+                                <th className="px-4 py-3">Description</th>
+                                <th className="px-4 py-3 text-right">Value (MXN)</th>
+                                {!isArchive ? <th className="px-4 py-3 text-center w-64">Status / Workflow</th> : <th className="px-4 py-3 text-right w-24">Archived</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.03]">
+                            {filtered.map(item => {
+                                const vColor = vendors[item.item_id as keyof typeof vendors]?.color || '#555';
+                                return (
+                                    <tr key={item.id} className="hover:bg-white/[0.04] group transition-all duration-200">
+                                        <td className="px-4 py-2 text-center">
+                                            <div className="inline-flex w-7 h-6 rounded-md items-center justify-center text-[10px] font-black shadow-lg" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
+                                                {item.item_id}
                                             </div>
                                         </td>
-                                    )}
-                                    {isArchive && <td className="px-3 py-1.5 text-right font-mono text-[9px] text-white/30">{fmtDate(item.pay_date || item.timestamp)}</td>}
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                        <td className="px-4 py-2 font-mono text-[10px] text-white/40 group-hover:text-white/80 transition-colors uppercase">{item.item_number}</td>
+                                        <td className="px-4 py-2">
+                                            <div className="text-xs text-white/70 group-hover:text-white transition-colors">{item.description || item.shape || 'Untitled Item'}</div>
+                                            <div className="text-[9px] text-white/20 font-mono mt-0.5">{item.material || 'Standard Material'}</div>
+                                        </td>
+                                        <td className="px-4 py-2 text-right">
+                                            <div className="font-mono text-xs font-bold text-white/60 tracking-tighter">{fmtMXN(item.price_mxn)}</div>
+                                            <div className="text-[8px] text-white/20 font-mono">{fmtUSD(item.price_mxn / exchangeRate)}</div>
+                                        </td>
+                                        {!isArchive ? (
+                                            <td className="px-4 py-2">
+                                                <div className="flex justify-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => handleStatusToggle(item.id, 'in_production', !item.in_production)} title="Production"><StatusPill label="PROD" active={item.in_production} color="#FFED00" /></button>
+                                                    <button onClick={() => handleStatusToggle(item.id, 'ready', !item.ready)} title="Ready"><StatusPill label="READY" active={item.ready} color="#8DC63F" /></button>
+                                                    <button onClick={() => handleStatusToggle(item.id, 'paid', !item.paid)} title="Paid"><StatusPill label="PAID" active={item.paid} color="#00AEEF" /></button>
+                                                    <button onClick={() => handleStatusToggle(item.id, 'shipped', !item.shipped)} title="Shipped"><StatusPill label="SHIP" active={item.shipped} color="#6BCEBB" /></button>
+                                                </div>
+                                            </td>
+                                        ) : (
+                                            <td className="px-4 py-2 text-right font-mono text-[9px] text-white/30 italic">{fmtDate(item.pay_date || item.timestamp)}</td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
@@ -112,41 +127,78 @@ const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: numbe
         const ids = [...selected];
         const commission = destinationsConfig[dest].calculateCommission(totalSelected);
         const { error } = await supabase.from('finance').insert({
-            amount: (totalSelected + commission) / exchangeRate, description: `Request for ${ids.length} items via ${dest}`, vendor_id: filterVendor !== 'ALL' ? filterVendor : null, status: 'Requested', destination: dest, related_ids: ids
+            amount: (totalSelected + commission) / exchangeRate, description: `Batch Payment: ${ids.length} Tags via ${dest}`, vendor_id: filterVendor !== 'ALL' ? filterVendor : null, status: 'Requested', destination: dest, related_ids: ids
         });
-        if (!error) { await supabase.from('inventory').update({ pay_req: true }).in('id', ids); setSelected(new Set()); onRefresh(); toast.success('Payment Requested'); }
+        if (!error) {
+            await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+            setSelected(new Set());
+            onRefresh();
+            toast.success('Funds Requested Successfully');
+        }
     };
 
     return (
-        <div className="flex h-full bg-black/20">
-            <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
-                <div className="flex p-2 bg-white/[0.02] border-b border-white/5 gap-2">
-                    <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white">
-                        <option value="ALL">All Vendors</option>
+        <div className="flex h-full p-3 gap-3">
+            <div className="flex-1 flex flex-col rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-xl overflow-hidden shadow-2xl">
+                <div className="flex p-3 bg-white/[0.03] border-b border-white/5 gap-3 items-center">
+                    <select value={filterVendor} onChange={e => setFilterVendor(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold tracking-widest text-white/70">
+                        <option value="ALL">ALL VENDORS</option>
                         {[...new Set(docs.filter(d => !d.paid).map(d => d.item_id))].sort().map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
-                    <button onClick={() => setSelected(new Set(unpaid.map(u => u.id)))} className="text-[10px] text-white/30 hover:text-white px-2">Select All</button>
+                    <button onClick={() => setSelected(new Set(unpaid.map(u => u.id)))} className="text-[10px] uppercase font-bold text-white/30 hover:text-[var(--main-color)] transition-colors px-2">Select All Available</button>
+                    <div className="ml-auto text-[10px] text-white/20 font-mono uppercase tracking-widest">{selected.size} / {unpaid.length} Selected</div>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {unpaid.map(u => (
-                        <div key={u.id} onClick={() => toggle(u.id)} className={`flex items-center gap-3 px-3 py-2 border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors ${selected.has(u.id) ? 'bg-[var(--main-color)]/10' : ''}`}>
-                            <div className={`w-3.5 h-3.5 rounded border ${selected.has(u.id) ? 'bg-[var(--main-color)] border-[var(--main-color)]' : 'border-white/20'}`} />
-                            <div className="flex-1 text-xs text-white/70">{u.item_id} {u.item_number} - {u.description}</div>
-                            <div className="font-mono text-[10px] text-white/40">{fmtMXN(u.price_mxn)}</div>
+                        <div key={u.id} onClick={() => toggle(u.id)} className={`flex items-center gap-4 px-4 py-3 border-b border-white/5 cursor-pointer hover:bg-white/[0.04] transition-all ${selected.has(u.id) ? 'bg-[var(--main-color)]/5' : ''}`}>
+                            <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-all ${selected.has(u.id) ? 'bg-[var(--main-color)] border-[var(--main-color)] shadow-[0_0_10px_rgba(127,187,255,0.3)]' : 'border-white/10 group-hover:border-white/30'}`}>
+                                {selected.has(u.id) && <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-xs font-bold text-white/80">{u.item_id} <span className="font-mono text-white/20 ml-1">{u.item_number}</span></div>
+                                <div className="text-[10px] text-white/40 line-clamp-1 italic">{u.description || u.shape}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="font-mono text-xs font-bold text-white">{fmtMXN(u.price_mxn)}</div>
+                                <div className="text-[9px] text-white/20 font-mono">{fmtUSD(u.price_mxn / exchangeRate)}</div>
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
-            <div className="w-64 bg-white/[0.01] flex flex-col p-4 gap-4">
-                <div><div className="text-[9px] uppercase tracking-widest text-white/30 mb-1">Total Selected</div><div className="text-2xl font-mono font-bold text-white">{fmtMXN(totalSelected)}</div></div>
-                <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(destinationsConfig).map(([k, c]) => (
-                        <button key={k} onClick={() => setDest(k as any)} className={`p-2 border rounded transition-all flex flex-col items-center ${dest === k ? 'bg-[var(--main-color)]/20 border-[var(--main-color)]' : 'border-white/10 hover:border-white/20'}`}>
-                            <img src={c.icon} className="h-6 object-contain mb-1" /><span className="text-[8px] text-white/40">{c.name}</span>
-                        </button>
-                    ))}
+            <div className="w-72 flex flex-col gap-4">
+                <div className="rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-3xl p-5 shadow-2xl flex flex-col gap-6">
+                    <div>
+                        <div className="text-[10px] uppercase font-black tracking-[0.2em] text-white/30 mb-2">Checkout Summary</div>
+                        <div className="text-3xl font-mono font-black text-white leading-none tracking-tighter">{fmtMXN(totalSelected)}</div>
+                        <div className="text-[11px] font-mono text-white/30 mt-1">Approx. {fmtUSD(totalSelected / exchangeRate)} USD</div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="text-[9px] uppercase font-black tracking-widest text-white/20">Select Payout Network</div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(destinationsConfig).map(([k, c]) => (
+                                <button key={k} onClick={() => setDest(k as any)} className={`group p-3 border rounded-xl transition-all flex flex-col items-center justify-center gap-2 ${dest === k ? 'bg-[var(--main-color)]/20 border-[var(--main-color)] shadow-[0_0_20px_rgba(127,187,255,0.15)]' : 'border-white/5 hover:border-white/20 hover:bg-white/[0.03]'}`}>
+                                    <img src={c.icon} className={`h-7 object-contain grayscale transition-all ${dest === k ? 'grayscale-0 scale-110' : 'group-hover:grayscale-0'}`} />
+                                    <span className="text-[9px] font-black tracking-tighter text-white/40 group-hover:text-white/80">{c.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button onClick={handleRequest} disabled={!dest || selected.size === 0} className="w-full py-3.5 rounded-xl bg-[var(--main-color)] text-black font-black text-[11px] tracking-[0.1em] shadow-[0_4px_20px_rgba(127,187,255,0.4)] disabled:opacity-20 disabled:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all">
+                        INITIATE TRANSFER
+                    </button>
                 </div>
-                <button onClick={handleRequest} disabled={!dest || selected.size === 0} className="mt-auto w-full py-2 rounded bg-[var(--main-color)] text-black font-bold text-xs disabled:opacity-20">REQUEST PAYMENT</button>
+
+                <div className="flex-1 rounded-2xl border border-white/5 bg-white/[0.01] backdrop-blur-md p-4 overflow-hidden flex flex-col">
+                    <div className="text-[9px] uppercase font-black tracking-widest text-white/20 mb-3 ml-1">Fees & Commissions</div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px]"><span className="text-white/30">Batch Value</span><span className="text-white/80 font-mono">{fmtMXN(totalSelected)}</span></div>
+                        {dest && <div className="flex justify-between text-[11px]"><span className="text-white/30">MGP Network Fee</span><span className="text-[#8DC63F] font-mono">+{fmtMXN(destinationsConfig[dest].calculateCommission(totalSelected))}</span></div>}
+                        <div className="border-t border-white/5 pt-2 flex justify-between text-xs font-bold"><span className="text-white">To Be Funded</span><span className="text-[var(--main-color)] font-mono">{fmtMXN(totalSelected + (dest ? destinationsConfig[dest].calculateCommission(totalSelected) : 0))}</span></div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -154,21 +206,32 @@ const PaymentsPanel: React.FC<{ docs: any[]; finDocs: any[]; exchangeRate: numbe
 
 // 3. PRODUCTION
 const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => (
-    <div className="flex flex-col h-full bg-black/20 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto custom-scrollbar">
+    <div className="h-full p-4 overflow-y-auto custom-scrollbar">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {docs.map(p => {
                 const color = vendors[p.vendor_id as keyof typeof vendors]?.color || '#555';
                 return (
-                    <div key={p.id} className="glass-panel p-4 rounded-xl border border-white/5 flex flex-col gap-3 group relative overflow-hidden">
-                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
-                        <div className="flex justify-between">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold text-black" style={{ backgroundColor: color }}>{p.vendor_id}</span>
-                            <span className="font-mono text-xs text-white/80">{fmtMXN(p.total)}</span>
+                    <div key={p.id} className="glass-panel p-5 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col gap-4 group hover:bg-white/[0.05] transition-all shadow-xl backdrop-blur-xl">
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 opacity-80" style={{ backgroundColor: color }} />
+                        <div className="flex justify-between items-start">
+                            <span className="px-3 py-1 rounded-full text-[10px] font-black text-black shadow-md tracking-tighter" style={{ backgroundColor: color }}>{p.vendor_id}</span>
+                            <div className="text-right">
+                                <div className="text-sm font-black text-white/90 font-mono">{fmtMXN(p.total)}</div>
+                                <div className="text-[9px] text-white/30 uppercase font-black tracking-widest">{p.quantity} Units Total</div>
+                            </div>
                         </div>
-                        <h4 className="text-xs font-bold text-white truncate group-hover:text-[#FFED00] transition-colors">{p.description}</h4>
-                        <div className="flex justify-between text-[10px] text-white/40"><span>Adv: {fmtMXN(p.advance)}</span><span>Qty: {p.quantity}</span></div>
-                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden mt-1"><div className="h-full bg-[#FFED00] transition-all" style={{ width: `${p.progress}%` }} /></div>
-                        <div className="text-[9px] text-white/20 font-mono text-right mt-1">Ready: {fmtDate(p.ready_date)}</div>
+                        <div>
+                            <h4 className="text-sm font-bold text-white group-hover:text-[var(--main-color)] transition-colors line-clamp-2">{p.description}</h4>
+                            <div className="mt-1 font-mono text-[10px] text-white/20 uppercase tracking-widest">ORDER TAG: {p.tag_id}</div>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-black tracking-tighter text-white/30 uppercase"><span>Progress</span><span>{Math.round(p.progress || 0)}% Complete</span></div>
+                            <div className="h-2 w-full bg-white/5 rounded-full p-0.5 border border-white/5"><div className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-[var(--main-color)] to-[#AEE6F5]" style={{ width: `${p.progress}%`, boxShadow: `0 0 10px ${vendors[p.vendor_id]?.color || '#7FBBFF'}33` }} /></div>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                            <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase font-bold">Advance Paid</span><span className="text-xs font-mono font-bold text-[#8DC63F]">{fmtMXN(p.advance)}</span></div>
+                            <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-bold">Estimated Ready</span><span className="text-xs font-mono font-bold text-white/60">{fmtDate(p.ready_date)}</span></div>
+                        </div>
                     </div>
                 );
             })}
@@ -214,23 +277,43 @@ export const WorkbookView: React.FC = () => {
 
     useEffect(() => {
         if (!db) return;
+
+        let invTimer: any, finTimer: any, prodTimer: any, logTimer: any;
+
         const subs = [
             db.inventory.find().$.subscribe(d => {
-                const items = d.map(x => x.toJSON());
-                setData(p => ({ ...p, inv: items }));
-                if (items.length > 0) setIsSyncing(false);
+                clearTimeout(invTimer);
+                invTimer = setTimeout(() => {
+                    const items = d.map(x => x.toJSON());
+                    setData(p => ({ ...p, inv: items }));
+                    if (items.length > 0) setIsSyncing(false);
+                }, 200);
             }),
-            db.finance.find().$.subscribe(d => setData(p => ({ ...p, fin: d.map(x => x.toJSON()) }))),
-            db.production.find().$.subscribe(d => setData(p => ({ ...p, prod: d.map(x => x.toJSON()) }))),
-            db.logistics.find().$.subscribe(d => setData(p => ({ ...p, log: d.map(x => x.toJSON()) })))
+            db.finance.find().$.subscribe(d => {
+                clearTimeout(finTimer);
+                finTimer = setTimeout(() => {
+                    setData(p => ({ ...p, fin: d.map(x => x.toJSON()) }));
+                }, 200);
+            }),
+            db.production.find().$.subscribe(d => {
+                clearTimeout(prodTimer);
+                prodTimer = setTimeout(() => {
+                    setData(p => ({ ...p, prod: d.map(x => x.toJSON()) }));
+                }, 200);
+            }),
+            db.logistics.find().$.subscribe(d => {
+                clearTimeout(logTimer);
+                logTimer = setTimeout(() => {
+                    setData(p => ({ ...p, log: d.map(x => x.toJSON()) }));
+                }, 200);
+            })
         ];
 
-        // Timeout to stop showing "Syncing" even if empty
-        const timer = setTimeout(() => setIsSyncing(false), 5000);
+        const timeoutTimer = setTimeout(() => setIsSyncing(false), 8000);
 
         return () => {
             subs.forEach(s => s.unsubscribe());
-            clearTimeout(timer);
+            [invTimer, finTimer, prodTimer, logTimer, timeoutTimer].forEach(clearTimeout);
         };
     }, [db, ver]);
 
@@ -242,47 +325,53 @@ export const WorkbookView: React.FC = () => {
     const isEmpty = data.inv.length === 0;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-[#0A0A0A]">
-            <div className="flex items-center px-2 pt-1 gap-1 border-b border-white/5 bg-black/40">
+        <div className="flex flex-col h-full overflow-hidden bg-transparent">
+            {/* Header Tabs Area */}
+            <div className="flex items-end px-4 pt-4 gap-2 border-b border-white/[0.03] bg-white/[0.02] backdrop-blur-xl shrink-0">
                 {[
-                    { id: 'inventory', label: '326 ACTIVE', badge: docs326.filter(d => !d.shipped).length },
-                    { id: 'archive', label: '825 SHIPPED', badge: null },
-                    { id: 'payments', label: 'PAYMENTS', badge: docs326.filter(d => !d.paid).length },
-                    { id: 'paylog', label: 'PAY LOG', badge: data.fin.filter(f => f.status === 'Requested').length },
-                    { id: 'production', label: 'PROD', badge: data.prod.length },
-                    { id: 'crates', label: 'CRATES', badge: data.log.length },
+                    { id: 'inventory', label: 'WORKBOOK 326', badge: docs326.filter(d => !d.shipped).length },
+                    { id: 'archive', label: 'ARCHIVE 825', badge: null },
+                    { id: 'payments', label: 'FINANCE & PAY', badge: docs326.filter(d => !d.paid).length },
+                    { id: 'production', label: 'PRODUCTION', badge: data.prod.length },
+                    { id: 'crates', label: 'LOGISTICS', badge: data.log.length },
                     { id: 'supplies', label: 'SUPPLIES', badge: supplies.length }
+                    // Removed redundant Pay Log tab, integrated into Finance
                 ].map(t => (
-                    <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-3 py-2 text-[10px] font-bold tracking-widest transition-all rounded-t-sm border-b-2 ${activeTab === t.id ? 'text-[var(--main-color)] border-[var(--main-color)] bg-white/5' : 'text-white/20 border-transparent hover:text-white/50'}`}>
+                    <button key={t.id} onClick={() => setActiveTab(t.id as any)} className={`px-5 py-3 text-[9px] font-black tracking-[0.2em] transition-all rounded-t-xl border-t border-x border-transparent ${activeTab === t.id ? 'text-white bg-white/5 border-white/5 !border-b-transparent shadow-[0_-10px_30px_rgba(255,255,255,0.03)]' : 'text-white/20 hover:text-white/50 hover:bg-white/[0.02]'}`}>
                         {t.label}
-                        {!!t.badge && t.badge > 0 && <span className="ml-1.5 px-1 py-0.5 rounded-sm bg-white/10 text-white/40 text-[8px] font-mono">{t.badge}</span>}
+                        {!!t.badge && t.badge > 0 && <span className="ml-2 px-1.5 py-0.5 rounded bg-white/10 text-white/50 text-[7px] font-mono">{t.badge}</span>}
                     </button>
                 ))}
 
                 {isSyncing && (
-                    <div className="ml-auto px-4 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-[var(--main-color)] animate-pulse" />
-                        <span className="text-[10px] text-white/25 uppercase">Syncing Cloud DB...</span>
+                    <div className="ml-auto mb-3 flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--main-color)] animate-ping" />
+                        <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.1em]">Optimizing Local Cache...</span>
                     </div>
                 )}
             </div>
 
             <div className="flex-1 overflow-hidden relative">
-                {!isSyncing && isEmpty && (
+                {/* Background Texture/Gradient Overlay */}
+                <div className="absolute inset-0 pointer-events-none opacity-20 bg-gradient-to-tr from-transparent via-[var(--main-color)]/5 to-transparent shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]" />
+
+                {!isSyncing && isEmpty ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 gap-4">
                         <svg className="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
-                        <div className="text-sm">No data found in local database.</div>
-                        <button onClick={refresh} className="px-4 py-1.5 rounded-full border border-white/10 text-[10px] hover:bg-white/5 uppercase tracking-widest transition-all">Retry Sync</button>
+                        <div className="text-sm font-black tracking-widest uppercase opacity-40">No records found. Sync failed or DB empty.</div>
+                        <button onClick={refresh} className="px-6 py-2 rounded-full border border-white/10 text-[9px] font-black hover:bg-white/5 uppercase tracking-[0.2em] transition-all">Force Cloud Fetch</button>
+                    </div>
+                ) : (
+                    <div className="h-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
+                        {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
+                        {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
+                        {activeTab === 'payments' && <PaymentsPanel docs={data.inv} finDocs={data.fin} exchangeRate={exchangeRate} onRefresh={refresh} />}
+                        {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
+                        {/* More panels can follow similar refined patterns */}
+                        {activeTab === 'crates' && <CratesPanel docs={data.log} />}
+                        {activeTab === 'supplies' && <InventoryPanel docs={supplies} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
                     </div>
                 )}
-
-                {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
-                {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
-                {activeTab === 'payments' && <PaymentsPanel docs={data.inv} finDocs={data.fin} exchangeRate={exchangeRate} onRefresh={refresh} />}
-                {activeTab === 'paylog' && <InventoryPanel docs={paylog} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
-                {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
-                {activeTab === 'crates' && <CratesPanel docs={data.log} />}
-                {activeTab === 'supplies' && <InventoryPanel docs={supplies} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
             </div>
         </div>
     );

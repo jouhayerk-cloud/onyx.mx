@@ -127,7 +127,7 @@ export type OnyxDatabase = RxDatabase<{
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
 
-async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 100) {
+async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 50) {
     for (let i = 0; i < docs.length; i += chunkSize) {
         const chunk = docs.slice(i, i + chunkSize);
         try {
@@ -135,7 +135,8 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
         } catch (err) {
             console.error(`[DB] bulkUpsert error in ${collection.name}:`, err);
         }
-        await new Promise(resolve => setTimeout(resolve, 0));
+        // Increased delay to 50ms to strictly prevent main-thread starvation in Chrome
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
 }
 
