@@ -12,7 +12,7 @@ addRxPlugin(RxDBQueryBuilderPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 0,
+    version: 1, // BUMPED to force re-init
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -33,7 +33,7 @@ const financeSchema = {
 
 const logisticsSchema = {
     title: 'logistics schema',
-    version: 0,
+    version: 1, // BUMPED
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -60,7 +60,7 @@ const logisticsSchema = {
 
 const productionSchema = {
     title: 'production schema',
-    version: 0,
+    version: 1, // BUMPED
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -81,7 +81,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 0,
+    version: 1, // BUMPED
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -141,65 +141,98 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
 }
 
 const createDatabase = async () => {
-    const db = await createRxDatabase<OnyxDatabase>({
-        name: 'onyxdb',
-        storage: getRxStorageDexie()
-    });
+    try {
+        const db = await createRxDatabase<OnyxDatabase>({
+            name: 'onyxdb',
+            storage: getRxStorageDexie()
+        });
 
-    await db.addCollections({
-        inventory: { schema: inventorySchema },
-        finance: { schema: financeSchema },
-        logistics: { schema: logisticsSchema },
-        production: { schema: productionSchema }
-    });
+        await db.addCollections({
+            inventory: { schema: inventorySchema },
+            finance: { schema: financeSchema },
+            logistics: { schema: logisticsSchema },
+            production: { schema: productionSchema }
+        });
 
-    const pullReplication = async () => {
-        try {
-            console.log('[DB] Starting prioritized background sync...');
+        const pullReplication = async () => {
+            try {
+                console.log('🚀 [DB] Starting prioritized paginated sync...');
 
-            // PHASE 1: ACTIVE DATA (Workbook 326) - Higher priority
-            const { data: activeData, error: activeErr } = await supabase
-                .from('inventory')
-                .select('*')
-                .eq('workbook', '326');
+                // Helper for paginated fetch
+                const fetchPaginated = async (table: string, filterField?: string, filterVal?: any) => {
+                    let page = 0;
+                    const pageSize = 500;
+                    const allData: any[] = [];
 
-            if (!activeErr && activeData) {
-                console.log(`[DB] Syncing ${activeData.length} active items...`);
-                await bulkUpsertChunked(db.inventory, activeData, 50, 50); // Faster for active
+                    while (true) {
+                        let query = supabase.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                        if (filterField && filterVal !== undefined) {
+                            query = query.eq(filterField, filterVal);
+                        }
+
+                        const { data, error } = await query;
+                        if (error) {
+                            console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
+                            break;
+                        }
+                        if (!data || data.length === 0) break;
+
+                        allData.push(...data);
+                        if (data.length < pageSize) break;
+                        page++;
+                    }
+                    return allData;
+                };
+
+                // PHASE 1: ACTIVE DATA (Workbook 326)
+                console.log('[DB] Paging active items (326)...');
+                const activeData = await fetchPaginated('inventory', 'workbook', '326');
+                if (activeData.length > 0) {
+                    console.log(`✅ [DB] Syncing ${activeData.length} active items...`);
+                    await bulkUpsertChunked(db.inventory, activeData, 50, 50);
+                } else {
+                    console.warn('⚠️ [DB] No items found for workbook 326. checking for raw data...');
+                    const raw = await supabase.from('inventory').select('*').limit(50);
+                    if (raw.data) await bulkUpsertChunked(db.inventory, raw.data, 50, 50);
+                }
+
+                // PHASE 2: ARCHIVE DATA (Workbook 825)
+                console.log('[DB] Paging archive items (825)...');
+                const archiveData = await fetchPaginated('inventory', 'workbook', '825');
+                if (archiveData.length > 0) {
+                    console.log(`✅ [DB] Syncing ${archiveData.length} archive records (background)...`);
+                    await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
+                }
+
+                // Finance
+                const finData = await fetchPaginated('finance');
+                if (finData.length > 0) await bulkUpsertChunked(db.finance, finData, 50, 50);
+
+                // Logistics
+                const logData = await fetchPaginated('logistics');
+                if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData, 50, 50);
+
+                // Production
+                const prodData = await fetchPaginated('production');
+                if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData, 50, 50);
+
+                console.log('🏁 [DB] Prioritized paginated sync complete.');
+            } catch (err) {
+                console.error('🔥 [DB] Fatal Sync Crash:', err);
             }
+        };
 
-            // PHASE 2: ARCHIVE DATA (Workbook 825) - Lower priority, throttled
-            const { data: archiveData, error: archiveErr } = await supabase
-                .from('inventory')
-                .select('*')
-                .eq('workbook', '825');
-
-            if (!archiveErr && archiveData) {
-                console.log(`[DB] Syncing ${archiveData.length} archive items (background)...`);
-                // Very slow sync for archive to prevent any UI lag
-                await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
-            }
-
-            // Finance
-            const { data: finData, error: finErr } = await supabase.from('finance').select('*');
-            if (!finErr && finData) await bulkUpsertChunked(db.finance, finData, 50, 50);
-
-            // Logistics
-            const { data: logData, error: logErr } = await supabase.from('logistics').select('*');
-            if (!logErr && logData) await bulkUpsertChunked(db.logistics, logData, 50, 50);
-
-            // Production
-            const { data: prodData, error: prodErr } = await supabase.from('production').select('*');
-            if (!prodErr && prodData) await bulkUpsertChunked(db.production, prodData, 50, 50);
-
-            console.log('[DB] Prioritized sync complete.');
-        } catch (err) {
-            console.error('[DB] Sync failed:', err);
-        }
-    };
-
-    pullReplication();
-    return db;
+        pullReplication();
+        return db;
+    } catch (err) {
+        console.error('❌ [DB] Creation failed (possibly version mismatch). Wiping and retrying...', err);
+        // If version mismatch or corruption, wipe Dexie and reload
+        const dbName = 'onyxdb';
+        const Dexie = (await import('dexie')).default;
+        await new Dexie(dbName).delete();
+        window.location.reload();
+        throw err;
+    }
 };
 
 export const getDatabase = () => {
