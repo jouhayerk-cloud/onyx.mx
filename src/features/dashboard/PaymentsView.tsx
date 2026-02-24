@@ -2,9 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, Expense, InventoryItem } from '../../lib/Types';
-import { SCRIPT_URL, vendors, appUsers } from '../../lib/consts';
+import { vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { useDatabase } from '../../lib/hooks';
+import { supabase } from '../../lib/supabase';
+import { getTextColorForBg } from '../../lib/utils';
 
 
 type VendorGroup = {
@@ -21,38 +24,56 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 // --- Helper Functions ---
 const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
 
-const getTextColorForBg = (hexColor: string | undefined): string => {
-    if (!hexColor) return '#000000';
-    try {
-        const rgb = parseInt(hexColor.substring(1), 16);
-        const r = (rgb >> 16) & 0xff;
-        const g = (rgb >> 8) & 0xff;
-        const b = (rgb >> 0) & 0xff;
-        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        return luma < 128 ? '#FFFFFF' : '#000000';
-    } catch {
-        return '#000000';
-    }
-}
-
 const getVendorIdFromDescription = (description: string): string | null => {
     const match = description.match(/from (\w+)$/);
     return match ? match[1] : null;
 };
 
+// --- API Call Abstraction (Refactored to Supabase) ---
+const apiCall = async (action: string, payload: any, db: any) => {
+    if (action === 'appendExpense') {
+        const { error, data } = await supabase.from('finance').insert({
+            amount: payload.expenseData.amount,
+            currency: 'MXN',
+            type: payload.expenseData.type || 'Expense',
+            category: payload.expenseData.category || 'Vendor Payment',
+            description: payload.expenseData.description,
+            related_ids: payload.expenseData.inventoryItemRows ? payload.expenseData.inventoryItemRows.split(',') : []
+        }).select();
+        if (error) throw error;
 
-// --- API Call Abstraction ---
-const apiCall = async (action: string, payload: object) => {
-    const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'cors',
-        cache: 'no-cache',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, ...payload }),
-    });
-    const result = await response.json();
-    if (result.status !== 'success') throw new Error(result.message);
-    return result;
+        if (payload.expenseData.inventoryItemRows) {
+            const ids = payload.expenseData.inventoryItemRows.split(',');
+            await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+            if (db) {
+                await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { payReq: 'true' } });
+            }
+        }
+        return { status: 'success', data };
+    }
+
+    if (action === 'updateExpense') {
+        const { error } = await supabase.from('finance').update({
+            status: payload.expenseData.status,
+            pay_date: payload.expenseData.paymentDate
+        }).eq('id', payload.row);
+        if (error) throw error;
+        return { status: 'success' };
+    }
+
+    if (action === 'batchUpdateItems') {
+        // Handle batch items update (e.g. marking as paid/shipped)
+        for (const update of payload.updates) {
+            await supabase.from('inventory').update({
+                pay_req: !!update.itemData.payReq,
+                pay_date: update.itemData.payDate || null,
+                status: update.itemData.status || undefined
+            }).eq('id', update.row);
+        }
+        return { status: 'success' };
+    }
+
+    return { status: 'error', message: 'Action not implemented' };
 };
 
 // --- DestinationCard Component ---
@@ -99,6 +120,7 @@ const DestinationCard: React.FC<{
 
 // --- Modals ---
 const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
+    const db = useDatabase();
     const setPaymentsVersion = useSetAtom(paymentsVersionAtom);
     const [isSaving, setIsSaving] = useState(false);
     const [description, setDescription] = useState('');
@@ -126,7 +148,7 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
                     status: ExpenseStatus.Requested,
                     date: new Date().toISOString(),
                 }
-            });
+            }, db);
             toast.success('General expense added!', { id: toastId });
             setPaymentsVersion(v => v + 1);
             onClose();
@@ -221,6 +243,7 @@ interface PaymentsViewProps {
 }
 
 export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
+    const db = useDatabase();
     const [inventory, setInventory] = useAtom(inventoryAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -233,20 +256,26 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const user = useAtomValue(userAtom);
 
     const fetchData = useCallback(async () => {
+        if (!db) return;
         setIsLoading(true);
         try {
-            const [invRes, expRes] = await Promise.all([
-                apiCall('getInventory', { user }),
-                apiCall('getExpenses', { user }),
+            const [invDocs, expDocs] = await Promise.all([
+                db.inventory.find().exec(),
+                db.finance.find().exec()
             ]);
-            setInventory(invRes.data);
-            setExpenses(expRes.data);
+
+            setInventory(invDocs.map((doc: any) => ({
+                row: doc.id,
+                data: doc.toJSON()
+            })));
+
+            setExpenses(expDocs.map((doc: any) => doc.toJSON()));
         } catch (error: any) {
             toast.error(`Failed to load data: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
-    }, [setInventory, user]);
+    }, [db, setInventory]);
 
     useEffect(() => {
         fetchData();
@@ -297,13 +326,13 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     date: new Date().toISOString(),
                     inventoryItemRows: vendorGroup.items.map(i => i.row).join(','),
                 }
-            });
+            }, db);
             await apiCall('batchUpdateItems', {
                 updates: vendorGroup.items.map(item => ({
                     row: item.row,
                     itemData: { payReq: new Date().toISOString() }
                 }))
-            });
+            }, db);
             toast.success(`Payment requested for ${vendorGroup.vendorId}.`, { id: toastId });
             setInventoryVersion(v => v + 1);
             setPaymentsVersion(v => v + 1);
@@ -321,7 +350,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     status: ExpenseStatus.Paid,
                     paymentDate: new Date().toISOString(),
                 }
-            });
+            }, db);
             toast.success('Payment marked as paid.', { id: toastId });
             setInventoryVersion(v => v + 1);
             setPaymentsVersion(v => v + 1);

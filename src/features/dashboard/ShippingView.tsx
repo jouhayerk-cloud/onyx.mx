@@ -36,7 +36,9 @@ import {
     WAREHOUSE_DIMS,
     themeAtom,
 } from '../../lib/atoms';
-import { SCRIPT_URL, vendors } from '../../lib/consts';
+import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { useDatabase } from '../../lib/hooks';
+import { vendors } from '../../lib/consts';
 import { ShippingControl } from './ShippingControl';
 import toast from 'react-hot-toast';
 import { gsap } from 'gsap';
@@ -83,24 +85,15 @@ export function ShippingView({ mode = 'archive' }: ShippingViewProps) {
         const user = useAtomValue(userAtom);
         const store = useStore();
 
+        const db = useDatabase();
+
         useEffect(() => {
-            const fetchCrates = async () => {
-                try {
-                    const response = await fetch(SCRIPT_URL, {
-                        method: 'POST', body: JSON.stringify({ action: 'getCrates', user }),
-                    });
-                    const result = await response.json();
-                    if (result.status === 'success') {
-                        setCrates(result.data);
-                    } else {
-                        throw new Error(result.message);
-                    }
-                } catch (error: any) {
-                    toast.error(`Failed to load crates: ${error.message}`);
-                }
-            };
-            fetchCrates();
-        }, [cratesVersion, user, setCrates]);
+            if (!db) return;
+            const sub = db.crates.find().$.subscribe((docs: any) => {
+                setCrates(docs.map((doc: any) => doc.toJSON()));
+            });
+            return () => sub.unsubscribe();
+        }, [db, setCrates]);
 
         useEffect(() => {
             if (!mountRef.current) return;

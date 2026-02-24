@@ -12,10 +12,56 @@ if (import.meta.env.DEV) {
 addRxPlugin(RxDBQueryBuilderPlugin);
 // addRxPlugin(RxDBReplicationPlugin); // Removed as it might be wrong import
 
+const financeSchema = {
+    title: 'finance schema',
+    version: 0,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: { type: 'string', maxLength: 100 },
+        amount: { type: 'number' },
+        currency: { type: 'string' },
+        type: { type: 'string' },
+        category: { type: 'string' },
+        description: { type: 'string' },
+        related_ids: { type: 'array', items: { type: 'string' } },
+        updated_at: { type: 'string' }
+    }
+};
+
+const cratesSchema = {
+    title: 'crates schema',
+    version: 0,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: { type: 'string', maxLength: 100 },
+        label: { type: 'string' },
+        dimensions: {
+            type: 'object',
+            properties: {
+                width: { type: 'number' },
+                height: { type: 'number' },
+                depth: { type: 'number' }
+            }
+        },
+        position: {
+            type: 'object',
+            properties: {
+                x: { type: 'number' },
+                y: { type: 'number' },
+                z: { type: 'number' }
+            }
+        },
+        color: { type: 'string' },
+        items: { type: 'array', items: { type: 'string' } },
+        updated_at: { type: 'string' }
+    }
+};
+
 const inventorySchema = {
     title: 'inventory schema',
     version: 0,
-    description: 'describes an inventory item',
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -35,37 +81,24 @@ const inventorySchema = {
         heightCm: { type: 'string' },
         widthCm: { type: 'string' },
         lengthCm: { type: 'string' },
-        expires: { type: 'string' },
         mediaUrls: { type: 'string' },
-        shortDescription: { type: 'string' },
-        generatedDescription: { type: 'string' },
-        detailedDescription: { type: 'string' },
-        generatedImageUrls: { type: 'string' },
         generatedPngUrl: { type: 'string' },
-        generatedSvgUrl: { type: 'string' },
-        spatialBoxes2d: { type: 'string' },
-        spatialPoints: { type: 'string' },
-        spatialMasks: { type: 'string' },
-        spatialBoxes3d: { type: 'string' },
-        isClientVisible: { type: ['string', 'boolean'] },
-        printDate: { type: 'string' },
         payDate: { type: 'string' },
         payReq: { type: 'string' },
         sentDate: { type: 'string' },
-        bookLanded: { type: 'string' },
-        bookRetail: { type: 'string' },
-        bookBardcode: { type: 'string' },
-        bookAqCode: { type: 'string' },
-        bookLandCode: { type: 'string' },
-        crateId: { type: 'string' },
         updatedAt: { type: 'string' }
     },
     required: ['itemId', 'itemNumber']
 };
 
 export type InventoryCollection = RxCollection<any>;
+export type FinanceCollection = RxCollection<any>;
+export type CratesCollection = RxCollection<any>;
+
 export type OnyxDatabase = RxDatabase<{
     inventory: InventoryCollection;
+    finance: FinanceCollection;
+    crates: CratesCollection;
 }>;
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
@@ -77,27 +110,26 @@ const createDatabase = async () => {
     });
 
     await db.addCollections({
-        inventory: {
-            schema: inventorySchema
-        }
+        inventory: { schema: inventorySchema },
+        finance: { schema: financeSchema },
+        crates: { schema: cratesSchema }
     });
 
-    // Simple pull replication from Supabase
-    // In a real app, this would be more complex (using checkpoints, etc.)
     const pullReplication = async () => {
-        const { data, error } = await supabase
-            .from('inventory')
-            .select('*')
-            .order('updatedAt', { ascending: true });
+        // Pull Inventory
+        const inv = await supabase.from('inventory').select('*');
+        if (inv.data) await db.inventory.bulkUpsert(inv.data);
 
-        if (!error && data) {
-            await db.inventory.bulkUpsert(data);
-        }
+        // Pull Finance
+        const fin = await supabase.from('finance').select('*');
+        if (fin.data) await db.finance.bulkUpsert(fin.data);
+
+        // Pull Crates (if table exists)
+        const crates = await supabase.from('logistics').select('*');
+        if (crates.data) await db.crates.bulkUpsert(crates.data);
     };
 
-    // Initial pull
     pullReplication();
-
     return db;
 };
 
