@@ -26,9 +26,39 @@ import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
 
 export default function App() {
-  const [user] = useAtom(userAtom);
+  const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
+
+  useEffect(() => {
+    import('../../lib/supabase').then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'User',
+            role: (session.user.user_metadata.role as any) || 'Vendor',
+          });
+        }
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata.name || session.user.email?.split('@')[0] || 'User',
+            role: (session.user.user_metadata.role as any) || 'Vendor',
+          });
+        } else {
+          setUser(null);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    });
+  }, [setUser]);
 
   useEffect(() => {
     // Robust theme switching: remove old themes before adding the new one.
@@ -63,7 +93,7 @@ export default function App() {
   return (
     <>
       {user ? <MainAppView /> : <Login />}
-      <Toaster 
+      <Toaster
         position="top-center"
         toastOptions={{
           duration: 3000,

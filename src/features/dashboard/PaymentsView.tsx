@@ -216,7 +216,11 @@ const RequestPaymentModal: React.FC<{
 }
 
 // --- Main View Component ---
-export function PaymentsView() {
+interface PaymentsViewProps {
+    mode?: 'live' | 'archive';
+}
+
+export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const [inventory, setInventory] = useAtom(inventoryAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [expenses, setExpenses] = useState<Expense[]>([]);

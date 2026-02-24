@@ -27,7 +27,8 @@ import {
     SelectedItemDataAtom,
     SelectedItemRowAtom,
     isDetailsPanelOpenAtom,
-    detailsPanelModeAtom
+    detailsPanelModeAtom,
+    exchangeRateAtom
 } from '../../lib/atoms';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
@@ -37,8 +38,11 @@ import { useNotify, useTranslation, useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ItemThumbnail } from '../../components/ItemThumbnail';
 
+interface AcquisitionsViewProps {
+    mode?: 'live' | 'archive';
+}
 
-export const AcquisitionsView = () => {
+export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'archive' }) => {
     const [version, setVersion] = useAtom(acquisitionsVersionAtom);
     const [allAcquisitions, setAllAcquisitions] = useState<InventoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,8 +53,8 @@ export const AcquisitionsView = () => {
     const statusFilter = useAtomValue(dashboardStatusFilterAtom);
     const notify = useNotify();
     const user = useAtomValue(userAtom);
+    const [exchangeRate, setExchangeRate] = useAtom(exchangeRateAtom);
 
-    const [exchangeRate, setExchangeRate] = useState(18.0);
     const [workbookPrefix, setWorkbookPrefix] = useState('825');
     const [expandedRow, setExpandedRow] = useState<number | string | null>(null);
     const [selectedRows, setSelectedRows] = useState<(number | string)[]>([]);
@@ -105,6 +109,15 @@ export const AcquisitionsView = () => {
     const filteredAcquisitions = useMemo(() => {
         return allAcquisitions.filter((item) => {
             const { data } = item;
+
+            // 1. Live Flow Filtering
+            if (mode === 'live') {
+                const { status, payReq, payDate, sentDate } = data;
+                // Only show if NOT fully delivered/paid
+                const isFinished = !!payDate && !!sentDate;
+                if (isFinished) return false;
+            }
+
             const vendorMatch = !activeVendor || data.itemId === activeVendor;
             const searchMatch = !searchTerm || Object.values(data).some(value =>
                 String(value).toLowerCase().includes(searchTerm.toLowerCase())
@@ -123,7 +136,7 @@ export const AcquisitionsView = () => {
 
             return vendorMatch && searchMatch && statusMatch;
         });
-    }, [searchTerm, allAcquisitions, activeVendor, statusFilter]);
+    }, [searchTerm, allAcquisitions, activeVendor, statusFilter, mode]);
 
     const handleToggleRow = (row: number | string) => {
         setSelectedRows(prev => prev.includes(row) ? prev.filter(r => r !== row) : [...prev, row]);
