@@ -72,19 +72,12 @@ def extract_excel_data(google_df):
             if not tag_id.isdigit(): continue
             
             is_duplicate = False
-            
-            # 1. Check in itemNumbers
-            if tag_id in google_item_numbers:
-                is_duplicate = True
-            
-            # 2. Check in barcodes (contains match)
+            if tag_id in google_item_numbers: is_duplicate = True
             if not is_duplicate:
                 for barcode in google_barcodes:
                     if tag_id in barcode:
                         is_duplicate = True
                         break
-            
-            # 3. Check in descriptions
             if not is_duplicate:
                 pattern = re.compile(rf'\b{tag_id}\b')
                 for desc in google_descriptions:
@@ -97,6 +90,7 @@ def extract_excel_data(google_df):
                 continue
             
             item = {
+                "internal_id": f"EXCEL-{sheet}-{idx}",
                 "item_id": sheet,
                 "item_number": tag_id,
                 "description": f"Archived item from 825 Book ({sheet} Tag {tag_id})",
@@ -120,11 +114,11 @@ def main():
     google_df = extract_google_data()
     print("Loading and Processing Excel Data...")
     excel_items, duplicates = extract_excel_data(google_df)
-    print(f"Processed {len(excel_items)} items from Excel. Found {len(duplicates)} duplicates.")
     
     google_items = []
-    for _, row in google_df.iterrows():
+    for idx, row in google_df.iterrows():
         item = {
+            "internal_id": f"GOOGLE-{row.get('rowId', idx)}",
             "item_id": clean_value(row.get('itemId')),
             "item_number": clean_value(row.get('itemNumber')),
             "shape": clean_value(row.get('shape')),
@@ -140,7 +134,7 @@ def main():
     payload = {"google_items": google_items, "excel_items": excel_items, "duplicates": duplicates}
     with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(payload, f, indent=2, default=str)
-    print(f"Migration payload saved to {OUTPUT_PATH}")
+    print(f"Migration payload saved with unique internal IDs.")
 
 if __name__ == "__main__":
     main()
