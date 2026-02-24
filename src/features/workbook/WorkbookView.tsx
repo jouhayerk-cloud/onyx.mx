@@ -22,6 +22,7 @@ import {
     workbookPayLogDataAtom
 } from '../../lib/atoms';
 import { WorkbookPaymentModal } from './WorkbookPaymentModal';
+import { AcquisitionsView } from '../dashboard/AcquisitionsView';
 import { PaymentsView } from '../dashboard/PaymentsView';
 import { WorkbookShippingView } from './WorkbookShippingView';
 import { WorkbookPropertiesView } from './WorkbookPropertiesView';
@@ -281,244 +282,44 @@ export const WorkbookView: React.FC<WorkbookViewProps> = () => {
             {isLoading ? (
                 <div className="flex-grow flex items-center justify-center"><LoadingIndicator /></div>
             ) : (
-                <>
+                <div className="flex-grow overflow-hidden">
                     {/* --- INVENTORY VIEW --- */}
                     {activeTab === 'inventory' && (
-                        <div className="flex flex-col h-full gap-4 overflow-hidden animate-in fade-in duration-300">
-                            {/* Vendor Tabs */}
-                            <div className="flex gap-2 overflow-x-auto p-4 scrollbar-hide px-2 items-center min-h-[60px]">
-                                <button
-                                    onClick={() => setActiveSheet('All')}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap ${activeSheet === 'All'
-                                        ? 'bg-[var(--main-color)] text-white border-[var(--main-color)]'
-                                        : 'bg-transparent text-[var(--text-color-secondary)] border-[var(--border-color)] hover:border-[var(--text-color-secondary)]'
-                                        }`}
-                                >
-                                    ALL VENDORS
-                                </button>
-                                {workbook?.SheetNames
-                                    .filter(name => !name.startsWith('-') && name !== 'bookV')
-                                    .map(name => {
-                                        const sheet = workbook.Sheets[name];
-                                        // Try to pull color/name from sheet if defined, else generic
-                                        const vendorIdRaw = sheet['A1'] ? sheet['A1'].v : '';
-                                        const vendorKey = String(vendorIdRaw).trim() || name;
-
-                                        // Find vendor config - Fix: Sort keys by length desc to match "EM" before "M"
-                                        const vConfigKey = Object.keys(vendors)
-                                            .sort((a, b) => b.length - a.length)
-                                            .find(k => name === k || name.includes(k)) || 'default';
-
-                                        const vConfig = vendors[vConfigKey as keyof typeof vendors];
-                                        const color = vConfig?.color || 'var(--text-color-secondary)';
-                                        const isActive = activeSheet === name;
-
-                                        return (
-                                            <button
-                                                key={name}
-                                                onClick={() => setActiveSheet(name)}
-                                                className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-2`}
-                                                style={{
-                                                    backgroundColor: isActive ? color : 'transparent',
-                                                    color: isActive ? getTextColorForBg(color) : color,
-                                                    borderColor: color
-                                                }}
-                                            >
-                                                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
-                                                {name}
-                                            </button>
-                                        );
-                                    })
-                                }
-                            </div>
-
-                            {/* Inventory Grid */}
-                            <div className="flex-grow glass-panel flex flex-col">
-                                <div className="grid bg-[var(--glass-bg)] text-xs uppercase font-bold tracking-wider text-[var(--text-color-secondary)] py-3 px-4 border-b border-[var(--border-color)]" style={{ gridTemplateColumns: customGridTemplate, gap: '0.5rem' }}>
-                                    {activeConfig.map(col => <div key={col} className={`${(col === 'C' || col === 'D') ? 'text-left' : 'text-center'}`}>{activeHeaders[col]}</div>)}
-                                </div>
-
-                                <div className="flex-grow overflow-y-auto p-2 space-y-1">
-                                    {filteredInventory.map((item, idx) => {
-                                        const row = item.data;
-                                        const isExpanded = expandedRow === idx;
-                                        const sheetName = item.sheetName;
-
-                                        // Resolve Color - Robust Match
-                                        const vConfigKey = Object.keys(vendors)
-                                            .sort((a, b) => b.length - a.length)
-                                            .find(k => sheetName === k || sheetName.includes(k));
-
-                                        const color = vendors[vConfigKey as keyof typeof vendors]?.color || 'var(--text-color-secondary)';
-
-                                        return (
-                                            <div key={idx} className="flex flex-col border-[var(--border-color)]">
-                                                {/* Main Row */}
-                                                <div
-                                                    onClick={() => setExpandedRow(isExpanded ? null : idx)}
-                                                    className={`group grid items-center py-2 px-2 hover:bg-[var(--glass-bg)] transition-colors text-sm cursor-pointer relative ${isExpanded ? 'bg-[var(--glass-bg)]' : ''}`}
-                                                    style={{ gridTemplateColumns: customGridTemplate, gap: '0.5rem' }}
-                                                >
-                                                    {/* Left Accent */}
-                                                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md opacity-50 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: color }}></div>
-
-                                                    {displayIndices.map((colErr, i) => {
-                                                        const val = row[colErr];
-
-                                                        // Date Column (Index 1 for both)
-                                                        if (i === 1) {
-                                                            let dateStr = val ? String(val) : '-';
-                                                            if (typeof val === 'number') dateStr = new Date(Math.round((val - 25569) * 864e5)).toLocaleDateString('es-MX');
-                                                            return <div key={i} className="text-center text-[var(--text-color-secondary)] text-xs">{dateStr}</div>;
-                                                        }
-
-                                                        // Tag Column (Index 3 for 825, Index 5 for 326)
-                                                        const isTagCol = (version === '825' && i === 3) || (version === '326' && i === 5);
-                                                        if (isTagCol) {
-                                                            return (
-                                                                <div key={i} className="flex justify-center">
-                                                                    {val && <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide text-black" style={{ backgroundColor: color }}>{val}</span>}
-                                                                </div>
-                                                            )
-                                                        }
-
-                                                        // Main Text Column (Desc/Object)
-                                                        const isMainText = (version === '825' && i === 2) || (version === '326' && i === 3);
-
-                                                        return (
-                                                            <div key={i} className={`truncate ${isMainText ? 'text-[var(--text-color)] font-medium' : 'text-center text-[var(--text-color-secondary)]'} ${i === 0 ? 'pl-2' : ''}`}>
-                                                                {val !== undefined ? val : '-'}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-
-                                                {/* Expanded Details Row */}
-                                                {isExpanded && (
-                                                    <div className="bg-[#0a0a0a] border-y border-[var(--border-color)] relative">
-                                                        {/* Industrial accent line */}
-                                                        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }}></div>
-
-                                                        <div className="p-4 grid grid-cols-12 gap-6 text-sm">
-
-                                                            {/* 1. Dimensions (H, W, D, Kg) */}
-                                                            <div className="col-span-3 flex flex-col gap-2 border-r border-white/5 pr-4">
-                                                                <h4 className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-color-secondary)] mb-1">Dimensions</h4>
-                                                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-[var(--text-color)] font-mono text-xs">
-                                                                    <div className="flex justify-between"><span>H:</span> <span className="text-white">{row[colLetterToIndex(version === '326' ? 'I' : 'G')] || '-'} cm</span></div>
-                                                                    <div className="flex justify-between"><span>W:</span> <span className="text-white">{row[colLetterToIndex(version === '326' ? 'J' : 'H')] || '-'} cm</span></div>
-                                                                    <div className="flex justify-between"><span>D:</span> <span className="text-white">{row[colLetterToIndex(version === '326' ? 'K' : 'I')] || '-'} cm</span></div>
-                                                                    <div className="flex justify-between border-t border-white/10 pt-1 mt-1 col-span-2"><span>Wt:</span> <span className="text-white">{row[colLetterToIndex(version === '326' ? 'H' : 'F')] || '-'} kg</span></div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* 2. Financials (Cols 4-12) */}
-                                                            <div className="col-span-9 grid grid-cols-3 gap-6 pl-2">
-
-                                                                {/* Cost / Acquisition */}
-                                                                <div className="flex flex-col gap-1">
-                                                                    <h4 className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-color-secondary)]">Cost / Acquisition</h4>
-                                                                    <div className="flex items-baseline gap-2">
-                                                                        <span className="text-xl font-bold font-mono text-white">
-                                                                            {Number(getValueByHeader(row, 'COST') || getValueByHeader(row, 'PRECIO') || getValueByHeader(row, 'MXN') || 0).toLocaleString('en-US', { style: 'currency', currency: 'MXN' })}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-[var(--text-color-secondary)]">MXN</span>
-                                                                    </div>
-                                                                    <div className="text-xs font-mono text-[var(--text-color-secondary)] opacity-80 flex items-center gap-2">
-                                                                        <span>{Number(getValueByHeader(row, 'AQ') || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                                                                        <span className="text-[10px] opacity-50 uppercase tracking-wide">USD (Aq)</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Landed */}
-                                                                <div className="flex flex-col gap-1">
-                                                                    <h4 className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-color-secondary)]">Landed</h4>
-                                                                    <div className="flex items-baseline gap-2">
-                                                                        <span className="text-xl font-bold font-mono text-blue-400">
-                                                                            {Number(getValueByHeader(row, 'LND') || getValueByHeader(row, 'LANDED') || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-blue-400/50">USD</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Retail / Market */}
-                                                                <div className="flex flex-col gap-1 relative">
-                                                                    <h4 className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-color-secondary)]">Retail / Market</h4>
-                                                                    <div className="flex items-baseline gap-2">
-                                                                        <span className="text-2xl font-bold font-mono text-green-400">
-                                                                            {Number(getValueByHeader(row, 'RETAIL') || getValueByHeader(row, 'MARKET') || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-green-400/50">USD</span>
-                                                                    </div>
-                                                                    {/* Codes as pill */}
-                                                                    <div className="mt-2 flex gap-2">
-                                                                        {(getValueByHeader(row, 'AQC') || getValueByHeader(row, 'LC')) && (
-                                                                            <span className="px-2 py-0.5 bg-white/5 rounded text-[10px] font-mono text-[var(--text-color-secondary)] border border-white/5">
-                                                                                {getValueByHeader(row, 'AQC')}/{getValueByHeader(row, 'LC')}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
+                        <AcquisitionsView mode="archive" />
                     )}
 
                     {/* --- EXPENSES VIEW --- */}
                     {activeTab === 'expenses' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookPropertiesView />
-                        </div>
+                        <AcquisitionsView mode="archive" />
                     )}
 
                     {/* --- SHIPPING VIEW --- */}
                     {activeTab === 'shipping' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookShippingView />
-                        </div>
+                        <WorkbookShippingView />
                     )}
 
                     {/* --- PAYMENTS VIEW --- */}
                     {activeTab === 'payments' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <PaymentsView />
-                        </div>
+                        <PaymentsView />
                     )}
 
                     {/* --- v326 SPECIAL VIEWS --- */}
                     {activeTab === 'log' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookLogView />
-                        </div>
+                        <WorkbookLogView />
                     )}
                     {activeTab === 'production' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookProductionView />
-                        </div>
+                        <WorkbookProductionView />
                     )}
                     {activeTab === 'supplies' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookSuppliesView />
-                        </div>
+                        <WorkbookSuppliesView />
                     )}
                     {activeTab === 'crates' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookCratesView />
-                        </div>
+                        <WorkbookCratesView />
                     )}
                     {activeTab === 'paylog' && (
-                        <div className="h-full animate-in slide-in-from-right-4 fade-in duration-300">
-                            <WorkbookPayLogView />
-                        </div>
+                        <WorkbookPayLogView />
                     )}
-                </>
+                </div>
             )}
         </div>
     );

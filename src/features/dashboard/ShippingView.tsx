@@ -68,7 +68,11 @@ const themeColors: { [key: string]: { bg: number, fog: number } } = {
 };
 
 
-export function ShippingView() {
+interface ShippingViewProps {
+    mode?: 'live' | 'archive';
+}
+
+export function ShippingView({ mode = 'archive' }: ShippingViewProps) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useAtom(isShippingSidebarCollapsedAtom);
 
@@ -78,7 +82,7 @@ export function ShippingView() {
         const cratesVersion = useAtomValue(cratesVersionAtom);
         const user = useAtomValue(userAtom);
         const store = useStore();
-    
+
         useEffect(() => {
             const fetchCrates = async () => {
                 try {
@@ -101,10 +105,10 @@ export function ShippingView() {
         useEffect(() => {
             if (!mountRef.current) return;
             const mount = mountRef.current;
-            mount.innerHTML = ''; 
+            mount.innerHTML = '';
 
             let animationFrameId: number;
-            
+
             const theme = store.get(themeAtom);
             const colors = themeColors[theme] || themeColors.concrete;
 
@@ -113,7 +117,7 @@ export function ShippingView() {
             scene.fog = new THREE.Fog(colors.fog, 20, 50);
 
             const camera = new THREE.PerspectiveCamera(50, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-            
+
             const renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(mount.clientWidth, mount.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -143,7 +147,7 @@ export function ShippingView() {
             const WAREHOUSE_DIMS_VAL = store.get(WAREHOUSE_DIMS);
             const truckDims = store.get(shippingTruckDimsAtom);
 
-            const warehouseFloor = new THREE.GridHelper(WAREHOUSE_DIMS_VAL.depth, WAREHOUSE_DIMS_VAL.depth / (WAREHOUSE_DIMS_VAL.width/2), 0x555555, 0x444444);
+            const warehouseFloor = new THREE.GridHelper(WAREHOUSE_DIMS_VAL.depth, WAREHOUSE_DIMS_VAL.depth / (WAREHOUSE_DIMS_VAL.width / 2), 0x555555, 0x444444);
             scene.add(warehouseFloor);
 
             const truckContainer = new THREE.LineSegments(
@@ -198,7 +202,7 @@ export function ShippingView() {
                 crateMeshes.set(crate.id, group);
                 scene.add(group);
             };
-            
+
             const createCrateLabel = (crate: Crate) => {
                 const div = document.createElement('div');
                 div.className = 'crate-content-label';
@@ -214,7 +218,7 @@ export function ShippingView() {
                 renderer.render(scene, camera);
                 labelRenderer.render(scene, camera);
             };
-            
+
             const onCanvasClick = (event: MouseEvent) => {
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -224,14 +228,14 @@ export function ShippingView() {
                 const clickedCrate = intersects.find(i => i.object.name === 'crate_mesh_body');
                 store.set(selectedCrateIdAtom, clickedCrate ? clickedCrate.object.parent?.userData.crateId : null);
             };
-            
+
             const handleResize = () => {
                 camera.aspect = mount.clientWidth / mount.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(mount.clientWidth, mount.clientHeight);
                 labelRenderer.setSize(mount.clientWidth, mount.clientHeight);
             };
-            
+
             mount.addEventListener('click', onCanvasClick);
             window.addEventListener('resize', handleResize);
 
@@ -250,7 +254,7 @@ export function ShippingView() {
                         crateLabels.delete(crateId);
                     }
                 }
-                
+
                 // Add or update meshes
                 crates.forEach(crate => {
                     if (!crateMeshes.has(crate.id)) {
@@ -265,15 +269,15 @@ export function ShippingView() {
                 const selectedId = store.get(selectedCrateIdAtom);
                 const tempPos = store.get(tempCratePositionAtom);
                 const labelsVisible = store.get(areCrateInfoLabelsVisibleAtom);
-                
+
                 crates.forEach(crate => {
                     const meshGroup = crateMeshes.get(crate.id);
                     const label = crateLabels.get(crate.id);
                     if (!meshGroup || !label) return;
-            
+
                     let position = new THREE.Vector3(crate.x, crate.y + crate.h / 2, crate.z);
                     if (crate.id === selectedId && tempPos && crate.location === 'truck') {
-                         position.set(tempPos.x, tempPos.y + crate.h / 2, tempPos.z + truckContainer.position.z);
+                        position.set(tempPos.x, tempPos.y + crate.h / 2, tempPos.z + truckContainer.position.z);
                     }
                     meshGroup.position.copy(position);
                     meshGroup.rotation.y = crate.rotationY || 0;
@@ -284,10 +288,10 @@ export function ShippingView() {
                     const mesh = meshGroup.children[0] as THREE.Mesh;
                     const isSelected = crate.id === selectedId;
                     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                    
+
                     materials.forEach(m => {
                         if ((m as THREE.Material).hasOwnProperty('wireframe')) {
-                           (m as THREE.MeshLambertMaterial).wireframe = false;
+                            (m as THREE.MeshLambertMaterial).wireframe = false;
                         }
                         m.opacity = 1;
                         m.transparent = false;
@@ -306,7 +310,7 @@ export function ShippingView() {
                 const crates = store.get(shippingCratesAtom);
                 const selectedCrate = crates.find(c => c.id === selectedId);
 
-                let target = new THREE.Vector3(0, 1, 0); 
+                let target = new THREE.Vector3(0, 1, 0);
                 let distance = 20;
 
                 if (viewMode === 'truck') {
@@ -316,12 +320,12 @@ export function ShippingView() {
 
                 if (selectedCrate) {
                     target.set(selectedCrate.x, selectedCrate.y + selectedCrate.h / 2, selectedCrate.z);
-                    const isRotated = selectedCrate.rotationY && Math.abs(selectedCrate.rotationY - Math.PI/2) < 0.01;
+                    const isRotated = selectedCrate.rotationY && Math.abs(selectedCrate.rotationY - Math.PI / 2) < 0.01;
                     const w = isRotated ? selectedCrate.d : selectedCrate.w;
                     const d = isRotated ? selectedCrate.w : selectedCrate.d;
                     distance = Math.max(w, selectedCrate.h, d) * 3;
                 }
-                
+
                 let position = new THREE.Vector3();
                 switch (view) {
                     case 'top': position.set(target.x, target.y + distance, target.z + 0.001); break;
@@ -333,7 +337,7 @@ export function ShippingView() {
                 gsap.to(camera.position, { ...position, duration: 0.8, ease: "power2.inOut" });
                 gsap.to(controls.target, { ...target, duration: 0.8, ease: "power2.inOut" });
             };
-            
+
             const unsubTheme = store.sub(themeAtom, () => {
                 const newTheme = store.get(themeAtom);
                 const newColors = themeColors[newTheme] || themeColors.concrete;
@@ -345,16 +349,16 @@ export function ShippingView() {
 
             // Initial camera position
             updateCamera();
-            
+
             const unsub1 = store.sub(shippingCratesAtom, updateVisuals);
             const unsub2 = store.sub(selectedCrateIdAtom, updateVisuals);
             const unsub3 = store.sub(tempCratePositionAtom, updateVisuals);
             const unsub4 = store.sub(areCrateInfoLabelsVisibleAtom, updateVisuals);
-            
+
             const unsubCam1 = store.sub(shippingCameraViewAtom, updateCamera);
             const unsubCam2 = store.sub(shippingViewModeAtom, updateCamera);
             const unsubCam3 = store.sub(selectedCrateIdAtom, updateCamera);
-            
+
             animate();
 
             return () => {
@@ -366,9 +370,9 @@ export function ShippingView() {
                 cancelAnimationFrame(animationFrameId);
                 controls.dispose();
                 scene.traverse(obj => {
-                    if(obj instanceof THREE.Mesh) {
+                    if (obj instanceof THREE.Mesh) {
                         obj.geometry.dispose();
-                        if(Array.isArray(obj.material)) {
+                        if (Array.isArray(obj.material)) {
                             obj.material.forEach(m => {
                                 if (m.map) m.map.dispose();
                                 m.dispose();
@@ -392,8 +396,8 @@ export function ShippingView() {
         <div className={`shipping-view-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <ShippingControl isVisible={!isSidebarCollapsed} />
             <main className="shipping-main">
-                <button 
-                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+                <button
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                     className="button shipping-sidebar-toggle !p-2.5 !min-h-0"
                     title={isSidebarCollapsed ? 'Show Controls' : 'Hide Controls'}
                 >

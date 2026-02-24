@@ -44,6 +44,7 @@ export const userAtom = atomWithStorage<User | null>('userSession', null);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 export const themeAtom = atomWithStorage<string>('appTheme', 'concrete');
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode', true);
+export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 18.0);
 
 export const workflowStepAtom = atom<
   | 'idle'

@@ -28,15 +28,16 @@ export function Dashboard() {
     const [activeTab] = useAtom(dashboardActiveTabAtom);
 
     const renderContent = () => {
+        // Dashboard acts as a Live Feed for items in progress
         switch (activeTab) {
             case 'acquisitions':
-                return <AcquisitionsView />;
+                return <AcquisitionsView mode="live" />;
             case 'payments':
-                return <PaymentsView />;
+                return <PaymentsView mode="live" />;
             case 'shipping':
-                return <ShippingView />;
+                return <ShippingView mode="live" />;
             default:
-                return <AcquisitionsView />;
+                return <AcquisitionsView mode="live" />;
         }
     };
 
