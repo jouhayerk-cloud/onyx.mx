@@ -127,7 +127,7 @@ export type OnyxDatabase = RxDatabase<{
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
 
-async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 50) {
+async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 20, delay = 150) {
     for (let i = 0; i < docs.length; i += chunkSize) {
         const chunk = docs.slice(i, i + chunkSize);
         try {
@@ -135,8 +135,8 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
         } catch (err) {
             console.error(`[DB] bulkUpsert error in ${collection.name}:`, err);
         }
-        // Increased delay to 50ms to strictly prevent main-thread starvation in Chrome
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Throttled delay to keep Chrome responsive
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
 }
 
@@ -155,46 +155,46 @@ const createDatabase = async () => {
 
     const pullReplication = async () => {
         try {
-            console.log('[DB] Starting background sync...');
+            console.log('[DB] Starting prioritized background sync...');
 
-            // Inventory
-            let page = 0;
-            const pageSize = 500;
-            while (true) {
-                const { data, error } = await supabase
-                    .from('inventory')
-                    .select('*')
-                    .range(page * pageSize, (page + 1) * pageSize - 1);
+            // PHASE 1: ACTIVE DATA (Workbook 326) - Higher priority
+            const { data: activeData, error: activeErr } = await supabase
+                .from('inventory')
+                .select('*')
+                .eq('workbook', '326');
 
-                if (error) {
-                    console.error('[DB] Inventory pull error:', error);
-                    break;
-                }
-                if (!data || data.length === 0) break;
+            if (!activeErr && activeData) {
+                console.log(`[DB] Syncing ${activeData.length} active items...`);
+                await bulkUpsertChunked(db.inventory, activeData, 50, 50); // Faster for active
+            }
 
-                await bulkUpsertChunked(db.inventory, data);
-                if (data.length < pageSize) break;
-                page++;
+            // PHASE 2: ARCHIVE DATA (Workbook 825) - Lower priority, throttled
+            const { data: archiveData, error: archiveErr } = await supabase
+                .from('inventory')
+                .select('*')
+                .eq('workbook', '825');
+
+            if (!archiveErr && archiveData) {
+                console.log(`[DB] Syncing ${archiveData.length} archive items (background)...`);
+                // Very slow sync for archive to prevent any UI lag
+                await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
             }
 
             // Finance
-            const { data: fin, error: finErr } = await supabase.from('finance').select('*');
-            if (finErr) console.error('[DB] Finance pull error:', finErr);
-            else if (fin) await bulkUpsertChunked(db.finance, fin);
+            const { data: finData, error: finErr } = await supabase.from('finance').select('*');
+            if (!finErr && finData) await bulkUpsertChunked(db.finance, finData, 50, 50);
 
             // Logistics
-            const { data: log, error: logErr } = await supabase.from('logistics').select('*');
-            if (logErr) console.error('[DB] Logistics pull error:', logErr);
-            else if (log) await bulkUpsertChunked(db.logistics, log);
+            const { data: logData, error: logErr } = await supabase.from('logistics').select('*');
+            if (!logErr && logData) await bulkUpsertChunked(db.logistics, logData, 50, 50);
 
             // Production
-            const { data: prod, error: prodErr } = await supabase.from('production').select('*');
-            if (prodErr) console.error('[DB] Production pull error:', prodErr);
-            else if (prod) await bulkUpsertChunked(db.production, prod);
+            const { data: prodData, error: prodErr } = await supabase.from('production').select('*');
+            if (!prodErr && prodData) await bulkUpsertChunked(db.production, prodData, 50, 50);
 
-            console.log('[DB] Background sync complete.');
-        } catch (e) {
-            console.error('[DB] Sync crash:', e);
+            console.log('[DB] Prioritized sync complete.');
+        } catch (err) {
+            console.error('[DB] Sync failed:', err);
         }
     };
 
