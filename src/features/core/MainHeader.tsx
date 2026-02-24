@@ -204,8 +204,9 @@ export function MainHeader() {
 
     return (
         <div className="main-header">
-            <button className="sidebar-toggle" onClick={toggleSidebar}>
+            <button className="sidebar-toggle group relative flex items-center gap-2" onClick={toggleSidebar}>
                 <OnyxLogo />
+                <span className="text-[9px] font-black text-white/20 tracking-tighter absolute -bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">v2.1.0</span>
             </button>
 
             <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
