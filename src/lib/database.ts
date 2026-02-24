@@ -89,11 +89,23 @@ const inventorySchema = {
         item_id: { type: 'string' },
         item_number: { type: 'string' },
         timestamp: { type: 'string' },
+        created_by: { type: 'string' },
         description: { type: 'string' },
+        short_description: { type: 'string' },
+        detailed_description: { type: 'string' },
         shape: { type: 'string' },
         material: { type: 'string' },
         color: { type: 'string' },
+        width_cm: { type: 'number' },
+        height_cm: { type: 'number' },
+        length_cm: { type: 'number' },
+        weight_kg: { type: 'number' },
         price_mxn: { type: 'number' },
+        media_urls: { type: 'string' },
+        generated_png_url: { type: 'string' },
+        spatial_boxes_2d: { type: 'object' },
+        spatial_points: { type: 'object' },
+        spatial_masks: { type: 'object' },
         status: { type: 'string' },
         workbook: { type: 'string' },
         in_production: { type: 'boolean' },
@@ -118,7 +130,11 @@ let dbPromise: Promise<OnyxDatabase> | null = null;
 async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 100) {
     for (let i = 0; i < docs.length; i += chunkSize) {
         const chunk = docs.slice(i, i + chunkSize);
-        await collection.bulkUpsert(chunk);
+        try {
+            await collection.bulkUpsert(chunk);
+        } catch (err) {
+            console.error(`[DB] bulkUpsert error in ${collection.name}:`, err);
+        }
         await new Promise(resolve => setTimeout(resolve, 0));
     }
 }
@@ -138,25 +154,47 @@ const createDatabase = async () => {
 
     const pullReplication = async () => {
         try {
+            console.log('[DB] Starting background sync...');
+
             // Inventory
             let page = 0;
+            const pageSize = 500;
             while (true) {
-                const { data, error } = await supabase.from('inventory').select('*').range(page * 500, (page + 1) * 500 - 1);
-                if (error || !data || data.length === 0) break;
+                const { data, error } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .range(page * pageSize, (page + 1) * pageSize - 1);
+
+                if (error) {
+                    console.error('[DB] Inventory pull error:', error);
+                    break;
+                }
+                if (!data || data.length === 0) break;
+
                 await bulkUpsertChunked(db.inventory, data);
-                if (data.length < 500) break;
+                if (data.length < pageSize) break;
                 page++;
             }
+
             // Finance
-            const { data: fin } = await supabase.from('finance').select('*');
-            if (fin) await bulkUpsertChunked(db.finance, fin);
+            const { data: fin, error: finErr } = await supabase.from('finance').select('*');
+            if (finErr) console.error('[DB] Finance pull error:', finErr);
+            else if (fin) await bulkUpsertChunked(db.finance, fin);
+
             // Logistics
-            const { data: log } = await supabase.from('logistics').select('*');
-            if (log) await bulkUpsertChunked(db.logistics, log);
+            const { data: log, error: logErr } = await supabase.from('logistics').select('*');
+            if (logErr) console.error('[DB] Logistics pull error:', logErr);
+            else if (log) await bulkUpsertChunked(db.logistics, log);
+
             // Production
-            const { data: prod } = await supabase.from('production').select('*');
-            if (prod) await bulkUpsertChunked(db.production, prod);
-        } catch (e) { console.error('Sync error:', e); }
+            const { data: prod, error: prodErr } = await supabase.from('production').select('*');
+            if (prodErr) console.error('[DB] Production pull error:', prodErr);
+            else if (prod) await bulkUpsertChunked(db.production, prod);
+
+            console.log('[DB] Background sync complete.');
+        } catch (e) {
+            console.error('[DB] Sync crash:', e);
+        }
     };
 
     pullReplication();
