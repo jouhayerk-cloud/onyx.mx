@@ -130,13 +130,15 @@ let dbPromise: Promise<OnyxDatabase> | null = null;
 
 async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 20, delay = 150) {
     for (let i = 0; i < docs.length; i += chunkSize) {
-        const chunk = docs.slice(i, i + chunkSize);
+        const chunk = docs.slice(i, i + chunkSize).map(doc => ({
+            ...doc,
+            id: String(doc.id)
+        }));
         try {
             await collection.bulkUpsert(chunk);
         } catch (err) {
             console.error(`[DB] bulkUpsert error in ${collection.name}:`, err);
         }
-        // Throttled delay to keep Chrome responsive
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 }

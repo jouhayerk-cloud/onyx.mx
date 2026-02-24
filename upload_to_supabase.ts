@@ -40,13 +40,7 @@ async function uploadData() {
                 const itemId = item.item_id || 'UNK';
                 const itemNum = item.item_number || '0';
 
-                // Use internal_id as the base for deterministic UUID generation
-                const hashBase = (item.internal_id || `${itemId}-${itemNum}`).padEnd(32, '0');
-                const hex = Buffer.from(hashBase).toString('hex').slice(0, 32);
-                const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-
                 return {
-                    id: uuid,
                     item_id: itemId,
                     item_number: parseInt(itemNum) || 0,
                     shape: item.shape || item.metadata?.shape || null,
@@ -68,7 +62,7 @@ async function uploadData() {
             });
 
             console.log(`📤 Uploading chunk ${Math.floor(i / CHUNK_SIZE) + 1} (${chunk.length} items)...`);
-            const { data, error, status, statusText } = await supabase.from('inventory').upsert(uploadPayload, { onConflict: 'id' });
+            const { data, error, status, statusText } = await supabase.from('inventory').insert(uploadPayload);
 
             if (error) {
                 console.error(`❌ Error in chunk starting at ${i}:`);
@@ -76,9 +70,6 @@ async function uploadData() {
                 console.error(`   Message: ${error.message}`);
                 console.error(`   Details: ${error.details}`);
                 console.error(`   Hint: ${error.hint}`);
-                if (uploadPayload[0]) {
-                    console.error(`   Sample ID: ${uploadPayload[0].id}`);
-                }
             } else {
                 console.log(`   ✅ Chunk processed (Status ${status})`);
             }
