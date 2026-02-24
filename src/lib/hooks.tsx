@@ -198,6 +198,17 @@ export const useDatabase = () => {
     import('./database').then(m => m.getDatabase()).then(newDb => {
       clearTimeout(timer);
       setDb(newDb);
+    }).catch(async (err) => {
+      clearTimeout(timer);
+      console.error('❌ [DB] useDatabase failed, wiping and reloading:', err?.message || err);
+      // Wipe IndexedDB and reload to recover from corrupt/stale schema
+      const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
+      if (Date.now() - lastReload > 15000) {
+        localStorage.setItem('onyx_last_reload', Date.now().toString());
+        const { default: Dexie } = await import('dexie');
+        await new Dexie('onyxdb').delete();
+        window.location.reload();
+      }
     });
   }, []);
   return db;

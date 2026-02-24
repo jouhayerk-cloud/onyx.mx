@@ -170,20 +170,32 @@ const createDatabase = async () => {
             inventory: {
                 schema: inventorySchema,
                 migrationStrategies: {
-                    // v1 → v5: pass-through (previous versions)
-                    1: (doc: any) => doc,
-                    2: (doc: any) => doc,
-                    3: (doc: any) => doc,
-                    4: (doc: any) => doc,
-                    5: (doc: any) => doc,
-                    // v5 → v6: added 14 new nullable fields — no data transformation needed
-                    6: (doc: any) => doc,
+                    // Return null = DELETE old local docs during migration.
+                    // This is the safest approach: old docs are cleared and
+                    // pullReplication re-syncs fresh data from Supabase.
+                    // Avoids DM4 "storage closed" race condition.
+                    1: () => null,
+                    2: () => null,
+                    3: () => null,
+                    4: () => null,
+                    5: () => null,
+                    6: () => null,
                 }
             },
             finance: { schema: financeSchema },
             logistics: { schema: logisticsSchema },
             production: { schema: productionSchema }
         });
+
+        // CRITICAL: Wait for migration to fully complete before starting pullReplication.
+        // Without this, pullReplication's bulkUpsert conflicts with the ongoing migration
+        // and causes DM4 "RxStorageInstanceDexie is closed" error.
+        try {
+            await db.inventory.migratePromise(50);
+            console.log('✅ [DB] Migration complete.');
+        } catch (migErr) {
+            console.warn('⚠️ [DB] Migration error (non-fatal, will resync):', migErr);
+        }
 
         const pullReplication = async () => {
             try {
