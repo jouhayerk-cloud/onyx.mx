@@ -206,7 +206,7 @@ export function MainHeader() {
         <div className="main-header">
             <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/5 mr-2" onClick={toggleSidebar}>
                 <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.3.0</span>
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.4.1</span>
             </button>
 
             <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
@@ -250,7 +250,8 @@ export function MainHeader() {
                             { label: 'WORKBOOK 326', version: '326', tab: 'inventory', color: '#6BCEBB', roles: ['Developer', 'Admin', 'Vendor'] },
                             { label: 'ARCHIVE 825', version: '825', tab: 'archive', color: '#a9d08e', roles: ['Developer', 'Admin', 'Client'] },
                             { label: 'PRODUCTION', version: '326', tab: 'production', color: '#FFED00', roles: ['Developer', 'Admin', 'Vendor'] },
-                            { label: 'LOGISTICS', version: '326', tab: 'crates', color: '#8DC63F', roles: ['Developer', 'Admin', 'Client'] }
+                            { label: 'LOGISTICS', version: '326', tab: 'crates', color: '#8DC63F', roles: ['Developer', 'Admin', 'Client'] },
+                            { label: 'DATABASE', version: '326', tab: 'database', color: '#AEE6F5', roles: ['Developer'] }
                         ].filter(item => item.roles.includes(user?.role || 'Vendor')).map((item) => {
                             const isActive = (item.tab === 'inventory' && workbookVersion === item.version && workbookActiveTab === 'inventory') ||
                                 (item.tab === 'archive' && workbookVersion === item.version && workbookActiveTab === 'archive') ||
