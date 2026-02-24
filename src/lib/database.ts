@@ -12,55 +12,50 @@ addRxPlugin(RxDBQueryBuilderPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 1, // BUMPED to force re-init
+    version: 2,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
-        amount: { type: ['number', 'null'] },
-        currency: { type: ['string', 'null'] },
+        date: { type: ['string', 'null'] },
         type: { type: ['string', 'null'] },
         category: { type: ['string', 'null'] },
-        description: { type: ['string', 'null'] },
+        amount: { type: ['number', 'null'] },
+        commission: { type: ['number', 'null'] },
+        currency: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
-        pay_date: { type: ['string', 'null'] },
         destination: { type: ['string', 'null'] },
         vendor_id: { type: ['string', 'null'] },
         related_ids: { type: ['array', 'null'], items: { type: 'string' } },
+        notes: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
 
 const logisticsSchema = {
     title: 'logistics schema',
-    version: 1, // BUMPED
+    version: 2,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
-        date: { type: ['string', 'null'] },
-        vendor_id: { type: ['string', 'null'] },
-        item_type: { type: ['string', 'null'] },
-        description: { type: ['string', 'null'] },
-        quantity: { type: ['number', 'null'] },
+        type: { type: ['string', 'null'] },
+        vendors: { type: ['string', 'null'] },
+        length_cm: { type: ['number', 'null'] },
+        width_cm: { type: ['number', 'null'] },
+        height_cm: { type: ['number', 'null'] },
         weight_kg: { type: ['number', 'null'] },
-        weight_lbs: { type: ['number', 'null'] },
-        l_cm: { type: ['number', 'null'] },
-        w_cm: { type: ['number', 'null'] },
-        d_cm: { type: ['number', 'null'] },
-        dims_info: { type: ['string', 'null'] },
-        cost_mxn: { type: ['number', 'null'] },
-        tracking_number: { type: ['string', 'null'] },
-        carrier: { type: ['string', 'null'] },
+        truck_id: { type: ['string', 'null'] },
+        truck_position: { type: ['string', 'null'] },
+        ship_date: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
-        inventory_ids: { type: ['array', 'null'], items: { type: 'string' } },
         updated_at: { type: ['string', 'null'] }
     }
 };
 
 const productionSchema = {
     title: 'production schema',
-    version: 1, // BUMPED
+    version: 2,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -81,39 +76,39 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 1, // BUMPED
+    version: 2,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
-        item_id: { type: ['string', 'null'] },
-        item_number: { type: ['string', 'null'] },
         timestamp: { type: ['string', 'null'] },
+        item_id: { type: ['string', 'null'] },
+        item_number: { type: ['number', 'null'] },
         created_by: { type: ['string', 'null'] },
-        description: { type: ['string', 'null'] },
-        short_description: { type: ['string', 'null'] },
-        detailed_description: { type: ['string', 'null'] },
+        status: { type: ['string', 'null'] },
         shape: { type: ['string', 'null'] },
         material: { type: ['string', 'null'] },
+        description: { type: ['string', 'null'] },
         color: { type: ['string', 'null'] },
-        width_cm: { type: ['number', 'null'] },
-        height_cm: { type: ['number', 'null'] },
-        length_cm: { type: ['number', 'null'] },
-        weight_kg: { type: ['number', 'null'] },
+        quantity: { type: ['number', 'null'] },
         price_mxn: { type: ['number', 'null'] },
+        weight_kg: { type: ['number', 'null'] },
+        height_cm: { type: ['number', 'null'] },
+        width_cm: { type: ['number', 'null'] },
+        length_cm: { type: ['number', 'null'] },
         media_urls: { type: ['string', 'null'] },
+        short_description: { type: ['string', 'null'] },
+        detailed_description: { type: ['string', 'null'] },
         generated_png_url: { type: ['string', 'null'] },
+        generated_svg_url: { type: ['string', 'null'] },
         spatial_boxes_2d: { type: ['object', 'array', 'null'] },
         spatial_points: { type: ['object', 'array', 'null'] },
         spatial_masks: { type: ['object', 'array', 'null'] },
-        status: { type: ['string', 'null'] },
-        workbook: { type: ['string', 'null'] },
-        in_production: { type: ['boolean', 'null'] },
-        ready: { type: ['boolean', 'null'] },
-        paid: { type: ['boolean', 'null'] },
-        shipped: { type: ['boolean', 'null'] },
         pay_req: { type: ['boolean', 'null'] },
         pay_date: { type: ['string', 'null'] },
+        shipped: { type: ['boolean', 'null'] },
+        workbook: { type: ['string', 'null'] },
+        crate_id: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };

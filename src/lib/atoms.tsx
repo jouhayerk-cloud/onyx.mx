@@ -34,11 +34,13 @@ import {
 } from './Types';
 
 // User Authentication
+export type UserRole = 'Developer' | 'Admin' | 'Client' | 'Vendor';
+
 export type User = {
   id: string;
   email: string;
   name: string;
-  role: 'Admin' | 'Vendor' | 'Client';
+  role: UserRole;
 };
 export const userAtom = atomWithStorage<User | null>('userSession', null);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');

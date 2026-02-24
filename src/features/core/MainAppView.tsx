@@ -287,12 +287,12 @@ export function MainAppView() {
                         </button>
                     </div>
                     <ul className="sidebar-list">
-                        {user?.role !== 'Client' && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <NavItemWithSubmenu viewId="create" label={t.create} icon="plus" subItems={createSubItems} />
                         )}
                         <NavItemWithSubmenu viewId="catalog" label={t.catalog} icon="camera" subItems={catalogSubItems} />
                         <NavItemWithSubmenu viewId="workbook" label="Workbook" icon="dashboard-icon" subItems={[{ id: 'overview', label: 'Overview', icon: 'dashboard-icon', action: () => { setActiveView('workbook'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'workbook' }]} />
-                        {user?.role !== 'Vendor' && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <NavItemWithSubmenu viewId="dashboard" label={t.dashboard} icon="dashboard-icon" subItems={dashboardSubItems} />
                         )}
                     </ul>

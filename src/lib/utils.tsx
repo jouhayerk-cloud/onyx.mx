@@ -19,6 +19,26 @@
 
 import { segmentationColors, SCRIPT_URL } from './consts';
 import type { BoundingBoxMaskType } from './Types';
+import type { UserRole } from './atoms';
+
+export function resolveUserRole(email: string): UserRole {
+  const adminEmails = ['martha@jouhayek.com'];
+  const devEmails = ['ramses@jouhayerk.com'];
+  const clientEmails = [
+    'wayne@aissilver.com',
+    'chad@rareearthgallerycc.com',
+    'stefi@rareearthgallerycc.com',
+    'accounting@aissilver.com'
+  ];
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  if (devEmails.includes(normalizedEmail)) return 'Developer';
+  if (adminEmails.includes(normalizedEmail)) return 'Admin';
+  if (clientEmails.includes(normalizedEmail)) return 'Client';
+
+  return 'Vendor';
+}
 
 export const imageCache = new Map<string, string>();
 
