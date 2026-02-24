@@ -123,12 +123,12 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                 String(value).toLowerCase().includes(searchTerm.toLowerCase())
             );
 
-            const { status, payReq, payDate } = item.data;
+            const { status, payReq, payDate, dispersal_status } = item.data;
             const statusMatch = (() => {
                 switch (statusFilter) {
-                    case 'RED': return status === 'YES' && !payReq;
-                    case 'YELLOW': return !!payReq && !payDate;
-                    case 'GREEN': return !!payDate;
+                    case 'RED': return status === 'Acquired' && !dispersal_status;
+                    case 'YELLOW': return dispersal_status === 'Requested' || dispersal_status === 'Sent';
+                    case 'GREEN': return dispersal_status === 'Dispersed' || !!payDate;
                     case 'ALL':
                     default: return true;
                 }
@@ -179,7 +179,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
         const toastId = notify.loading(`Approving ${item.data.shape} #${item.data.itemNumber}...`);
         try {
             await apiCall('batchUpdateItems', {
-                updates: [{ row: item.row, itemData: { status: 'YES' } }]
+                updates: [{ row: item.row, itemData: { status: 'Acquired', acquired_at: new Date().toISOString(), acquired_by: user?.email } }]
             });
             notify.success('Item approved for payment!', { id: toastId });
             setVersion(v => v + 1);
@@ -196,9 +196,9 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     };
 
     const getStatusClass = (data: InventoryItemData) => {
-        if (data.payDate) return 'GREEN'; // Paid
-        if (data.payReq) return 'YELLOW'; // Payment Requested
-        if (data.status === 'YES') return 'RED'; // Approved, pending request
+        if (data.dispersal_status === 'Dispersed' || data.payDate) return 'GREEN'; // Paid/Dispersed
+        if (data.dispersal_status === 'Requested' || data.dispersal_status === 'Sent') return 'YELLOW'; // In Progress
+        if (data.status === 'Acquired') return 'RED'; // Acquired, pending payment
         return ''; // Default
     };
 
@@ -285,11 +285,11 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                                     <div key={item.row} className="project-box-wrapper">
                                         <div className="project-box" style={{ gridTemplateColumns, gap: '1rem', alignItems: 'center' }} onClick={() => setExpandedRow(expandedRow === item.row ? null : item.row)}>
                                             <div className="flex items-center justify-center">
-                                                {item.data.status !== 'YES' && (
+                                                {item.data.status !== 'Acquired' && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleGetItem(item); }}
                                                         className="button !p-2 !min-h-0 !bg-transparent hover:!bg-green-500/20 text-green-400"
-                                                        title="Approve for Payment (Get)"
+                                                        title="Mark as Acquired"
                                                     >
                                                         <svg className="w-5 h-5"><use href="#check-circle"></use></svg>
                                                     </button>

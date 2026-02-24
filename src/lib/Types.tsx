@@ -96,8 +96,16 @@ export interface InventoryItemData {
   bookRetail?: string;
   bookBardcode?: string;
   bookAqCode?: string;
-  bookLandCode?: string;
-  crateId?: string;
+  box_land_code?: string;
+  crate_id?: string;
+  workbook?: string;
+  dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
+  bank_account?: string;
+  acquired_by?: string;
+  acquired_at?: string;
+  sent_at?: string;
+  dispersed_at?: string;
+  requested_by?: string;
 }
 
 export interface InventoryItem {

@@ -89,7 +89,15 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
                                         <td className="px-4 py-2 font-mono text-[10px] text-white/40 group-hover:text-white/80 transition-colors uppercase">{item.item_number}</td>
                                         <td className="px-4 py-2">
                                             <div className="text-xs text-white/70 group-hover:text-white transition-colors">{item.description || item.shape || 'Untitled Item'}</div>
-                                            <div className="text-[9px] text-white/20 font-mono mt-0.5">{item.material || 'Standard Material'}</div>
+                                            <div className="flex gap-2 items-center mt-1">
+                                                <div className="text-[9px] text-white/20 font-mono">{item.material || 'Standard Material'}</div>
+                                                {item.acquired_by && (
+                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] font-bold text-white/40" title={`Acquired at ${fmtDate(item.acquired_at)}`}>
+                                                        <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                        {item.acquired_by.split('@')[0].toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-2 text-right">
                                             <div className="font-mono text-xs font-bold text-white/60 tracking-tighter">{fmtMXN(item.price_mxn)}</div>
@@ -266,7 +274,69 @@ const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     );
 };
 
-// 4. CRATES (LOGISTICS)
+// 4. EXPENSES (LOGISTICS, LABOR, MONTHLY)
+const ExpensesPanel: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
+    const user = useAtomValue(userAtom);
+    const categories = ['Monthly', 'Supplies', 'Crates', 'Pallets', 'Laborers'];
+    const banks = ['Ramses BBVA', 'Martha BBVA', 'BOA', 'Direct Client Wire'];
+    const [filterCategory, setFilterCategory] = useState('ALL');
+
+    const filtered = useMemo(() => docs.filter(d => filterCategory === 'ALL' || d.category === filterCategory), [docs, filterCategory]);
+
+    const handleStatusUpdate = async (id: string, status: string) => {
+        const payload: any = { status };
+        const now = new Date().toISOString();
+        if (status === 'Sent') payload.sent_at = now;
+        if (status === 'Dispersed') payload.dispersed_at = now;
+
+        const { error } = await supabase.from('finance').update(payload).eq('id', id);
+        if (error) toast.error(error.message);
+        else onRefresh();
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-black/20">
+            <div className="flex p-3 bg-white/[0.03] border-b border-white/5 gap-3 items-center">
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold tracking-widest text-white/70">
+                    <option value="ALL">ALL CATEGORIES</option>
+                    {categories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+                <div className="ml-auto text-[10px] text-white/20 font-mono uppercase tracking-widest">{filtered.length} Expenses Tracked</div>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map(exp => (
+                        <div key={exp.id} className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all flex flex-col gap-3">
+                            <div className="flex justify-between items-start">
+                                <span className="px-2 py-0.5 rounded bg-white/10 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{exp.category}</span>
+                                <div className="text-right">
+                                    <div className="text-sm font-black text-white font-mono">{fmtUSD(exp.amount)}</div>
+                                    <div className="text-[9px] text-white/20 font-mono lowercase">{exp.bank_account || 'unassigned'}</div>
+                                </div>
+                            </div>
+                            <div className="text-xs text-white/60 line-clamp-2 min-h-[2.5rem]">{exp.notes || exp.type || 'Operational Expense'}</div>
+
+                            <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                                <div className="flex justify-between items-center text-[9px] uppercase font-black tracking-widest text-white/20">
+                                    <span>Workflow State</span>
+                                    <span className={exp.status === 'Dispersed' ? 'text-[#8DC63F]' : exp.status === 'Sent' ? 'text-[#00AEEF]' : 'text-[#FFED00]'}>{exp.status}</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    <button onClick={() => handleStatusUpdate(exp.id, 'Requested')} className={`flex-1 py-1 rounded-md text-[8px] font-bold transition-all ${exp.status === 'Requested' ? 'bg-[#FFED00] text-black shadow-lg shadow-[#FFED00]/20' : 'bg-white/5 text-white/20 hover:text-white/40'}`}>REQ</button>
+                                    <button onClick={() => handleStatusUpdate(exp.id, 'Sent')} className={`flex-1 py-1 rounded-md text-[8px] font-bold transition-all ${exp.status === 'Sent' ? 'bg-[#00AEEF] text-black shadow-lg shadow-[#00AEEF]/20' : 'bg-white/5 text-white/20 hover:text-white/40'}`}>SENT</button>
+                                    <button onClick={() => handleStatusUpdate(exp.id, 'Dispersed')} className={`flex-1 py-1 rounded-md text-[8px] font-bold transition-all ${exp.status === 'Dispersed' ? 'bg-[#8DC63F] text-black shadow-lg shadow-[#8DC63F]/20' : 'bg-white/5 text-white/20 hover:text-white/40'}`}>DONE</button>
+                                </div>
+                                {exp.status === 'Dispersed' && exp.dispersed_at && <div className="text-[8px] text-white/10 text-right italic font-mono">Completed: {fmtDate(exp.dispersed_at)}</div>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 5. CRATES (LOGISTICS)
 const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     const user = useAtomValue(userAtom);
     const filtered = useMemo(() => {
@@ -372,7 +442,7 @@ export const WorkbookView: React.FC = () => {
         { id: 'payments', label: 'FINANCE & PAY', badge: docs326.filter(d => !d.paid).length, roles: ['Developer', 'Admin', 'Vendor'] },
         { id: 'production', label: 'PRODUCTION', badge: data.prod.length, roles: ['Developer', 'Admin', 'Vendor'] },
         { id: 'crates', label: 'LOGISTICS', badge: data.log.length, roles: ['Developer', 'Admin', 'Client'] },
-        { id: 'supplies', label: 'SUPPLIES', badge: supplies.length, roles: ['Developer', 'Admin'] }
+        { id: 'expenses', label: 'EXPENSES', badge: data.fin.filter(d => d.type === 'Expense').length, roles: ['Developer', 'Admin'] }
     ];
 
     const visibleTabs = useMemo(() => {
@@ -423,9 +493,8 @@ export const WorkbookView: React.FC = () => {
                         {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
                         {activeTab === 'payments' && <PaymentsPanel docs={data.inv} finDocs={data.fin} exchangeRate={exchangeRate} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
-                        {/* More panels can follow similar refined patterns */}
                         {activeTab === 'crates' && <CratesPanel docs={data.log} />}
-                        {activeTab === 'supplies' && <InventoryPanel docs={supplies} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
+                        {activeTab === 'expenses' && <ExpensesPanel docs={data.fin.filter(d => d.type === 'Expense' || ['Monthly', 'Supplies', 'Crates', 'Pallets', 'Laborers'].includes(d.category))} exchangeRate={exchangeRate} onRefresh={refresh} />}
                     </div>
                 )}
             </div>

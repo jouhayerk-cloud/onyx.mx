@@ -12,7 +12,7 @@ addRxPlugin(RxDBQueryBuilderPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 2,
+    version: 4,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -23,7 +23,11 @@ const financeSchema = {
         amount: { type: ['number', 'null'] },
         commission: { type: ['number', 'null'] },
         currency: { type: ['string', 'null'] },
+        bank_account: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
+        requested_by: { type: ['string', 'null'] },
+        sent_at: { type: ['string', 'null'] },
+        dispersed_at: { type: ['string', 'null'] },
         destination: { type: ['string', 'null'] },
         vendor_id: { type: ['string', 'null'] },
         related_ids: { type: ['array', 'null'], items: { type: 'string' } },
@@ -76,7 +80,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 2,
+    version: 4,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -85,6 +89,8 @@ const inventorySchema = {
         item_id: { type: ['string', 'null'] },
         item_number: { type: ['number', 'null'] },
         created_by: { type: ['string', 'null'] },
+        acquired_by: { type: ['string', 'null'] },
+        acquired_at: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
         shape: { type: ['string', 'null'] },
         material: { type: ['string', 'null'] },

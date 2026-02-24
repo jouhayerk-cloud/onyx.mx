@@ -35,15 +35,11 @@ export function CreateView() {
         return <FastEntryForm />;
     }
 
-    if (activeTab === 'video') {
+    if (activeTab === 'video' || activeTab === 'videoBatch') {
         return <VideoAnalysisView />;
     }
 
-    if (activeTab === 'videoBatch') {
-        return <VideoBatchView />;
-    }
-
-    if (activeTab === 'batchEntry') {
+    if (activeTab === 'batchEntry' || activeTab === 'batch') {
         return <BatchImportModule />;
     }
 

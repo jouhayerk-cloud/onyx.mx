@@ -20,24 +20,24 @@
 export const translations = {
   en: {
     // Sidebar
-    create: 'Create New',
+    create: 'Create',
     catalog: 'Catalog',
+    workbook: 'Workbook',
     dashboard: 'Dashboard',
-    newFastEntry: 'New (Fast Entry)',
-    voiceEntry: 'Voice Entry',
+    newFastEntry: 'New',
     videoAnalysis: 'Video Analysis',
-    videoBatch: 'Video Batch',
-    batchEntry: 'Batch Entry',
+    batchEntry: 'Batch',
     inventory: 'Inventory',
     market: 'Market',
-    showroom: 'Showroom',
     acquisitions: 'Acquisitions',
     payments: 'Payments',
     shipping: 'Shipping',
+    dispersal: 'Dispersal',
+    bankAccounts: 'Bank Accounts',
     warehouse: 'Warehouse',
     truck: 'Truck',
     maxWeight: 'Max Weight',
-    
+
     // Header
     searchInventory: 'Search inventory...',
     searchAcquisitions: 'Search acquisitions...',
@@ -46,7 +46,7 @@ export const translations = {
 
     // Language
     language: 'Language',
-    
+
     // Performance Mode
     perfModeOn: 'Performance Mode: On',
     perfModeOff: 'Performance Mode: Off',
@@ -179,30 +179,30 @@ export const translations = {
   },
   es: {
     // Sidebar
-    create: 'Crear Nuevo',
+    create: 'Crear',
     catalog: 'Catálogo',
+    workbook: 'Workbook',
     dashboard: 'Dashboard',
-    newFastEntry: 'Nuevo (Rápido)',
-    voiceEntry: 'Entrada por Voz',
+    newFastEntry: 'Nuevo',
     videoAnalysis: 'Análisis de Video',
-    videoBatch: 'Lote de Video',
-    batchEntry: 'Entrada por Lote',
+    batchEntry: 'Lote',
     inventory: 'Inventario',
     market: 'Mercado',
-    showroom: 'Showroom',
     acquisitions: 'Adquisiciones',
     payments: 'Pagos',
     shipping: 'Envíos',
+    dispersal: 'Dispersión',
+    bankAccounts: 'Cuentas Bancarias',
     warehouse: 'Almacén',
     truck: 'Camión',
     maxWeight: 'Peso Máx.',
-    
+
     // Header
     searchInventory: 'Buscar en inventario...',
     searchAcquisitions: 'Buscar en adquisiciones...',
     search: 'Buscar...',
     all: 'Todos',
-    
+
     // Language
     language: 'Idioma',
 
@@ -331,7 +331,7 @@ export const translations = {
     noMasksToExport: 'No hay máscaras seleccionadas para exportar.',
     gradientExtracted: '¡Gradiente extraído!',
     gradientError: 'No se pudo auto-extraer el color.',
-    
+
     // Batch Actions Modal
     batchActionsTitle: (count: number) => `Acciones en Lote para ${count} Artículo${count > 1 ? 's' : ''}`,
     batchActionsPrompt: 'Selecciona una o más acciones para aplicar a todos los artículos seleccionados.',

@@ -172,7 +172,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 // Main Views
 export const activeViewAtom = atom<'catalog' | 'create' | 'dashboard' | 'dashboardEXP' | 'workbook'>('catalog');
-export const createViewActiveTabAtom = atom<'new' | 'voice' | 'video' | 'videoBatch' | 'batchEntry'>('new');
+export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const isDashboardOpenAtom = atom(false);
 export const isCatalogViewOpenAtom = atom(false);
 export const catalogMarketViewModeAtom = atom<'catalog' | 'market'>('catalog');
@@ -193,6 +193,8 @@ export const dashboardSearchTermAtom = atom('');
 export type TrafficLightStatus = 'ALL' | 'RED' | 'YELLOW' | 'GREEN';
 export const dashboardStatusFilterAtom = atom<TrafficLightStatus>('ALL');
 export const paymentDestinationFilterAtom = atom<'All' | PaymentDestination>('All');
+export const paymentBankFilterAtom = atom<'All' | 'Ramses BBVA' | 'Martha BBVA' | 'BOA' | 'Direct Client Wire'>('All');
+export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
 
 // Experimental Dashboard State
 export const dashboardExpDataAtom = atom<any[]>([]);
