@@ -65,6 +65,15 @@ export const appUsers = {
   R: { name: 'RAMSES', role: 'Admin' as const, pin: '77553', email: 'ramses@jouhayerk.com' },
 };
 
+export type WorkbookTabId = 'inventory' | 'archive' | 'production' | 'crates' | 'database';
+export const WORKBOOK_TABS: { id: WorkbookTabId; label: string; color: string; version?: string; roles: string[] }[] = [
+  { id: 'inventory', label: 'WORKBOOK 326', color: '#6BCEBB', version: '326', roles: ['Developer', 'Admin', 'Vendor'] },
+  { id: 'archive', label: 'ARCHIVE 825', color: '#a9d08e', version: '825', roles: ['Developer', 'Admin', 'Client'] },
+  { id: 'production', label: 'PRODUCTION', color: '#FFED00', version: '326', roles: ['Developer', 'Admin', 'Vendor'] },
+  { id: 'crates', label: 'LOGISTICS', color: '#8DC63F', version: '326', roles: ['Developer', 'Admin', 'Client'] },
+  { id: 'database', label: 'DATABASE', color: '#AEE6F5', version: '326', roles: ['Developer'] },
+];
+
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.substring(1, 3), 16);

@@ -46,7 +46,7 @@ import {
     workbookVersionAtom,
     workbookAtom
 } from '../../lib/atoms';
-import { vendors, SCRIPT_URL } from '../../lib/consts';
+import { vendors, SCRIPT_URL, WORKBOOK_TABS } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 // FIX: Import CameraView from Types.tsx instead of atoms.tsx to fix module resolution error.
 import { CameraView, Expense, ExpenseStatus } from '../../lib/Types';
@@ -206,7 +206,7 @@ export function MainHeader() {
         <div className="main-header">
             <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/5 mr-2" onClick={toggleSidebar}>
                 <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.4.3</span>
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.5.0</span>
             </button>
 
             <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
@@ -246,29 +246,18 @@ export function MainHeader() {
             {isWorkbook && (
                 <div className="flex items-center gap-4 ml-4 animate-in fade-in slide-in-from-left-4 duration-500">
                     <div className="flex bg-[var(--input-color)] p-1 rounded-full border border-white/5 backdrop-blur-2xl shadow-xl gap-1">
-                        {[
-                            { label: 'WORKBOOK 326', version: '326', tab: 'inventory', color: '#6BCEBB', roles: ['Developer', 'Admin', 'Vendor'] },
-                            { label: 'ARCHIVE 825', version: '825', tab: 'archive', color: '#a9d08e', roles: ['Developer', 'Admin', 'Client'] },
-                            { label: 'PRODUCTION', version: '326', tab: 'production', color: '#FFED00', roles: ['Developer', 'Admin', 'Vendor'] },
-                            { label: 'LOGISTICS', version: '326', tab: 'crates', color: '#8DC63F', roles: ['Developer', 'Admin', 'Client'] },
-                            { label: 'DATABASE', version: '326', tab: 'database', color: '#AEE6F5', roles: ['Developer'] }
-                        ].filter(item => item.roles.includes(user?.role || 'Vendor')).map((item) => {
-                            const isActive = (item.tab === 'inventory' && workbookVersion === item.version && workbookActiveTab === 'inventory') ||
-                                (item.tab === 'archive' && workbookVersion === item.version && workbookActiveTab === 'archive') ||
-                                (item.tab !== 'inventory' && item.tab !== 'archive' && workbookActiveTab === item.tab);
+                        {WORKBOOK_TABS.filter(item => item.roles.includes(user?.role || 'Vendor')).map((item) => {
+                            const isActive = workbookActiveTab === item.id;
                             return (
                                 <button
                                     key={item.label}
                                     onClick={() => {
-                                        setWorkbookVersion(item.version as '825' | '326');
-                                        setWorkbookActiveTab(item.tab as any);
+                                        setWorkbookVersion((item.version || '326') as '825' | '326');
+                                        setWorkbookActiveTab(item.id as any);
                                         setWorkbook(null);
                                     }}
                                     className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all duration-300 uppercase tracking-widest ${isActive ? 'shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-105' : 'hover:bg-white/5 opacity-40 hover:opacity-100'}`}
-                                    style={{
-                                        backgroundColor: isActive ? item.color : 'transparent',
-                                        color: isActive ? '#000' : 'var(--text-color-secondary)',
-                                    }}
+                                    style={{ backgroundColor: isActive ? item.color : 'transparent', color: isActive ? '#000' : 'var(--text-color-secondary)' }}
                                 >
                                     {item.label}
                                 </button>

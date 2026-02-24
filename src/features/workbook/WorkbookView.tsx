@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { workbookActiveTabAtom, workbookViewModeAtom, workbookDensityAtom, exchangeRateAtom, userAtom } from '../../lib/atoms';
-import { vendors } from '../../lib/consts';
+import { WORKBOOK_TABS, vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
@@ -622,21 +622,10 @@ export const WorkbookView: React.FC = () => {
     const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
     const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
 
-    // Role-Based Tab Visibility
-    const allTabs = [
-        { id: 'inventory', label: 'WORKBOOK 326', badge: docs326.filter(d => !d.shipped).length, roles: ['Developer', 'Admin', 'Vendor'] },
-        { id: 'archive', label: 'ARCHIVE 825', badge: null, roles: ['Developer', 'Admin', 'Client'] },
-        { id: 'production', label: 'PRODUCTION', badge: data.prod.length, roles: ['Developer', 'Admin', 'Vendor'] },
-        { id: 'crates', label: 'LOGISTICS', badge: data.log.length, roles: ['Developer', 'Admin', 'Client'] }
-    ];
-
+    // Role-Based Tab Visibility — driven by single source of truth in consts.tsx
     const visibleTabs = useMemo(() => {
-        const tabs = allTabs.filter(t => t.roles.includes(user?.role || 'Vendor'));
-        if (user?.role === 'Developer') {
-            tabs.push({ id: 'database', label: 'DATABASE', badge: null, roles: ['Developer'] });
-        }
-        return tabs;
-    }, [user?.role, docs326, data.prod, data.log]);
+        return WORKBOOK_TABS.filter(t => t.roles.includes(user?.role || 'Vendor'));
+    }, [user?.role]);
 
     // Redirect if current tab is hidden
     useEffect(() => {
