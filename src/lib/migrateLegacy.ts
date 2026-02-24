@@ -32,6 +32,13 @@ const cleanNum = (val: any) => {
     return 0;
 };
 
+const isValid = (val: any) => {
+    if (!val) return false;
+    const s = String(val).trim();
+    if (s === '' || s === '0' || s === '0.0' || s === '0.00') return false;
+    return true;
+};
+
 async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     const filePath = path.resolve(filename);
     if (!existsSync(filePath)) return;
@@ -46,7 +53,13 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
         const data = utils.sheet_to_json(sheet, { header: 1 }) as any[][];
         if (data.length < 2) continue;
         const headers = (data[1] || []).map(h => String(h || '').toUpperCase());
-        const rows = data.slice(2).filter(r => r && r[0]);
+
+        // Find Tag column index
+        const tagIdx = headers.findIndex(h => h && (h.includes('TAG') || h.includes('ID')));
+
+        // STRICTOR FILTER: skips rows where the TAG-ID is 0, empty, or whitespace
+        // If no tag column found, fall back to first column
+        const rows = data.slice(2).filter(r => r && isValid(r[tagIdx !== -1 ? tagIdx : 0]));
 
         const batch = rows.map(row => {
             const getVal = (header: string) => {
@@ -59,14 +72,14 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
 
             return {
                 item_id: sheetName,
-                item_number: String(row[0] || ''),
-                timestamp: excelDateToISO(row[1]) || new Date().toISOString(),
-                description: String(row[2] || ''),
-                shape: String(row[3] || ''),
-                weight_kg: cleanNum(row[5]),
-                height_cm: cleanNum(row[6]),
-                width_cm: cleanNum(row[7]),
-                length_cm: cleanNum(row[8]),
+                item_number: String(getVal('TAG') || getVal('ID') || row[0] || ''),
+                timestamp: excelDateToISO(getVal('DATE') || row[1]) || new Date().toISOString(),
+                description: String(getVal('DESC') || getVal('OBJECT') || row[2] || ''),
+                shape: String(getVal('SHAPE') || row[3] || ''),
+                weight_kg: cleanNum(getVal('KG') || row[5]),
+                height_cm: cleanNum(getVal('H CM') || row[6]),
+                width_cm: cleanNum(getVal('W CM') || row[7]),
+                length_cm: cleanNum(getVal('D CM') || row[8]),
                 status: defaultWorkbook === '825' ? 'Shipped' : (sentDate ? 'Shipped' : (payDate ? 'Paid' : 'Approved')),
                 price_mxn: price,
                 pay_date: payDate,
@@ -87,7 +100,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     const logSheet = workbook.Sheets['-Log'] || workbook.Sheets['-vPayment'];
     if (logSheet) {
         const data = utils.sheet_to_json(logSheet, { header: 1 }) as any[][];
-        const rows = data.slice(2).filter(r => r && r[2]);
+        const rows = data.slice(2).filter(r => r && isValid(r[2]) && isValid(r[4])); // Must have type and amount
         const batch = rows.map(row => ({
             amount: cleanNum(row[4]) / (cleanNum(row[1]) || 18),
             currency: 'USD',
@@ -108,7 +121,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     const suppliesSheet = workbook.Sheets['-Supplies'] || workbook.Sheets['-vSupplies'];
     if (suppliesSheet) {
         const data = utils.sheet_to_json(suppliesSheet, { header: 1 }) as any[][];
-        const rows = data.slice(5).filter(r => r && r[2]); // Skip header area
+        const rows = data.slice(5).filter(r => r && (isValid(r[2]) || isValid(r[3]))); // Must have item or description
         const batch = rows.map(row => ({
             amount: cleanNum(row[9]) || cleanNum(row[8]), // In or Out
             currency: 'MXN',
@@ -127,7 +140,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     const prodSheet = workbook.Sheets['-Production'];
     if (prodSheet) {
         const data = utils.sheet_to_json(prodSheet, { header: 1 }) as any[][];
-        const rows = data.slice(5).filter(r => r && r[2]);
+        const rows = data.slice(5).filter(r => r && isValid(r[2]) && isValid(r[8])); // Must have description and TAG ID
         const batch = rows.map(row => ({
             vendor_id: String(row[1] || '').split(' ')[0],
             tag_id: String(row[8] || ''),
@@ -149,7 +162,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     const cratesSheet = workbook.Sheets['-Crates'] || workbook.Sheets['-vCrates'];
     if (cratesSheet) {
         const data = utils.sheet_to_json(cratesSheet, { header: 1 }) as any[][];
-        const rows = data.slice(10).filter(r => r && (r[2] || r[3])); // Data usually starts late
+        const rows = data.slice(10).filter(r => r && isValid(r[1]) && (isValid(r[2]) || isValid(r[3]))); // Must have vendor and type/desc
         const batch = rows.map(row => ({
             date: excelDateToISO(row[0]),
             vendor_id: String(row[1] || '').split(' ')[0],
