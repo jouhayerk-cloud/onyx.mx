@@ -1,0 +1,37 @@
+[dotenv@17.3.1] injecting env (3) from .env.local -- tip: ??????  specify custom .env file path with { path: '/custom/path/.env' }
+
+???? Reading C:\Jouhayerk\git\app\public\825.xlsx
+
+node.exe : ???? Fatal error: 
+TypeError: XLSX.readFile is 
+not a function
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (???? Fata  
+  l erro... not a function:   
+ String) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+    at main (C:\Jouhayerk\git\
+app\import_825.ts:143:27)
+    at <anonymous> (C:\Jouhaye
+rk\git\app\import_825.ts:213:1
+)
+    at ModuleJob.run (node:int
+ernal/modules/esm/module_job:3
+43:25)
+    at async onImport.tracePro
+mise.__proto__ (node:internal/
+modules/esm/loader:665:26)
+    at async asyncRunEntryPoin
+tWithESMLoader (node:internal/
+modules/run_main:117:5)

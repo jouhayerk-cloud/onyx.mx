@@ -167,7 +167,19 @@ const createDatabase = async () => {
         });
 
         await db.addCollections({
-            inventory: { schema: inventorySchema },
+            inventory: {
+                schema: inventorySchema,
+                migrationStrategies: {
+                    // v1 → v5: pass-through (previous versions)
+                    1: (doc: any) => doc,
+                    2: (doc: any) => doc,
+                    3: (doc: any) => doc,
+                    4: (doc: any) => doc,
+                    5: (doc: any) => doc,
+                    // v5 → v6: added 14 new nullable fields — no data transformation needed
+                    6: (doc: any) => doc,
+                }
+            },
             finance: { schema: financeSchema },
             logistics: { schema: logisticsSchema },
             production: { schema: productionSchema }
