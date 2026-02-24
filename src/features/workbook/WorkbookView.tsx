@@ -370,7 +370,8 @@ export const WorkbookView: React.FC = () => {
     const refresh = () => setVer(v => v + 1);
 
     useEffect(() => {
-        if (!db) return;
+        const timeoutTimer = setTimeout(() => setIsSyncing(false), 8000);
+        if (!db) return () => clearTimeout(timeoutTimer);
 
         let invTimer: any, prodTimer: any, logTimer: any;
 
@@ -380,7 +381,6 @@ export const WorkbookView: React.FC = () => {
                 invTimer = setTimeout(() => {
                     const items = d.map(x => x.toJSON());
                     setData(p => ({ ...p, inv: items }));
-                    // Set syncing to false once we have at least one valid response from RxDB (even if empty)
                     setIsSyncing(false);
                 }, 200);
             }),
@@ -397,8 +397,6 @@ export const WorkbookView: React.FC = () => {
                 }, 200);
             })
         ];
-
-        const timeoutTimer = setTimeout(() => setIsSyncing(false), 8000);
 
         return () => {
             subs.forEach(s => s.unsubscribe());

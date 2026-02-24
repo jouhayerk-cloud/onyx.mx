@@ -12,7 +12,7 @@ addRxPlugin(RxDBQueryBuilderPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 4,
+    version: 5,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -80,7 +80,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 4,
+    version: 5,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -227,16 +227,29 @@ const createDatabase = async () => {
 
         // Initiation: DO NOT await sync, only collect initial data check
         console.log('✅ [DB] Collections Created. Initiating Sync...');
-        pullReplication();
+        pullReplication().catch(e => console.error('🔥 [DB] Background Sync Failure:', e));
 
         return db;
     } catch (err) {
-        console.error('❌ [DB] Creation failed (possibly version mismatch). Wiping and retrying...', err);
-        // If version mismatch or corruption, wipe Dexie and reload
-        const dbName = 'onyxdb';
-        const Dexie = (await import('dexie')).default;
-        await new Dexie(dbName).delete();
-        window.location.reload();
+        console.error('❌ [DB] Creation failed:', err);
+
+        // Failsafe: only reload if we haven't reloaded in the last 30 seconds
+        const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
+        const now = Date.now();
+
+        if (now - lastReload > 30000) {
+            console.warn('⚠️ [DB] Wiping storage and retrying in 3 seconds...');
+            localStorage.setItem('onyx_last_reload', now.toString());
+
+            setTimeout(async () => {
+                const dbName = 'onyxdb';
+                const Dexie = (await import('dexie')).default;
+                await new Dexie(dbName).delete();
+                window.location.reload();
+            }, 3000);
+        } else {
+            console.error('🛑 [DB] Multiple failures detected. Stopping reload loop.');
+        }
         throw err;
     }
 };
