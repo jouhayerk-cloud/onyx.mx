@@ -1,3 +1,0 @@
-Excel Total (Estimated): 1968
-Supabase Inventory: 1968
-Supabase Finance Entries: 5
