@@ -200,13 +200,22 @@ export const useDatabase = () => {
       setDb(newDb);
     }).catch(async (err) => {
       clearTimeout(timer);
-      console.error('❌ [DB] useDatabase failed, wiping and reloading:', err?.message || err);
-      // Wipe IndexedDB and reload to recover from corrupt/stale schema
+      console.error('❌ [DB] useDatabase failed, wiping all onyxdb* stores:', err?.message || err);
       const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
-      if (Date.now() - lastReload > 15000) {
+      if (Date.now() - lastReload > 5000) {
         localStorage.setItem('onyx_last_reload', Date.now().toString());
-        const { default: Dexie } = await import('dexie');
-        await new Dexie('onyxdb').delete();
+        try {
+          const dbs = await window.indexedDB.databases();
+          await Promise.all(
+            dbs.filter(d => d.name?.startsWith('onyxdb')).map(d =>
+              new Promise<void>(resolve => {
+                const req = window.indexedDB.deleteDatabase(d.name!);
+                req.onsuccess = () => resolve();
+                req.onerror = () => resolve();
+              })
+            )
+          );
+        } catch (_) { /* fallback: indexedDB.databases() not supported */ }
         window.location.reload();
       }
     });

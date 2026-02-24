@@ -162,7 +162,7 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
 const createDatabase = async () => {
     try {
         const db = await createRxDatabase<OnyxDatabase>({
-            name: 'onyxdb',
+            name: 'onyxdb6',
             storage: getRxStorageDexie()
         });
 
@@ -289,20 +289,29 @@ const createDatabase = async () => {
     } catch (err) {
         console.error('❌ [DB] Creation failed:', err);
 
-        // Failsafe: only reload if we haven't reloaded in the last 30 seconds
         const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
         const now = Date.now();
 
-        if (now - lastReload > 30000) {
-            console.warn('⚠️ [DB] Wiping storage and retrying in 3 seconds...');
+        if (now - lastReload > 5000) {
+            console.warn('⚠️ [DB] Wiping all onyxdb* stores and reloading...');
             localStorage.setItem('onyx_last_reload', now.toString());
-
             setTimeout(async () => {
-                const dbName = 'onyxdb';
-                const Dexie = (await import('dexie')).default;
-                await new Dexie(dbName).delete();
+                // Delete ALL IndexedDB databases that start with 'onyxdb'
+                // (RxDB/Dexie uses names like 'onyxdb-rxdb-5-inventory')
+                try {
+                    const dbs = await window.indexedDB.databases();
+                    await Promise.all(
+                        dbs
+                            .filter(d => d.name?.startsWith('onyxdb'))
+                            .map(d => new Promise<void>(resolve => {
+                                const req = window.indexedDB.deleteDatabase(d.name!);
+                                req.onsuccess = () => resolve();
+                                req.onerror = () => resolve();
+                            }))
+                    );
+                } catch (_) { /* indexedDB.databases() not supported in all browsers */ }
                 window.location.reload();
-            }, 3000);
+            }, 1000);
         } else {
             console.error('🛑 [DB] Multiple failures detected. Stopping reload loop.');
         }
