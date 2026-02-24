@@ -82,7 +82,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 5,
+    version: 6,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -91,6 +91,7 @@ const inventorySchema = {
         item_id: { type: ['string', 'null'] },
         item_number: { type: ['number', 'null'] },
         created_by: { type: ['string', 'null'] },
+        marked_by: { type: ['string', 'null'] },
         acquired_by: { type: ['string', 'null'] },
         acquired_at: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
@@ -106,17 +107,30 @@ const inventorySchema = {
         length_cm: { type: ['number', 'null'] },
         media_urls: { type: ['string', 'null'] },
         short_description: { type: ['string', 'null'] },
+        generated_description: { type: ['string', 'null'] },
         detailed_description: { type: ['string', 'null'] },
+        generated_image_urls: { type: ['string', 'null'] },
         generated_png_url: { type: ['string', 'null'] },
         generated_svg_url: { type: ['string', 'null'] },
         spatial_boxes_2d: { type: ['array', 'null'], items: { type: 'object' } },
         spatial_points: { type: ['array', 'null'], items: { type: 'object' } },
         spatial_masks: { type: ['array', 'null'], items: { type: 'object' } },
+        spatial_boxes_3d: { type: ['array', 'null'], items: { type: 'object' } },
+        invoice_id: { type: ['string', 'null'] },
+        print_date: { type: ['string', 'null'] },
         pay_req: { type: ['boolean', 'null'] },
         pay_date: { type: ['string', 'null'] },
+        sent_notes: { type: ['string', 'null'] },
+        sent_pack: { type: ['string', 'null'] },
+        sent_date: { type: ['string', 'null'] },
         shipped: { type: ['boolean', 'null'] },
         workbook: { type: ['string', 'null'] },
         crate_id: { type: ['string', 'null'] },
+        book_landed: { type: ['number', 'null'] },
+        book_retail: { type: ['number', 'null'] },
+        book_barcode: { type: ['string', 'null'] },
+        book_aq_code: { type: ['string', 'null'] },
+        book_land_code: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
