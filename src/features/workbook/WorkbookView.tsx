@@ -430,6 +430,17 @@ const DatabasePanel: React.FC = () => {
         });
     };
 
+    const handleWipeLocal = async () => {
+        if (!confirm('WARNING: Wiping local DB. This will reload the app and fetch fresh data from the cloud. Proceed?')) return;
+        try {
+            const Dexie = (await import('dexie')).default;
+            await new Dexie('onyxdb').delete();
+            window.location.reload();
+        } catch (e: any) {
+            toast.error('Failed to wipe DB: ' + e.message);
+        }
+    };
+
     if (loading) return <div className="p-10 text-white/20 animate-pulse font-black text-center tracking-[0.5em]">INITIALIZING CORE...</div>;
 
     const headers = docs.length > 0 ? Object.keys(docs[0]).filter(k => !k.startsWith('_')) : [];
@@ -459,7 +470,13 @@ const DatabasePanel: React.FC = () => {
                     </div>
                 )}
 
-                <div className="ml-auto text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} Records Found</div>
+                <div className="ml-auto flex items-center gap-4">
+                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{docs.length} Records Found</span>
+                    <button onClick={handleWipeLocal} className="px-3 py-1.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-[9px] font-black tracking-widest uppercase transition-all flex items-center gap-1.5">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        Wipe Local DB
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 overflow-auto custom-scrollbar p-4">
