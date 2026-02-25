@@ -5,6 +5,7 @@ import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { CatalogMarketView } from '../catalog/CatalogMarketView';
 import { AcquisitionsView } from '../dashboard/AcquisitionsView';
+import { DatabasePanel } from '../workbook/DatabasePanel';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // Import panels from WorkbookView (they're not exported, so we replicate minimal versions here)
@@ -16,6 +17,7 @@ const SUB_TABS = [
     { id: 'production' as const, label: 'PRODUCTION', color: '#FFED00', icon: '⚙️' },
     { id: 'acquisitions' as const, label: 'ACQUISITIONS', color: '#F7941D', icon: '🏷️' },
     { id: 'archive' as const, label: 'ARCHIVE', color: '#a9d08e', icon: '📁' },
+    { id: 'database' as const, label: 'DATABASE', color: '#B3B3B3', icon: '💾' },
 ];
 
 export const InventoryView: React.FC = () => {
@@ -87,36 +89,116 @@ export const InventoryView: React.FC = () => {
                 {activeTab === 'archive' && (
                     <ArchiveMiniPanel docs={docs825} exchangeRate={exchangeRate} />
                 )}
+                {activeTab === 'database' && <DatabasePanel />}
             </div>
         </div>
     );
 };
 
-// Minimal Production Panel (reads from RxDB subscription above)
-const ProductionMiniPanel: React.FC<{ docs: any[] }> = ({ docs }) => (
-    <div className="h-full overflow-y-auto custom-scrollbar p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {docs.map(d => {
-                const color = vendors[d.vendor_id as keyof typeof vendors]?.color || '#555';
-                return (
-                    <div key={d.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2 relative hover:bg-white/[0.04] transition-colors">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: color }} />
-                        <div className="flex justify-between items-center">
-                            <span className="px-2 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{d.vendor_id || '—'}</span>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{d.status || 'Active'}</span>
+// Full Production Panel (migrated from legacy WorkbookProductionView)
+const ProductionMiniPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
+    const fmt = (val: any) => {
+        const n = parseFloat(val);
+        if (isNaN(n)) return val || '-';
+        return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 });
+    };
+
+    if (docs.length === 0) {
+        return (
+            <div className="flex items-center justify-center h-full text-[var(--text-color-secondary)]">
+                No active production orders found.
+            </div>
+        );
+    }
+
+    return (
+        <div className="h-full overflow-y-auto custom-scrollbar p-6 relative z-10">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4 mb-6">
+                <h2 className="text-xs uppercase tracking-[0.2em] text-white/40 font-bold border-l-2 border-[#FFED00] pl-3">
+                    Active Production <span className="text-white/20 ml-2 font-mono">[{docs.length}]</span>
+                </h2>
+                <div className="flex gap-4">
+                    <span className="text-[10px] text-white/30 uppercase tracking-widest">v326 Operational</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {docs.map((item, i) => {
+                    const vendorCode = String(item.vendor_id || '').split(' ')[0];
+                    const config = vendors[vendorCode as keyof typeof vendors];
+                    const color = config?.color || '#333';
+
+                    const total = parseFloat(item.total) || 0;
+                    const advance = parseFloat(item.advance) || 0;
+                    const progress = item.progress || (total > 0 ? Math.min(100, (advance / total) * 100) : 0);
+
+                    return (
+                        <div key={item.id || i} className="glass-panel p-5 rounded-xl border border-white/5 flex flex-col gap-4 hover:bg-white/[0.04] transition-colors relative overflow-hidden group bg-white/[0.02]">
+                            {/* Color accent bar */}
+                            <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }}></div>
+
+                            <div className="flex justify-between items-start">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 rounded text-[9px] font-bold text-black" style={{ backgroundColor: color }}>
+                                            {vendorCode || '—'}
+                                        </span>
+                                        {item.tagId && (
+                                            <span className="text-[9px] font-mono text-white/40">#{item.tagId}</span>
+                                        )}
+                                    </div>
+                                    <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#FFED00] transition-colors line-clamp-1">
+                                        {item.description || 'Unnamed Order'}
+                                    </h3>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] text-white/30 uppercase">Total</div>
+                                    <div className="text-sm font-mono font-bold text-white">{fmt(item.total)}</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 text-[10px]">
+                                <div>
+                                    <div className="text-white/30 uppercase mb-1">Price Unit</div>
+                                    <div className="text-white/60 font-mono">{fmt(item.price_mxn || item.price)}</div>
+                                </div>
+                                <div>
+                                    <div className="text-white/30 uppercase mb-1">Quantity</div>
+                                    <div className="text-white/60 font-mono">x {item.quantity || item.qty || 1}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 mt-2">
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-white/30 uppercase">Advance Payment</span>
+                                    <span className="font-mono text-white/60">{fmt(item.advance)}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-[#FFED00] transition-all duration-1000"
+                                        style={{ width: `${progress}%`, opacity: progress > 0 ? 1 : 0.2 }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div className="mt-2 pt-3 border-t border-white/5 flex justify-between items-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-white/20 uppercase">Ready Date</span>
+                                    <span className="text-xs text-white/60 font-mono">
+                                        {item.readyDate ? (typeof item.readyDate === 'number' ? new Date(Math.round((item.readyDate - 25569) * 864e5)).toLocaleDateString('es-MX') : String(item.readyDate)) : 'TBD'}
+                                    </span>
+                                </div>
+                                <button className="p-2 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                                </button>
+                            </div>
                         </div>
-                        <div className="text-xs font-bold text-white line-clamp-1">{d.description || 'Production Order'}</div>
-                        <div className="w-full bg-white/5 rounded-full h-2 mt-1">
-                            <div className="h-2 rounded-full bg-[#FFED00] transition-all" style={{ width: `${d.progress || 0}%` }} />
-                        </div>
-                        <div className="text-[9px] font-mono text-white/30 text-right">{d.progress || 0}%</div>
-                    </div>
-                );
-            })}
-            {docs.length === 0 && <div className="col-span-3 py-16 text-center text-white/10 text-sm font-black tracking-widest">NO PRODUCTION ORDERS</div>}
+                    );
+                })}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // Minimal Archive Panel
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
