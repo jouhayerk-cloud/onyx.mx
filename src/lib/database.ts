@@ -265,22 +265,20 @@ const createDatabase = async () => {
                     return allData;
                 };
 
-                // PHASE 1: ACTIVE DATA (Workbook 326)
-                console.log('[DB] Paging active items (326)...');
-                const activeData = await fetchPaginated('inventory', 'workbook', '326');
-                console.log(`[DB] Fetched ${activeData.length} active items (326) from Supabase.`);
-                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData, 50, 50);
+                // PHASE 1 & 2: ALL INVENTORY
+                console.log('[DB] Paging all inventory items...');
+                const invData = await fetchPaginated('inventory');
 
-                // PHASE 2: ARCHIVE DATA (Workbook 825)
-                console.log('[DB] Paging archive items (825)...');
-                const archiveData = await fetchPaginated('inventory', 'workbook', '825');
-                const archiveDataAlt = await fetchPaginated('inventory', 'workbook', 825);
-                const combinedArchive = [...archiveData, ...archiveDataAlt.filter(a => !archiveData.some(b => b.id === a.id))];
-                console.log(`[DB] Fetched ${combinedArchive.length} archive items (825) from Supabase.`);
-                if (combinedArchive.length > 0) await bulkUpsertChunked(db.inventory, combinedArchive, 20, 150);
+                const activeData = invData.filter(d => String(d.workbook) !== '825');
+                const archiveData = invData.filter(d => String(d.workbook) === '825');
+
+                console.log(`[DB] Fetched ${invData.length} total inventory items (${activeData.length} active, ${archiveData.length} archive).`);
+
+                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData, 50, 50);
+                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData, 50, 50);
 
                 // PRUNE STALE LOCAL INVENTORY
-                const remoteInvIds = new Set([...activeData, ...combinedArchive].map(d => String(d.id)));
+                const remoteInvIds = new Set(invData.map(d => String(d.id)));
                 const localInvDocs = await db.inventory.find().exec();
                 const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
                 if (staleInv.length > 0) {
