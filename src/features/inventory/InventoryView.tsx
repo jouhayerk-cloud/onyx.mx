@@ -7,6 +7,7 @@ import { useDatabase } from '../../lib/hooks';
 import { CatalogMarketView } from '../catalog/CatalogMarketView';
 import { AcquisitionsView } from '../dashboard/AcquisitionsView';
 import { DatabaseViewerPanel } from './DatabaseViewerPanel';
+import { numberToCypher } from '../../lib/utils';
 
 import toast from 'react-hot-toast';
 
@@ -207,7 +208,7 @@ const ProductionMiniPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     );
 };
 
-// ── Archive Panel ─────────────────────────────────────────────────────────────
+// ── Archive Panel ───────────────────────────────────────────────────────────
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const getTagTextColor = (hex: string) => {
@@ -217,28 +218,54 @@ const getTagTextColor = (hex: string) => {
     } catch { return '#000'; }
 };
 
+// Compute landed/retail/codes from raw price_mxn and exchange rate
+const calcPrices = (priceMxn: number | null | undefined, exchangeRate: number, vendorTag: string, itemNum: number | null | undefined) => {
+    const costMxn = priceMxn || 0;
+    if (!costMxn || !exchangeRate) return {
+        costUSD: null, landedUSD: null, retailUSD: null,
+        aqCode: null, landCode: null, barcode: null
+    };
+    const costUsd = costMxn / exchangeRate;
+    const landedUsd = costUsd * 1.4;
+    const retailUsd = landedUsd * 8;
+    const aqRounded = Math.ceil(costUsd);
+    const landRounded = Math.ceil(landedUsd);
+    const suffix = String(itemNum || '').slice(-2).padStart(2, '0');
+    return {
+        costUSD: costUsd,
+        landedUSD: landedUsd,
+        retailUSD: retailUsd,
+        aqCode: numberToCypher(aqRounded),
+        landCode: numberToCypher(landRounded),
+        barcode: `${vendorTag}825${suffix}${numberToCypher(landRounded)}`,
+    };
+};
+
 const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ docs, exchangeRate }) => {
     const [search, setSearch] = useState('');
     const [vendorFilter, setVendorFilter] = useState('ALL');
     const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
-    // Dynamic vendor list – only vendors that actually have items in the archive
+    // acquiredBy is the short vendor tag (EM, JM, GE, AN…)
+    // item_id is a long barcode-style identifier — NOT the vendor
+    const getVendor = (d: any): string => (d.acquired_by || d.item_id || '').toUpperCase().slice(0, 4);
+
     const presentVendors = useMemo(() => {
-        const ids = new Set(docs.map(d => d.item_id).filter(Boolean));
+        const ids = new Set(docs.map(d => getVendor(d)).filter(Boolean));
         return Array.from(ids).sort() as string[];
     }, [docs]);
 
     const filtered = useMemo(() => {
         let result = docs;
-        if (vendorFilter !== 'ALL') result = result.filter(d => d.item_id === vendorFilter);
+        if (vendorFilter !== 'ALL') result = result.filter(d => getVendor(d) === vendorFilter);
         if (search) {
             const q = search.toLowerCase();
             result = result.filter(d =>
                 (d.shape || '').toLowerCase().includes(q) ||
                 (d.material || '').toLowerCase().includes(q) ||
                 (d.description || '').toLowerCase().includes(q) ||
-                (d.item_id || '').toLowerCase().includes(q) ||
-                (d.id || '').toLowerCase().includes(q)
+                (d.acquired_by || '').toLowerCase().includes(q) ||
+                (d.item_id || '').toLowerCase().includes(q)
             );
         }
         return result;
@@ -313,38 +340,31 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
                         <p className="text-xs font-black text-white/20 uppercase tracking-widest">No archive items match</p>
                     </div>
                 ) : viewMode === 'cards' ? (
-                    // ── CARD GRID ──
-                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-min">
+                    // ─ CARD GRID ─
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                         {filtered.map(d => {
-                            const color = vendors[d.item_id as keyof typeof vendors]?.color || '#555';
+                            const vid = getVendor(d);
+                            const color = vendors[vid as keyof typeof vendors]?.color || '#667';
                             const tc = getTagTextColor(color);
                             const dims = [d.width_cm, d.height_cm, d.length_cm].filter(Boolean).map((v: any) => Number(v).toFixed(0)).join('×');
-                            const priceUSD = d.price_mxn && exchangeRate ? (d.price_mxn / exchangeRate).toFixed(0) : null;
+                            const p = calcPrices(d.price_mxn, exchangeRate, vid, d.item_number);
                             return (
                                 <div key={d.id}
-                                    className="relative flex flex-col bg-white/[0.025] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl overflow-hidden transition-all duration-200 cursor-default">
-                                    {/* Vendor color accent bar */}
-                                    <div className="h-1 w-full shrink-0" style={{ backgroundColor: color }} />
-
+                                    className="flex flex-col bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.07] hover:border-white/[0.16] rounded-2xl overflow-hidden transition-all duration-200">
+                                    <div className="h-[3px] w-full shrink-0" style={{ backgroundColor: color }} />
                                     <div className="p-3 flex flex-col gap-2 flex-1">
-                                        {/* Header: shape + vendor tag */}
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
-                                                <p className="text-[11px] font-black text-white/90 truncate leading-tight">{d.shape || '—'}</p>
-                                                <p className="text-[10px] text-white/40 truncate">{d.material || '—'}</p>
+                                                <p className="text-[12px] font-black text-white truncate leading-tight">{d.shape || '—'}</p>
+                                                <p className="text-[10px] text-white/45 truncate">{d.material || '—'}</p>
                                             </div>
                                             <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
-                                                style={{ backgroundColor: color, color: tc }}>
-                                                {d.item_id || '?'}
-                                            </span>
+                                                style={{ backgroundColor: color, color: tc }}>{vid || '?'}</span>
                                         </div>
-
                                         {d.description && (
-                                            <p className="text-[10px] text-white/35 line-clamp-2 leading-relaxed">{d.description}</p>
+                                            <p className="text-[10px] text-white/40 line-clamp-2 leading-relaxed">{d.description}</p>
                                         )}
-
-                                        {/* Specs */}
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-auto">
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                             {d.color && (
                                                 <span className="flex items-center gap-1 text-[9px] text-white/35">
                                                     <span className="w-2.5 h-2.5 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: d.color }} />
@@ -352,16 +372,21 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
                                                 </span>
                                             )}
                                             {dims && <span className="text-[9px] font-mono text-white/25">{dims} cm</span>}
-                                            {d.weight_kg && <span className="text-[9px] font-mono text-white/25">{d.weight_kg} kg</span>}
+                                            {d.weight_kg && <span className="text-[9px] font-mono text-white/25">{Number(d.weight_kg).toFixed(1)} kg</span>}
                                         </div>
-
-                                        {/* Price footer */}
-                                        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                                            <span className="text-[10px] font-mono text-white/25">{fmtMXN(d.price_mxn)}</span>
-                                            {priceUSD
-                                                ? <span className="text-[12px] font-black" style={{ color }}>${priceUSD}</span>
-                                                : <span className="text-[10px] text-white/15">—</span>
-                                            }
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-white/5 text-white/35">AQ {p.aqCode || '—'}</span>
+                                            <span className="px-1.5 py-0.5 rounded text-[8px] font-mono bg-white/5 text-white/35">LD {p.landCode || '—'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] mt-auto">
+                                            <div className="flex flex-col">
+                                                <span className="text-[8px] text-white/20 uppercase tracking-wider">Retail</span>
+                                                <span className="text-[10px] font-mono text-white/40">${p.retailUSD ? p.retailUSD.toFixed(0) : '—'}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[8px] text-white/20 uppercase tracking-wider">Landed</span>
+                                                <span className="text-[13px] font-black" style={{ color }}>${p.landedUSD ? p.landedUSD.toFixed(0) : '—'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -369,45 +394,48 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
                         })}
                     </div>
                 ) : (
-                    // ── TABLE VIEW ──
+                    // ─ TABLE VIEW ─
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="text-[9px] uppercase tracking-widest text-white/25 border-b border-white/5 bg-white/[0.02] sticky top-0 backdrop-blur-xl">
-                                <th className="px-5 py-3">Vendor</th>
-                                <th className="px-5 py-3">Shape · Material</th>
-                                <th className="px-5 py-3">Color</th>
-                                <th className="px-5 py-3">Dims (cm)</th>
-                                <th className="px-5 py-3 text-right">MXN</th>
-                                <th className="px-5 py-3 text-right">USD</th>
-                                <th className="px-5 py-3">Status</th>
+                                <th className="px-4 py-3">Vendor</th>
+                                <th className="px-4 py-3">Shape · Material</th>
+                                <th className="px-4 py-3">Color</th>
+                                <th className="px-4 py-3">Dims</th>
+                                <th className="px-4 py-3">AQ Code</th>
+                                <th className="px-4 py-3">Landed USD</th>
+                                <th className="px-4 py-3 text-right">Retail USD</th>
+                                <th className="px-4 py-3">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.03]">
                             {filtered.map(d => {
-                                const color = vendors[d.item_id as keyof typeof vendors]?.color || '#555';
+                                const vid = getVendor(d);
+                                const color = vendors[vid as keyof typeof vendors]?.color || '#555';
                                 const tc = getTagTextColor(color);
                                 const dims = [d.width_cm, d.height_cm, d.length_cm].filter(Boolean).map((v: any) => Number(v).toFixed(0)).join('×');
-                                const priceUSD = d.price_mxn && exchangeRate ? '$' + (d.price_mxn / exchangeRate).toFixed(0) : '—';
+                                const p = calcPrices(d.price_mxn, exchangeRate, vid, d.item_number);
                                 return (
                                     <tr key={d.id} className="hover:bg-white/[0.04] transition-all">
-                                        <td className="px-5 py-2.5">
+                                        <td className="px-4 py-2.5">
                                             <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
-                                                style={{ backgroundColor: color, color: tc }}>{d.item_id || '?'}</span>
+                                                style={{ backgroundColor: color, color: tc }}>{vid || '?'}</span>
                                         </td>
-                                        <td className="px-5 py-2.5">
-                                            <span className="text-xs text-white/80 font-semibold">{d.shape}</span>
+                                        <td className="px-4 py-2.5">
+                                            <span className="text-xs text-white/80 font-semibold">{d.shape || '—'}</span>
                                             {d.material && <span className="text-[10px] text-white/35 ml-1.5">· {d.material}</span>}
                                         </td>
-                                        <td className="px-5 py-2.5">
+                                        <td className="px-4 py-2.5">
                                             <span className="flex items-center gap-1.5 text-[10px] text-white/45">
                                                 {d.color && <span className="w-3 h-3 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: d.color }} />}
                                                 {d.color || '—'}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-2.5 font-mono text-[10px] text-white/35">{dims || '—'}</td>
-                                        <td className="px-5 py-2.5 text-right font-mono text-[10px] text-white/40">{fmtMXN(d.price_mxn)}</td>
-                                        <td className="px-5 py-2.5 text-right font-black text-[11px]" style={{ color }}>{priceUSD}</td>
-                                        <td className="px-5 py-2.5 text-[9px] text-white/30 uppercase tracking-wider">{d.status || '—'}</td>
+                                        <td className="px-4 py-2.5 font-mono text-[10px] text-white/35">{dims || '—'}</td>
+                                        <td className="px-4 py-2.5 font-mono text-[10px]" style={{ color }}>{p.aqCode || '—'}</td>
+                                        <td className="px-4 py-2.5 font-black text-[11px]" style={{ color }}>${p.landedUSD ? p.landedUSD.toFixed(0) : '—'}</td>
+                                        <td className="px-4 py-2.5 text-right font-mono text-[10px] text-white/45">${p.retailUSD ? p.retailUSD.toFixed(0) : '—'}</td>
+                                        <td className="px-4 py-2.5 text-[9px] text-white/30 uppercase tracking-wider">{d.status || '—'}</td>
                                     </tr>
                                 );
                             })}
