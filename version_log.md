@@ -4,6 +4,19 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.6.0 - Inventory Archive Redesign: Premium UI & Dynamic Vendor Filters**
+
+### **Date:** 2026-02-24
+
+- **ARCHIVE UI OVERHAUL**: Completely rebuilt the Archive section in `InventoryView.tsx` from a basic table into a premium, data-dense interface.
+- **DYNAMIC VENDOR FILTER PILLS**: Live-computed filter buttons appear only for vendors who actually have items in the current archive. Pills are color-coded to match each vendor's brand color (EM=blue, JM=teal, GE=orange, AN=yellow, etc.) with active glow effects.
+- **DUAL VIEW MODES**: Introduced a ⊞ card grid and ☰ table toggle. Card grid renders responsive multi-column layout (1→5 cols based on screen width) with a color accent bar, vendor tag, shape/material, color swatch + dimensions, and USD price highlighted in vendor color.
+- **ITEM CARDS**: Each card shows: vendor brand color bar at top, color-coded vendor ID pill, shape + material, description excerpt (2-line clamp), color swatch with hex, dimensions (W×H×L cm), weight, MXN price, and bold USD price.
+- **TABLE VIEW**: Compact table with all columns: Vendor (color pill), Shape·Material, Color swatch, Dims, MXN, USD, Status.
+- **LIVE STATS**: Header shows `filtered / total` count and total portfolio value in USD, updating in real-time as filters are applied.
+
+---
+
 ## **v2.5.8 - Database Schema Compliance & Pagination Sync**
 
 ### **Date:** 2026-02-24

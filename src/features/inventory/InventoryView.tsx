@@ -200,43 +200,213 @@ const ProductionMiniPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     );
 };
 
-// Minimal Archive Panel
+// ── Archive Panel ─────────────────────────────────────────────────────────────
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const getTagTextColor = (hex: string) => {
+    try {
+        const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) < 128 ? '#fff' : '#000';
+    } catch { return '#000'; }
+};
 
 const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ docs, exchangeRate }) => {
     const [search, setSearch] = useState('');
+    const [vendorFilter, setVendorFilter] = useState('ALL');
+    const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+    // Dynamic vendor list – only vendors that actually have items in the archive
+    const presentVendors = useMemo(() => {
+        const ids = new Set(docs.map(d => d.item_id).filter(Boolean));
+        return Array.from(ids).sort() as string[];
+    }, [docs]);
+
     const filtered = useMemo(() => {
-        if (!search) return docs;
-        const q = search.toLowerCase();
-        return docs.filter(d => (d.description || '').toLowerCase().includes(q) || (d.id || '').toLowerCase().includes(q) || (d.item_id || '').toLowerCase().includes(q));
-    }, [docs, search]);
+        let result = docs;
+        if (vendorFilter !== 'ALL') result = result.filter(d => d.item_id === vendorFilter);
+        if (search) {
+            const q = search.toLowerCase();
+            result = result.filter(d =>
+                (d.shape || '').toLowerCase().includes(q) ||
+                (d.material || '').toLowerCase().includes(q) ||
+                (d.description || '').toLowerCase().includes(q) ||
+                (d.item_id || '').toLowerCase().includes(q) ||
+                (d.id || '').toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [docs, vendorFilter, search]);
+
+    const totalValueUSD = useMemo(() => exchangeRate ? filtered.reduce((a, d) => a + (d.price_mxn || 0), 0) / exchangeRate : 0, [filtered, exchangeRate]);
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex items-center gap-3 p-4 border-b border-white/5 shrink-0">
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search archive..." className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 flex-1 max-w-md" />
-                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{filtered.length} items</span>
+
+            {/* ── Toolbar ── */}
+            <div className="shrink-0 border-b border-white/5 bg-black/20">
+                <div className="flex items-center gap-3 px-5 pt-3 pb-2">
+                    {/* Search */}
+                    <div className="relative flex-1 max-w-sm">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by shape, material, vendor…"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-[#a9d08e]/50 transition-colors" />
+                    </div>
+                    {/* View toggle */}
+                    <div className="flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/5">
+                        {[{ id: 'cards', label: '⊞' }, { id: 'table', label: '☰' }].map(v => (
+                            <button key={v.id} onClick={() => setViewMode(v.id as any)}
+                                className={`w-7 h-7 rounded-md text-sm font-bold transition-all ${viewMode === v.id ? 'bg-white/15 text-white shadow' : 'text-white/25 hover:text-white/60'
+                                    }`}>{v.label}</button>
+                        ))}
+                    </div>
+                    {/* Stats */}
+                    <div className="flex flex-col items-end ml-auto gap-0.5">
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{filtered.length} / {docs.length} items</span>
+                        <span className="text-[11px] font-black text-[#a9d08e]">${totalValueUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                    </div>
+                </div>
+
+                {/* Vendor filter pills */}
+                <div className="flex items-center gap-2 px-5 pb-3 flex-wrap">
+                    <button onClick={() => setVendorFilter('ALL')}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${vendorFilter === 'ALL'
+                                ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.08)]'
+                                : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60'
+                            }`}>ALL · {docs.length}</button>
+
+                    {presentVendors.map(vid => {
+                        const color = vendors[vid as keyof typeof vendors]?.color || '#667';
+                        const tc = getTagTextColor(color);
+                        const count = docs.filter(d => d.item_id === vid).length;
+                        const active = vendorFilter === vid;
+                        return (
+                            <button key={vid} onClick={() => setVendorFilter(active ? 'ALL' : vid)}
+                                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-200 ${active ? 'scale-110' : 'opacity-55 hover:opacity-100 hover:scale-105'
+                                    }`}
+                                style={active
+                                    ? { backgroundColor: color, color: tc, boxShadow: `0 0 20px ${color}50` }
+                                    : { backgroundColor: `${color}20`, color, border: `1px solid ${color}50` }
+                                }>
+                                {vid} · {count}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
+
+            {/* ── Content ── */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
-                    <thead><tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02] sticky top-0">
-                        <th className="px-4 py-3">ID</th><th className="px-4 py-3">Name</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3 text-right">Price (MXN)</th><th className="px-4 py-3">Status</th>
-                    </tr></thead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                {filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                        <svg className="w-12 h-12 text-white/10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        <p className="text-xs font-black text-white/20 uppercase tracking-widest">No archive items match</p>
+                    </div>
+                ) : viewMode === 'cards' ? (
+                    // ── CARD GRID ──
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-min">
                         {filtered.map(d => {
                             const color = vendors[d.item_id as keyof typeof vendors]?.color || '#555';
+                            const tc = getTagTextColor(color);
+                            const dims = [d.width_cm, d.height_cm, d.length_cm].filter(Boolean).map((v: any) => Number(v).toFixed(0)).join('×');
+                            const priceUSD = d.price_mxn && exchangeRate ? (d.price_mxn / exchangeRate).toFixed(0) : null;
                             return (
-                                <tr key={d.id} className="hover:bg-white/[0.04] transition-all">
-                                    <td className="px-4 py-2 font-mono text-[10px] text-white/40">{d.id}</td>
-                                    <td className="px-4 py-2 text-xs text-white/70">{d.shape} {d.material} - <span className="opacity-50">{d.description}</span></td>
-                                    <td className="px-4 py-2">{d.item_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{d.item_id}</span> : '—'}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-xs text-white/60">{fmtMXN(d.price_mxn)}</td>
-                                    <td className="px-4 py-2 text-[9px] text-white/40">{d.status || '—'}</td>
-                                </tr>
+                                <div key={d.id}
+                                    className="relative flex flex-col bg-white/[0.025] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.14] rounded-2xl overflow-hidden transition-all duration-200 cursor-default">
+                                    {/* Vendor color accent bar */}
+                                    <div className="h-1 w-full shrink-0" style={{ backgroundColor: color }} />
+
+                                    <div className="p-3 flex flex-col gap-2 flex-1">
+                                        {/* Header: shape + vendor tag */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] font-black text-white/90 truncate leading-tight">{d.shape || '—'}</p>
+                                                <p className="text-[10px] text-white/40 truncate">{d.material || '—'}</p>
+                                            </div>
+                                            <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
+                                                style={{ backgroundColor: color, color: tc }}>
+                                                {d.item_id || '?'}
+                                            </span>
+                                        </div>
+
+                                        {d.description && (
+                                            <p className="text-[10px] text-white/35 line-clamp-2 leading-relaxed">{d.description}</p>
+                                        )}
+
+                                        {/* Specs */}
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-auto">
+                                            {d.color && (
+                                                <span className="flex items-center gap-1 text-[9px] text-white/35">
+                                                    <span className="w-2.5 h-2.5 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: d.color }} />
+                                                    {d.color}
+                                                </span>
+                                            )}
+                                            {dims && <span className="text-[9px] font-mono text-white/25">{dims} cm</span>}
+                                            {d.weight_kg && <span className="text-[9px] font-mono text-white/25">{d.weight_kg} kg</span>}
+                                        </div>
+
+                                        {/* Price footer */}
+                                        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                                            <span className="text-[10px] font-mono text-white/25">{fmtMXN(d.price_mxn)}</span>
+                                            {priceUSD
+                                                ? <span className="text-[12px] font-black" style={{ color }}>${priceUSD}</span>
+                                                : <span className="text-[10px] text-white/15">—</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             );
                         })}
-                    </tbody>
-                </table>
+                    </div>
+                ) : (
+                    // ── TABLE VIEW ──
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[9px] uppercase tracking-widest text-white/25 border-b border-white/5 bg-white/[0.02] sticky top-0 backdrop-blur-xl">
+                                <th className="px-5 py-3">Vendor</th>
+                                <th className="px-5 py-3">Shape · Material</th>
+                                <th className="px-5 py-3">Color</th>
+                                <th className="px-5 py-3">Dims (cm)</th>
+                                <th className="px-5 py-3 text-right">MXN</th>
+                                <th className="px-5 py-3 text-right">USD</th>
+                                <th className="px-5 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.03]">
+                            {filtered.map(d => {
+                                const color = vendors[d.item_id as keyof typeof vendors]?.color || '#555';
+                                const tc = getTagTextColor(color);
+                                const dims = [d.width_cm, d.height_cm, d.length_cm].filter(Boolean).map((v: any) => Number(v).toFixed(0)).join('×');
+                                const priceUSD = d.price_mxn && exchangeRate ? '$' + (d.price_mxn / exchangeRate).toFixed(0) : '—';
+                                return (
+                                    <tr key={d.id} className="hover:bg-white/[0.04] transition-all">
+                                        <td className="px-5 py-2.5">
+                                            <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
+                                                style={{ backgroundColor: color, color: tc }}>{d.item_id || '?'}</span>
+                                        </td>
+                                        <td className="px-5 py-2.5">
+                                            <span className="text-xs text-white/80 font-semibold">{d.shape}</span>
+                                            {d.material && <span className="text-[10px] text-white/35 ml-1.5">· {d.material}</span>}
+                                        </td>
+                                        <td className="px-5 py-2.5">
+                                            <span className="flex items-center gap-1.5 text-[10px] text-white/45">
+                                                {d.color && <span className="w-3 h-3 rounded-full border border-white/10 shrink-0" style={{ backgroundColor: d.color }} />}
+                                                {d.color || '—'}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-2.5 font-mono text-[10px] text-white/35">{dims || '—'}</td>
+                                        <td className="px-5 py-2.5 text-right font-mono text-[10px] text-white/40">{fmtMXN(d.price_mxn)}</td>
+                                        <td className="px-5 py-2.5 text-right font-black text-[11px]" style={{ color }}>{priceUSD}</td>
+                                        <td className="px-5 py-2.5 text-[9px] text-white/30 uppercase tracking-wider">{d.status || '—'}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );
