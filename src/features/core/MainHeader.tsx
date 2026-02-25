@@ -184,9 +184,9 @@ export function MainHeader() {
 
     const [workbookSearch, setWorkbookSearch] = useAtom(workbookSearchTermAtom);
 
-    const isCatalog = activeView === 'catalog';
-    const isDashboard = activeView === 'dashboard';
-    const isWorkbook = activeView === 'workbook';
+    const isCatalog = activeView === 'inventory';
+    const isDashboard = activeView === 'finance' || activeView === 'logistics';
+    const isWorkbook = activeView === 'finance' || activeView === 'logistics' || activeView === 'inventory';
 
     const searchTerm = isCatalog ? inventorySearch : isDashboard ? dashboardSearch : isWorkbook ? workbookSearch : '';
     const setSearchTerm = isCatalog ? setInventorySearch : isDashboard ? setDashboardSearch : isWorkbook ? setWorkbookSearch : () => { };
@@ -206,7 +206,7 @@ export function MainHeader() {
         <div className="main-header">
             <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/5 mr-2" onClick={toggleSidebar}>
                 <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.5.4</span>
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.5.6</span>
             </button>
 
             <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
@@ -301,7 +301,7 @@ export function MainHeader() {
                 )}
 
                 <div className="flex gap-3 items-center justify-end">
-                    {activeView === 'dashboard' && dashboardTab === 'acquisitions' && (
+                    {activeView === 'inventory' && dashboardTab === 'acquisitions' && (
                         <div className="flex gap-2 items-center">
                             <button onClick={() => setIsStatsVisible(!isStatsVisible)} className="button !p-2 !min-h-0" title={isStatsVisible ? 'Hide Stats Panel' : 'Show Stats Panel'}>
                                 <svg className="w-5 h-5"><use href={isStatsVisible ? '#eye-off' : '#eye'}></use></svg>
@@ -315,7 +315,7 @@ export function MainHeader() {
                         </div>
                     )}
 
-                    {user?.role === 'Admin' && activeView === 'catalog' && vendorIdsInInventory.length > 1 && (
+                    {user?.role === 'Admin' && activeView === 'inventory' && vendorIdsInInventory.length > 1 && (
                         <div className="flex items-center gap-1.5 overflow-x-auto">
                             {vendorIdsInInventory.map((id: string) => (
                                 <button key={id} onClick={() => setInventoryFilter(id)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-all border border-transparent ${inventoryFilter === id ? '!border-[var(--main-color)] bg-black/20' : 'opacity-70 hover:opacity-100'}`}
@@ -325,7 +325,7 @@ export function MainHeader() {
                             ))}
                         </div>
                     )}
-                    {activeView === 'catalog' && selectedItemData && (
+                    {activeView === 'inventory' && selectedItemData && (
                         <button
                             onClick={() => setIsDetailsPanelOpen(!isDetailsPanelOpen)}
                             className="button !p-2 !min-h-0 lg:hidden"

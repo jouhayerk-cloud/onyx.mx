@@ -49,8 +49,8 @@ export const InventoryView: React.FC = () => {
         return data.inv;
     }, [data.inv, user]);
 
-    const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
-    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
+    const docs326 = useMemo(() => docs.filter(d => String(d.workbook) === '326' || !d.workbook), [docs]);
+    const docs825 = useMemo(() => docs.filter(d => String(d.workbook) === '825'), [docs]);
 
     const fmtUSD = (n: number) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 

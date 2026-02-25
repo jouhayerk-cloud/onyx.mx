@@ -4,6 +4,16 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.5.6 - Cipher Code implementation and Workspace stability**
+
+### **Date:** 2026-02-24
+
+- **CIPHER CODES**: Integrated secret cipher implementation in Acquisitions and Inventory views. Added automated translation of numbers onto cypher variables without leaking the logic into user logs or visible documentation strings.
+- **DATABASE SYNC RELIABILITY**: Fixed a critical synchronization race condition by preventing Supabase queries from mixing integers and strings in `workbook` checks during pagination. Fixed integer check edge cases to allow all parts of Workbook `825` properties to properly load.
+- **UI REGRESSIONS FIXED**: Cleaned up legacy component references in `MainHeader.tsx` `activeView` filtering where components still referenced older routes like `dashboard` or `catalog` instead of the new standard ones (`inventory`, `finance`, `logistics`).
+
+---
+
 ## **v2.5.5 - Unified Navigation: Dashboard + Workbook Merge**
 
 ### **Date:** 2026-02-24
