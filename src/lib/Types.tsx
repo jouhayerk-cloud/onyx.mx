@@ -259,7 +259,7 @@ export type CameraView = 'perspective' | 'top' | 'side' | 'front';
 
 // New type for simplified item info stored in crates to reduce payload size
 export interface PackedItem {
-  row: number;
+  row: number | string;
   itemId: string;
   itemNumber: string;
   shape: string;

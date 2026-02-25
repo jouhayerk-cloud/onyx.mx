@@ -1,0 +1,33 @@
+﻿src/components/AudioVisualizer.tsx(209,43): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'Uint8Array<ArrayBuffer>'.
+  Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+    Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'.
+      Types of property '[Symbol.toStringTag]' are incompatible.
+        Type '"SharedArrayBuffer"' is not assignable to type '"ArrayBuffer"'.
+src/features/catalog/BatchActionsModal.tsx(309,44): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/features/dashboard/Dashboard.tsx(38,38): error TS2322: Type '{ mode: string; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'mode' does not exist on type 'IntrinsicAttributes'.
+src/features/dashboard/ShippingControl.tsx(140,72): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/features/dashboard/ShippingControl.tsx(140,96): error TS2551: Property 'crateId' does not exist on type 'InventoryItemData'. Did you mean 'crate_id'?
+src/features/dashboard/ShippingControl.tsx(206,79): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/features/dashboard/ShippingControl.tsx(209,15): error TS2322: Type '{ row: string | number; itemId: string; itemNumber: string; shape: string; material: string; weightKg: string; color: string; widthCm: string; heightCm: string; lengthCm: string; price: string; bookBardcode: string; bookAqCode: string; bookLandCode: any; }[]' is not assignable to type 'PackedItem[]'.
+  Type '{ row: string | number; itemId: string; itemNumber: string; shape: string; material: string; weightKg: string; color: string; widthCm: string; heightCm: string; lengthCm: string; price: string; bookBardcode: string; bookAqCode: string; bookLandCode: any; }' is not assignable to type 'PackedItem'.
+    Types of property 'row' are incompatible.
+      Type 'string | number' is not assignable to type 'number'.
+        Type 'string' is not assignable to type 'number'.
+src/features/dashboard/ShippingControl.tsx(213,109): error TS2551: Property 'bookLandCode' does not exist on type 'InventoryItemData'. Did you mean 'bookLanded'?
+src/features/dashboard/ShippingControl.tsx(259,87): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/features/dashboard/ShippingControl.tsx(259,134): error TS2345: Argument of type '(p: number[]) => (string | number)[]' is not assignable to parameter of type 'SetStateAction<number[]>'.
+  Type '(p: number[]) => (string | number)[]' is not assignable to type '(prevState: number[]) => number[]'.
+    Type '(string | number)[]' is not assignable to type 'number[]'.
+      Type 'string | number' is not assignable to type 'number'.
+        Type 'string' is not assignable to type 'number'.
+src/features/dashboard/ShippingControl.tsx(259,150): error TS2345: Argument of type 'string | number' is not assignable to parameter of type 'number'.
+  Type 'string' is not assignable to type 'number'.
+src/features/dashboardEXP/DashboardEXP.tsx(52,29): error TS2345: Argument of type '{ [key: string]: any[]; }' is not assignable to parameter of type 'SetStateAction<any[]>'.
+  Type '{ [key: string]: any[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 29 more.
+src/features/inventory/InventoryView.tsx(8,31): error TS2307: Cannot find module '../workbook/DatabasePanel' or its corresponding type declarations.
+src/lib/hooks.tsx(106,19): error TS2345: Argument of type '"catalog"' is not assignable to parameter of type 'SetStateAction<"inventory" | "finance" | "logistics" | "create">'.

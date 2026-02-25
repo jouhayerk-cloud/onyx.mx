@@ -103,7 +103,7 @@ export function useResetState() {
     setIsDetailsPanelOpen(false);
 
     // View states
-    setActiveView('catalog');
+    setActiveView('inventory');
     setCreateViewActiveTab('new');
     setDashboardActiveTab('acquisitions');
     setCatalogMarketViewMode('catalog');

@@ -21,12 +21,12 @@ import { GoogleGenAI } from '@google/genai';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useState, useCallback } from 'react';
 import {
-  isBatchActionsModalOpenAtom,
-  batchActionItemsDataAtom,
-  userAtom,
-  InventoryVersionAtom,
-  isCatalogBatchSelectModeAtom,
-  catalogBatchSelectedItemsAtom,
+    isBatchActionsModalOpenAtom,
+    batchActionItemsDataAtom,
+    userAtom,
+    InventoryVersionAtom,
+    isCatalogBatchSelectModeAtom,
+    catalogBatchSelectedItemsAtom,
 } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { BoundingBox2DType, BoundingBoxMaskType, InventoryItem, PointingType } from '../../lib/Types';
@@ -75,7 +75,7 @@ export function BatchActionsModal() {
         setBatchSelectedItems([]);
         setIsBatchSelectMode(false);
     };
-    
+
     const handleActionToggle = (actionId: ActionType) => {
         setSelectedActions(prev => {
             const newSet = new Set(prev);
@@ -94,7 +94,7 @@ export function BatchActionsModal() {
             const url = new URL(imageUrl);
             const fileId = url.searchParams.get('id');
             if (!fileId) return null;
-            
+
             const response = await fetch(SCRIPT_URL, {
                 method: 'POST', mode: 'cors', cache: 'no-cache', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ action: 'getImageBase64FromDriveId', fileId }),
@@ -109,7 +109,7 @@ export function BatchActionsModal() {
             return null;
         }
     };
-    
+
     const runDetectionAndTagging = async (imageDataUrl: string, query: string): Promise<{ boxes: BoundingBox2DType[], points: PointingType[] } | null> => {
         try {
             const prompt = `Detect and tag ${query}. Output a single JSON object with two keys: "boxes" and "points". The "boxes" key should be a list where each entry has "box_2d" and "label". The "points" key should be a list where each entry has "point" (in [y,x] format normalized to 1000) and "label".`;
@@ -141,7 +141,7 @@ export function BatchActionsModal() {
                 const query = `${shape} ${material}`;
                 prompt = `Give the segmentation masks for ${query}. Output a JSON list of segmentation masks where each entry contains "box_2d", "mask" (as a base64 string), and "label".`;
             }
-            
+
             const image = await loadImage(imageDataUrl);
             const imageDimensions = { width: image.width, height: image.height };
 
@@ -166,7 +166,7 @@ export function BatchActionsModal() {
             });
             const masks: BoundingBoxMaskType[] = await Promise.all(masksPromises);
             const { pngData, svgData } = await generatePngAndSvgFromMasks(imageDataUrl, imageDimensions, masks);
-            
+
             let gradientColor: string | null = null;
             if (masks.length > 0) {
                 gradientColor = await extractGradientFromMask(imageDataUrl, masks[0], imageDimensions);
@@ -191,8 +191,8 @@ export function BatchActionsModal() {
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         return response.text;
     };
-    
-    const saveBatchUpdate = async (row: number, payload: any) => {
+
+    const saveBatchUpdate = async (row: number | string, payload: any) => {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST', mode: 'cors', cache: 'no-cache', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'updateFullItem', row, ...payload, user }),
@@ -203,7 +203,7 @@ export function BatchActionsModal() {
 
     const handleDelete = async () => {
         if (!window.confirm(`Are you sure you want to permanently delete ${batchActionItems.length} items? This cannot be undone.`)) return;
-        
+
         setIsProcessing(true);
         setProgress(0);
         setCurrentTask(`Deleting ${batchActionItems.length} items...`);
@@ -217,7 +217,7 @@ export function BatchActionsModal() {
             });
             const result = await response.json();
             if (result.status !== 'success') throw new Error(result.message);
-            
+
             setProgress(batchActionItems.length);
             notify.success(`Successfully deleted ${batchActionItems.length} items.`, { id: toastId });
             setInventoryVersion(v => v + 1);
@@ -240,12 +240,12 @@ export function BatchActionsModal() {
         setIsProcessing(true);
         setProgress(0);
         const toastId = notify.loading(`Starting batch process...`);
-        
+
         for (let i = 0; i < batchActionItems.length; i++) {
             const item = batchActionItems[i];
             const itemLabel = `${item.data.shape} #${item.data.itemNumber}`;
             const progressLabel = `(${i + 1}/${totalItems})`;
-            
+
             let newDataPayload: any = {};
             let generatedFilesPayload: any = {};
 
@@ -277,7 +277,7 @@ export function BatchActionsModal() {
                         newDataPayload.spatialMasks = JSON.stringify(masksForSaving);
                         generatedFilesPayload.generatedPngData = result.pngData;
                         generatedFilesPayload.generatedSvgData = result.svgData;
-                        if(result.gradientColor) {
+                        if (result.gradientColor) {
                             newDataPayload.color = result.gradientColor;
                         }
                     }
@@ -302,19 +302,19 @@ export function BatchActionsModal() {
                     newDataPayload.detailedDescription = await generateDescription(item, 'detailed');
                     await pause(10000);
                 }
-                
+
                 if (Object.keys(newDataPayload).length > 0 || Object.keys(generatedFilesPayload).length > 0) {
-                     setCurrentTask(`Saving data for ${itemLabel} ${progressLabel}...`);
-                     notify.loading(currentTask, { id: toastId });
-                     await saveBatchUpdate(item.row, { itemData: newDataPayload, ...generatedFilesPayload });
+                    setCurrentTask(`Saving data for ${itemLabel} ${progressLabel}...`);
+                    notify.loading(currentTask, { id: toastId });
+                    await saveBatchUpdate(item.row, { itemData: newDataPayload, ...generatedFilesPayload });
                 }
 
                 setProgress(i + 1);
-                
+
                 if (i < batchActionItems.length - 1) {
                     setCurrentTask(`Waiting before processing next item...`);
                     notify.loading(currentTask, { id: toastId });
-                    await pause(20000); 
+                    await pause(20000);
                 }
 
             } catch (error: any) {
@@ -323,7 +323,7 @@ export function BatchActionsModal() {
                 return;
             }
         }
-        
+
         notify.success(`Batch process completed for ${totalItems} items!`, { id: toastId });
         setInventoryVersion(v => v + 1);
         setTimeout(resetAndClose, 1500);
@@ -350,15 +350,15 @@ export function BatchActionsModal() {
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                           <p>{t.batchActionsPrompt}</p>
-                           <div className="flex flex-col gap-2">
+                            <p>{t.batchActionsPrompt}</p>
+                            <div className="flex flex-col gap-2">
                                 {availableActions.map(action => (
                                     <label key={action.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 cursor-pointer border border-transparent has-[:checked]:border-[var(--accent-color)] has-[:checked]:bg-blue-900/20">
                                         <input type="checkbox" name="batchAction" value={action.id} checked={selectedActions.has(action.id)} onChange={() => handleActionToggle(action.id)} />
                                         <span>{action.label}</span>
                                     </label>
                                 ))}
-                           </div>
+                            </div>
                         </div>
                     )}
                 </div>
