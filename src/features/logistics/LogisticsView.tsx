@@ -100,6 +100,8 @@ const PackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
 // Shipment Tracking Panel — All shipments with status workflow
 const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const [filter, setFilter] = useState('All');
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
     const filtered = useMemo(() => filter === 'All' ? docs : docs.filter(d => d.status === filter), [docs, filter]);
 
     const handleStatusChange = async (id: string, newStatus: string) => {
@@ -123,20 +125,51 @@ const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         {filtered.map(c => {
                             const color = vendors[c.vendor_id as keyof typeof vendors]?.color || '#555';
                             const statusColor = c.status === 'Delivered' ? '#8DC63F' : c.status === 'In Transit' ? '#00AEEF' : '#FFED00';
+                            const isExpanded = expandedId === c.id;
                             return (
-                                <tr key={c.id} className="hover:bg-white/[0.04] transition-all">
-                                    <td className="px-4 py-2">{c.vendor_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{c.vendor_id}</span> : '—'}</td>
-                                    <td className="px-4 py-2 text-xs text-white/70">{c.description || c.contents_summary || '—'}</td>
-                                    <td className="px-4 py-2 text-[10px] text-white/40">{c.origin || '?'} → {c.destination_address || '?'}</td>
-                                    <td className="px-4 py-2 font-mono text-[10px] text-white/30">{c.tracking_number || '—'}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-xs text-[#8DC63F]">{fmtMXN(c.freight_cost || 0)}</td>
-                                    <td className="px-4 py-2"><span className="text-[8px] font-black uppercase" style={{ color: c.customs_status === 'Cleared' ? '#8DC63F' : '#FFED00' }}>{c.customs_status || 'Pending'}</span></td>
-                                    <td className="px-4 py-2 text-center">
-                                        <select value={c.status || 'Warehouse'} onChange={e => handleStatusChange(c.id, e.target.value)} className="bg-transparent text-[9px] font-black uppercase tracking-widest cursor-pointer" style={{ color: statusColor }}>
-                                            <option value="Warehouse">WAREHOUSE</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">DELIVERED</option>
-                                        </select>
-                                    </td>
-                                </tr>
+                                <React.Fragment key={c.id}>
+                                    <tr onClick={() => setExpandedId(isExpanded ? null : c.id)} className={`hover:bg-white/[0.04] transition-all cursor-pointer ${isExpanded ? 'bg-white/[0.02]' : ''}`}>
+                                        <td className="px-4 py-2">{c.vendor_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{c.vendor_id}</span> : '—'}</td>
+                                        <td className="px-4 py-2 text-xs text-white/70">{c.description || c.contents_summary || '—'}</td>
+                                        <td className="px-4 py-2 text-[10px] text-white/40">{c.origin || '?'} → {c.destination_address || '?'}</td>
+                                        <td className="px-4 py-2 font-mono text-[10px] text-white/30">{c.tracking_number || '—'}</td>
+                                        <td className="px-4 py-2 text-right font-mono text-xs text-[#8DC63F]">{fmtMXN(c.freight_cost || 0)}</td>
+                                        <td className="px-4 py-2"><span className="text-[8px] font-black uppercase" style={{ color: c.customs_status === 'Cleared' ? '#8DC63F' : c.customs_status === 'Rejected' ? '#e06666' : '#FFED00' }}>{c.customs_status || 'Pending'}</span></td>
+                                        <td className="px-4 py-2 text-center" onClick={e => e.stopPropagation()}>
+                                            <select value={c.status || 'Warehouse'} onChange={e => handleStatusChange(c.id, e.target.value)} className="bg-transparent text-[9px] font-black uppercase tracking-widest cursor-pointer" style={{ color: statusColor }}>
+                                                <option value="Warehouse">WAREHOUSE</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">DELIVERED</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    {isExpanded && (
+                                        <tr className="bg-black/20 border-b border-white/[0.02]">
+                                            <td colSpan={7} className="px-6 py-4">
+                                                <div className="flex gap-8">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Insurance Value</span>
+                                                        <span className="font-mono text-xs text-white/80">{c.insurance_value ? fmtMXN(c.insurance_value) : 'Not Insured'}</span>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Pallet Count</span>
+                                                        <span className="font-mono text-xs text-white/80">{c.pallet_count || 0} Pallets</span>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Crate Count</span>
+                                                        <span className="font-mono text-xs text-white/80">{c.crate_count || 0} Crates</span>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Weight</span>
+                                                        <span className="font-mono text-xs text-white/80">{c.weight_kg || 0} kg</span>
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Carrier</span>
+                                                        <span className="font-mono text-xs text-white/80">{c.carrier || '—'}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                         {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO SHIPMENTS</td></tr>}

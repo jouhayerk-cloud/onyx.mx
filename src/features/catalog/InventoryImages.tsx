@@ -41,12 +41,13 @@ import {
   marketActiveTabAtom,
   allAnnotationDataAtom,
   workflowStepAtom,
+  exchangeRateAtom,
 } from '../../lib/atoms';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const StatusMarkers = ({
@@ -138,6 +139,7 @@ type InventoryImageItemProps = {
   isSelectMode: boolean;
   isSelected: boolean;
   onToggleSelect: (item: InventoryItem) => void;
+  exchangeRate: number;
 };
 
 const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
@@ -146,6 +148,7 @@ const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   isSelectMode,
   isSelected,
   onToggleSelect,
+  exchangeRate,
 }) => {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -230,6 +233,7 @@ const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
     vendors[item.data.itemId as keyof typeof vendors]?.color || '#ccc';
 
   const dimensions = [item.data.widthCm, item.data.heightCm, item.data.lengthCm].filter(Boolean).join('x');
+  const calculated = calculateCodesAndPrices(item.data, exchangeRate, '326');
 
   return (
     <button
@@ -269,10 +273,19 @@ const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
               <span>{item.data.weightKg ? `${item.data.weightKg}kg` : ''}</span>
             </div>
           </div>
-          <p className="opacity-60 truncate text-[10px] italic my-1 h-4">{item.data.description || ''}</p>
+          <p className="opacity-60 truncate text-[10px] italic my-0.5 h-3">{item.data.description || ''}</p>
+          <div className="flex justify-between items-center text-[9px] font-mono opacity-80 mt-1">
+            <span>AQ: {calculated.bookAqCode}</span>
+            <span>LD: {calculated.bookLandCode}</span>
+          </div>
           <div className="flex justify-between items-center mt-1">
-            {item.data.price ? <span className="font-bold text-base text-green-300">${item.data.price}</span> : <span />}
-            {item.data.color && <div title="Item Color" className="w-8 h-8 rounded-full border border-white/50 shadow-md flex-shrink-0" style={{ background: item.data.color }} />}
+            {item.data.price ? (
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-base text-green-300">${item.data.price}</span>
+                <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
+              </div>
+            ) : <span />}
+            {item.data.color && <div title="Item Color" className="w-6 h-6 rounded-full border border-white/50 shadow-md flex-shrink-0" style={{ background: item.data.color }} />}
           </div>
         </div>
       </div>
@@ -314,6 +327,8 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
   const setIsDetailsPanelOpen = useSetAtom(isDetailsPanelOpenAtom);
   const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);
   const setMarketActiveTab = useSetAtom(marketActiveTabAtom);
+
+  const exchangeRate = useAtomValue(exchangeRateAtom);
 
   const isSelectMode = mode === 'catalog' ? isCatSelect : isMarketSelect;
 
@@ -382,6 +397,12 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
   const selectedItemRows = mode === 'catalog' ? catSelected : marketSelected.map(i => i.row);
 
   const filteredInventory = inventory
+    .filter((item) => {
+      if (mode === 'catalog') {
+        return !item.data.status || item.data.status === 'Catalog';
+      }
+      return true;
+    })
     .filter((item) => activeFilter === 'All' || item.data.itemId === activeFilter)
     .filter((item) => {
       const lowerCaseSearch = searchTerm.toLowerCase();
@@ -442,6 +463,7 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
                 isSelectMode={isSelectMode}
                 isSelected={selectedItemRows.includes(item.row)}
                 onToggleSelect={handleToggleSelect}
+                exchangeRate={exchangeRate}
               />
             ))}
           </div>

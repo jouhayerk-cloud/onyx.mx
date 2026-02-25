@@ -179,11 +179,13 @@ export interface FinanceRecord {
   type?: string;
   category?: string;
   subcategory?: FinanceSubcategory;
+  description?: string;
   amount?: number;
   commission?: number;
   currency?: string;
   bank_account?: string;
   payment_method?: string;
+  pay_date?: string;
   reference?: string;
   exchange_rate?: number;
   status?: string;

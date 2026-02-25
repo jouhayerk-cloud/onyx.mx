@@ -389,7 +389,7 @@ export function DetailsPanel() {
             <button className="button !bg-red-500" onClick={handleDelete} disabled={isSaving}>Delete</button>
           </div>
         )}
-        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Client' || user?.role === 'Developer') && itemData?.status === 'Catalog') && (
+        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Client' || user?.role === 'Developer') && (!itemData?.status || itemData?.status === 'Catalog')) && (
           <div className="p-4 border-t border-[var(--border-color)] shrink-0">
             <button
               className="button w-full !bg-[var(--main-color)] !text-black font-black"
@@ -418,12 +418,83 @@ export function DetailsPanel() {
                 } catch (e: any) {
                   toast.error(`Acquisition failed: ${e.message}`, { id: toastId });
                 } finally {
-                  setIsSaving(true);
+                  setIsSaving(false);
                 }
               }}
               disabled={isSaving}
             >
               Mark as Acquired
+            </button>
+          </div>
+        )}
+        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && itemData?.status === 'Acquired') && (
+          <div className="p-4 border-t border-[var(--border-color)] shrink-0">
+            <button
+              className="button w-full !bg-[#F7941D] !text-black font-black"
+              onClick={async () => {
+                if (!itemData || !itemRow) return;
+                setIsSaving(true);
+                const toastId = toast.loading('Marking as Archive...');
+                try {
+                  const payload = {
+                    status: 'Archive',
+                    workbook: '825'
+                  };
+                  const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user })
+                  });
+                  const result = await response.json();
+                  if (result.status !== 'success') throw new Error(result.message);
+
+                  setItemData(prev => prev ? { ...prev, ...payload } : null);
+                  setInventoryVersion(v => v + 1);
+                  toast.success('Item Archived! Moved to Archive 825.', { id: toastId });
+                  handleClose();
+                } catch (e: any) {
+                  toast.error(`Archive failed: ${e.message}`, { id: toastId });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+            >
+              Mark as Archive
+            </button>
+          </div>
+        )}
+        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && (itemData?.status === 'Archive' || itemData?.workbook === '825') && itemData?.status !== 'Shipped') && (
+          <div className="p-4 border-t border-[var(--border-color)] shrink-0">
+            <button
+              className="button w-full !bg-[#8DC63F] !text-black font-black"
+              onClick={async () => {
+                if (!itemData || !itemRow) return;
+                setIsSaving(true);
+                const toastId = toast.loading('Marking as Shipped...');
+                try {
+                  const payload = {
+                    status: 'Shipped'
+                  };
+                  const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user })
+                  });
+                  const result = await response.json();
+                  if (result.status !== 'success') throw new Error(result.message);
+
+                  setItemData(prev => prev ? { ...prev, ...payload } : null);
+                  setInventoryVersion(v => v + 1);
+                  toast.success('Item marked as Shipped!', { id: toastId });
+                  handleClose();
+                } catch (e: any) {
+                  toast.error(`Shipping failed: ${e.message}`, { id: toastId });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+            >
+              Mark as Shipped
             </button>
           </div>
         )}

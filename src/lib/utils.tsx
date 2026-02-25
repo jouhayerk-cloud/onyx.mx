@@ -591,7 +591,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
 
   const costUsd = costMxn / exchangeRate;
   const landedCost = costUsd * 1.4;
-  const retailPrice = landedCost * 12;
+  const retailPrice = landedCost * 8;
 
   const costUsdRounded = Math.ceil(costUsd);
   const landedCostRounded = Math.ceil(landedCost);
