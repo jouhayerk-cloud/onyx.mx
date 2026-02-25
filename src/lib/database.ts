@@ -108,7 +108,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 6,
+    version: 7,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -156,7 +156,12 @@ const inventorySchema = {
         book_retail: { type: ['number', 'null'] },
         book_barcode: { type: ['string', 'null'] },
         book_aq_code: { type: ['string', 'null'] },
-        book_land_code: { type: ['string', 'null'] },
+        box_land_code: { type: ['string', 'null'] },
+        dispersal_status: { type: ['string', 'null'] },
+        bank_account: { type: ['string', 'null'] },
+        sent_at: { type: ['string', 'null'] },
+        dispersed_at: { type: ['string', 'null'] },
+        requested_by: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
@@ -189,7 +194,7 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
 const createDatabase = async () => {
     try {
         const db = await createRxDatabase<OnyxDatabase>({
-            name: 'onyxdb6',
+            name: 'onyxdb7',
             storage: getRxStorageDexie()
         });
 
@@ -207,6 +212,7 @@ const createDatabase = async () => {
                     4: () => null,
                     5: () => null,
                     6: () => null,
+                    7: () => null,
                 }
             },
             finance: {
