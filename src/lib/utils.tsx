@@ -571,10 +571,11 @@ export async function extractGradientFromMask(
 
 
 export const numberToCypher = (num: number): string => {
-  const cypherMap: { [key: string]: string } = {
-    '1': 'M', '2': 'O', '3': 'X', '4': 'H', '5': 'E', '6': 'L', '7': 'F', '8': 'A', '9': 'N', '0': 'D'
-  };
-  return String(Math.ceil(num)).split('').map(digit => cypherMap[digit] || '').join('');
+  // Alphabet is stored in VITE_CYPHER_KEY (env, gitignored).
+  // Format: 10-char string where index = digit (index 0 = char for '0', index 1 = char for '1', etc.)
+  const key = import.meta.env.VITE_CYPHER_KEY as string | undefined;
+  if (!key || key.length < 10) return '—';
+  return String(Math.ceil(num)).split('').map(digit => key[parseInt(digit, 10)] || '').join('');
 };
 
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
