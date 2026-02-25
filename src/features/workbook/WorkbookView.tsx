@@ -561,6 +561,175 @@ const DatabasePanel: React.FC = () => {
     );
 };
 
+// 5. FINANCE PANEL (Supabase-backed)
+const SUBCATEGORIES = ['All', 'Acquisition', 'Monthly Expense', 'Supplies', 'Labor', 'Crate/Pallet', 'Operating'] as const;
+
+const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
+    const exchangeRate = useAtomValue(exchangeRateAtom);
+    const [filter, setFilter] = useState('All');
+    const [showAdd, setShowAdd] = useState(false);
+    const [form, setForm] = useState({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', bank_account: '', notes: '' });
+
+    const filtered = useMemo(() => filter === 'All' ? docs : docs.filter(d => d.subcategory === filter), [docs, filter]);
+    const totalBySubcat = useMemo(() => {
+        const m: Record<string, number> = {};
+        docs.forEach(d => { m[d.subcategory || 'Other'] = (m[d.subcategory || 'Other'] || 0) + (d.amount || 0); });
+        return m;
+    }, [docs]);
+    const grandTotal = docs.reduce((a, b) => a + (b.amount || 0), 0);
+
+    const handleAdd = async () => {
+        const payload = { ...form, amount: parseFloat(form.amount) || 0, status: 'Requested', type: 'Expense', category: form.subcategory, currency: 'MXN', date: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const { error } = await supabase.from('finance').insert(payload);
+        if (error) toast.error(error.message); else { toast.success('Expense Added'); setShowAdd(false); setForm({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', bank_account: '', notes: '' }); onRefresh(); }
+    };
+    const handleToggleStatus = async (id: string, current: string) => {
+        const next = current === 'Requested' ? 'Paid' : 'Requested';
+        const { error } = await supabase.from('finance').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id);
+        if (error) toast.error(error.message); else onRefresh();
+    };
+
+    return (
+        <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center gap-3 p-4 border-b border-white/5 bg-black/10 shrink-0">
+                <div className="flex flex-wrap gap-1.5">
+                    {SUBCATEGORIES.map(s => (
+                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#00AEEF] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{s.toUpperCase()}</button>
+                    ))}
+                </div>
+                <div className="ml-auto flex items-center gap-4">
+                    <div className="text-right"><span className="text-[8px] text-white/20 uppercase block font-black tracking-widest">Total</span><span className="text-lg font-mono font-black text-[#00AEEF]">{fmtMXN(grandTotal)}</span></div>
+                    <button onClick={() => setShowAdd(true)} className="px-4 py-2 bg-[#00AEEF] text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">+ ADD</button>
+                </div>
+            </div>
+            {/* Summary Cards */}
+            <div className="flex gap-3 p-4 shrink-0 overflow-x-auto">
+                {Object.entries(totalBySubcat).map(([k, v]) => (
+                    <div key={k} className="px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 min-w-[140px]">
+                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
+                        <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
+                        <div className="text-[8px] font-mono text-white/20">{fmtUSD(v / exchangeRate)}</div>
+                    </div>
+                ))}
+            </div>
+            {/* Table */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.01]">
+                    <table className="w-full text-left border-collapse">
+                        <thead><tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
+                            <th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3 text-center">Status</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-white/[0.03]">
+                            {filtered.map(r => (
+                                <tr key={r.id} className="hover:bg-white/[0.04] group transition-all">
+                                    <td className="px-4 py-2 font-mono text-[10px] text-white/40">{fmtDate(r.date)}</td>
+                                    <td className="px-4 py-2"><span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">{r.subcategory || r.category || '—'}</span></td>
+                                    <td className="px-4 py-2 text-xs text-white/70">{r.description || r.notes || '—'}</td>
+                                    <td className="px-4 py-2">{r.vendor_id ? <span className="px-1.5 py-0.5 rounded text-[9px] font-black" style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>{r.vendor_id}</span> : '—'}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/60">{fmtMXN(r.amount)}</td>
+                                    <td className="px-4 py-2 text-center" onClick={e => e.stopPropagation()}>
+                                        <button onClick={() => handleToggleStatus(r.id, r.status)} className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20'}`}>{r.status || 'Requested'}</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {/* Add Expense Modal */}
+            {showAdd && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={() => setShowAdd(false)}>
+                    <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-8 w-[480px] max-w-[90vw] shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-6">Add Finance Record</h3>
+                        <div className="space-y-4">
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Subcategory</label>
+                                <select value={form.subcategory} onChange={e => setForm({ ...form, subcategory: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80">
+                                    {SUBCATEGORIES.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
+                                </select></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Amount (MXN)</label>
+                                    <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-white/80" /></div>
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Vendor</label>
+                                    <input value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" placeholder="e.g. JM" /></div>
+                            </div>
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Description</label>
+                                <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" /></div>
+                            <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Notes</label>
+                                <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 h-16 resize-none" /></div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setShowAdd(false)} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
+                            <button onClick={handleAdd} className="flex-1 py-3 bg-[#00AEEF] text-black rounded-xl text-[10px] font-black tracking-widest shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">COMMIT</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 6. LOGISTICS PANEL (Supabase-backed)
+const LOGISTICS_STATUSES = ['All', 'Warehouse', 'In Transit', 'Delivered'] as const;
+
+const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
+    const [filter, setFilter] = useState('All');
+    const filtered = useMemo(() => filter === 'All' ? docs : docs.filter(d => d.status === filter), [docs, filter]);
+    const counts = useMemo(() => ({ warehouse: docs.filter(d => d.status === 'Warehouse').length, transit: docs.filter(d => d.status === 'In Transit').length, delivered: docs.filter(d => d.status === 'Delivered').length }), [docs]);
+
+    const handleStatusChange = async (id: string, newStatus: string) => {
+        const { error } = await supabase.from('logistics').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', id);
+        if (error) toast.error(error.message); else onRefresh();
+    };
+
+    return (
+        <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center gap-4 p-4 border-b border-white/5 bg-black/10 shrink-0">
+                <div className="flex gap-1.5">
+                    {LOGISTICS_STATUSES.map(s => (
+                        <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s ? 'bg-[#8DC63F] text-black shadow-lg' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>{s.toUpperCase()}</button>
+                    ))}
+                </div>
+                <div className="ml-auto flex gap-6">
+                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Warehouse</span><span className="text-lg font-mono font-black text-[#FFED00]">{counts.warehouse}</span></div>
+                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">In Transit</span><span className="text-lg font-mono font-black text-[#00AEEF]">{counts.transit}</span></div>
+                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Delivered</span><span className="text-lg font-mono font-black text-[#8DC63F]">{counts.delivered}</span></div>
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filtered.map(c => {
+                        const color = vendors[c.vendor_id as keyof typeof vendors]?.color || vendors[c.vendors as keyof typeof vendors]?.color || '#555';
+                        const statusColor = c.status === 'Delivered' ? '#8DC63F' : c.status === 'In Transit' ? '#00AEEF' : '#FFED00';
+                        return (
+                            <div key={c.id} className="glass-panel p-4 rounded-xl border border-white/5 flex flex-col gap-2 hover:bg-white/[0.02] transition-colors relative">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: color }} />
+                                <div className="flex justify-between items-center">
+                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: color }}>{c.vendor_id || c.vendors || '—'}</span>
+                                    <select value={c.status || 'Warehouse'} onChange={e => handleStatusChange(c.id, e.target.value)} className="bg-transparent text-[9px] font-black uppercase tracking-widest cursor-pointer" style={{ color: statusColor }}>
+                                        <option value="Warehouse">WAREHOUSE</option><option value="In Transit">IN TRANSIT</option><option value="Delivered">DELIVERED</option>
+                                    </select>
+                                </div>
+                                <div className="text-xs font-bold text-white line-clamp-1">{c.description || c.contents_summary || 'Shipment'}</div>
+                                <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg || 0}kg</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Crates</span><span className="text-[10px] font-mono font-bold text-white">{c.crate_count || c.quantity || 0}</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Pallets</span><span className="text-[10px] font-mono font-bold text-white">{c.pallet_count || 0}</span></div>
+                                    <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Freight</span><span className="text-[10px] font-mono font-bold text-[#8DC63F]">{fmtMXN(c.freight_cost || c.cost_mxn || 0)}</span></div>
+                                </div>
+                                {c.tracking_number && <div className="text-[9px] text-white/30 font-mono">TRK: {c.tracking_number}</div>}
+                                {(c.origin || c.destination_address) && <div className="text-[9px] text-white/20">{c.origin || '?'} → {c.destination_address || '?'}</div>}
+                                {c.customs_status && <div className="text-[8px] font-black uppercase tracking-widest" style={{ color: c.customs_status === 'Cleared' ? '#8DC63F' : c.customs_status === 'Rejected' ? '#e06666' : '#FFED00' }}>CUSTOMS: {c.customs_status}</div>}
+                            </div>
+                        );
+                    })}
+                    {filtered.length === 0 && <div className="col-span-3 py-16 text-center text-white/10 text-sm font-black tracking-widest">NO LOGISTICS RECORDS</div>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export const WorkbookView: React.FC = () => {
@@ -571,7 +740,7 @@ export const WorkbookView: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
 
-    const [data, setData] = useState<{ inv: any[], prod: any[], log: any[] }>({ inv: [], prod: [], log: [] });
+    const [data, setData] = useState<{ inv: any[], prod: any[], log: any[], fin: any[] }>({ inv: [], prod: [], log: [], fin: [] });
     const [ver, setVer] = useState(0);
     const [isSyncing, setIsSyncing] = useState(true);
     const refresh = () => setVer(v => v + 1);
@@ -580,7 +749,7 @@ export const WorkbookView: React.FC = () => {
         const timeoutTimer = setTimeout(() => setIsSyncing(false), 8000);
         if (!db) return () => clearTimeout(timeoutTimer);
 
-        let invTimer: any, prodTimer: any, logTimer: any;
+        let invTimer: any, prodTimer: any, logTimer: any, finTimer: any;
 
         const subs = [
             db.inventory.find().$.subscribe(d => {
@@ -602,12 +771,18 @@ export const WorkbookView: React.FC = () => {
                 logTimer = setTimeout(() => {
                     setData(p => ({ ...p, log: d.map(x => x.toJSON()) }));
                 }, 200);
+            }),
+            db.finance.find().$.subscribe(d => {
+                clearTimeout(finTimer);
+                finTimer = setTimeout(() => {
+                    setData(p => ({ ...p, fin: d.map(x => x.toJSON()) }));
+                }, 200);
             })
         ];
 
         return () => {
             subs.forEach(s => s.unsubscribe());
-            [invTimer, prodTimer, logTimer, timeoutTimer].forEach(clearTimeout);
+            [invTimer, prodTimer, logTimer, finTimer, timeoutTimer].forEach(clearTimeout);
         };
     }, [db, ver]);
 
@@ -693,8 +868,9 @@ export const WorkbookView: React.FC = () => {
                     <div className="h-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
                         {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
                         {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
+                        {activeTab === 'finance' && <FinancePanel docs={data.fin} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
-                        {activeTab === 'crates' && <CratesPanel docs={data.log} />}
+                        {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
                         {activeTab === 'database' && <DatabasePanel />}
                     </div>
                 )}

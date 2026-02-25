@@ -14,7 +14,7 @@ addRxPlugin(RxDBMigrationSchemaPlugin);
 
 const financeSchema = {
     title: 'finance schema',
-    version: 5,
+    version: 6,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -22,31 +22,40 @@ const financeSchema = {
         date: { type: ['string', 'null'] },
         type: { type: ['string', 'null'] },
         category: { type: ['string', 'null'] },
+        subcategory: { type: ['string', 'null'] },
         amount: { type: ['number', 'null'] },
         commission: { type: ['number', 'null'] },
         currency: { type: ['string', 'null'] },
         bank_account: { type: ['string', 'null'] },
+        payment_method: { type: ['string', 'null'] },
+        reference: { type: ['string', 'null'] },
+        exchange_rate: { type: ['number', 'null'] },
         status: { type: ['string', 'null'] },
         requested_by: { type: ['string', 'null'] },
+        approved_by: { type: ['string', 'null'] },
         sent_at: { type: ['string', 'null'] },
         dispersed_at: { type: ['string', 'null'] },
         destination: { type: ['string', 'null'] },
         vendor_id: { type: ['string', 'null'] },
         related_ids: { type: ['array', 'null'], items: { type: 'string' } },
+        related_inventory_ids: { type: ['string', 'null'] },
         notes: { type: ['string', 'null'] },
+        recurring: { type: ['boolean', 'null'] },
+        recurring_day: { type: ['number', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
 
 const logisticsSchema = {
     title: 'logistics schema',
-    version: 2,
+    version: 3,
     primaryKey: 'id',
     type: 'object',
     properties: {
         id: { type: 'string', maxLength: 100 },
         type: { type: ['string', 'null'] },
         vendors: { type: ['string', 'null'] },
+        vendor_id: { type: ['string', 'null'] },
         length_cm: { type: ['number', 'null'] },
         width_cm: { type: ['number', 'null'] },
         height_cm: { type: ['number', 'null'] },
@@ -55,6 +64,21 @@ const logisticsSchema = {
         truck_position: { type: ['string', 'null'] },
         ship_date: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
+        origin: { type: ['string', 'null'] },
+        destination_address: { type: ['string', 'null'] },
+        contents_summary: { type: ['string', 'null'] },
+        insurance_value: { type: ['number', 'null'] },
+        customs_status: { type: ['string', 'null'] },
+        pallet_count: { type: ['number', 'null'] },
+        crate_count: { type: ['number', 'null'] },
+        freight_cost: { type: ['number', 'null'] },
+        description: { type: ['string', 'null'] },
+        tracking_number: { type: ['string', 'null'] },
+        carrier: { type: ['string', 'null'] },
+        inventory_ids: { type: ['string', 'null'] },
+        quantity: { type: ['number', 'null'] },
+        cost_mxn: { type: ['number', 'null'] },
+        date: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
@@ -182,8 +206,19 @@ const createDatabase = async () => {
                     6: () => null,
                 }
             },
-            finance: { schema: financeSchema },
-            logistics: { schema: logisticsSchema },
+            finance: {
+                schema: financeSchema,
+                migrationStrategies: {
+                    1: () => null, 2: () => null, 3: () => null,
+                    4: () => null, 5: () => null, 6: () => null,
+                }
+            },
+            logistics: {
+                schema: logisticsSchema,
+                migrationStrategies: {
+                    1: () => null, 2: () => null, 3: () => null,
+                }
+            },
             production: { schema: productionSchema }
         });
 

@@ -216,7 +216,7 @@ export const inventoryActiveFilterAtom = atom('All');
 export const workbookVersionAtom = atom<'825' | '326'>('825');
 export const workbookSearchTermAtom = atom('');
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
-export const workbookActiveTabAtom = atom<'inventory' | 'archive' | 'expenses' | 'payments' | 'shipping' | 'log' | 'production' | 'supplies' | 'crates' | 'paylog' | 'database'>('inventory');
+export const workbookActiveTabAtom = atom<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('inventory');
 export const workbookViewModeAtom = atomWithStorage<'table' | 'gallery' | 'kanban'>('workbookViewMode', 'table');
 export const workbookDensityAtom = atomWithStorage<'compact' | 'comfortable'>('workbookDensity', 'compact');
 export const workbookMetricScopeAtom = atom<'all' | 'filtered'>('all');
@@ -233,6 +233,10 @@ export const workbookProductionDataAtom = atom([] as any[]);
 export const workbookSuppliesDataAtom = atom([] as any[]);
 export const workbookCratesFileDataAtom = atom([] as any[]);
 export const workbookPayLogDataAtom = atom([] as any[]);
+
+// Supabase-backed data atoms for unified panels
+export const financeDataAtom = atom([] as any[]);
+export const logisticsDataAtom = atom([] as any[]);
 
 // Shipping State
 export const shippingViewModeAtom = atom<'warehouse' | 'truck'>('warehouse');
