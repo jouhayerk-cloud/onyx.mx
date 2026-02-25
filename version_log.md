@@ -4,6 +4,17 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.5.7 - Compilation Fixes & Code Health**
+
+### **Date:** 2026-02-24
+
+- **COMPILATION STABILITY**: Resolved widespread TypeScript type errors blocking build pipelines.
+- **DASHBOARD EXP DATA TYPES**: Fixed incorrect fallback typing to an untyped Array that prevented mapping through dashboard expansion sheets properly in iteration.
+- **AUDIO VISUALIZER**: Addressed typed array constraints when interacting with `webkitSpeechRecognition` frequency generation nodes across browsers.
+- **DEAD CODE ELIMINATION**: Dropped deprecated `DatabasePanel` which broke build targets for the `InventoryView` hierarchy.
+
+---
+
 ## **v2.5.6 - Cipher Code implementation and Workspace stability**
 
 ### **Date:** 2026-02-24
