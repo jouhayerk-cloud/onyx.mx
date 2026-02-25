@@ -243,29 +243,7 @@ export function MainHeader() {
                 ) : null}
             </div>
 
-            {isWorkbook && (
-                <div className="flex items-center gap-4 ml-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                    <div className="flex bg-[var(--input-color)] p-1 rounded-full border border-white/5 backdrop-blur-2xl shadow-xl gap-1">
-                        {WORKBOOK_TABS.filter(item => item.roles.includes(user?.role || 'Vendor')).map((item) => {
-                            const isActive = workbookActiveTab === item.id;
-                            return (
-                                <button
-                                    key={item.label}
-                                    onClick={() => {
-                                        setWorkbookVersion((item.version || '326') as '825' | '326');
-                                        setWorkbookActiveTab(item.id as any);
-                                        setWorkbook(null);
-                                    }}
-                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all duration-300 uppercase tracking-widest ${isActive ? 'shadow-[0_0_20px_rgba(255,255,255,0.1)] scale-105' : 'hover:bg-white/5 opacity-40 hover:opacity-100'}`}
-                                    style={{ backgroundColor: isActive ? item.color : 'transparent', color: isActive ? '#000' : 'var(--text-color-secondary)' }}
-                                >
-                                    {item.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+
 
             <div className="flex-grow flex justify-end items-center gap-6">
                 {isDashboard && dashboardTab === 'payments' && (
