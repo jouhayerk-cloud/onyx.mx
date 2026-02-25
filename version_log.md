@@ -4,7 +4,19 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
-## **v2.5.4 - Unified Finance & Logistics Panels**
+## **v2.5.5 - Unified Navigation: Dashboard + Workbook Merge**
+
+### **Date:** 2026-02-24
+
+- **NAVIGATION OVERHAUL**: Removed separate Dashboard and Workbook sections from the sidebar. All functionality now lives under 4 unified sections: **Create**, **Inventory**, **Logistics**, **Finance**.
+- **INVENTORY SECTION**: Consolidated Catalog (CatalogMarketView), Production orders, Acquisitions (from Dashboard), and Archive into a single section with top sub-tab navigation.
+- **LOGISTICS SECTION**: Unified Packing (warehouse crate management), Trucking (3D truck loading view from Dashboard ShippingView), and Shipping (full shipment tracking table with Warehouse → In Transit → Delivered status workflow).
+- **FINANCE SECTION**: Merged Dashboard Payments (PaymentsView), Finance Tracking (subcategory-filtered expense table with add/edit), and Monthly Expenses (recurring expense cards) into one section.
+- **SUB-TAB UI**: Each section now features a premium top-bar with colored pill buttons, live summary metrics, and inline status controls.
+- **STATE ARCHITECTURE**: Replaced `activeViewAtom` (5 views) with 4 unified sections + 3 sub-tab atoms (`inventorySubTabAtom`, `logisticsSubTabAtom`, `financeSubTabAtom`).
+- **FILES**: Created `InventoryView.tsx`, `LogisticsView.tsx`, `FinanceView.tsx` as unified section containers.
+
+---
 
 ### **Date:** 2026-02-24
 
