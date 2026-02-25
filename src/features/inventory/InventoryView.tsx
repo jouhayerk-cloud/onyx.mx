@@ -1,23 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { inventorySubTabAtom, exchangeRateAtom, userAtom, workbookViewModeAtom, workbookDensityAtom } from '../../lib/atoms';
+import { inventorySubTabAtom, exchangeRateAtom, userAtom } from '../../lib/atoms';
+import { supabase } from '../../lib/supabase';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { CatalogMarketView } from '../catalog/CatalogMarketView';
 import { AcquisitionsView } from '../dashboard/AcquisitionsView';
+import { DatabaseViewerPanel } from './DatabaseViewerPanel';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import toast from 'react-hot-toast';
 
 // Import panels from WorkbookView (they're not exported, so we replicate minimal versions here)
 // The full InventoryPanel and ProductionPanel logic stays in WorkbookView.tsx
 // We import the WorkbookView and use its sub-panels via the tab atom
 
 const SUB_TABS = [
-    { id: 'catalog' as const, label: 'CATALOG', color: '#6BCEBB', icon: '📦' },
-    { id: 'production' as const, label: 'PRODUCTION', color: '#FFED00', icon: '⚙️' },
-    { id: 'acquisitions' as const, label: 'ACQUISITIONS', color: '#F7941D', icon: '🏷️' },
-    { id: 'archive' as const, label: 'ARCHIVE', color: '#a9d08e', icon: '📁' },
-
+    { id: 'catalog' as const, label: 'CATALOG', color: '#6BCEBB', icon: '📦', roles: ['Developer', 'Admin', 'Vendor', 'Client'] },
+    { id: 'production' as const, label: 'PRODUCTION', color: '#FFED00', icon: '⚙️', roles: ['Developer', 'Admin', 'Vendor'] },
+    { id: 'acquisitions' as const, label: 'ACQUISITIONS', color: '#F7941D', icon: '🏷️', roles: ['Developer', 'Admin'] },
+    { id: 'archive' as const, label: 'ARCHIVE', color: '#a9d08e', icon: '📁', roles: ['Developer', 'Admin', 'Client'] },
+    { id: 'database' as const, label: 'DATABASE', color: '#AEE6F5', icon: '💾', roles: ['Developer'] },
 ];
 
 export const InventoryView: React.FC = () => {
@@ -60,14 +62,16 @@ export const InventoryView: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden">
             {/* Sub-tab bar */}
             <div className="flex items-center gap-2 px-6 py-3 bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.05] shrink-0">
-                {SUB_TABS.map(t => (
-                    <button key={t.id} onClick={() => setActiveTab(t.id)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t.id
-                            ? 'text-black shadow-lg scale-105' : 'bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'}`}
-                        style={activeTab === t.id ? { backgroundColor: t.color } : {}}>
-                        <span className="mr-1.5">{t.icon}</span>{t.label}
-                    </button>
-                ))}
+                {SUB_TABS
+                    .filter(t => !t.roles || t.roles.includes(user?.role || ''))
+                    .map(t => (
+                        <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t.id
+                                ? 'text-black shadow-lg scale-105' : 'bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'}`}
+                            style={activeTab === t.id ? { backgroundColor: t.color } : {}}>
+                            <span className="mr-1.5">{t.icon}</span>{t.label}
+                        </button>
+                    ))}
                 <div className="ml-auto flex items-center gap-6">
                     <div className="flex flex-col items-end">
                         <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Items</span>
@@ -88,6 +92,9 @@ export const InventoryView: React.FC = () => {
                 )}
                 {activeTab === 'archive' && (
                     <ArchiveMiniPanel docs={docs825} exchangeRate={exchangeRate} />
+                )}
+                {activeTab === 'database' && user?.role === 'Developer' && (
+                    <DatabaseViewerPanel db={db} />
                 )}
 
             </div>
@@ -272,8 +279,8 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
                 <div className="flex items-center gap-2 px-5 pb-3 flex-wrap">
                     <button onClick={() => setVendorFilter('ALL')}
                         className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all ${vendorFilter === 'ALL'
-                                ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.08)]'
-                                : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60'
+                            ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.08)]'
+                            : 'bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60'
                             }`}>ALL · {docs.length}</button>
 
                     {presentVendors.map(vid => {
