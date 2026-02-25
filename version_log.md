@@ -4,6 +4,19 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.5.4 - Unified Finance & Logistics Panels**
+
+### **Date:** 2026-02-24
+
+- **FINANCE PANEL**: New Supabase-backed financial management panel in Workbook. Supports subcategory filtering (Acquisition, Monthly Expense, Supplies, Labor, Crate/Pallet, Operating), add-expense modal with vendor/amount/description fields, and inline Requested ↔ Paid status toggle.
+- **LOGISTICS PANEL**: New Supabase-backed logistics panel replacing the old Crates tab. Card-based grid layout with Warehouse → In Transit → Delivered status workflow, vendor color-coding, tracking numbers, origin/destination routing, customs status, and freight cost display.
+- **SCHEMA v4**: Extended Supabase `finance` table with 13 new columns (subcategory, payment_method, bank_account, exchange_rate, reference, approved_by, related_inventory_ids, recurring, recurring_day, etc.). Extended `logistics` table with 8 new columns (origin, destination_address, contents_summary, insurance_value, customs_status, pallet_count, crate_count, freight_cost).
+- **RxDB v6/v3**: Bumped finance schema to v6 and logistics schema to v3 with migration strategies for seamless local data transition.
+- **TAB CONSOLIDATION**: Unified Workbook tabs from scattered Excel-dependent views to 6 clean Supabase-backed tabs: Inventory, Archive, Finance, Production, Logistics, Database.
+- **TYPES**: Added `FinanceRecord`, `LogisticsRecord` TypeScript interfaces and `FinanceSubcategory` union type for type-safe data handling.
+
+---
+
 ## **v2.1.0 - Power Workbook Redesign & Stability Improvements**
 
 ### **Date:** 2026-02-24
