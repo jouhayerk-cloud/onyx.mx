@@ -4,6 +4,20 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.6.1 - Developer Database Viewer**
+
+### **Date:** 2026-02-24
+
+- **DATABASE TAB (Developer only)**: Added a live `💾 DATABASE` sub-tab to the Inventory view, hidden from all non-Developer roles at the UI level.
+- **COLLECTION SELECTOR**: Tabs for all four RxDB collections — `inventory`, `finance`, `logistics`, `production` — switchable in one click.
+- **LIVE REACTIVE TABLE**: Table subscribes to RxDB live queries; rows appear/update as sync completes. All schema columns displayed, internal RxDB metadata hidden.
+- **COLUMN SORTING**: Click any column header to sort ascending/descending with visual indicator.
+- **INLINE CELL EDITING**: Click any cell to edit inline. Saves to Supabase first, then patches local RxDB. Supports keyboard shortcuts: ↵ to save, Esc to cancel.
+- **ROW DELETE**: Developer can delete any row — removes from Supabase and local DB simultaneously.
+- **SEARCH**: Full-text search across all visible columns.
+
+---
+
 ## **v2.6.0 - Inventory Archive Redesign: Premium UI & Dynamic Vendor Filters**
 
 ### **Date:** 2026-02-24

@@ -1,7 +1,7 @@
 {
-  "name": "ge-dashboard",
+  "name": "onyx.mx-git",
   "private": true,
-  "version": "2.6.0",
+  "version": "2.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host",
