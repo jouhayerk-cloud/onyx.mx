@@ -68,7 +68,7 @@ const themeColors: { [key: string]: { bg: number, fog: number } } = {
 };
 
 
-export function ShippingView() {
+export function ShippingView({ mode = 'live' }: { mode?: 'live' | 'archive' }) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useAtom(isShippingSidebarCollapsedAtom);
 

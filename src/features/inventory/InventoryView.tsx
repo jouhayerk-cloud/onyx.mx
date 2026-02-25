@@ -5,7 +5,7 @@ import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { CatalogMarketView } from '../catalog/CatalogMarketView';
 import { AcquisitionsView } from '../dashboard/AcquisitionsView';
-import { DatabasePanel } from '../workbook/DatabasePanel';
+
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 // Import panels from WorkbookView (they're not exported, so we replicate minimal versions here)
@@ -17,7 +17,7 @@ const SUB_TABS = [
     { id: 'production' as const, label: 'PRODUCTION', color: '#FFED00', icon: '⚙️' },
     { id: 'acquisitions' as const, label: 'ACQUISITIONS', color: '#F7941D', icon: '🏷️' },
     { id: 'archive' as const, label: 'ARCHIVE', color: '#a9d08e', icon: '📁' },
-    { id: 'database' as const, label: 'DATABASE', color: '#B3B3B3', icon: '💾' },
+
 ];
 
 export const InventoryView: React.FC = () => {
@@ -89,7 +89,7 @@ export const InventoryView: React.FC = () => {
                 {activeTab === 'archive' && (
                     <ArchiveMiniPanel docs={docs825} exchangeRate={exchangeRate} />
                 )}
-                {activeTab === 'database' && <DatabasePanel />}
+
             </div>
         </div>
     );

@@ -21,8 +21,8 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { useAtom, useSetAtom, useAtomValue, useStore } from 'jotai/react';
 import { InventoryItem, Crate, PackedItem } from '../../lib/Types';
-import { 
-    shippingCratesAtom, 
+import {
+    shippingCratesAtom,
     inventoryAtom,
     selectedCrateIdAtom,
     areCrateInfoLabelsVisibleAtom,
@@ -50,7 +50,7 @@ const getTextColorForBg = (hexColor: string | undefined): string => {
     return luma < 128 ? '#FFFFFF' : '#000000';
 }
 
-const calculateNextWarehousePosition = (warehouseCrates: Crate[], newCrateDims: {w: number, d: number}, warehouseDims: {width: number, depth: number}) => {
+const calculateNextWarehousePosition = (warehouseCrates: Crate[], newCrateDims: { w: number, d: number }, warehouseDims: { width: number, depth: number }) => {
     const PADDING = 0.1;
     const HALF_WIDTH = warehouseDims.width / 2;
     const HALF_DEPTH = warehouseDims.depth / 2;
@@ -69,14 +69,14 @@ const calculateNextWarehousePosition = (warehouseCrates: Crate[], newCrateDims: 
     if (nextX + newCrateDims.w / 2 > HALF_WIDTH) {
         const cratesInLastRow = sortedCrates.filter(c => c.z === lastCrate.z);
         const maxDepthInRow = Math.max(...cratesInLastRow.map(c => c.d));
-        nextZ = lastCrate.z - lastCrate.d/2 + maxDepthInRow + PADDING + newCrateDims.d / 2;
+        nextZ = lastCrate.z - lastCrate.d / 2 + maxDepthInRow + PADDING + newCrateDims.d / 2;
         nextX = START_X + newCrateDims.w / 2;
     }
-    
+
     if (nextZ + newCrateDims.d / 2 > HALF_DEPTH) {
-        const maxX = Math.max(...sortedCrates.map(c => c.x + c.w/2));
-        nextX = maxX + PADDING + newCrateDims.w/2;
-        nextZ = START_Z + newCrateDims.d/2;
+        const maxX = Math.max(...sortedCrates.map(c => c.x + c.w / 2));
+        nextX = maxX + PADDING + newCrateDims.w / 2;
+        nextZ = START_Z + newCrateDims.d / 2;
     }
 
     return { x: nextX, z: nextZ };
@@ -92,7 +92,7 @@ const findNextTruckPosition = (cratesInTruck: Crate[], newCrate: Crate, truckDim
     const crateD = isRotated ? newCrate.w : newCrate.d;
 
     for (let x = -truckHalfLength + crateW / 2; x <= truckHalfLength - crateW / 2; x += 0.01) {
-       for (let z = -truckHalfWidth + crateD / 2; z <= truckHalfWidth - crateD / 2; z += 0.01) {
+        for (let z = -truckHalfWidth + crateD / 2; z <= truckHalfWidth - crateD / 2; z += 0.01) {
             const newBox = new THREE.Box2(
                 new THREE.Vector2(x - crateW / 2 - PADDING, z - crateD / 2 - PADDING),
                 new THREE.Vector2(x + crateW / 2 + PADDING, z + crateD / 2 + PADDING)
@@ -128,8 +128,8 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
     const [newCrateDims, setNewCrateDims] = useState({ w: 120, h: 120, d: 120 });
     const [newCrateBaseWeight, setNewCrateBaseWeight] = useState('5');
     const [selectedVendor, setSelectedVendor] = useState('All');
-    const [selectedItemRows, setSelectedItemRows] = useState<number[]>([]);
-    
+    const [selectedItemRows, setSelectedItemRows] = useState<(string | number)[]>([]);
+
     const warehouseCrates = useMemo(() => crates.filter(c => c.location === 'warehouse'), [crates]);
     const selectedCrate = useMemo(() => crates.find(c => c.id === selectedCrateId), [crates, selectedCrateId]);
 
@@ -137,7 +137,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
     const itemsToShip = useMemo(() => {
         const packedItemRows = new Set(crates.flatMap(c => c.inventoryItems.map(i => i.row)));
         return inventory
-            .filter(item => !!item.data.payDate && !packedItemRows.has(item.row) && !item.data.crateId)
+            .filter(item => !!item.data.payDate && !packedItemRows.has(item.row) && !item.data.crate_id)
             .filter(item => selectedVendor === 'All' || item.data.itemId === selectedVendor);
     }, [inventory, crates, selectedVendor]);
 
@@ -166,7 +166,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
             const itemUpdatePromise = fetch(SCRIPT_URL, {
                 method: 'POST', body: JSON.stringify({
                     action: 'batchUpdateItems',
-                    updates: [{ row: itemToUnload.row, itemData: { crateId: '' } }],
+                    updates: [{ row: itemToUnload.row, itemData: { crate_id: '' } }],
                     user,
                 })
             });
@@ -200,7 +200,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
         saveCratesToBackend([...crates, newCrate], `Crate ${newId} created.`);
         setNewCrateDesc('');
     };
-    
+
     const handlePackItems = async () => {
         if (!selectedCrateId || selectedItemRows.length === 0) return;
         const itemsToPack = itemsToShip.filter(i => selectedItemRows.includes(i.row));
@@ -210,9 +210,9 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
             row: item.row, itemId: item.data.itemId, itemNumber: item.data.itemNumber, shape: item.data.shape,
             material: item.data.material, weightKg: item.data.weightKg, color: item.data.color,
             widthCm: item.data.widthCm, heightCm: item.data.heightCm, lengthCm: item.data.lengthCm, price: item.data.price,
-            bookBardcode: item.data.bookBardcode, bookAqCode: item.data.bookAqCode, bookLandCode: item.data.bookLandCode,
+            bookBardcode: item.data.bookBardcode, bookAqCode: item.data.bookAqCode, bookLandCode: item.data.box_land_code,
         }));
-        
+
         const updatedCrates = crates.map(c => {
             if (c.id === selectedCrateId) {
                 const newItems = [...c.inventoryItems, ...packedItems];
@@ -228,7 +228,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
             const res = await fetch(SCRIPT_URL, {
                 method: 'POST', body: JSON.stringify({
                     action: 'batchUpdateItems',
-                    updates: itemsToPack.map(item => ({ row: item.row, itemData: { crateId: selectedCrateId } })),
+                    updates: itemsToPack.map(item => ({ row: item.row, itemData: { crate_id: selectedCrateId } })),
                     user,
                 })
             });
@@ -271,11 +271,11 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
                 <h2>Crate Manager</h2>
                 <div className="space-y-2 p-2 border border-[var(--border-color)] rounded-lg">
                     <h3 className="font-bold text-sm">Create New Crate</h3>
-                    <input type="text" value={newCrateDesc} onChange={e => setNewCrateDesc(e.target.value)} placeholder="New Crate Name..."/>
+                    <input type="text" value={newCrateDesc} onChange={e => setNewCrateDesc(e.target.value)} placeholder="New Crate Name..." />
                     <div className="grid grid-cols-3 gap-2">
-                        <input type="number" value={newCrateDims.w} onChange={e => setNewCrateDims(d => ({...d, w: Number(e.target.value)}))} placeholder="W (cm)" />
-                        <input type="number" value={newCrateDims.h} onChange={e => setNewCrateDims(d => ({...d, h: Number(e.target.value)}))} placeholder="H (cm)" />
-                        <input type="number" value={newCrateDims.d} onChange={e => setNewCrateDims(d => ({...d, d: Number(e.target.value)}))} placeholder="D (cm)" />
+                        <input type="number" value={newCrateDims.w} onChange={e => setNewCrateDims(d => ({ ...d, w: Number(e.target.value) }))} placeholder="W (cm)" />
+                        <input type="number" value={newCrateDims.h} onChange={e => setNewCrateDims(d => ({ ...d, h: Number(e.target.value) }))} placeholder="H (cm)" />
+                        <input type="number" value={newCrateDims.d} onChange={e => setNewCrateDims(d => ({ ...d, d: Number(e.target.value) }))} placeholder="D (cm)" />
                     </div>
                     <input type="number" value={newCrateBaseWeight} onChange={e => setNewCrateBaseWeight(e.target.value)} placeholder="Base Wt (kg)" />
                     <button className="button w-full" onClick={handleCreateCrate}>Create</button>
@@ -283,9 +283,9 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
                 <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-2">
                     {warehouseCrates.map(crate => (
                         <div key={crate.id} onClick={() => setSelectedCrateId(crate.id)}
-                             className={`crate-item ${selectedCrateId === crate.id ? 'selected' : ''}`}>
-                             <p className="font-bold text-sm">{crate.id}</p>
-                             <p className="text-xs opacity-80">{crate.inventoryItems.length} items, {crate.weight.toFixed(1)} kg</p>
+                            className={`crate-item ${selectedCrateId === crate.id ? 'selected' : ''}`}>
+                            <p className="font-bold text-sm">{crate.id}</p>
+                            <p className="text-xs opacity-80">{crate.inventoryItems.length} items, {crate.weight.toFixed(1)} kg</p>
                         </div>
                     ))}
                 </div>
@@ -329,7 +329,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
     const truckCrates = useMemo(() => crates.filter(c => c.location === 'truck'), [crates]);
     const selectedCrateInTruck = useMemo(() => truckCrates.find(c => c.id === selectedCrateId), [truckCrates, selectedCrateId]);
     const truckPositionZ = (warehouseDims.depth / 2) + (truckDims.width / 2) + 0.5;
-    
+
     useEffect(() => {
         if (selectedCrateInTruck) {
             setTempPosition({
@@ -341,7 +341,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
             setTempPosition(null);
         }
     }, [selectedCrateInTruck, setTempPosition, truckDims.width, warehouseDims.depth, truckPositionZ]);
-    
+
     const handleLoadToTruck = async () => {
         if (!truckCrateId) return;
         const crateToLoad = crates.find(c => c.id === truckCrateId);
@@ -351,7 +351,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
         if (!nextPosition) {
             return toast.error("No available space in truck.");
         }
-        
+
         const updatedCrates = crates.map(c => c.id === truckCrateId ? { ...c, location: 'truck' as 'truck', x: nextPosition.x, z: nextPosition.z + truckPositionZ, y: 0 } : c);
         await saveCratesToBackend(updatedCrates, `${truckCrateId} loaded into truck.`);
         setTruckCrateId(null);
@@ -364,7 +364,7 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
 
         const warehouseCrates = crates.filter(c => c.location === 'warehouse');
         const nextPos = calculateNextWarehousePosition(warehouseCrates, { w: crateToUnload.w, d: crateToUnload.d }, store.get(WAREHOUSE_DIMS));
-        
+
         const updatedCrates = crates.map(c => c.id === selectedCrateId ? { ...c, location: 'warehouse' as 'warehouse', x: nextPos.x, z: nextPos.z, y: 0, rotationY: 0 } : c);
         await saveCratesToBackend(updatedCrates, `${selectedCrateId} unloaded to warehouse.`);
         setSelectedCrateId(null);
@@ -395,9 +395,9 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
                 <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
                     {warehouseCrates.map(crate => (
                         <div key={crate.id} onClick={() => setTruckCrateId(crate.id)}
-                             className={`crate-item ${truckCrateId === crate.id ? 'selected' : ''}`}>
-                             <p className="font-bold text-sm">{crate.id}</p>
-                             <p className="text-xs opacity-80">{crate.inventoryItems.length} items, {crate.weight.toFixed(1)} kg</p>
+                            className={`crate-item ${truckCrateId === crate.id ? 'selected' : ''}`}>
+                            <p className="font-bold text-sm">{crate.id}</p>
+                            <p className="text-xs opacity-80">{crate.inventoryItems.length} items, {crate.weight.toFixed(1)} kg</p>
                         </div>
                     ))}
                 </div>
@@ -405,14 +405,14 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
             </div>
             <div className="shipping-sidebar-section">
                 <h2>Crates in Truck</h2>
-                 <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
+                <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2">
                     {truckCrates.map(crate => (
                         <div key={crate.id} onClick={() => setSelectedCrateId(crate.id)}
                             className={`crate-item ${selectedCrateId === crate.id ? 'selected' : ''}`}>
-                             <p className="font-bold text-sm">{crate.id}</p>
+                            <p className="font-bold text-sm">{crate.id}</p>
                         </div>
                     ))}
-                 </div>
+                </div>
                 {selectedCrateInTruck && tempPosition && (
                     <div className="space-y-2 p-2 border border-[var(--main-color)] rounded-lg">
                         <h3 className="font-bold text-sm">Position: {selectedCrateId}</h3>
@@ -425,9 +425,9 @@ const TruckViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (crat
                             <input type="range" min={-truckDims.width / 2 + selectedCrateInTruck.d / 2} max={truckDims.width / 2 - selectedCrateInTruck.d / 2} step="0.01" value={tempPosition.z} onChange={e => setTempPosition(p => p ? ({ ...p, z: parseFloat(e.target.value) }) : null)} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                             <button className="button secondary" onClick={handleUnloadFromTruck}>Unload</button>
-                             <button className="button secondary" onClick={handleRotateCrate}>Rotate Crate</button>
-                             <button className="button col-span-2" onClick={handleSavePosition}>Save Position</button>
+                            <button className="button secondary" onClick={handleUnloadFromTruck}>Unload</button>
+                            <button className="button secondary" onClick={handleRotateCrate}>Rotate Crate</button>
+                            <button className="button col-span-2" onClick={handleSavePosition}>Save Position</button>
                         </div>
                     </div>
                 )}
@@ -454,7 +454,7 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
                 method: 'POST', body: JSON.stringify({ action: 'batchUpdateCrates', crates: updatedCrates, user }),
             });
             const result = await res.json();
-            if(result.status !== 'success') throw new Error(result.message);
+            if (result.status !== 'success') throw new Error(result.message);
             toast.success(successMessage, { id: toastId });
             setCrates(updatedCrates); // Optimistic update
             setCratesVersion(v => v + 1);
@@ -502,7 +502,7 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
                 currentX += w + 0.1;
                 if (d > rowMaxDepth) rowMaxDepth = d;
             });
-            
+
             const updatedCrates = crates.map(c => {
                 const newPosCrate = newPositions.find(nc => nc.id === c.id);
                 return newPosCrate || c;
@@ -529,7 +529,7 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
         Object.keys(groupedByVendor).sort().forEach(vendorId => {
             const vendorColor = vendors[vendorId as keyof typeof vendors]?.color;
             const styleKey = `vendor-${vendorId}`;
-            if(vendorColor && !styles[styleKey]) {
+            if (vendorColor && !styles[styleKey]) {
                 styles[styleKey] = { bgColor: vendorColor, textColor: getTextColorForBg(vendorColor), bold: true };
             }
             groupedByVendor[vendorId].forEach(({ crate, item }) => {
@@ -543,7 +543,7 @@ export const ShippingControl = ({ isVisible }: { isVisible: boolean }) => {
                 ]);
             });
         });
-        await exportToXLSX(`packing_list_${new Date().toISOString().slice(0,10)}`, [{ name: 'Packing List', data: dataForExport }], styles);
+        await exportToXLSX(`packing_list_${new Date().toISOString().slice(0, 10)}`, [{ name: 'Packing List', data: dataForExport }], styles);
     };
 
     if (!isVisible) return null;

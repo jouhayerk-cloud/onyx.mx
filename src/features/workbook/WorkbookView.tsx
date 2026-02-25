@@ -871,7 +871,7 @@ export const WorkbookView: React.FC = () => {
                         {activeTab === 'finance' && <FinancePanel docs={data.fin} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
                         {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
-                        {activeTab === 'database' && <DatabasePanel />}
+                        {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
                     </div>
                 )}
             </div>
