@@ -21,6 +21,9 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     activeViewAtom,
     createViewActiveTabAtom,
+    inventorySubTabAtom,
+    logisticsSubTabAtom,
+    financeSubTabAtom,
     is3DViewerOpenAtom,
     is3DWorkspaceOpenAtom,
     isEditingMaskAtom,
@@ -30,15 +33,12 @@ import {
     workflowStepAtom,
     activeSubMenuAtom,
     catalogMarketViewModeAtom,
-    dashboardActiveTabAtom,
     languageAtom,
     sidebarStateAtom,
     SidebarState,
 } from '../../lib/atoms';
 import React, { useEffect } from 'react';
-import { Dashboard } from '../dashboard/Dashboard';
 import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
-import { CatalogMarketView } from '../catalog/CatalogMarketView';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
@@ -47,7 +47,9 @@ import { useLogout, useTranslation } from '../../lib/hooks';
 import { BatchActionsModal } from '../catalog/BatchActionsModal';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import userIcons from '../../components/userIcons';
-import { WorkbookView } from '../workbook/WorkbookView';
+import { InventoryView } from '../inventory/InventoryView';
+import { LogisticsView } from '../logistics/LogisticsView';
+import { FinanceView } from '../finance/FinanceView';
 
 interface NavItemWithSubmenuProps {
     viewId: string;
@@ -141,8 +143,9 @@ export function MainAppView() {
     const [createTab, setCreateTab] = useAtom(createViewActiveTabAtom);
     const setWorkflowStep = useSetAtom(workflowStepAtom);
     const setTheme = useSetAtom(themeAtom);
-    const [mode, setMode] = useAtom(catalogMarketViewModeAtom);
-    const [dashboardTab, setDashboardTab] = useAtom(dashboardActiveTabAtom);
+    const [inventorySubTab, setInventorySubTab] = useAtom(inventorySubTabAtom);
+    const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
+    const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
@@ -182,11 +185,11 @@ export function MainAppView() {
 
         switch (activeView) {
             case 'create': return <CreateView />;
-            case 'dashboard': return <Dashboard />;
-            case 'workbook': return <WorkbookView />;
-            case 'catalog':
+            case 'inventory': return <InventoryView />;
+            case 'logistics': return <LogisticsView />;
+            case 'finance': return <FinanceView />;
             default:
-                return <CatalogMarketView />;
+                return <InventoryView />;
         }
     })();
 
@@ -215,42 +218,80 @@ export function MainAppView() {
         },
     ];
 
-    const catalogSubItems = [
+    const inventorySubItems = [
         {
-            id: 'inventory', label: t.inventory, icon: 'package', isActive: activeView === 'catalog' && mode === 'catalog', action: () => {
-                setActiveView('catalog');
-                setMode('catalog');
+            id: 'catalog', label: t.catalog, icon: 'camera', isActive: activeView === 'inventory' && inventorySubTab === 'catalog', action: () => {
+                setActiveView('inventory');
+                setInventorySubTab('catalog');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'market', label: t.market, icon: 'store', isActive: activeView === 'catalog' && mode === 'market', action: () => {
-                setActiveView('catalog');
-                setMode('market');
+            id: 'production', label: 'Production', icon: 'layers', isActive: activeView === 'inventory' && inventorySubTab === 'production', action: () => {
+                setActiveView('inventory');
+                setInventorySubTab('production');
+                if (window.innerWidth <= 768) setSidebarState('hidden');
+            }
+        },
+        {
+            id: 'acquisitions', label: t.acquisitions, icon: 'archive', isActive: activeView === 'inventory' && inventorySubTab === 'acquisitions', action: () => {
+                setActiveView('inventory');
+                setInventorySubTab('acquisitions');
+                if (window.innerWidth <= 768) setSidebarState('hidden');
+            }
+        },
+        {
+            id: 'archive', label: 'Archive', icon: 'package', isActive: activeView === 'inventory' && inventorySubTab === 'archive', action: () => {
+                setActiveView('inventory');
+                setInventorySubTab('archive');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
     ];
 
-    const dashboardSubItems = [
+    const logisticsSubItems = [
         {
-            id: 'acquisitions', label: t.acquisitions, icon: 'archive', isActive: activeView === 'dashboard' && dashboardTab === 'acquisitions', action: () => {
-                setActiveView('dashboard');
-                setDashboardTab('acquisitions');
+            id: 'packing', label: 'Packing', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
+                setActiveView('logistics');
+                setLogisticsSubTab('packing');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'payments', label: t.payments, icon: 'credit-card', isActive: activeView === 'dashboard' && dashboardTab === 'payments', action: () => {
-                setActiveView('dashboard');
-                setDashboardTab('payments');
+            id: 'trucking', label: 'Trucking', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
+                setActiveView('logistics');
+                setLogisticsSubTab('trucking');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'shipping', label: t.shipping, icon: 'truck', isActive: activeView === 'dashboard' && dashboardTab === 'shipping', action: () => {
-                setActiveView('dashboard');
-                setDashboardTab('shipping');
+            id: 'shipping', label: t.shipping, icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
+                setActiveView('logistics');
+                setLogisticsSubTab('shipping');
+                if (window.innerWidth <= 768) setSidebarState('hidden');
+            }
+        },
+    ];
+
+    const financeSubItems = [
+        {
+            id: 'payments', label: t.payments, icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
+                setActiveView('finance');
+                setFinanceSubTab('payments');
+                if (window.innerWidth <= 768) setSidebarState('hidden');
+            }
+        },
+        {
+            id: 'tracking', label: 'Tracking', icon: 'dashboard-icon', isActive: activeView === 'finance' && financeSubTab === 'tracking', action: () => {
+                setActiveView('finance');
+                setFinanceSubTab('tracking');
+                if (window.innerWidth <= 768) setSidebarState('hidden');
+            }
+        },
+        {
+            id: 'expenses', label: 'Expenses', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
+                setActiveView('finance');
+                setFinanceSubTab('expenses');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
@@ -289,10 +330,12 @@ export function MainAppView() {
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <NavItemWithSubmenu viewId="create" label={t.create} icon="plus" subItems={createSubItems} />
                         )}
-                        <NavItemWithSubmenu viewId="catalog" label={t.catalog} icon="camera" subItems={catalogSubItems} />
-                        <NavItemWithSubmenu viewId="workbook" label="Workbook" icon="dashboard-icon" subItems={[{ id: 'overview', label: 'Overview', icon: 'dashboard-icon', action: () => { setActiveView('workbook'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'workbook' }]} />
+                        <NavItemWithSubmenu viewId="inventory" label={t.inventory || 'Inventory'} icon="package" subItems={inventorySubItems} />
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="dashboard" label={t.dashboard} icon="dashboard-icon" subItems={dashboardSubItems} />
+                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <NavItemWithSubmenu viewId="finance" label="Finance" icon="credit-card" subItems={financeSubItems} />
                         )}
                     </ul>
                     <div className="sidebar-footer">
