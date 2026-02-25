@@ -169,6 +169,69 @@ export interface RecurringExpense {
   destination: PaymentDestination;
 }
 
+// ─── Finance & Logistics (Supabase-backed) ──────────────────────────
+
+export type FinanceSubcategory = 'Acquisition' | 'Monthly Expense' | 'Supplies' | 'Labor' | 'Crate/Pallet' | 'Operating';
+
+export interface FinanceRecord {
+  id: string;
+  date?: string;
+  type?: string;
+  category?: string;
+  subcategory?: FinanceSubcategory;
+  amount?: number;
+  commission?: number;
+  currency?: string;
+  bank_account?: string;
+  payment_method?: string;
+  reference?: string;
+  exchange_rate?: number;
+  status?: string;
+  requested_by?: string;
+  approved_by?: string;
+  sent_at?: string;
+  dispersed_at?: string;
+  destination?: string;
+  vendor_id?: string;
+  related_ids?: string[];
+  related_inventory_ids?: string;
+  notes?: string;
+  recurring?: boolean;
+  recurring_day?: number;
+  updated_at?: string;
+}
+
+export interface LogisticsRecord {
+  id: string;
+  type?: string;
+  vendors?: string;
+  vendor_id?: string;
+  length_cm?: number;
+  width_cm?: number;
+  height_cm?: number;
+  weight_kg?: number;
+  truck_id?: string;
+  truck_position?: string;
+  ship_date?: string;
+  status?: string;
+  origin?: string;
+  destination_address?: string;
+  contents_summary?: string;
+  insurance_value?: number;
+  customs_status?: string;
+  pallet_count?: number;
+  crate_count?: number;
+  freight_cost?: number;
+  description?: string;
+  tracking_number?: string;
+  carrier?: string;
+  inventory_ids?: string;
+  quantity?: number;
+  cost_mxn?: number;
+  date?: string;
+  updated_at?: string;
+}
+
 export type PaymentType = 'Wire Transfer' | 'Cash Advance' | 'Cash' | 'Wire' | 'Direct USA Wire';
 
 export interface Payment {
