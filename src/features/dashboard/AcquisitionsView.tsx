@@ -119,6 +119,9 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                 // Only show if NOT fully delivered/paid
                 const isFinished = !!payDate && !!sentDate;
                 if (isFinished) return false;
+            } else {
+                // In standard acquisitions view, only show acquired items
+                if (data.status !== 'Acquired') return false;
             }
 
             const vendorMatch = !activeVendor || data.itemId === activeVendor;

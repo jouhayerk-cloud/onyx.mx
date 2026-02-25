@@ -77,7 +77,7 @@ export const FinanceView: React.FC = () => {
 const FinanceTrackingPanel: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const [filter, setFilter] = useState('All');
     const [showAdd, setShowAdd] = useState(false);
-    const [form, setForm] = useState({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', notes: '' });
+    const [form, setForm] = useState({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', notes: '', reference: '', payment_method: 'Wire Transfer', recurring: false, recurring_day: 1 });
 
     const filtered = useMemo(() => filter === 'All' ? docs : docs.filter(d => d.subcategory === filter), [docs, filter]);
     const totalBySubcat = useMemo(() => {
@@ -87,9 +87,9 @@ const FinanceTrackingPanel: React.FC<{ docs: any[]; exchangeRate: number; onRefr
     }, [docs]);
 
     const handleAdd = async () => {
-        const payload = { ...form, amount: parseFloat(form.amount) || 0, status: 'Requested', type: 'Expense', category: form.subcategory, currency: 'MXN', date: new Date().toISOString(), updated_at: new Date().toISOString() };
+        const payload = { ...form, amount: parseFloat(form.amount) || 0, recurring_day: form.recurring ? parseInt(form.recurring_day as any) || 1 : null, status: 'Requested', type: 'Expense', category: form.subcategory, currency: 'MXN', date: new Date().toISOString(), updated_at: new Date().toISOString() };
         const { error } = await supabase.from('finance').insert(payload);
-        if (error) toast.error(error.message); else { toast.success('Added'); setShowAdd(false); setForm({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', notes: '' }); onRefresh(); }
+        if (error) toast.error(error.message); else { toast.success('Added'); setShowAdd(false); setForm({ subcategory: 'Acquisition', amount: '', description: '', vendor_id: '', notes: '', reference: '', payment_method: 'Wire Transfer', recurring: false, recurring_day: 1 }); onRefresh(); }
     };
 
     const handleToggleStatus = async (id: string, current: string) => {
@@ -123,14 +123,18 @@ const FinanceTrackingPanel: React.FC<{ docs: any[]; exchangeRate: number; onRefr
                 <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.01]">
                     <table className="w-full text-left border-collapse">
                         <thead><tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
-                            <th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3 text-center">Status</th>
+                            <th className="px-4 py-3">Date</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Ref/Method</th><th className="px-4 py-3">Vendor</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3 text-center">Status</th>
                         </tr></thead>
                         <tbody className="divide-y divide-white/[0.03]">
                             {filtered.map(r => (
                                 <tr key={r.id} className="hover:bg-white/[0.04] transition-all">
-                                    <td className="px-4 py-2 font-mono text-[10px] text-white/40">{fmtDate(r.date)}</td>
+                                    <td className="px-4 py-2 font-mono text-[10px] text-white/40 flex items-center gap-1">{fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D]" title={`Recurring Day ${r.recurring_day}`}>↻</span>}</td>
                                     <td className="px-4 py-2"><span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">{r.subcategory || r.category || '—'}</span></td>
                                     <td className="px-4 py-2 text-xs text-white/70">{r.description || r.notes || '—'}</td>
+                                    <td className="px-4 py-2 text-[10px] text-white/50">
+                                        {r.reference && <div className="text-white/80 font-mono text-[9px]">#{r.reference}</div>}
+                                        {r.payment_method && <div>{r.payment_method}</div>}
+                                    </td>
                                     <td className="px-4 py-2">{r.vendor_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black" style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>{r.vendor_id}</span> : '—'}</td>
                                     <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/60">{fmtMXN(r.amount)}</td>
                                     <td className="px-4 py-2 text-center">
@@ -158,9 +162,26 @@ const FinanceTrackingPanel: React.FC<{ docs: any[]; exchangeRate: number; onRefr
                                     <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-white/80" /></div>
                                 <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Vendor</label>
                                     <input value={form.vendor_id} onChange={e => setForm({ ...form, vendor_id: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" placeholder="e.g. JM" /></div>
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Payment Method</label>
+                                    <input value={form.payment_method} onChange={e => setForm({ ...form, payment_method: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" placeholder="e.g. Wire Transfer" /></div>
+                                <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Reference (Invoice #)</label>
+                                    <input value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" /></div>
                             </div>
                             <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Description</label>
                                 <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80" /></div>
+
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 text-[10px] font-bold text-white/80 cursor-pointer">
+                                    <input type="checkbox" checked={form.recurring} onChange={e => setForm({ ...form, recurring: e.target.checked })} className="rounded bg-white/5 border-white/10 text-[#6BCEBB]" /> Recurring
+                                </label>
+                                {form.recurring && (
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[8px] font-black text-white/20 uppercase tracking-widest">Day of Month:</label>
+                                        <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => setForm({ ...form, recurring_day: parseInt(e.target.value) || 1 })} className="w-16 bg-white/5 border border-white/10 rounded-md px-2 py-1 font-mono text-xs text-white/80" />
+                                    </div>
+                                )}
+                            </div>
+
                             <div><label className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Notes</label>
                                 <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 h-16 resize-none" /></div>
                         </div>

@@ -35,33 +35,34 @@ import {
   marketActiveTabAtom,
   allAnnotationDataAtom,
   workflowStepAtom,
+  exchangeRateAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {
   if (!hexColor) return '#000000';
   try {
-      const rgb = parseInt(hexColor.substring(1), 16);
-      const r = (rgb >> 16) & 0xff;
-      const g = (rgb >> 8) & 0xff;
-      const b = (rgb >> 0) & 0xff;
-      const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      return luma < 128 ? '#FFFFFF' : '#000000';
+    const rgb = parseInt(hexColor.substring(1), 16);
+    const r = (rgb >> 16) & 0xff;
+    const g = (rgb >> 8) & 0xff;
+    const b = (rgb >> 0) & 0xff;
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luma < 128 ? '#FFFFFF' : '#000000';
   } catch {
-      return '#000000';
+    return '#000000';
   }
 }
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
-    if (data.payDate) return 'GREEN'; // Paid
-    if (data.payReq) return 'YELLOW'; // Payment Requested
-    if (data.status === 'YES' || data.printDate) return 'RED'; // Approved, pending request
-    return ''; // Default
+  if (data.payDate) return 'GREEN'; // Paid
+  if (data.payReq) return 'YELLOW'; // Payment Requested
+  if (data.status === 'YES' || data.printDate) return 'RED'; // Approved, pending request
+  return ''; // Default
 };
 
 type MarketItemCardProps = {
@@ -70,6 +71,7 @@ type MarketItemCardProps = {
   isSelectMode: boolean;
   isSelected: boolean;
   onToggleSelect: (item: InventoryItem) => void;
+  exchangeRate: number;
 };
 
 const MarketItemCard: React.FC<MarketItemCardProps> = ({
@@ -78,6 +80,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
   isSelectMode,
   isSelected,
   onToggleSelect,
+  exchangeRate,
 }) => {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +112,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
           })
           .catch(e => {
             console.error(`Failed to fetch image:`, e);
-            if(isActive) toast.error("Failed to load an item image.");
+            if (isActive) toast.error("Failed to load an item image.");
           })
           .finally(() => { if (isActive) setIsLoading(false) });
       }
@@ -131,6 +134,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
   const vendorColor = vendors[item.data.itemId as keyof typeof vendors]?.color || '#ccc';
   const dimensions = [item.data.widthCm, item.data.heightCm, item.data.lengthCm].filter(Boolean).join('x');
   const statusClass = getStatusClass(item.data);
+  const calculated = calculateCodesAndPrices(item.data, exchangeRate, '326');
 
   return (
     <button
@@ -143,10 +147,10 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
         className="absolute inset-0 opacity-40"
         style={{ background: item.data.color || 'transparent' }}
       />
-      
+
       {/* Moved ID Tag */}
-      <div 
-        className="vendor-tag !text-xs !px-2 !py-1 absolute top-0 left-0 !rounded-none rounded-br-lg rounded-tl-lg z-20" 
+      <div
+        className="vendor-tag !text-xs !px-2 !py-1 absolute top-0 left-0 !rounded-none rounded-br-lg rounded-tl-lg z-20"
         style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}
       >
         {item.data.itemId}
@@ -155,7 +159,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
       {/* Floating Image */}
       <div className="w-20 h-20 shrink-0 relative flex items-center justify-center">
         {statusClass && <div className={`status-dot ${statusClass} absolute top-1 right-1 z-10`} title={`Status: ${statusClass}`}></div>}
-        {isLoading && <div className="scale-50"><LoadingIndicator/></div>}
+        {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
         {imageDataUrl ? (
           <img src={imageDataUrl} alt={item.data.shape} className="max-w-full max-h-full object-contain drop-shadow-lg" />
         ) : (
@@ -166,20 +170,31 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
       {/* Info */}
       <div className="flex flex-col flex-grow min-w-0 relative z-10 justify-between py-1">
         <div className="flex justify-between items-start">
-            <p className="font-bold text-sm truncate">{item.data.shape}</p>
-            <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{item.data.itemNumber}</span>
-        </div>
-        
-        <div>
-            <p className="text-xs opacity-80 truncate">{item.data.material}</p>
-            {dimensions && <p className="text-[10px] opacity-70 truncate font-mono mt-1">{dimensions} cm</p>}
+          <p className="font-bold text-sm truncate">{item.data.shape}</p>
+          <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{item.data.itemNumber}</span>
         </div>
 
-        <div className="flex justify-end items-center">
-            {item.data.price && <span className="font-bold text-green-300 text-sm">${(parseFloat(String(item.data.price))/18).toFixed(2)}</span>}
+        <div>
+          <p className="text-xs opacity-80 truncate">{item.data.material}</p>
+          {dimensions && <p className="text-[10px] opacity-70 truncate font-mono mt-1">{dimensions} cm</p>}
+        </div>
+
+        <div className="flex justify-end items-center mt-1">
+          {item.data.price && (
+            <div className="flex gap-2 items-center">
+              <div className="flex flex-col text-[9px] text-right font-mono opacity-80 leading-none">
+                <span>AQ: {calculated.bookAqCode}</span>
+                <span>LD: {calculated.bookLandCode}</span>
+              </div>
+              <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
+                <span className="font-bold text-green-300 text-sm">${(parseFloat(String(item.data.price)) / exchangeRate).toFixed(2)}</span>
+                <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
+
       {isSelectMode && (
         <div className={`absolute top-2 right-2 w-4 h-4 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
           {isSelected && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
@@ -207,6 +222,8 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
   const setMarketActiveTab = useSetAtom(marketActiveTabAtom);
   const setIsDetailsPanelOpen = useSetAtom(isDetailsPanelOpenAtom);
 
+  const exchangeRate = useAtomValue(exchangeRateAtom);
+
   const handleItemClick = (item: InventoryItem, imageDataUrl: string | null) => {
     setAllAnnotationData({ boxes: [], masks: [], points: [] });
     setWorkflowStep('idle');
@@ -219,7 +236,7 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
     setIsDetailsPanelOpen(true);
 
     if (onItemSelect) {
-        onItemSelect(item, imageDataUrl);
+      onItemSelect(item, imageDataUrl);
     }
   };
 
@@ -275,6 +292,7 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
               isSelectMode={isMarketSelect}
               isSelected={marketSelected.some(i => i.row === item.row)}
               onToggleSelect={handleToggleSelect}
+              exchangeRate={exchangeRate}
             />
           ))
         )}

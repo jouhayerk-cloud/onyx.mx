@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { PaymentDestination, ExpenseStatus, Expense, InventoryItem } from '../../lib/Types';
+import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
 import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
@@ -34,6 +34,10 @@ const apiCall = async (action: string, payload: any, db: any) => {
     if (action === 'appendExpense') {
         const { error, data } = await supabase.from('finance').insert({
             amount: payload.expenseData.amount,
+            commission: payload.expenseData.commission,
+            destination: payload.expenseData.destination,
+            status: payload.expenseData.status,
+            date: payload.expenseData.date,
             currency: 'MXN',
             type: payload.expenseData.type || 'Expense',
             category: payload.expenseData.category || 'Vendor Payment',
@@ -55,7 +59,7 @@ const apiCall = async (action: string, payload: any, db: any) => {
     if (action === 'updateExpense') {
         const { error } = await supabase.from('finance').update({
             status: payload.expenseData.status,
-            pay_date: payload.expenseData.paymentDate
+            pay_date: payload.expenseData.pay_date
         }).eq('id', payload.row);
         if (error) throw error;
         return { status: 'success' };
@@ -143,9 +147,8 @@ const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ i
                     description,
                     amount: numericAmount,
                     commission,
-                    totalAmount: numericAmount + commission,
                     destination,
-                    status: ExpenseStatus.Requested,
+                    status: 'Requested',
                     date: new Date().toISOString(),
                 }
             }, db);
@@ -246,7 +249,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const db = useDatabase();
     const [inventory, setInventory] = useAtom(inventoryAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenses, setExpenses] = useState<FinanceRecord[]>([]);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -302,12 +305,12 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
         expenses
-            .filter(e => e.status === ExpenseStatus.Requested)
+            .filter(e => e.status === 'Requested')
             .forEach(e => {
-                const vendorId = getVendorIdFromDescription(e.description);
+                const vendorId = getVendorIdFromDescription(e.description || '');
                 if (vendorId) {
                     if (!totals[vendorId]) totals[vendorId] = 0;
-                    totals[vendorId] += e.totalAmount;
+                    totals[vendorId] += (e.amount || 0) + (e.commission || 0);
                 }
             });
         return totals;
@@ -324,9 +327,8 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     description: `Payment for ${vendorGroup.items.length} items from ${vendorGroup.vendorId}`,
                     amount: vendorGroup.total,
                     commission,
-                    totalAmount,
                     destination,
-                    status: ExpenseStatus.Requested,
+                    status: 'Requested',
                     date: new Date().toISOString(),
                     inventoryItemRows: vendorGroup.items.map(i => i.row).join(','),
                 }
@@ -345,14 +347,14 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
         }
     };
 
-    const handleMarkAsPaid = async (expense: Expense) => {
+    const handleMarkAsPaid = async (expense: FinanceRecord) => {
         const toastId = toast.loading(`Marking as paid...`);
         try {
             await apiCall('updateExpense', {
-                row: expense.row,
+                row: expense.id,
                 expenseData: {
-                    status: ExpenseStatus.Paid,
-                    paymentDate: new Date().toISOString(),
+                    status: 'Paid',
+                    pay_date: new Date().toISOString(),
                 }
             }, db);
             toast.success('Payment marked as paid.', { id: toastId });
@@ -367,10 +369,10 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
         return [...expenses]
             .filter(expense => {
                 const destinationMatch = destinationFilter === 'All' || expense.destination === destinationFilter;
-                const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(expense.description) === vendorFilter;
+                const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(expense.description || '') === vendorFilter;
                 return destinationMatch && vendorMatch;
             })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [expenses, destinationFilter, vendorFilter]);
 
 
@@ -472,28 +474,28 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     {sortedTimeline.map(expense => (
                         <div key={expense.id} className="timeline-item">
                             <div className="timeline-icon">
-                                <img src={destinationsConfig[expense.destination]?.icon} alt={expense.destination} className="w-8 h-8 object-contain" />
+                                <img src={destinationsConfig[expense.destination as PaymentDestination]?.icon} alt={expense.destination} className="w-8 h-8 object-contain" />
                             </div>
                             <div className="timeline-content">
                                 <div className="timeline-item-header">
                                     <h3 className="timeline-item-title">{expense.description}</h3>
-                                    <time className="timeline-item-date">{new Date(expense.date).toLocaleDateString()}</time>
+                                    <time className="timeline-item-date">{new Date(expense.date || '').toLocaleDateString()}</time>
                                 </div>
                                 <p className="timeline-item-body">
-                                    {formatCurrency(expense.amount, 'MXN')}
-                                    {expense.commission > 0 && ` + ${formatCurrency(expense.commission, 'MXN')} comm.`}
+                                    {formatCurrency(expense.amount || 0, 'MXN')}
+                                    {(expense.commission || 0) > 0 && ` + ${formatCurrency(expense.commission || 0, 'MXN')} comm.`}
                                 </p>
                                 <div className="timeline-item-footer">
-                                    {expense.status === ExpenseStatus.Paid ? (
+                                    {expense.status === 'Paid' ? (
                                         <>
-                                            <span className="timeline-status-badge paid">Paid on {new Date(expense.paymentDate!).toLocaleDateString()}</span>
-                                            <span className="timeline-amount">{formatCurrency(expense.totalAmount, 'MXN')}</span>
+                                            <span className="timeline-status-badge paid">Paid on {new Date(expense.pay_date!).toLocaleDateString()}</span>
+                                            <span className="timeline-amount">{formatCurrency((expense.amount || 0) + (expense.commission || 0), 'MXN')}</span>
                                         </>
                                     ) : (
                                         <>
                                             <span className="timeline-status-badge pending">Pending</span>
                                             <div className="flex items-center gap-4">
-                                                <span className="timeline-amount">{formatCurrency(expense.totalAmount, 'MXN')}</span>
+                                                <span className="timeline-amount">{formatCurrency((expense.amount || 0) + (expense.commission || 0), 'MXN')}</span>
                                                 <button onClick={() => handleMarkAsPaid(expense)} className="button secondary !min-h-0 text-xs py-1 px-3">Mark as Paid</button>
                                             </div>
                                         </>
