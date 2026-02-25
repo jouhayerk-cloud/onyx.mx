@@ -208,7 +208,7 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
     const filtered = useMemo(() => {
         if (!search) return docs;
         const q = search.toLowerCase();
-        return docs.filter(d => (d.name || '').toLowerCase().includes(q) || (d.id || '').toLowerCase().includes(q) || (d.vendor_id || '').toLowerCase().includes(q));
+        return docs.filter(d => (d.description || '').toLowerCase().includes(q) || (d.id || '').toLowerCase().includes(q) || (d.item_id || '').toLowerCase().includes(q));
     }, [docs, search]);
 
     return (
@@ -224,12 +224,12 @@ const ArchiveMiniPanel: React.FC<{ docs: any[]; exchangeRate: number }> = ({ doc
                     </tr></thead>
                     <tbody className="divide-y divide-white/[0.03]">
                         {filtered.map(d => {
-                            const color = vendors[d.vendor_id as keyof typeof vendors]?.color || '#555';
+                            const color = vendors[d.item_id as keyof typeof vendors]?.color || '#555';
                             return (
                                 <tr key={d.id} className="hover:bg-white/[0.04] transition-all">
                                     <td className="px-4 py-2 font-mono text-[10px] text-white/40">{d.id}</td>
-                                    <td className="px-4 py-2 text-xs text-white/70">{d.name || '—'}</td>
-                                    <td className="px-4 py-2">{d.vendor_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{d.vendor_id}</span> : '—'}</td>
+                                    <td className="px-4 py-2 text-xs text-white/70">{d.shape} {d.material} - <span className="opacity-50">{d.description}</span></td>
+                                    <td className="px-4 py-2">{d.item_id ? <span className="px-1.5 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{d.item_id}</span> : '—'}</td>
                                     <td className="px-4 py-2 text-right font-mono text-xs text-white/60">{fmtMXN(d.price_mxn)}</td>
                                     <td className="px-4 py-2 text-[9px] text-white/40">{d.status || '—'}</td>
                                 </tr>
