@@ -174,7 +174,8 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
     for (let i = 0; i < docs.length; i += chunkSize) {
         const chunk = docs.slice(i, i + chunkSize).map(doc => ({
             ...doc,
-            id: String(doc.id)
+            id: String(doc.id),
+            workbook: doc.workbook != null ? String(doc.workbook) : null
         }));
         try {
             await collection.bulkUpsert(chunk);
@@ -273,11 +274,13 @@ const createDatabase = async () => {
                 // PHASE 2: ARCHIVE DATA (Workbook 825)
                 console.log('[DB] Paging archive items (825)...');
                 const archiveData = await fetchPaginated('inventory', 'workbook', '825');
-                console.log(`[DB] Fetched ${archiveData.length} archive items (825) from Supabase.`);
-                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData, 20, 150);
+                const archiveDataAlt = await fetchPaginated('inventory', 'workbook', 825);
+                const combinedArchive = [...archiveData, ...archiveDataAlt.filter(a => !archiveData.some(b => b.id === a.id))];
+                console.log(`[DB] Fetched ${combinedArchive.length} archive items (825) from Supabase.`);
+                if (combinedArchive.length > 0) await bulkUpsertChunked(db.inventory, combinedArchive, 20, 150);
 
                 // PRUNE STALE LOCAL INVENTORY
-                const remoteInvIds = new Set([...activeData, ...archiveData].map(d => String(d.id)));
+                const remoteInvIds = new Set([...activeData, ...combinedArchive].map(d => String(d.id)));
                 const localInvDocs = await db.inventory.find().exec();
                 const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
                 if (staleInv.length > 0) {
