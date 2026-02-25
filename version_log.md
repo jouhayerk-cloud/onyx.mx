@@ -4,6 +4,17 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.5.8 - Database Schema Compliance & Pagination Sync**
+
+### **Date:** 2026-02-24
+
+- **SCHEMA UPGRADES**: Bumped RxDB local database schema version to `v7` to perfectly comply with recent Supabase structural additions (like `box_land_code`, `dispersal_status`, and multiple tracking timestamps).
+- **CRITICAL SYNC ISSUE FIXED**: Eradicated a bug where missing schema columns caused silent rejections during initial synchronization that threw the app into a continuous, fatal "wipe-and-refresh" reload loop.
+- **PAGINATION REFACTOR**: Merged broken pagination filters during standard pull replication. Removed restrictive Supabase sub-queries that accidentally permanently purged items lacking strict type alignment (`'326'` vs `326`). All 825 archived properties reliably display again under the Inventory's Archive tab.
+- **ARCHIVE RENDERER OVERHAUL**: Restored missing archive row maps so that attributes match up against the fresh `inventorySchema` (`shape`, `description`, and `material`), bringing back complete Search and Status filtering functionality.
+
+---
+
 ## **v2.5.7 - Compilation Fixes & Code Health**
 
 ### **Date:** 2026-02-24
