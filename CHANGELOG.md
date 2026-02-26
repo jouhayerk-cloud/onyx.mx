@@ -5,6 +5,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.7.1] — 2026-02-26 · Hotfix
+
+### Fixed
+- `fix(auth): fail-open access guard` — The `app_users` access guard introduced in v2.7.0 was blocking **all authenticated users** because the `app_users` Supabase table does not exist yet (migration not yet applied). The guard now distinguishes between:
+  - **Table missing / unexpected DB error** → fails **open**, falls back to the legacy `resolveUserRole()` resolver so no one is locked out during setup.
+  - **Table exists, row not found or user inactive** → fails **closed**, signs the user out and shows the "Access Denied" screen.
+- Supabase error code `PGRST116` (PostgREST "row not found") is the trigger for the deny path; any other error code gracefully falls back.
+
+> **Action required:** Run `supabase_schema_v1.sql` in your Supabase SQL editor to enable the full access control system. Once the table exists and `ramses@jouhayerk.com` is inserted as `Developer`, the guard will enforce email-based access.
+
+---
+
 ## [2.7.0] — 2026-02-26
 
 ### Added
