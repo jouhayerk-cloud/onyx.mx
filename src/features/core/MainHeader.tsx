@@ -34,6 +34,9 @@ import { useTranslation } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import { OnyxLogo } from '../../components/OnyxLogo';
 
+// Injected at build time from package.json via vite.config.ts
+declare const __APP_VERSION__: string;
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
 const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> = {
@@ -326,7 +329,7 @@ export function MainHeader() {
             {/* Logo / sidebar toggle */}
             <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/[0.07] mr-3 shrink-0" onClick={toggleSidebar}>
                 <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.10.0</span>
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v{__APP_VERSION__}</span>
             </button>
 
             {/* Dynamic module bar — grows to fill available space */}
