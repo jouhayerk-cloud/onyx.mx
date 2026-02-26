@@ -279,19 +279,7 @@ export function MainHeader() {
                 )}
 
                 <div className="flex gap-3 items-center justify-end">
-                    {activeView === 'inventory' && dashboardTab === 'acquisitions' && (
-                        <div className="flex gap-2 items-center">
-                            <button onClick={() => setIsStatsVisible(!isStatsVisible)} className="button !p-2 !min-h-0" title={isStatsVisible ? 'Hide Stats Panel' : 'Show Stats Panel'}>
-                                <svg className="w-5 h-5"><use href={isStatsVisible ? '#eye-off' : '#eye'}></use></svg>
-                            </button>
-                            <button
-                                onClick={handleCycleFilter}
-                                className="button !p-2 !min-h-0 flex items-center justify-center"
-                                title={filterConfig[statusFilter].title} >
-                                <svg className="w-5 h-5"><use href={filterConfig[statusFilter].icon}></use></svg>
-                            </button>
-                        </div>
-                    )}
+                    {/* Stats panel and filter icons were removed from here for redesign */}
 
                     {user?.role === 'Admin' && activeView === 'inventory' && vendorIdsInInventory.length > 1 && (
                         <div className="flex items-center gap-1.5 overflow-x-auto">
