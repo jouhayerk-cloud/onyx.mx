@@ -40,23 +40,28 @@ export const LogisticsView: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Sub-tab bar */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.05] shrink-0">
-                {SUB_TABS.map(t => (
-                    <button key={t.id} onClick={() => setActiveTab(t.id)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t.id
-                            ? 'text-black shadow-lg scale-105' : 'bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'}`}
-                        style={activeTab === t.id ? { backgroundColor: t.color } : {}}>
-                        <span className="mr-1.5">{t.icon}</span>{t.label}
-                    </button>
-                ))}
-                <div className="ml-auto flex gap-6">
-                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Warehouse</span><span className="text-lg font-mono font-black text-[#FFED00]">{counts.warehouse}</span></div>
-                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">In Transit</span><span className="text-lg font-mono font-black text-[#00AEEF]">{counts.transit}</span></div>
-                    <div className="flex flex-col items-end"><span className="text-[8px] text-white/20 uppercase font-black tracking-widest">Delivered</span><span className="text-lg font-mono font-black text-[#8DC63F]">{counts.delivered}</span></div>
+            {/* ── Contextual status strip ── */}
+            <div className="flex items-center gap-6 px-6 py-2 bg-white/[0.015] border-b border-white/[0.04] shrink-0">
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[#FFED00]" />
+                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Warehouse</span>
+                    <span className="text-sm font-mono font-black text-[#FFED00] ml-1">{counts.warehouse}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[#00AEEF]" />
+                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">In Transit</span>
+                    <span className="text-sm font-mono font-black text-[#00AEEF] ml-1">{counts.transit}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[#8DC63F]" />
+                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Delivered</span>
+                    <span className="text-sm font-mono font-black text-[#8DC63F] ml-1">{counts.delivered}</span>
+                </div>
+                <div className="ml-auto">
+                    <span className="text-[8px] font-black text-white/15 uppercase tracking-widest">{docs.length} total shipments</span>
                 </div>
             </div>
-            {/* Content */}
+            {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
                 {activeTab === 'packing' && <PackingPanel docs={docs} onRefresh={refresh} />}
                 {activeTab === 'trucking' && <ShippingView />}

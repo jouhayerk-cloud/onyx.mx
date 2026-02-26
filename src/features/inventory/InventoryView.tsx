@@ -61,43 +61,30 @@ export const InventoryView: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Sub-tab bar */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.05] shrink-0">
-                {SUB_TABS
-                    .filter(t => !t.roles || t.roles.includes(user?.role || ''))
-                    .map(t => (
-                        <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t.id
-                                ? 'text-black shadow-lg scale-105' : 'bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'}`}
-                            style={activeTab === t.id ? { backgroundColor: t.color } : {}}>
-                            <span className="mr-1.5">{t.icon}</span>{t.label}
-                        </button>
-                    ))}
-                <div className="ml-auto flex items-center gap-6">
-                    <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Items</span>
-                        <span className="text-lg font-mono font-black text-white">{docs326.length}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Value</span>
-                        <span className="text-lg font-mono font-black text-[var(--main-color)]">{fmtUSD(docs326.reduce((a, b) => a + (b.price_mxn || 0), 0) / exchangeRate)}</span>
-                    </div>
+            {/* ── Contextual status strip ── */}
+            <div className="flex items-center gap-6 px-6 py-2 bg-white/[0.015] border-b border-white/[0.04] shrink-0">
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Items</span>
+                    <span className="text-sm font-mono font-black text-white">{docs326.length}</span>
                 </div>
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Total Value</span>
+                    <span className="text-sm font-mono font-black text-[var(--main-color)]">{fmtUSD(docs326.reduce((a, b) => a + (b.price_mxn || 0), 0) / exchangeRate)}</span>
+                </div>
+                {isSyncing && (
+                    <div className="flex items-center gap-1.5 ml-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--main-color)] animate-pulse" />
+                        <span className="text-[8px] text-white/20 uppercase tracking-widest font-black">Syncing</span>
+                    </div>
+                )}
             </div>
-            {/* Content */}
+            {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
                 {activeTab === 'catalog' && <CatalogMarketView />}
                 {activeTab === 'acquisitions' && <AcquisitionsView />}
-                {activeTab === 'production' && (
-                    <ProductionMiniPanel docs={data.prod} />
-                )}
-                {activeTab === 'archive' && (
-                    <ArchiveMiniPanel docs={docs825} exchangeRate={exchangeRate} />
-                )}
-                {activeTab === 'database' && user?.role === 'Developer' && (
-                    <DatabaseViewerPanel db={db} />
-                )}
-
+                {activeTab === 'production' && <ProductionMiniPanel docs={data.prod} />}
+                {activeTab === 'archive' && <ArchiveMiniPanel docs={docs825} exchangeRate={exchangeRate} />}
+                {activeTab === 'database' && user?.role === 'Developer' && <DatabaseViewerPanel db={db} />}
             </div>
         </div>
     );

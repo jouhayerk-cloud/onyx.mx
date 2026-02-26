@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
 import React, { useEffect, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { financeSubTabAtom, exchangeRateAtom } from '../../lib/atoms';
@@ -11,13 +6,8 @@ import { TrackingPaymentsView } from './TrackingPaymentsView';
 
 const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-const SUB_TABS = [
-    { id: 'payments' as const, label: 'PAYMENTS', color: '#00AEEF', icon: '💳' },
-    { id: 'expenses' as const, label: 'EXPENSES', color: '#F7941D', icon: '💰' },
-];
-
 export const FinanceView: React.FC = () => {
-    const [activeTab, setActiveTab] = useAtom(financeSubTabAtom);
+    const [activeTab] = useAtom(financeSubTabAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
     const [docs, setDocs] = useState<any[]>([]);
@@ -35,31 +25,31 @@ export const FinanceView: React.FC = () => {
     }, [db, ver]);
 
     const grandTotal = docs.reduce((a, b) => a + (b.amount || 0), 0);
+    const paid = docs.filter(d => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0);
+    const pending = grandTotal - paid;
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* Sub-tab bar */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.05] shrink-0">
-                {SUB_TABS.map(t => (
-                    <button key={t.id} onClick={() => setActiveTab(t.id)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t.id
-                            ? 'text-black shadow-lg scale-105' : 'bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/[0.08]'}`}
-                        style={activeTab === t.id ? { backgroundColor: t.color } : {}}>
-                        <span className="mr-1.5">{t.icon}</span>{t.label}
-                    </button>
-                ))}
-                <div className="ml-auto flex items-center gap-6">
-                    <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Total Finance</span>
-                        <span className="text-lg font-mono font-black text-[#00AEEF]">{fmt(grandTotal)}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">USD</span>
-                        <span className="text-lg font-mono font-black text-white/40">{fmt(grandTotal / exchangeRate)}</span>
-                    </div>
+            {/* ── Contextual status strip ── */}
+            <div className="flex items-center gap-6 px-6 py-2 bg-white/[0.015] border-b border-white/[0.04] shrink-0">
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Total</span>
+                    <span className="text-sm font-mono font-black text-[#00AEEF]">{fmt(grandTotal)}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Paid</span>
+                    <span className="text-sm font-mono font-black text-[#8DC63F]">{fmt(paid)}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Pending</span>
+                    <span className="text-sm font-mono font-black text-[#FFED00]">{fmt(pending)}</span>
+                </div>
+                <div className="ml-auto flex flex-col items-end">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">≈ USD</span>
+                    <span className="text-sm font-mono font-black text-white/30">{fmt(grandTotal / exchangeRate)}</span>
                 </div>
             </div>
-            {/* Content */}
+            {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
                 {activeTab === 'payments' && <TrackingPaymentsView docs={docs} exchangeRate={exchangeRate} onRefresh={refresh} />}
                 {activeTab === 'expenses' && <MonthlyExpensesPanel docs={docs} />}
@@ -67,6 +57,7 @@ export const FinanceView: React.FC = () => {
         </div>
     );
 };
+
 
 // ─── Monthly / Recurring Expenses Panel ───────────────────────────────────────
 const MonthlyExpensesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
