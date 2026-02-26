@@ -21,6 +21,7 @@ import React, { useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, userAtom, performanceModeAtom } from '../../lib/atoms';
+import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
@@ -36,16 +37,30 @@ export default function App() {
       const resolveAuthorizedUser = async (session: any) => {
         const email = session.user.email || '';
 
-        // Check if this email is registered and active in app_users
+        // Try to look up this email in app_users
         const { data: appUser, error } = await supabase
           .from('app_users')
           .select('role, display_name, is_active')
           .eq('email', email.toLowerCase())
           .single();
 
-        if (error || !appUser || !appUser.is_active) {
-          // Not authorized — sign them out immediately
-          console.warn('Access denied: email not registered in app_users or inactive.', email);
+        // If the table doesn't exist yet (or any unexpected DB error), 
+        // fail OPEN — fall back to the hardcoded resolver so existing users 
+        // are never locked out during setup.
+        if (error && error.code !== 'PGRST116') {
+          console.warn('app_users table unavailable, falling back to resolveUserRole.', error.message);
+          setUser({
+            id: session.user.id,
+            email,
+            name: session.user.user_metadata?.name || email.split('@')[0] || 'User',
+            role: resolveUserRole(email),
+          });
+          return;
+        }
+
+        // Table exists but this email has no registered row, or the row is inactive → deny
+        if (!appUser || !appUser.is_active) {
+          console.warn('Access denied: email not registered in app_users or is inactive.', email);
           await supabase.auth.signOut();
           setUser({
             id: 'DENIED',
@@ -57,6 +72,7 @@ export default function App() {
           return;
         }
 
+        // Registered and active — grant access with the role from the DB
         setUser({
           id: session.user.id,
           email,
