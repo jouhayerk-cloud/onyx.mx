@@ -251,7 +251,7 @@ export function MainAppView() {
             }
         },
         {
-            id: 'shipping', label: t.shipping, icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
+            id: 'shipping', label: t.shipping, icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('shipping');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -264,13 +264,6 @@ export function MainAppView() {
             id: 'payments', label: t.payments, icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
                 setActiveView('finance');
                 setFinanceSubTab('payments');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'tracking', label: 'Tracking', icon: 'dashboard-icon', isActive: activeView === 'finance' && financeSubTab === 'tracking', action: () => {
-                setActiveView('finance');
-                setFinanceSubTab('tracking');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },

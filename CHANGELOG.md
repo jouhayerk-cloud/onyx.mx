@@ -5,7 +5,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.9.0] — 2026-02-26
+
+### Changed
+- **Upload module** — Full glassmorphic UI redesign across all three steps:
+  - **`UploadView`**: Replaced floating step-badge chips with a proper **animated step progress bar** (step circles with active glow + scaling, filled connector lines, `backdrop-blur-xl` header)
+  - **`UploadMediaStep`**: Glassmorphic option cards with hover glow border, active shimmer + color overlay, emoji icon blocks, active check badge, and centered header. No hard black backgrounds.
+  - **`UploadDetailsStep`**: Frosted glass form panel (`backdrop-blur-xl`, `bg-white/[0.03]`), film-strip media preview, consistent `bg-white/[0.04]` frosted inputs with focus glow, item ID read-only field
+  - **`UploadReviewStep`**: Glassmorphic summary panel with field grid, media strip inside the panel, glowing green submit button, Back button consistent with app style
+
+### Fixed
+- **Sidebar icons** — Added missing SVG symbols to `index.html` sprite:
+  - `#layers` — used by **Inventory / Production** and **Finance / Expenses** (was blank)
+  - `#map-pin` — new icon for **Logistics / Shipping** (replaced duplicate `truck` icon)
+- **Finance sidebar** — Removed stale **Tracking** sub-item (absorbed into Payments in v2.8.0)
+- **Logistics sidebar** — Shipping sub-item icon changed from `truck` → `map-pin`
+
+---
+
 ## [2.8.0] — 2026-02-26
+
 
 ### Changed
 - **Finance → Payments tab** now renders the new unified `TrackingPaymentsView` — absorbs the former standalone "Tracking" tab. The sidebar Finance sub-items are now **Payments** and **Expenses** (Tracking removed as a separate tab).
