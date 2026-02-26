@@ -21,7 +21,6 @@ import React, { useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, userAtom, performanceModeAtom } from '../../lib/atoms';
-import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
@@ -33,27 +32,46 @@ export default function App() {
 
   useEffect(() => {
     import('../../lib/supabase').then(({ supabase }) => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          const email = session.user.email || '';
+
+      const resolveAuthorizedUser = async (session: any) => {
+        const email = session.user.email || '';
+
+        // Check if this email is registered and active in app_users
+        const { data: appUser, error } = await supabase
+          .from('app_users')
+          .select('role, display_name, is_active')
+          .eq('email', email.toLowerCase())
+          .single();
+
+        if (error || !appUser || !appUser.is_active) {
+          // Not authorized — sign them out immediately
+          console.warn('Access denied: email not registered in app_users or inactive.', email);
+          await supabase.auth.signOut();
           setUser({
-            id: session.user.id,
-            email: email,
-            name: session.user.user_metadata.name || email.split('@')[0] || 'User',
-            role: resolveUserRole(email),
-          });
+            id: 'DENIED',
+            email,
+            name: 'Access Denied',
+            role: 'Client',
+            __denied: true
+          } as any);
+          return;
         }
+
+        setUser({
+          id: session.user.id,
+          email,
+          name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
+          role: appUser.role,
+        });
+      };
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) resolveAuthorizedUser(session);
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session) {
-          const email = session.user.email || '';
-          setUser({
-            id: session.user.id,
-            email: email,
-            name: session.user.user_metadata.name || email.split('@')[0] || 'User',
-            role: resolveUserRole(email),
-          });
+          resolveAuthorizedUser(session);
         } else {
           setUser(null);
         }
@@ -62,6 +80,7 @@ export default function App() {
       return () => subscription.unsubscribe();
     });
   }, [setUser]);
+
 
   useEffect(() => {
     // Robust theme switching: remove old themes before adding the new one.
@@ -95,7 +114,29 @@ export default function App() {
 
   return (
     <>
-      {user ? <MainAppView /> : <Login />}
+      {(user as any)?.__denied ? (
+        <div className="w-full h-screen flex items-center justify-center">
+          <div className="text-center p-8 max-w-sm">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" /></svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+            <p className="text-sm text-[var(--text-color-secondary)] mb-6">
+              Your email is not registered for Onyx.mx access. Contact your system administrator.
+            </p>
+            <button
+              onClick={async () => {
+                const { supabase } = await import('../../lib/supabase');
+                await supabase.auth.signOut();
+                setUser(null);
+              }}
+              className="button w-full !py-3 text-sm"
+            >
+              Return to Login
+            </button>
+          </div>
+        </div>
+      ) : user ? <MainAppView /> : <Login />}
       <Toaster
         position="top-center"
         toastOptions={{

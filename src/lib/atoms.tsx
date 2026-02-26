@@ -171,7 +171,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 
 // Main Views
-export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload'>('inventory');
+export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control'>('inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventorySubTabAtom = atom<'catalog' | 'production' | 'acquisitions' | 'archive' | 'database'>('catalog');
 export const logisticsSubTabAtom = atom<'packing' | 'trucking' | 'shipping'>('packing');
