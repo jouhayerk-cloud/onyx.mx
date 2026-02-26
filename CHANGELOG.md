@@ -5,7 +5,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.0] — 2026-02-26
+
+### Changed
+- **Top bar — full dynamic module redesign** (`MainHeader.tsx`): Replaced 307 lines of scattered conditionals with a clean **module-bar architecture**. The header now adapts its content instantly when switching modules:
+  - **📦 Inventory** — Sub-tab pills (Catalog · Production · Acquisitions · Archive), traffic-light status filter, vendor filter chips (Admin), inline search, mobile details-panel toggle
+  - **💳 Finance** — Sub-tab pills (Payments · Expenses), live exchange rate chip
+  - **🚚 Logistics** — Sub-tab pills (Packing · Trucking · Shipping); when Shipping is active: warehouse/truck toggle, camera-view switcher (Persp/Top/Side/Front), max-weight input, live crates/weight/volume stats chips
+  - **⬆ Upload** — Read-only step progress (1 · Media · 2 · Details · 3 · Review) mirroring the wizard state
+  - **🛡 Control** — Developer badge label
+
+---
+
 ## [2.9.0] — 2026-02-26
+
 
 ### Changed
 - **Upload module** — Full glassmorphic UI redesign across all three steps:
