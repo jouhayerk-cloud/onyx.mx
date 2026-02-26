@@ -43,6 +43,7 @@ import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
 import { UploadView } from '../upload/UploadView';
+import { ControlView } from '../control/ControlView';
 import { useLogout, useTranslation } from '../../lib/hooks';
 import { BatchActionsModal } from '../catalog/BatchActionsModal';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -184,6 +185,7 @@ export function MainAppView() {
         }
 
         switch (activeView) {
+            case 'control': return <ControlView />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
@@ -311,6 +313,11 @@ export function MainAppView() {
                         </button>
                     </div>
                     <ul className="sidebar-list">
+                        {user?.role === 'Developer' && (
+                            <NavItemWithSubmenu viewId="control" label="Control" icon="shield" subItems={[
+                                { id: 'control-main', label: 'Control Center', icon: 'shield', isActive: activeView === 'control', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); } }
+                            ]} />
+                        )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <NavItemWithSubmenu viewId="upload" label="Upload" icon="upload" subItems={uploadSubItems} />
                         )}
