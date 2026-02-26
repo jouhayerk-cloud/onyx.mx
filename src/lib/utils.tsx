@@ -40,6 +40,22 @@ export function resolveUserRole(email: string): UserRole {
   return 'Vendor';
 }
 
+export function generateUniqueId(): string {
+  return Array.from({ length: 8 }, () => Math.random().toString(36).charAt(2)).join('').toUpperCase();
+}
+
+export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; } | null> {
+  // Placeholder logic for now, matching the shape required by UploadReviewStep
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        fileId: `drive-id-${Date.now()}`,
+        thumbnailUrl: URL.createObjectURL(file)
+      });
+    }, 1000);
+  });
+}
+
 export const imageCache = new Map<string, string>();
 
 let imageRequestQueue = new Set<string>();

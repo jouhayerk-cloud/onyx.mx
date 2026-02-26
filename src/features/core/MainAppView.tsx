@@ -42,7 +42,7 @@ import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
-import { CreateView } from '../create/CreateView';
+import { UploadView } from '../upload/UploadView';
 import { useLogout, useTranslation } from '../../lib/hooks';
 import { BatchActionsModal } from '../catalog/BatchActionsModal';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -184,7 +184,7 @@ export function MainAppView() {
         }
 
         switch (activeView) {
-            case 'create': return <CreateView />;
+            case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
             case 'finance': return <FinanceView />;
@@ -193,29 +193,13 @@ export function MainAppView() {
         }
     })();
 
-    const createSubItems = [
+    const uploadSubItems = [
         {
-            id: 'new', label: t.newFastEntry, icon: 'plus', isActive: activeView === 'create' && createTab === 'new', action: () => {
-                setActiveView('create');
-                setCreateTab('new');
-                setWorkflowStep('fastEntry');
+            id: 'upload-wizard', label: 'Upload Item', icon: 'upload', isActive: activeView === 'upload', action: () => {
+                setActiveView('upload');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
-        },
-        {
-            id: 'batch', label: t.batchEntry, icon: 'layers', isActive: activeView === 'create' && createTab === 'batchEntry', action: () => {
-                setActiveView('create');
-                setCreateTab('batchEntry');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'video', label: t.videoAnalysis, icon: 'video', isActive: activeView === 'create' && createTab === 'video', action: () => {
-                setActiveView('create');
-                setCreateTab('video');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
+        }
     ];
 
     const inventorySubItems = [
@@ -328,7 +312,7 @@ export function MainAppView() {
                     </div>
                     <ul className="sidebar-list">
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
-                            <NavItemWithSubmenu viewId="create" label={t.create} icon="plus" subItems={createSubItems} />
+                            <NavItemWithSubmenu viewId="upload" label="Upload" icon="upload" subItems={uploadSubItems} />
                         )}
                         <NavItemWithSubmenu viewId="inventory" label={t.inventory || 'Inventory'} icon="package" subItems={inventorySubItems} />
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (

@@ -63,6 +63,9 @@ export interface InventoryItemData {
   timestamp?: string;
   itemId: string;
   itemNumber: string;
+  name?: string;
+  category?: string;
+  vendorId?: string;
   createdBy?: string;
   status?: string;
   shape: string;
@@ -81,6 +84,8 @@ export interface InventoryItemData {
   generatedDescription?: string;
   detailedDescription?: string;
   generatedImageUrls?: string;
+  image_urls?: string[];
+  drive_ids?: string[];
   generatedPngUrl?: string;
   generatedSvgUrl?: string;
   spatialBoxes2d?: string;
@@ -117,7 +122,10 @@ export interface InventoryItem {
 
 export type UploadedFile = {
   type: 'image' | 'video';
-  dataUrl: string;
+  dataUrl?: string;
+  localUrl?: string;
+  originalFile?: File;
+  name?: string;
 };
 
 export enum PaymentDestination {
