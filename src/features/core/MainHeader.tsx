@@ -1,39 +1,25 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 /* tslint:disable */
-// Copyright 2024 Google LLC
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     activeViewAtom,
-    isDashboardStatsVisibleAtom,
-    dashboardSearchTermAtom,
     inventoryAtom,
     inventoryActiveFilterAtom,
     inventorySearchTermAtom,
+    inventorySubTabAtom,
     dashboardStatusFilterAtom,
+    dashboardSearchTermAtom,
     userAtom,
     isDetailsPanelOpenAtom,
     SelectedItemDataAtom,
     TrafficLightStatus,
-    dashboardActiveTabAtom,
-    paymentsVersionAtom,
-    paymentDestinationFilterAtom,
+    logisticsSubTabAtom,
+    financeSubTabAtom,
+    uploadCurrentStepAtom,
     shippingCameraViewAtom,
     shippingCratesAtom,
     shippingTruckDimsAtom,
@@ -41,266 +27,318 @@ import {
     shippingViewModeAtom,
     sidebarStateAtom,
     triggerWarehouseOrganizationAtom,
-    workbookSearchTermAtom,
-    workbookActiveTabAtom,
-    workbookVersionAtom,
-    workbookAtom
+    exchangeRateAtom,
 } from '../../lib/atoms';
-import { vendors, SCRIPT_URL, WORKBOOK_TABS } from '../../lib/consts';
+import { vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
-// FIX: Import CameraView from Types.tsx instead of atoms.tsx to fix module resolution error.
-import { CameraView, Expense, ExpenseStatus } from '../../lib/Types';
+import { CameraView } from '../../lib/Types';
 import { OnyxLogo } from '../../components/OnyxLogo';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
-const filterConfig: Record<TrafficLightStatus, { icon: string, title: string }> = {
-    'ALL': { icon: '#filter-all', title: 'Filter: All Items' },
-    'RED': { icon: '#filter-red', title: 'Filter: Approved, Pending Payment Request' },
-    'YELLOW': { icon: '#filter-yellow', title: 'Filter: Payment Requested, Unpaid' },
-    'GREEN': { icon: '#filter-green', title: 'Filter: Paid / Shipped' },
+const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> = {
+    ALL: { icon: '#filter-all', title: 'All items' },
+    RED: { icon: '#filter-red', title: 'Approved, pending payment' },
+    YELLOW: { icon: '#filter-yellow', title: 'Payment requested, unpaid' },
+    GREEN: { icon: '#filter-green', title: 'Paid / shipped' },
 };
 
-const formatCurrency = (amount: number, currency: 'MXN' | 'USD') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
+// ─── Search bar (shared) ──────────────────────────────────────────────────────
+const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string }> = ({ value, onChange, placeholder }) => {
+    const [expanded, setExpanded] = useState(false);
+    return (
+        <div
+            className={`flex items-center gap-2 bg-white/[0.05] border border-white/[0.08] rounded-xl transition-all duration-300 ${expanded ? 'w-52 px-3' : 'w-9 justify-center cursor-pointer hover:bg-white/[0.08]'} h-9 overflow-hidden`}
+            onClick={() => !expanded && setExpanded(true)}
+        >
+            <svg className="w-4 h-4 text-white/40 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            {expanded && (
+                <>
+                    <input autoFocus className="flex-1 bg-transparent text-xs text-white outline-none placeholder-white/25 min-w-0"
+                        value={value} onChange={e => onChange(e.target.value)}
+                        onBlur={() => !value && setExpanded(false)}
+                        placeholder={placeholder} />
+                    {value && (
+                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors text-xs">✕</button>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
 
-const SummaryCard = ({ title, amount, colorClass }: { title: string, amount: number, colorClass: string }) => (
-    <div className="text-right">
-        <p className="text-xs text-[var(--text-color-secondary)] uppercase font-semibold">{title}</p>
-        <p className={`text-lg font-bold font-mono ${colorClass}`}>{formatCurrency(amount, 'MXN')}</p>
+// ─── Sub-tab pill strip (shared) ─────────────────────────────────────────────
+const SubTabPills: React.FC<{
+    tabs: { id: string; label: string; icon?: string }[];
+    active: string;
+    onSelect: (id: string) => void;
+    accentColor?: string;
+}> = ({ tabs, active, onSelect, accentColor = 'var(--main-color)' }) => (
+    <div className="flex items-center gap-1">
+        {tabs.map(t => (
+            <button key={t.id} onClick={() => onSelect(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
+                    ${active === t.id ? 'text-black shadow-lg scale-[1.03]' : 'bg-white/[0.05] text-white/35 hover:text-white/70 hover:bg-white/[0.09]'}`}
+                style={active === t.id ? { backgroundColor: accentColor } : {}}>
+                {t.icon && <svg className="w-3 h-3"><use href={t.icon} /></svg>}
+                {t.label}
+            </button>
+        ))}
     </div>
 );
 
-const ShippingStats = () => {
+// ─── Module badge ─────────────────────────────────────────────────────────────
+const ModuleBadge: React.FC<{ emoji: string; label: string; color: string }> = ({ emoji, label, color }) => (
+    <div className="flex items-center gap-1.5 pr-4 border-r border-white/[0.07] shrink-0">
+        <span className="text-base">{emoji}</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color }}>{label}</span>
+    </div>
+);
+
+// ─── Shipping Stats chip ──────────────────────────────────────────────────────
+const ShippingStats: React.FC = () => {
     const crates = useAtomValue(shippingCratesAtom);
     const truckDims = useAtomValue(shippingTruckDimsAtom);
     const maxWeight = useAtomValue(truckMaxWeightAtom);
-
-    const { loadedCrates, totalWeight, volumeUsed, centerOfMass } = useMemo(() => {
-        const loaded = crates.filter(c => c.location === 'truck');
-        const weight = loaded.reduce((sum, c) => sum + c.weight, 0);
-        const usedVolume = loaded.reduce((sum, c) => sum + (c.w * c.h * c.d), 0);
-        const truckVolume = truckDims.length * truckDims.width * truckDims.height;
-        const volPercent = truckVolume > 0 ? (usedVolume / truckVolume) * 100 : 0;
-
-        // Center of mass calculation (x-axis for L/R balance)
-        const weightedSumX = loaded.reduce((sum, c) => sum + c.x * c.weight, 0);
-        const comX = weight > 0 ? weightedSumX / weight : 0;
-
-        return { loadedCrates: loaded, totalWeight: weight, volumeUsed: volPercent, centerOfMass: comX };
-    }, [crates, truckDims]);
-
-    const balancePercent = (centerOfMass / (truckDims.length / 2) + 1) * 50;
+    const loaded = crates.filter(c => c.location === 'truck');
+    const weight = loaded.reduce((s, c) => s + c.weight, 0);
+    const pct = Math.min(100, Math.round((weight / maxWeight) * 100));
+    const vol = loaded.reduce((s, c) => s + c.w * c.h * c.d, 0);
+    const truckVol = truckDims.length * truckDims.width * truckDims.height;
+    const volPct = truckVol > 0 ? Math.round((vol / truckVol) * 100) : 0;
 
     return (
-        <div className="hidden md:flex items-center gap-4 text-xs font-mono">
-            <span>Crates: <span className="font-bold text-[var(--text-color-primary)]">{loadedCrates.length}</span></span>
-            <div className="flex flex-col items-center">
-                <span>Weight: <span className="font-bold text-[var(--text-color-primary)]">{totalWeight.toFixed(0)}</span> / {maxWeight} kg</span>
-                <progress className="w-24 h-1" value={totalWeight} max={maxWeight}></progress>
-            </div>
-            <div className="flex flex-col items-center">
-                <span>L/R Balance</span>
-                <div className="w-24 h-2 bg-gray-700 rounded-full relative">
-                    <div className="absolute top-0 h-full bg-blue-400 rounded-full" style={{ left: `${Math.min(100, Math.max(0, balancePercent))}%`, width: '2px', transform: 'translateX(-50%)' }}></div>
+        <div className="hidden lg:flex items-center gap-3 text-[9px] font-mono text-white/40">
+            <span className="flex items-center gap-1"><span className="text-white/70 font-black">{loaded.length}</span> crates</span>
+            <div className="flex items-center gap-1">
+                <div className="w-16 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
+                <span>{pct}% wt</span>
+            </div>
+            <div className="flex items-center gap-1">
+                <div className="w-16 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#6BCEBB] rounded-full transition-all" style={{ width: `${volPct}%` }} />
+                </div>
+                <span>{volPct}% vol</span>
             </div>
         </div>
     );
 };
 
+// ─── MODULE BARS ──────────────────────────────────────────────────────────────
 
-export function MainHeader() {
+const InventoryBar: React.FC = () => {
     const t = useTranslation();
-    const [user] = useAtom(userAtom);
-    const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
-
-    const [isStatsVisible, setIsStatsVisible] = useAtom(isDashboardStatsVisibleAtom);
-    const [dashboardSearch, setDashboardSearch] = useAtom(dashboardSearchTermAtom);
-    const inventory = useAtomValue(inventoryAtom);
-    const [inventorySearch, setInventorySearch] = useAtom(inventorySearchTermAtom);
-    const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
+    const [subTab, setSubTab] = useAtom(inventorySubTabAtom);
+    const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [statusFilter, setStatusFilter] = useAtom(dashboardStatusFilterAtom);
+    const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
+    const inventory = useAtomValue(inventoryAtom);
+    const [isDetailsOpen, setIsDetailsOpen] = useAtom(isDetailsPanelOpenAtom);
+    const selectedItem = useAtomValue(SelectedItemDataAtom);
+    const user = useAtomValue(userAtom);
 
-    const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useAtom(isDetailsPanelOpenAtom);
-    const selectedItemData = useAtomValue(SelectedItemDataAtom);
-    const [activeView] = useAtom(activeViewAtom);
-    const [dashboardTab] = useAtom(dashboardActiveTabAtom);
-    const destinationFilter = useAtomValue(paymentDestinationFilterAtom);
+    const tabs = [
+        { id: 'catalog', label: t.catalog || 'Catalog', icon: '#camera' },
+        { id: 'production', label: 'Production', icon: '#layers' },
+        { id: 'acquisitions', label: t.acquisitions || 'Acquired', icon: '#archive' },
+        { id: 'archive', label: 'Archive', icon: '#package' },
+    ];
 
-    const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [paymentsVersion] = useAtom(paymentsVersionAtom);
-
-    const [cameraView, setCameraView] = useAtom(shippingCameraViewAtom);
-    const [viewMode, setViewMode] = useAtom(shippingViewModeAtom);
-    const [maxWeight, setMaxWeight] = useAtom(truckMaxWeightAtom);
-    const setTriggerOrganization = useSetAtom(triggerWarehouseOrganizationAtom);
-
-
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-    const [workbookActiveTab, setWorkbookActiveTab] = useAtom(workbookActiveTabAtom);
-    const [workbookVersion, setWorkbookVersion] = useAtom(workbookVersionAtom);
-    const setWorkbook = useSetAtom(workbookAtom);
-
-    useEffect(() => {
-        async function fetchExpenses() {
-            try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST', body: JSON.stringify({ action: 'getExpenses', user }),
-                });
-                const result = await response.json();
-                if (result.status === 'success') {
-                    setExpenses(result.data);
-                }
-            } catch (error) { }
-        }
-        fetchExpenses();
-    }, [paymentsVersion, user]);
-
-    const summary = useMemo(() => {
-        const filteredExpenses = destinationFilter === 'All'
-            ? expenses
-            : expenses.filter(e => e.destination === destinationFilter);
-
-        const inventoryDue = destinationFilter === 'All'
-            ? inventory.filter(i => i.data.status === 'YES' && !i.data.payReq).reduce((sum, item) => sum + (parseFloat(item.data.price) || 0), 0)
-            : 0;
-
-        const expensesDue = filteredExpenses.filter(e => e.status === ExpenseStatus.Requested).reduce((sum, e) => sum + e.totalAmount, 0);
-        const totalDue = inventoryDue + expensesDue;
-
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const paidThisMonth = filteredExpenses
-            .filter(e => e.status === ExpenseStatus.Paid && e.paymentDate && new Date(e.paymentDate) >= firstDayOfMonth)
-            .reduce((sum, e) => sum + e.totalAmount, 0);
-
-        return { totalDue, paidThisMonth };
-    }, [inventory, expenses, destinationFilter]);
-
-    const vendorIdsInInventory = useMemo(() => {
-        if (inventory.length === 0) return [];
-        const ids = new Set(inventory.map((item) => item.data.itemId));
+    const vendorIds = useMemo(() => {
+        const ids = new Set(inventory.map(i => i.data.itemId));
         return ['All', ...Array.from(ids).sort()];
     }, [inventory]);
 
-    const [workbookSearch, setWorkbookSearch] = useAtom(workbookSearchTermAtom);
-
-    const isCatalog = activeView === 'inventory';
-    const isDashboard = activeView === 'finance' || activeView === 'logistics';
-    const isWorkbook = activeView === 'finance' || activeView === 'logistics' || activeView === 'inventory';
-
-    const searchTerm = isCatalog ? inventorySearch : isDashboard ? dashboardSearch : isWorkbook ? workbookSearch : '';
-    const setSearchTerm = isCatalog ? setInventorySearch : isDashboard ? setDashboardSearch : isWorkbook ? setWorkbookSearch : () => { };
-    const searchPlaceholder = isCatalog ? t.searchInventory : isDashboard ? t.searchAcquisitions : isWorkbook ? 'Search Workbook...' : t.search;
-
-    const handleCycleFilter = () => {
-        const currentIndex = filterCycle.indexOf(statusFilter);
-        const nextIndex = (currentIndex + 1) % filterCycle.length;
-        setStatusFilter(filterCycle[nextIndex]);
-    };
-
-    const toggleSidebar = () => {
-        setSidebarState(current => (current === 'hidden' ? 'expanded' : 'hidden'));
+    const cycleFilter = () => {
+        const i = filterCycle.indexOf(statusFilter);
+        setStatusFilter(filterCycle[(i + 1) % filterCycle.length]);
     };
 
     return (
+        <>
+            <ModuleBadge emoji="📦" label="Inventory" color="#6BCEBB" />
+            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#6BCEBB" />
+            <div className="flex items-center gap-2 ml-auto">
+                {/* Admin vendor filter chips */}
+                {user?.role !== 'Client' && vendorIds.length > 2 && (
+                    <div className="hidden md:flex items-center gap-1 overflow-x-auto max-w-[200px]">
+                        {vendorIds.slice(0, 5).map(id => (
+                            <button key={id} onClick={() => setInventoryFilter(id)}
+                                className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all border ${inventoryFilter === id ? 'border-[#6BCEBB] bg-[#6BCEBB]/10 text-[#6BCEBB]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
+                                {id}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                {/* Traffic light filter */}
+                <button onClick={cycleFilter} title={filterConfig[statusFilter].title}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] transition-colors border border-white/[0.08]">
+                    <svg className="w-4 h-4"><use href={filterConfig[statusFilter].icon} /></svg>
+                </button>
+                <SearchBar value={search} onChange={setSearch} placeholder="Search inventory…" />
+                {/* Details panel toggle on mobile */}
+                {selectedItem && (
+                    <button onClick={() => setIsDetailsOpen(!isDetailsOpen)} title="Toggle details"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] lg:hidden">
+                        <svg className="w-4 h-4"><use href="#layout-sidebar-right" /></svg>
+                    </button>
+                )}
+            </div>
+        </>
+    );
+};
+
+const FinanceBar: React.FC = () => {
+    const [subTab, setSubTab] = useAtom(financeSubTabAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
+
+    const tabs = [
+        { id: 'payments', label: 'Payments', icon: '#credit-card' },
+        { id: 'expenses', label: 'Expenses', icon: '#layers' },
+    ];
+
+    return (
+        <>
+            <ModuleBadge emoji="💳" label="Finance" color="#00AEEF" />
+            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#00AEEF" />
+            <div className="ml-auto flex items-center gap-3">
+                <div className="hidden md:flex flex-col items-end">
+                    <span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
+                    <span className="text-xs font-mono font-black text-white/40">1 USD = {exchangeRate.toFixed(2)} MXN</span>
+                </div>
+            </div>
+        </>
+    );
+};
+
+const LogisticsBar: React.FC = () => {
+    const t = useTranslation();
+    const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
+    const [cameraView, setCameraView] = useAtom(shippingCameraViewAtom);
+    const [viewMode, setViewMode] = useAtom(shippingViewModeAtom);
+    const [maxWeight, setMaxWeight] = useAtom(truckMaxWeightAtom);
+    const setTriggerOrg = useSetAtom(triggerWarehouseOrganizationAtom);
+
+    const tabs = [
+        { id: 'packing', label: 'Packing', icon: '#package' },
+        { id: 'trucking', label: 'Trucking', icon: '#truck' },
+        { id: 'shipping', label: t.shipping || 'Shipping', icon: '#map-pin' },
+    ];
+
+    const cameraViews: CameraView[] = ['perspective', 'top', 'side', 'front'];
+
+    return (
+        <>
+            <ModuleBadge emoji="🚚" label="Logistics" color="#F7941D" />
+            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#F7941D" />
+
+            {subTab === 'shipping' && (
+                <div className="hidden md:flex items-center gap-2 ml-2">
+                    {/* Warehouse organise */}
+                    <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] transition-colors">
+                        <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
+                    </button>
+                    {/* View mode */}
+                    <div className="flex items-center gap-0.5 bg-white/[0.05] border border-white/[0.08] rounded-lg p-0.5">
+                        {(['warehouse', 'truck'] as const).map(m => (
+                            <button key={m} onClick={() => setViewMode(m)}
+                                className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Camera view */}
+                    <div className="flex items-center gap-0.5 bg-white/[0.05] border border-white/[0.08] rounded-lg p-0.5">
+                        {cameraViews.map(v => (
+                            <button key={v} onClick={() => setCameraView(v)}
+                                className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${cameraView === v ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                                {v.slice(0, 3)}
+                            </button>
+                        ))}
+                    </div>
+                    {/* Max weight */}
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-white/30 font-black uppercase tracking-widest whitespace-nowrap">Max kg</span>
+                        <input type="number" value={maxWeight} onChange={e => setMaxWeight(Number(e.target.value))}
+                            className="w-16 bg-white/[0.05] border border-white/[0.08] rounded-lg px-2 py-1 text-xs font-mono text-white/70 focus:outline-none focus:border-[#F7941D]/50" />
+                    </div>
+                </div>
+            )}
+
+            <div className="ml-auto">
+                {subTab === 'shipping' && <ShippingStats />}
+            </div>
+        </>
+    );
+};
+
+const UploadBar: React.FC = () => {
+    const step = useAtomValue(uploadCurrentStepAtom);
+    const steps = [
+        { id: 'media', label: '1 · Media' },
+        { id: 'details', label: '2 · Details' },
+        { id: 'review', label: '3 · Review' },
+    ];
+    return (
+        <>
+            <ModuleBadge emoji="⬆" label="Upload" color="#8DC63F" />
+            <div className="flex items-center gap-1">
+                {steps.map((s, i) => {
+                    const done = steps.findIndex(x => x.id === step) > i;
+                    const active = s.id === step;
+                    return (
+                        <span key={s.id}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
+                                ${active ? 'bg-[#8DC63F] text-black' : done ? 'bg-white/10 text-white/50' : 'text-white/20'}`}>
+                            {s.label}
+                        </span>
+                    );
+                })}
+            </div>
+        </>
+    );
+};
+
+const ControlBar: React.FC = () => (
+    <>
+        <ModuleBadge emoji="🛡" label="Control Center" color="#a78bfa" />
+        <div className="ml-auto">
+            <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
+        </div>
+    </>
+);
+
+// ─── MAIN HEADER ─────────────────────────────────────────────────────────────
+
+export function MainHeader() {
+    const [activeView] = useAtom(activeViewAtom);
+    const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
+
+    const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
+
+    return (
         <div className="main-header">
-            <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/5 mr-2" onClick={toggleSidebar}>
+            {/* Logo / sidebar toggle */}
+            <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/[0.07] mr-3 shrink-0" onClick={toggleSidebar}>
                 <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.9.0</span>
+                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v2.10.0</span>
             </button>
 
-            <div className={`search-wrapper transition-all duration-300 ease-in-out ${isSearchExpanded ? '!max-w-md w-full' : '!max-w-[40px] cursor-pointer'}`}
-                onClick={() => !isSearchExpanded && setIsSearchExpanded(true)}
-            >
-                <svg
-                    className={`search-icon ${!isSearchExpanded ? 'mx-auto' : ''}`}
-                    xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                {isSearchExpanded ? (
-                    <div className="flex items-center w-full">
-                        <input
-                            className="search-input !flex-grow"
-                            type="text"
-                            autoFocus
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onBlur={() => !searchTerm && setIsSearchExpanded(false)}
-                            placeholder={searchPlaceholder}
-                        />
-                        <button
-                            className="ml-2 p-1 hover:bg-white/10 rounded-full transition-colors"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsSearchExpanded(false);
-                            }}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
-                    </div>
-                ) : null}
-            </div>
-
-
-
-            <div className="flex-grow flex justify-end items-center gap-6">
-                {isDashboard && dashboardTab === 'payments' && (
-                    <div className="hidden md:flex items-center gap-6">
-                        <SummaryCard title="Total Due" amount={summary.totalDue} colorClass="text-amber-400" />
-                        <SummaryCard title="Paid This Month" amount={summary.paidThisMonth} colorClass="text-green-400" />
-                    </div>
+            {/* Dynamic module bar — grows to fill available space */}
+            <div className="flex-1 flex items-center gap-3 overflow-hidden min-w-0">
+                {activeView === 'inventory' && <InventoryBar />}
+                {activeView === 'finance' && <FinanceBar />}
+                {activeView === 'logistics' && <LogisticsBar />}
+                {activeView === 'upload' && <UploadBar />}
+                {activeView === 'control' && <ControlBar />}
+                {(activeView === 'create' || !activeView) && (
+                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Onyx.mx</span>
                 )}
-                {isDashboard && dashboardTab === 'shipping' && (
-                    <>
-                        <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => setTriggerOrganization(v => v + 1)} className="button !p-2 !min-h-0" title="Organize Warehouse">
-                                <svg className="w-5 h-5"><use href="#layout-grid"></use></svg>
-                            </button>
-                            <div className="shipping-view-toggle">
-                                <button onClick={() => setViewMode('warehouse')} className={viewMode === 'warehouse' ? 'active' : ''}>{t.warehouse}</button>
-                                <button onClick={() => setViewMode('truck')} className={viewMode === 'truck' ? 'active' : ''}>{t.truck}</button>
-                            </div>
-                            <div className="dashboard-tabs !p-0 !bg-transparent !border-none">
-                                {(['perspective', 'top', 'side', 'front'] as CameraView[]).map(view => (
-                                    <button key={view} onClick={() => setCameraView(view)} className={`tab-button ${cameraView === view ? 'active' : ''}`}>
-                                        {view.charAt(0).toUpperCase() + view.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <label className="text-xs font-semibold whitespace-nowrap">{t.maxWeight}:</label>
-                                <input type="number" value={maxWeight} onChange={e => setMaxWeight(Number(e.target.value))} className="!rounded-md !w-24 !py-1 text-xs" />
-                            </div>
-                        </div>
-                        <ShippingStats />
-                    </>
-                )}
-
-                <div className="flex gap-3 items-center justify-end">
-                    {/* Stats panel and filter icons were removed from here for redesign */}
-
-                    {user?.role === 'Admin' && activeView === 'inventory' && vendorIdsInInventory.length > 1 && (
-                        <div className="flex items-center gap-1.5 overflow-x-auto">
-                            {vendorIdsInInventory.map((id: string) => (
-                                <button key={id} onClick={() => setInventoryFilter(id)} className={`px-3 py-1 text-xs font-semibold rounded-full transition-all border border-transparent ${inventoryFilter === id ? '!border-[var(--main-color)] bg-black/20' : 'opacity-70 hover:opacity-100'}`}
-                                    style={{ flexShrink: 0 }}>
-                                    {id === 'All' ? t.all : id}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    {activeView === 'inventory' && selectedItemData && (
-                        <button
-                            onClick={() => setIsDetailsPanelOpen(!isDetailsPanelOpen)}
-                            className="button !p-2 !min-h-0 lg:hidden"
-                            title={isDetailsPanelOpen ? 'Hide Details' : 'Show Details'}
-                        >
-                            <svg className="w-5 h-5"><use href="#layout-sidebar-right"></use></svg>
-                        </button>
-                    )}
-                </div>
             </div>
         </div>
     );
