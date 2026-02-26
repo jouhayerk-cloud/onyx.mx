@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 /* tslint:disable */
-import React, { useEffect, useState } from 'react';
-import { useAtom } from 'jotai/react';
-import { uploadCurrentStepAtom, uploadItemDataAtom, uploadMediaFilesAtom } from '../../lib/atoms';
-import { vendors, SCRIPT_URL } from '../../lib/consts';
+import React, { useEffect } from 'react';
+import { useAtom, useAtomValue } from 'jotai/react';
+import { uploadCurrentStepAtom, uploadItemDataAtom, uploadMediaFilesAtom, userAtom } from '../../lib/atoms';
+import { vendors } from '../../lib/consts';
 import { generateUniqueId } from '../../lib/utils';
 import { InventoryItemData } from '../../lib/Types';
 
@@ -14,6 +14,11 @@ export function UploadDetailsStep() {
     const [, setCurrentStep] = useAtom(uploadCurrentStepAtom);
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
     const [mediaFiles] = useAtom(uploadMediaFilesAtom);
+    const user = useAtomValue(userAtom);
+
+    const canSelectVendor = user?.role === 'Developer' || user?.role === 'Admin';
+    // Clients & Vendors are locked to their own user identifier as vendor
+    const autoVendorId = user?.id || user?.email || Object.keys(vendors)[0] || '';
 
     // Initial default values to prevent uncontrolled inputs
     useEffect(() => {
@@ -22,7 +27,7 @@ export function UploadDetailsStep() {
                 itemId: generateUniqueId(),
                 name: '',
                 description: '',
-                vendorId: vendors[0].id,
+                vendorId: canSelectVendor ? (Object.keys(vendors)[0] || '') : autoVendorId,
                 price: '',
                 category: 'Uncategorized',
                 status: 'YES'
@@ -64,9 +69,16 @@ export function UploadDetailsStep() {
 
                 <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-color-secondary)]">Vendor</label>
-                    <select name="vendorId" value={itemData.vendorId || ''} onChange={handleChange} className="bg-[var(--glass-bg)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--main-color)]">
-                        {Object.entries(vendors).map(([id, vendor]) => <option key={id} value={id}>{id}</option>)}
-                    </select>
+                    {canSelectVendor ? (
+                        <select name="vendorId" value={itemData.vendorId || ''} onChange={handleChange} className="bg-[var(--glass-bg)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[var(--main-color)]">
+                            {Object.entries(vendors).map(([id]) => <option key={id} value={id}>{id}</option>)}
+                        </select>
+                    ) : (
+                        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/60 flex items-center gap-2">
+                            <svg className="w-4 h-4 opacity-40"><use href="#lock" /></svg>
+                            <span className="truncate">{itemData.vendorId || autoVendorId}</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-1 md:col-span-2">
