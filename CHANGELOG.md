@@ -5,6 +5,27 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.8.0] — 2026-02-26
+
+### Changed
+- **Finance → Payments tab** now renders the new unified `TrackingPaymentsView` — absorbs the former standalone "Tracking" tab. The sidebar Finance sub-items are now **Payments** and **Expenses** (Tracking removed as a separate tab).
+
+### Added
+- **`TrackingPaymentsView`** (`src/features/finance/TrackingPaymentsView.tsx`) — Combined Payments + Tracking view:
+  - **Subcategory filter pills** (Acquisition / Monthly Expense / Supplies / Labor / Crate-Pallet / Operating)
+  - **Account icon filter buttons** (BBVA Martha, BBVA Ramses, Bank of America, Fast Cash) — filter the record table by payment destination
+  - **Vendor request cards** — items ready to pay grouped by vendor with one-click "Request" → destination account modal
+  - **Full record table** with per-row destination account icon, amount + fee display, and toggle Requested ↔ Paid
+  - **Unified Add modal** — combines subcategory, vendor select, description, reference, recurring toggle, and **destination account card selector** (with live commission preview)
+- **Missing SVG sidebar icons** added to `index.html` sprite: `#shield` (Control), `#upload` (Upload), `#users` (User Registry), `#refresh`, `#lock`
+
+### Fixed
+- Removed 120-line dead `FinanceTrackingPanel` component from `FinanceView.tsx`
+- Removed duplicate declarations introduced by a failed partial edit on `FinanceView.tsx`
+- Cleaned up unused imports (`toast`, `supabase`, `vendors`, `useMemo`, `getTextColorForBg`) from the Finance module
+
+---
+
 ## [2.7.2] — 2026-02-26
 
 ### Added
