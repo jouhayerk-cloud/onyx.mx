@@ -95,6 +95,34 @@ export function UserRegistryPanel() {
         fetchUsers();
     };
 
+    const sendInvite = (user: AppUser) => {
+        const appUrl = 'https://jouhayerk-cloud.github.io/onyx.mx/';
+        const name = user.display_name || user.email.split('@')[0];
+        const subject = encodeURIComponent('You have been invited to Onyx.mx');
+        const body = encodeURIComponent(
+            `Hello ${name},
+
+You have been granted access to Onyx.mx — an enterprise inventory and logistics platform for cross-border commerce between Mexico and the United States.
+
+Your access details:
+  Role: ${user.role}
+  Email: ${user.email}
+
+To get started:
+1. Visit ${appUrl}
+2. Click "Need partner access? Request Registration"
+3. Create your account using this email address: ${user.email}
+4. Once registered, you will have immediate access.
+
+If you have any questions, contact your system administrator.
+
+Onyx.mx — Enterprise Inventory Management
+${appUrl}`
+        );
+        window.open(`mailto:${user.email}?subject=${subject}&body=${body}`, '_blank');
+    };
+
+
     return (
         <div className="flex flex-col gap-4">
             {/* Toolbar */}
@@ -193,7 +221,17 @@ export function UserRegistryPanel() {
                                 </div>
 
                                 {/* Right: actions */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                                    <button
+                                        onClick={() => sendInvite(user)}
+                                        title={`Send invite email to ${user.email}`}
+                                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--main-color)]/40 text-[var(--main-color)] hover:bg-[var(--main-color)]/10 transition-all font-semibold flex items-center gap-1.5"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        Invite
+                                    </button>
                                     <button onClick={() => handleToggleActive(user)} className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-semibold ${user.is_active ? 'border-white/20 hover:border-red-400/50 hover:text-red-300 text-white/60' : 'border-green-400/40 text-green-300 hover:bg-green-500/10'}`}>
                                         {user.is_active ? 'Disable' : 'Enable'}
                                     </button>

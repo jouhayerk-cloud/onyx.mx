@@ -5,6 +5,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.7.2] — 2026-02-26
+
+### Added
+- **Send Invite button** in Control Center → User Registry — Each registered user card now has an ✉️ **Invite** button. Clicking it opens the developer's email client (via `mailto:`) pre-filled with a professional Onyx.mx invitation containing:
+  - The user's display name and assigned role
+  - A direct link to the app (`https://jouhayerk-cloud.github.io/onyx.mx/`)
+  - Step-by-step registration instructions using the registered email address
+
+---
+
 ## [2.7.1] — 2026-02-26 · Hotfix
 
 ### Fixed
