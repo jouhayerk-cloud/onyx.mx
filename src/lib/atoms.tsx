@@ -171,7 +171,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 
 // Main Views
-export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance'>('inventory');
+export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload'>('inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventorySubTabAtom = atom<'catalog' | 'production' | 'acquisitions' | 'archive' | 'database'>('catalog');
 export const logisticsSubTabAtom = atom<'packing' | 'trucking' | 'shipping'>('packing');
@@ -181,6 +181,17 @@ export const isCatalogViewOpenAtom = atom(false);
 export const catalogMarketViewModeAtom = atom<'catalog' | 'market'>('catalog');
 export const isShippingOpenAtom = atom(false);
 export const marketActiveTabAtom = atom<'description' | 'images'>('images');
+
+// Upload Workflow State
+export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
+export const uploadSelectedMediaTypeAtom = atom<string | null, [string | null], void>(
+  null,
+  (get, set, update: string | null) => {
+    set(uploadSelectedMediaTypeAtom, update);
+  }
+);
+export const uploadMediaFilesAtom = atom<UploadedFile[]>([]);
+export const uploadItemDataAtom = atom<Partial<InventoryItemData>>({});
 
 
 // Dashboard State
