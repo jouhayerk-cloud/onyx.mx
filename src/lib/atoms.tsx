@@ -183,7 +183,7 @@ export const isShippingOpenAtom = atom(false);
 export const marketActiveTabAtom = atom<'description' | 'images'>('images');
 
 // Upload Workflow State
-export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
+export const uploadTabAtom = atom<'entry' | 'ai'>('entry');
 export const uploadSelectedMediaTypeAtom = atom<string | null, [string | null], void>(
   null,
   (get, set, update: string | null) => {
@@ -191,7 +191,21 @@ export const uploadSelectedMediaTypeAtom = atom<string | null, [string | null], 
   }
 );
 export const uploadMediaFilesAtom = atom<UploadedFile[]>([]);
-export const uploadItemDataAtom = atom<Partial<InventoryItemData>>({});
+export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
+  quantity?: string;
+  color?: string;
+  material?: string;
+  shape?: string;
+  itemType?: string;
+  weightKg?: string;
+  widthCm?: string;
+  heightCm?: string;
+  lengthCm?: string;
+  mediaType?: string;
+}>({});
+// Legacy compat alias used by old UploadReviewStep (now removed, but kept for type safety)
+export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
+
 
 
 // Dashboard State

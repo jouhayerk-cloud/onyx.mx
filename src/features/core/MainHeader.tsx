@@ -19,7 +19,7 @@ import {
     TrafficLightStatus,
     logisticsSubTabAtom,
     financeSubTabAtom,
-    uploadCurrentStepAtom,
+    uploadTabAtom,
     shippingCameraViewAtom,
     shippingCratesAtom,
     shippingTruckDimsAtom,
@@ -281,28 +281,21 @@ const LogisticsBar: React.FC = () => {
 };
 
 const UploadBar: React.FC = () => {
-    const step = useAtomValue(uploadCurrentStepAtom);
-    const steps = [
-        { id: 'media', label: '1 · Media' },
-        { id: 'details', label: '2 · Details' },
-        { id: 'review', label: '3 · Review' },
-    ];
+    const tab = useAtomValue(uploadTabAtom);
     return (
         <>
             <ModuleBadge emoji="⬆" label="Upload" color="#8DC63F" />
             <div className="flex items-center gap-1">
-                {steps.map((s, i) => {
-                    const done = steps.findIndex(x => x.id === step) > i;
-                    const active = s.id === step;
-                    return (
-                        <span key={s.id}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                                ${active ? 'bg-[#8DC63F] text-black' : done ? 'bg-white/10 text-white/50' : 'text-white/20'}`}>
-                            {s.label}
-                        </span>
-                    );
-                })}
+                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
+                    ${tab === 'entry' ? 'bg-[#8DC63F] text-black' : 'text-white/25'}`}>
+                    ✚ Entry
+                </span>
+                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
+                    ${tab === 'ai' ? 'bg-[var(--main-color)] text-black' : 'text-white/25'}`}>
+                    ✨ AI Tools
+                </span>
             </div>
+
         </>
     );
 };
