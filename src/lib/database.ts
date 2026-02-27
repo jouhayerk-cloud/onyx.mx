@@ -1,14 +1,10 @@
 import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
-import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 import { supabase } from './supabase';
 
 // Add plugins
-if (import.meta.env.DEV) {
-    addRxPlugin(RxDBDevModePlugin);
-}
 addRxPlugin(RxDBQueryBuilderPlugin);
 addRxPlugin(RxDBMigrationSchemaPlugin);
 
