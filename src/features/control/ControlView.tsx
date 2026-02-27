@@ -19,36 +19,38 @@ export function ControlView() {
 
     return (
         <div className="flex flex-col h-full p-6 gap-6 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-[var(--main-color)]/10 border border-[var(--main-color)]/30">
-                    <svg className="w-6 h-6 text-[var(--main-color)]"><use href="#shield" /></svg>
+            {/* Top Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Left: Description & Tags */}
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-[var(--main-color)]/10 border border-[var(--main-color)]/30">
+                        <svg className="w-4 h-4 text-[var(--main-color)]"><use href="#shield" /></svg>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-[var(--main-color)]/10 border border-[var(--main-color)]/30 rounded-full px-2 py-0.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[var(--main-color)] animate-pulse" />
+                        <span className="text-[10px] font-bold text-[var(--main-color)] uppercase tracking-widest">Developer</span>
+                    </div>
+                    <p className="text-xs text-[var(--text-color-secondary)] hidden sm:block">
+                        Developer-only access management &amp; system overview
+                    </p>
                 </div>
-                <div>
-                    <h1 className="text-2xl font-black tracking-tighter text-white">Control Center</h1>
-                    <p className="text-xs text-[var(--text-color-secondary)] mt-0.5">Developer-only access management &amp; system overview</p>
-                </div>
-                <div className="ml-auto flex items-center gap-2 bg-[var(--main-color)]/10 border border-[var(--main-color)]/30 rounded-full px-3 py-1">
-                    <div className="w-2 h-2 rounded-full bg-[var(--main-color)] animate-pulse" />
-                    <span className="text-xs font-bold text-[var(--main-color)] uppercase tracking-widest">Developer</span>
-                </div>
-            </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === tab.id
+                {/* Right: Tabs */}
+                <div className="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === tab.id
                                 ? 'bg-[var(--main-color)] text-black shadow'
                                 : 'text-[var(--text-color-secondary)] hover:text-white'
-                            }`}
-                    >
-                        <svg className="w-4 h-4"><use href={`#${tab.icon}`} /></svg>
-                        {tab.label}
-                    </button>
-                ))}
+                                }`}
+                        >
+                            <svg className="w-3.5 h-3.5"><use href={`#${tab.icon}`} /></svg>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Panel */}

@@ -2,9 +2,23 @@ import React, { useState, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { userAtom, notificationsAtom } from '../../lib/atoms';
 import { readFileAsDataURL, loadImage } from '../../lib/utils';
-import { GoogleGenAI } from '@google/genai';
+// Replaced @google/genai with direct fetch to avoid Vite build/browser parser crashes
+const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
-const ai = new GoogleGenAI({ apiKey: (typeof process !== 'undefined' && process.env?.API_KEY) || (import.meta as any).env?.VITE_GEMINI_API_KEY || '' });
+async function generateContent(model: string, parts: any[], config?: any) {
+    if (!API_KEY) throw new Error("Missing VITE_GEMINI_API_KEY");
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: config ? { responseMimeType: config.responseMimeType } : undefined })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text || '' };
+}
 
 const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block mb-1.5";
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/15 focus:outline-none focus:border-[var(--main-color)]/50 transition-all";
@@ -67,11 +81,11 @@ const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
 - "weightKg": estimated weight in kg (string number)
 - "shortDescription": one-sentence description (string)
 - "description": 2-3 sentence detailed description (string)`;
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }] },
-                config: { responseMimeType: 'application/json' }
-            });
+            const response = await generateContent(
+                'gemini-2.0-flash',
+                [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }],
+                { responseMimeType: 'application/json' }
+            );
             setResult(JSON.parse(response.text));
         } catch (e: any) { setResult({ error: e.message }); }
         setLoading(false);
@@ -113,11 +127,11 @@ const DetectPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
         setResult('');
         try {
             const p = `Detect and tag all ${prompt} in the image. Return JSON with: "boxes" (list of {box_2d:[y_min,x_min,y_max,x_max], label}) and "points" (list of {point:[y,x], label}). Coordinates normalized 0-1000.`;
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: p }] },
-                config: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
-            });
+            const response = await generateContent(
+                'gemini-2.0-flash',
+                [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: p }],
+                { responseMimeType: 'application/json' }
+            );
             setResult(JSON.stringify(JSON.parse(response.text), null, 2));
         } catch (e: any) { setResult(`Error: ${e.message}`); }
         setLoading(false);
@@ -146,11 +160,11 @@ const ColorPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
         setSwatches([]);
         try {
             const prompt = `Extract the 6 most dominant colors from this image. Return a JSON array of objects with "hex" (CSS hex color like "#A3B4C5") and "name" (descriptive color name). Order by dominance.`;
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }] },
-                config: { responseMimeType: 'application/json' }
-            });
+            const response = await generateContent(
+                'gemini-2.0-flash',
+                [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }],
+                { responseMimeType: 'application/json' }
+            );
             setSwatches(JSON.parse(response.text));
         } catch (e: any) { setSwatches([{ hex: '#ff0000', name: `Error: ${(e as any).message}` }]); }
         setLoading(false);
@@ -183,11 +197,11 @@ const MaskPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             const prompt = task === 'segment'
                 ? `Generate segmentation masks for the main product objects. Return a JSON list of masks, each with "box_2d" ([y_min, x_min, y_max, x_max] normalized to 1000), "mask" (base64 PNG), and "label".`
                 : `Describe what is in the background of this product photo that should be removed to isolate the subject. Return JSON with "background_description", "subject_description", "removal_advice".`;
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.0-flash',
-                contents: { parts: [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }] },
-                config: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
-            });
+            const response = await generateContent(
+                'gemini-2.0-flash',
+                [{ inlineData: { data: imageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt }],
+                { responseMimeType: 'application/json' }
+            );
             const parsed = JSON.parse(response.text);
             setResult(typeof parsed === 'string' ? parsed : JSON.stringify(parsed, null, 2));
         } catch (e: any) { setResult(`Error: ${e.message}`); }

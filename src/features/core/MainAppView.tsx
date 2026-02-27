@@ -38,7 +38,7 @@ import {
     SidebarState,
 } from '../../lib/atoms';
 import React, { useEffect } from 'react';
-import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
+// import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
@@ -197,7 +197,7 @@ export function MainAppView() {
 
     const uploadSubItems = [
         {
-            id: 'upload-wizard', label: 'Upload Item', icon: 'upload', isActive: activeView === 'upload', action: () => {
+            id: 'upload-wizard', label: 'Create entry', icon: 'upload', isActive: activeView === 'upload', action: () => {
                 setActiveView('upload');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
@@ -312,7 +312,7 @@ export function MainAppView() {
                             ]} />
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
-                            <NavItemWithSubmenu viewId="upload" label="Upload" icon="upload" subItems={uploadSubItems} />
+                            <NavItemWithSubmenu viewId="upload" label="New" icon="upload" subItems={uploadSubItems} />
                         )}
                         <NavItemWithSubmenu viewId="inventory" label={t.inventory || 'Inventory'} icon="package" subItems={inventorySubItems} />
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
@@ -367,8 +367,8 @@ export function MainAppView() {
                 </div>
             </div>
 
-            {is3DViewerOpen && <ThreeDViewer />}
-            {is3DWorkspaceOpen && <ThreeDWorkspace />}
+            {/* is3DViewerOpen && <ThreeDViewer /> */}
+            {/* is3DWorkspaceOpen && <ThreeDWorkspace /> */}
 
             <BatchActionsModal />
         </>

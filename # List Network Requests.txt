@@ -1,0 +1,14 @@
+# List Network Requests
+
+| reqid | method | url | status |
+|---|---|---|---|
+| 52 | GET | https://jouhayerk-cloud.github.io/onyx.mx/ | success - 200 |
+| 53 | GET | https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap | success - 200 |
+| 54 | GET | https://jouhayerk-cloud.github.io/onyx.mx/assets/index-NXtSdq9V.js | success - 200 |
+| 55 | GET | https://jouhayerk-cloud.github.io/onyx.mx/assets/index-CKNVBJwV.css | success - 200 |
+| 56 | GET | https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap | success - 200 |
+| 57 | GET | https://jouhayerk-cloud.github.io/onyx.mx/ | success - 200 |
+| 58 | GET | https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap | success - 200 |
+| 59 | GET | https://jouhayerk-cloud.github.io/onyx.mx/assets/index-BOsjNxBq.js | success - 200 |
+| 60 | GET | https://jouhayerk-cloud.github.io/onyx.mx/assets/index-CKNVBJwV.css | success - 200 |
+| 61 | GET | https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap | success - 200 |

@@ -174,7 +174,7 @@ export function UploadEntryForm() {
             };
 
             notify('loading', 'Saving to database…');
-            const { error } = await supabase.from('inventory').upsert({ item_id: dbRow.item_id, data: dbRow }, { onConflict: 'item_id' });
+            const { error } = await supabase.from('inventory').upsert(dbRow, { onConflict: 'item_id' });
             if (error) throw error;
 
             notify('success', '✓ Item saved to inventory!');

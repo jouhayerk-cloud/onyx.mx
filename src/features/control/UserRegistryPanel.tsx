@@ -41,6 +41,9 @@ export function UserRegistryPanel() {
     const [error, setError] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
+
+    const toggleUser = (id: string) => setExpandedUsers(prev => ({ ...prev, [id]: !prev[id] }));
 
     // New user form state
     const [newEmail, setNewEmail] = useState('');
@@ -198,66 +201,82 @@ ${appUrl}`
                     <p className="text-sm">No users registered yet.</p>
                 </div>
             ) : (
-                <div className="flex flex-col gap-3">
-                    {users.map(user => (
-                        <div key={user.id} className={`bg-white/3 border rounded-2xl p-4 transition-all ${user.is_active ? 'border-white/10' : 'border-white/5 opacity-50'}`}>
-                            <div className="flex items-start justify-between gap-4">
-                                {/* Left: identity */}
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 rounded-full bg-[var(--glass-bg)] border border-white/10 flex items-center justify-center text-lg font-bold text-white flex-shrink-0">
-                                        {(user.display_name || user.email).charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-semibold text-sm text-white truncate">{user.display_name || user.email}</span>
-                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${ROLE_COLORS[user.role]}`}>{user.role}</span>
-                                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${user.is_active ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
-                                                {user.is_active ? 'Active' : 'Inactive'}
-                                            </span>
+                <div className="flex flex-col gap-2">
+                    {users.map(user => {
+                        const isExpanded = !!expandedUsers[user.id];
+                        return (
+                            <div key={user.id} className={`bg-white/3 border rounded-xl transition-all overflow-hidden ${user.is_active ? 'border-white/10 hover:border-white/20' : 'border-white/5 opacity-50'}`}>
+                                <div className="flex items-center justify-between gap-4 p-3 cursor-pointer select-none" onClick={() => toggleUser(user.id)}>
+                                    {/* Left: identity */}
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-8 h-8 rounded-full bg-[var(--glass-bg)] border border-white/10 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                                            {(user.display_name || user.email).charAt(0).toUpperCase()}
                                         </div>
-                                        {user.display_name && <p className="text-xs text-[var(--text-color-secondary)] truncate mt-0.5">{user.email}</p>}
-                                        {user.notes && <p className="text-xs text-white/30 mt-0.5 italic">{user.notes}</p>}
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-sm text-white truncate">{user.display_name || user.email}</span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-[1px] rounded-full border ${ROLE_COLORS[user.role]}`}>{user.role}</span>
+                                                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-[1px] rounded-full border ${user.is_active ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+                                                    {user.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+                                            {!user.display_name ? null : <p className="text-[10px] text-[var(--text-color-secondary)] truncate mt-0.5">{user.email}</p>}
+                                        </div>
                                     </div>
+
+                                    {/* Right: Expand Icon */}
+                                    <button className="p-1 rounded-full text-white/30 hover:text-white/80 transition-all">
+                                        <svg className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                    </button>
                                 </div>
 
-                                {/* Right: actions */}
-                                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                                    <button
-                                        onClick={() => sendInvite(user)}
-                                        title={`Send invite email to ${user.email}`}
-                                        className="text-xs px-3 py-1.5 rounded-lg border border-[var(--main-color)]/40 text-[var(--main-color)] hover:bg-[var(--main-color)]/10 transition-all font-semibold flex items-center gap-1.5"
-                                    >
-                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        Invite
-                                    </button>
-                                    <button onClick={() => handleToggleActive(user)} className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-semibold ${user.is_active ? 'border-white/20 hover:border-red-400/50 hover:text-red-300 text-white/60' : 'border-green-400/40 text-green-300 hover:bg-green-500/10'}`}>
-                                        {user.is_active ? 'Disable' : 'Enable'}
-                                    </button>
-                                    <button onClick={() => handleDelete(user.id)} className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400 transition-all">
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
+                                {/* Collapsible Content */}
+                                {isExpanded && (
+                                    <div className="px-3 pb-4 pt-1 border-t border-white/5 bg-white/[0.02]">
+                                        {user.notes && <p className="text-[10px] text-white/30 mb-3 ml-11 italic">"{user.notes}"</p>}
 
-                            {/* Activity row */}
-                            <div className="mt-3 pt-3 border-t border-white/5 grid grid-cols-3 gap-4">
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/30">Total Submits</p>
-                                    <p className="text-sm font-mono font-bold text-white mt-0.5">{user.total_submits.toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/30">Last Submit</p>
-                                    <p className="text-xs text-[var(--text-color-secondary)] mt-0.5">{formatDate(user.last_submit_at)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/30">Registered</p>
-                                    <p className="text-xs text-[var(--text-color-secondary)] mt-0.5">{formatDate(user.created_at)}</p>
-                                </div>
+                                        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-end">
+                                            {/* Activity Info */}
+                                            <div className="flex gap-6 ml-11">
+                                                <div>
+                                                    <p className="text-[9px] uppercase font-bold tracking-widest text-white/30">Submits</p>
+                                                    <p className="text-xs font-mono font-bold text-white mt-0.5">{user.total_submits.toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] uppercase font-bold tracking-widest text-white/30">Last Submit</p>
+                                                    <p className="text-[10px] text-[var(--text-color-secondary)] mt-0.5">{formatDate(user.last_submit_at)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] uppercase font-bold tracking-widest text-white/30">Registered</p>
+                                                    <p className="text-[10px] text-[var(--text-color-secondary)] mt-0.5">{formatDate(user.created_at)}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); sendInvite(user); }}
+                                                    className="text-[10px] px-3 py-1.5 rounded-md border border-[var(--main-color)]/40 text-[var(--main-color)] hover:bg-[var(--main-color)]/10 transition-all font-semibold flex items-center gap-1.5"
+                                                    title={`Send invite email to ${user.email}`}
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                    </svg>
+                                                    Invite
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }} className={`text-[10px] px-3 py-1.5 rounded-md border transition-all font-semibold ${user.is_active ? 'border-white/20 hover:border-red-400/50 hover:text-red-300 text-white/60' : 'border-green-400/40 text-green-300 hover:bg-green-500/10'}`}>
+                                                    {user.is_active ? 'Disable' : 'Enable'}
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(user.id); }} className="text-[10px] px-3 py-1.5 rounded-md border border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400 transition-all">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
