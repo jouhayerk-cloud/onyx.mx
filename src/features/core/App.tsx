@@ -100,7 +100,7 @@ export default function App() {
 
   useEffect(() => {
     // Robust theme switching: remove old themes before adding the new one.
-    const themeClasses = ['theme-concrete', 'theme-nacar', 'theme-orange', 'theme-cherry', 'theme-forest', 'theme-terra', 'theme-calcite', 'theme-fluorite'];
+    const themeClasses = ['theme-obsidian', 'theme-midnight', 'theme-forest-night', 'theme-snow', 'theme-sand', 'theme-sky'];
     document.documentElement.classList.remove(...themeClasses);
     document.documentElement.classList.add(`theme-${theme}`);
   }, [theme]);
