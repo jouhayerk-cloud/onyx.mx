@@ -5,9 +5,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [2.10.0] — 2026-02-26
+## [2.10.6] — 2026-02-26
 
 ### Changed
+- **Control Center Redesign**
+  - Moved tabs, title, description, and developer tags into a unified Top Bar header in `ControlView.tsx`.
+  - Individual users in the User Registry are now collapsible cards, keeping the view significantly cleaner.
+  
+### Fixed
+- **Database Stats Panel Columns**
+  - Resolved `inventory.data does not exist`, `inventory.vendor_id does not exist`, and `inventory.created_at does not exist` errors. The stats queries were refactored to read standardized columns (`id`, `item_id`, `status`, `shape`) rather than querying missing legacy schemas.
+  - `UploadEntryForm` similarly updated to map to the new standardized DB schema rather than nesting into a non-existent `data` JSON column.
+
+---
+
+## [2.10.0] — 2026-02-26
 - **Top bar — full dynamic module redesign** (`MainHeader.tsx`): Replaced 307 lines of scattered conditionals with a clean **module-bar architecture**. The header now adapts its content instantly when switching modules:
   - **📦 Inventory** — Sub-tab pills (Catalog · Production · Acquisitions · Archive), traffic-light status filter, vendor filter chips (Admin), inline search, mobile details-panel toggle
   - **💳 Finance** — Sub-tab pills (Payments · Expenses), live exchange rate chip

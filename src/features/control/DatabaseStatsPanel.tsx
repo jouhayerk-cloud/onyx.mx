@@ -62,91 +62,90 @@ export function DatabaseStatsPanel() {
     const fetchStats = useCallback(async () => {
         setLoading(true);
         setError('');
-        try {
-            const { data, error } = await supabase
-                .from('inventory')
-                .select('id, item_id, status, shape, created_at');
+        const { data, error } = await supabase
+            .from('inventory')
+            .select('id, item_id, status, shape');
 
-            if (error) throw error;
+        if (error) throw error;
 
-            const rows = (data || []) as { id: string; item_id: string; status: string; shape: string; created_at?: string }[];
+        const rows = (data || []) as { id: string; item_id: string; status: string; shape: string }[];
 
-            const byStatus: Record<string, number> = {};
-            const byVendor: Record<string, number> = {};
-            const byCategory: Record<string, number> = {};
-            const recentlyAdded: { item_id: string; name: string; created_at: string }[] = [];
+        const byStatus: Record<string, number> = {};
+        const byVendor: Record<string, number> = {};
+        const byCategory: Record<string, number> = {};
+        const recentlyAdded: { item_id: string; name: string; created_at: string }[] = [];
 
-            for (const row of rows) {
-                const status = row.status || 'Unknown';
-                const vendor = row.item_id ? String(row.item_id).split('-')[0] : 'Unknown';
-                const category = row.shape || 'Uncategorized';
+        for (const row of rows) {
+            const status = row.status || 'Unknown';
+            const vendor = row.item_id ? String(row.item_id).split('-')[0] : 'Unknown';
+            const category = row.shape || 'Uncategorized';
 
-                byStatus[status] = (byStatus[status] || 0) + 1;
-                byVendor[vendor] = (byVendor[vendor] || 0) + 1;
-                byCategory[category] = (byCategory[category] || 0) + 1;
-            }
-
-            setStats({
-                total: rows.length,
-                byStatus,
-                byVendor,
-                byCategory,
-                recentlyAdded: recentlyAdded.slice(0, 5),
-            });
-            setLastRefreshed(new Date());
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch inventory stats.');
+            byStatus[status] = (byStatus[status] || 0) + 1;
+            byVendor[vendor] = (byVendor[vendor] || 0) + 1;
+            byCategory[category] = (byCategory[category] || 0) + 1;
         }
-        setLoading(false);
-    }, []);
 
-    useEffect(() => { fetchStats(); }, [fetchStats]);
+        setStats({
+            total: rows.length,
+            byStatus,
+            byVendor,
+            byCategory,
+            recentlyAdded: recentlyAdded.slice(0, 5),
+        });
+        setLastRefreshed(new Date());
+    } catch (err: any) {
+        setError(err.message || 'Failed to fetch inventory stats.');
+    }
+    setLoading(false);
+}, []);
 
-    if (loading) return (
-        <div className="flex items-center justify-center h-40 text-[var(--text-color-secondary)]">
-            <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-[var(--main-color)] border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Loading database stats…</span>
-            </div>
+useEffect(() => { fetchStats(); }, [fetchStats]);
+
+if (loading) return (
+    <div className="flex items-center justify-center h-40 text-[var(--text-color-secondary)]">
+        <div className="flex flex-col items-center gap-3">
+            <div className="w-6 h-6 border-2 border-[var(--main-color)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Loading database stats…</span>
         </div>
-    );
+    </div>
+);
 
-    if (error) return (
-        <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
-    );
+if (error) return (
+    <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
+);
 
-    if (!stats) return null;
+if (!stats) return null;
 
-    const activeCount = stats.byStatus['YES'] || stats.byStatus['Active'] || stats.byStatus['active'] || 0;
-    const vendorCount = Object.keys(stats.byVendor).length;
+const activeCount = stats.byStatus['YES'] || stats.byStatus['Active'] || stats.byStatus['active'] || 0;
+const vendorCount = Object.keys(stats.byVendor).length;
 
-    return (
-        <div className="flex flex-col gap-4">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between">
-                <p className="text-xs text-[var(--text-color-secondary)]">
-                    {lastRefreshed && `Refreshed ${lastRefreshed.toLocaleTimeString()}`}
-                </p>
-                <button onClick={fetchStats} className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-[var(--text-color-secondary)] hover:text-white">
-                    <svg className="w-3 h-3"><use href="#refresh" /></svg>
-                    Refresh
-                </button>
-            </div>
-
-            {/* Summary KPIs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard label="Total Items" value={stats.total} color="text-white" />
-                <StatCard label="Active Items" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}% of total` : undefined} />
-                <StatCard label="Vendors" value={vendorCount} color="text-[var(--main-color)]" />
-                <StatCard label="Categories" value={Object.keys(stats.byCategory).length} />
-            </div>
-
-            {/* Breakdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <BreakdownBar data={stats.byStatus} title="By Status" />
-                <BreakdownBar data={stats.byVendor} title="By Vendor" />
-            </div>
-            <BreakdownBar data={stats.byCategory} title="By Category" />
+return (
+    <div className="flex flex-col gap-4">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between">
+            <p className="text-xs text-[var(--text-color-secondary)]">
+                {lastRefreshed && `Refreshed ${lastRefreshed.toLocaleTimeString()}`}
+            </p>
+            <button onClick={fetchStats} className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-[var(--text-color-secondary)] hover:text-white">
+                <svg className="w-3 h-3"><use href="#refresh" /></svg>
+                Refresh
+            </button>
         </div>
-    );
+
+        {/* Summary KPIs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard label="Total Items" value={stats.total} color="text-white" />
+            <StatCard label="Active Items" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}% of total` : undefined} />
+            <StatCard label="Vendors" value={vendorCount} color="text-[var(--main-color)]" />
+            <StatCard label="Categories" value={Object.keys(stats.byCategory).length} />
+        </div>
+
+        {/* Breakdowns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <BreakdownBar data={stats.byStatus} title="By Status" />
+            <BreakdownBar data={stats.byVendor} title="By Vendor" />
+        </div>
+        <BreakdownBar data={stats.byCategory} title="By Category" />
+    </div>
+);
 }
