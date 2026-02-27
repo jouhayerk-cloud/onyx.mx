@@ -12,7 +12,7 @@
   "dependencies": {
     "@google/genai": "^1.25.0",
     "@supabase/supabase-js": "^2.97.0",
-    "@tailwindcss/browser": "^4.1.15",
+    "@tailwindcss/vite": "^4.2.1",
     "dexie": "4.0.10",
     "dotenv": "^17.3.1",
     "gsap": "^3.13.0",
