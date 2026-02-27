@@ -16,10 +16,10 @@ interface InventoryStats {
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-1">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">{label}</p>
-            <p className={`text-3xl font-black tabular-nums ${color || 'text-white'}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
-            {sub && <p className="text-xs text-[var(--text-color-secondary)]">{sub}</p>}
+        <div className="bg-white/5 border border-white/10 rounded-2xl py-4 px-5 flex flex-col gap-1">
+            <p className="text-[11px] uppercase font-bold tracking-widest text-white/50">{label}</p>
+            <p className={`text-4xl font-black tabular-nums mt-1 ${color || 'text-white'}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
+            {sub && <p className="text-sm text-[var(--text-color-secondary)]">{sub}</p>}
         </div>
     );
 }
@@ -30,21 +30,21 @@ function BreakdownBar({ data, title }: { data: Record<string, number>; title: st
     if (sorted.length === 0) return null;
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/40">{title}</p>
-            <div className="flex flex-col gap-2">
+        <div className="bg-white/5 border border-white/10 rounded-2xl py-4 px-5 flex flex-col gap-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">{title}</p>
+            <div className="flex flex-col gap-2.5">
                 {sorted.map(([key, count]) => {
                     const pct = total > 0 ? (count / total) * 100 : 0;
                     return (
                         <div key={key} className="flex items-center gap-3">
-                            <span className="text-xs text-white/70 w-24 truncate flex-shrink-0">{key || '—'}</span>
-                            <div className="flex-1 bg-white/5 rounded-full h-2 overflow-hidden">
+                            <span className="text-sm text-white/80 w-28 truncate flex-shrink-0">{key || '—'}</span>
+                            <div className="flex-1 bg-white/5 rounded-full h-1.5 overflow-hidden">
                                 <div
-                                    className="h-2 rounded-full bg-[var(--main-color)] transition-all duration-500"
+                                    className="h-full rounded-full bg-[var(--main-color)] transition-all duration-500"
                                     style={{ width: `${pct}%` }}
                                 />
                             </div>
-                            <span className="text-xs font-mono text-white/60 w-10 text-right flex-shrink-0">{count}</span>
+                            <span className="text-sm font-mono text-white/60 w-12 text-right flex-shrink-0">{count}</span>
                         </div>
                     );
                 })}
@@ -124,11 +124,11 @@ export function DatabaseStatsPanel() {
         <div className="flex flex-col gap-4">
             {/* Toolbar */}
             <div className="flex items-center justify-between">
-                <p className="text-xs text-[var(--text-color-secondary)]">
+                <p className="text-sm text-[var(--text-color-secondary)]">
                     {lastRefreshed && `Refreshed ${lastRefreshed.toLocaleTimeString()}`}
                 </p>
-                <button onClick={fetchStats} className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-[var(--text-color-secondary)] hover:text-white">
-                    <svg className="w-3 h-3"><use href="#refresh" /></svg>
+                <button onClick={fetchStats} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-[var(--text-color-secondary)] hover:text-white">
+                    <svg className="w-4 h-4"><use href="#refresh" /></svg>
                     Refresh
                 </button>
             </div>

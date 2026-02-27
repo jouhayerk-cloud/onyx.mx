@@ -118,14 +118,12 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
 
 
 const themes = [
-    { name: 'concrete', gradient: 'linear-gradient(135deg, #434343, #343434, #2e2e2e)' },
-    { name: 'nacar', gradient: 'linear-gradient(135deg, #dbe2e1, #bfc6c1, #babaab)' },
-    { name: 'orange', gradient: 'linear-gradient(135deg, #d4cec6, #b39172, #95623a)' },
-    { name: 'cherry', gradient: 'linear-gradient(135deg, #e7d8d7, #adbcc3, #90a2ac)' },
-    { name: 'forest', gradient: 'linear-gradient(135deg, #c2c4bd, #606654, #2a3025)' },
-    { name: 'terra', gradient: 'linear-gradient(135deg, #a2927f, #824f35, #53382e)' },
-    { name: 'calcite', gradient: 'linear-gradient(135deg, #ade6f5, #79a7c6, #5c7b8d)' },
-    { name: 'fluorite', gradient: 'linear-gradient(135deg, #b5cbf4, #818ecf, #666e94)' },
+    { name: 'obsidian', gradient: 'linear-gradient(135deg, #1a1a24, #212130, #2a2a3d)' },
+    { name: 'midnight', gradient: 'linear-gradient(135deg, #17102e, #211942, #2d235c)' },
+    { name: 'forest-night', gradient: 'linear-gradient(135deg, #0f1c16, #162a21, #1c382b)' },
+    { name: 'snow', gradient: 'linear-gradient(135deg, #f2f5f9, #e6ebf2, #d9e1ec)' },
+    { name: 'sand', gradient: 'linear-gradient(135deg, #faf6f0, #f2ece1, #e8ded1)' },
+    { name: 'sky', gradient: 'linear-gradient(135deg, #f0f7ff, #e0f2fe, #bae6fd)' },
 ];
 
 export function MainAppView() {
