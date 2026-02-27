@@ -65,11 +65,11 @@ export function DatabaseStatsPanel() {
         try {
             const { data, error } = await supabase
                 .from('inventory')
-                .select('item_id, data');
+                .select('id, item_id, status, shape, created_at');
 
             if (error) throw error;
 
-            const rows = (data || []) as { item_id: string; data: any }[];
+            const rows = (data || []) as { id: string; item_id: string; status: string; shape: string; created_at?: string }[];
 
             const byStatus: Record<string, number> = {};
             const byVendor: Record<string, number> = {};
@@ -77,10 +77,9 @@ export function DatabaseStatsPanel() {
             const recentlyAdded: { item_id: string; name: string; created_at: string }[] = [];
 
             for (const row of rows) {
-                const d = row.data || {};
-                const status = d.status || 'Unknown';
-                const vendor = d.vendorId || d.vendor_id || 'Unknown';
-                const category = d.category || 'Uncategorized';
+                const status = row.status || 'Unknown';
+                const vendor = row.item_id ? String(row.item_id).split('-')[0] : 'Unknown';
+                const category = row.shape || 'Uncategorized';
 
                 byStatus[status] = (byStatus[status] || 0) + 1;
                 byVendor[vendor] = (byVendor[vendor] || 0) + 1;
