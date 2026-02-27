@@ -51,20 +51,20 @@ const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeh
     const [expanded, setExpanded] = useState(false);
     return (
         <div
-            className={`flex items-center gap-2 bg-white/[0.05] border border-white/[0.08] rounded-xl transition-all duration-300 ${expanded ? 'w-52 px-3' : 'w-9 justify-center cursor-pointer hover:bg-white/[0.08]'} h-9 overflow-hidden`}
+            className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50`}
             onClick={() => !expanded && setExpanded(true)}
         >
-            <svg className="w-4 h-4 text-white/40 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-3.5 h-3.5 text-white/40 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             {expanded && (
                 <>
-                    <input autoFocus className="flex-1 bg-transparent text-xs text-white outline-none placeholder-white/25 min-w-0"
+                    <input autoFocus className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder-white/25 min-w-0"
                         value={value} onChange={e => onChange(e.target.value)}
                         onBlur={() => !value && setExpanded(false)}
                         placeholder={placeholder} />
                     {value && (
-                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors text-xs">✕</button>
+                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors text-[10px]">✕</button>
                     )}
                 </>
             )}
@@ -94,9 +94,9 @@ const SubTabPills: React.FC<{
 
 // ─── Module badge ─────────────────────────────────────────────────────────────
 const ModuleBadge: React.FC<{ emoji: string; label: string; color: string }> = ({ emoji, label, color }) => (
-    <div className="flex items-center gap-1.5 pr-4 border-r border-white/[0.07] shrink-0">
+    <div className="hidden sm:flex items-center gap-1.5 pr-4 border-r border-white/10 shrink-0 truncate">
         <span className="text-base">{emoji}</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color }}>{label}</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
     </div>
 );
 
@@ -116,13 +116,13 @@ const ShippingStats: React.FC = () => {
         <div className="hidden lg:flex items-center gap-3 text-[9px] font-mono text-white/40">
             <span className="flex items-center gap-1"><span className="text-white/70 font-black">{loaded.length}</span> crates</span>
             <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <span>{pct}% wt</span>
             </div>
             <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6BCEBB] rounded-full transition-all" style={{ width: `${volPct}%` }} />
                 </div>
                 <span>{volPct}% vol</span>
@@ -144,13 +144,6 @@ const InventoryBar: React.FC = () => {
     const selectedItem = useAtomValue(SelectedItemDataAtom);
     const user = useAtomValue(userAtom);
 
-    const tabs = [
-        { id: 'catalog', label: t.catalog || 'Catalog', icon: '#camera' },
-        { id: 'production', label: 'Production', icon: '#layers' },
-        { id: 'acquisitions', label: t.acquisitions || 'Acquired', icon: '#archive' },
-        { id: 'archive', label: 'Archive', icon: '#package' },
-    ];
-
     const vendorIds = useMemo(() => {
         const ids = new Set(inventory.map(i => i.data.itemId));
         return ['All', ...Array.from(ids).sort()];
@@ -164,14 +157,13 @@ const InventoryBar: React.FC = () => {
     return (
         <>
             <ModuleBadge emoji="📦" label="Inventory" color="#6BCEBB" />
-            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#6BCEBB" />
             <div className="flex items-center gap-2 ml-auto">
                 {/* Admin vendor filter chips */}
                 {user?.role !== 'Client' && vendorIds.length > 2 && (
-                    <div className="hidden md:flex items-center gap-1 overflow-x-auto max-w-[200px]">
+                    <div className="hidden md:flex items-center gap-1 overflow-x-auto max-w-[150px]">
                         {vendorIds.slice(0, 5).map(id => (
                             <button key={id} onClick={() => setInventoryFilter(id)}
-                                className={`px-2 py-1 text-[9px] font-black rounded-lg transition-all border ${inventoryFilter === id ? 'border-[#6BCEBB] bg-[#6BCEBB]/10 text-[#6BCEBB]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
+                                className={`px-1.5 py-0.5 text-[8px] font-black rounded-md transition-all border ${inventoryFilter === id ? 'border-[#6BCEBB] bg-[#6BCEBB]/10 text-[#6BCEBB]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
                                 {id}
                             </button>
                         ))}
@@ -179,15 +171,15 @@ const InventoryBar: React.FC = () => {
                 )}
                 {/* Traffic light filter */}
                 <button onClick={cycleFilter} title={filterConfig[statusFilter].title}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] transition-colors border border-white/[0.08]">
-                    <svg className="w-4 h-4"><use href={filterConfig[statusFilter].icon} /></svg>
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
+                    <svg className="w-3.5 h-3.5"><use href={filterConfig[statusFilter].icon} /></svg>
                 </button>
                 <SearchBar value={search} onChange={setSearch} placeholder="Search inventory…" />
                 {/* Details panel toggle on mobile */}
                 {selectedItem && (
                     <button onClick={() => setIsDetailsOpen(!isDetailsOpen)} title="Toggle details"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] lg:hidden">
-                        <svg className="w-4 h-4"><use href="#layout-sidebar-right" /></svg>
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 lg:hidden shrink-0">
+                        <svg className="w-3.5 h-3.5"><use href="#layout-sidebar-right" /></svg>
                     </button>
                 )}
             </div>
@@ -196,18 +188,11 @@ const InventoryBar: React.FC = () => {
 };
 
 const FinanceBar: React.FC = () => {
-    const [subTab, setSubTab] = useAtom(financeSubTabAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
-
-    const tabs = [
-        { id: 'payments', label: 'Payments', icon: '#credit-card' },
-        { id: 'expenses', label: 'Expenses', icon: '#layers' },
-    ];
 
     return (
         <>
             <ModuleBadge emoji="💳" label="Finance" color="#00AEEF" />
-            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#00AEEF" />
             <div className="ml-auto flex items-center gap-3">
                 <div className="hidden md:flex flex-col items-end">
                     <span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
@@ -226,49 +211,42 @@ const LogisticsBar: React.FC = () => {
     const [maxWeight, setMaxWeight] = useAtom(truckMaxWeightAtom);
     const setTriggerOrg = useSetAtom(triggerWarehouseOrganizationAtom);
 
-    const tabs = [
-        { id: 'packing', label: 'Packing', icon: '#package' },
-        { id: 'trucking', label: 'Trucking', icon: '#truck' },
-        { id: 'shipping', label: t.shipping || 'Shipping', icon: '#map-pin' },
-    ];
-
     const cameraViews: CameraView[] = ['perspective', 'top', 'side', 'front'];
 
     return (
         <>
             <ModuleBadge emoji="🚚" label="Logistics" color="#F7941D" />
-            <SubTabPills tabs={tabs} active={subTab} onSelect={id => setSubTab(id as typeof subTab)} accentColor="#F7941D" />
 
             {subTab === 'shipping' && (
                 <div className="hidden md:flex items-center gap-2 ml-2">
                     {/* Warehouse organise */}
                     <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] transition-colors">
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors shrink-0">
                         <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
                     </button>
                     {/* View mode */}
-                    <div className="flex items-center gap-0.5 bg-white/[0.05] border border-white/[0.08] rounded-lg p-0.5">
+                    <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
                         {(['warehouse', 'truck'] as const).map(m => (
                             <button key={m} onClick={() => setViewMode(m)}
-                                className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                                className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
                                 {m}
                             </button>
                         ))}
                     </div>
                     {/* Camera view */}
-                    <div className="flex items-center gap-0.5 bg-white/[0.05] border border-white/[0.08] rounded-lg p-0.5">
+                    <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
                         {cameraViews.map(v => (
                             <button key={v} onClick={() => setCameraView(v)}
-                                className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${cameraView === v ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                                className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${cameraView === v ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
                                 {v.slice(0, 3)}
                             </button>
                         ))}
                     </div>
                     {/* Max weight */}
                     <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] text-white/30 font-black uppercase tracking-widest whitespace-nowrap">Max kg</span>
+                        <span className="text-[8px] text-white/30 font-black uppercase tracking-widest whitespace-nowrap">Max kg</span>
                         <input type="number" value={maxWeight} onChange={e => setMaxWeight(Number(e.target.value))}
-                            className="w-16 bg-white/[0.05] border border-white/[0.08] rounded-lg px-2 py-1 text-xs font-mono text-white/70 focus:outline-none focus:border-[#F7941D]/50" />
+                            className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#F7941D]/50" />
                     </div>
                 </div>
             )}
@@ -318,15 +296,15 @@ export function MainHeader() {
     const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
 
     return (
-        <div className="main-header">
+        <div className="h-14 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-[var(--main-header-bg)]">
             {/* Logo / sidebar toggle */}
-            <button className="sidebar-toggle flex items-center gap-2 pr-4 border-r border-white/[0.07] mr-3 shrink-0" onClick={toggleSidebar}>
-                <OnyxLogo className="w-8 h-8" />
-                <span className="text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v{__APP_VERSION__}</span>
+            <button className="flex items-center gap-2 pr-3 sm:pr-4 sm:border-r border-white/10 mr-2 sm:mr-3 shrink-0" onClick={toggleSidebar}>
+                <OnyxLogo className="w-7 h-7 sm:w-8 sm:h-8" />
+                <span className="text-[9px] sm:text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v{__APP_VERSION__}</span>
             </button>
 
             {/* Dynamic module bar — grows to fill available space */}
-            <div className="flex-1 flex items-center gap-3 overflow-hidden min-w-0">
+            <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">
                 {activeView === 'inventory' && <InventoryBar />}
                 {activeView === 'finance' && <FinanceBar />}
                 {activeView === 'logistics' && <LogisticsBar />}

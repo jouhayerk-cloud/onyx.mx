@@ -298,7 +298,7 @@ export function MainAppView() {
                         </div>
                         <button className="sidebar-state-toggle" onClick={handleSidebarStateToggle} title="Toggle Sidebar">
                             {sidebarState === 'hidden' ?
-                                <OnyxMiniLogo className="w-6 h-6 text-[var(--text-color)]" /> :
+                                <OnyxMiniLogo className="w-6 h-6 text-(--text-color)" /> :
                                 <svg className="w-6 h-6"><use href="#arrow-left"></use></svg>
                             }
                         </button>
@@ -322,12 +322,12 @@ export function MainAppView() {
                     </ul>
                     <div className="sidebar-footer">
                         <div className="flex items-center justify-center gap-4">
-                            <button onClick={toggleLanguage} className="button !p-2 !min-h-0 !bg-transparent border border-white/20" title={t.language}>
+                            <button onClick={toggleLanguage} className="button p-2! min-h-0! bg-transparent! border border-white/20" title={t.language}>
                                 <span className="w-5 h-5 font-bold text-sm flex items-center justify-center">{language.toUpperCase()}</span>
                             </button>
                             <nav className="menu">
                                 <input type="checkbox" className="menu-open" name="menu-open" id="menu-open" />
-                                <label className="menu-open-button !bg-transparent border border-white/20" htmlFor="menu-open">
+                                <label className="menu-open-button bg-transparent! border border-white/20" htmlFor="menu-open">
                                     <svg className="w-5 h-5 text-white"><use href="#palette"></use></svg>
                                 </label>
                                 {themes.map((theme) => (
@@ -342,7 +342,7 @@ export function MainAppView() {
                             </nav>
                             <button
                                 onClick={() => setPerformanceMode(!performanceMode)}
-                                className={`button !p-2 !min-h-0 !bg-transparent border ${performanceMode ? 'border-yellow-400' : 'border-white/20'}`}
+                                className={`button p-2! min-h-0! bg-transparent! border ${performanceMode ? 'border-yellow-400' : 'border-white/20'}`}
                                 title={performanceMode ? t.perfModeOn : t.perfModeOff}
                             >
                                 <svg className={`w-5 h-5 transition-colors ${performanceMode ? 'text-yellow-400' : 'text-white'}`}>
@@ -350,7 +350,7 @@ export function MainAppView() {
                                 </svg>
                             </button>
                             {UserIcon && (
-                                <button onClick={logout} className="button !p-0 !min-h-0 !bg-transparent !border-none rounded-full w-8 h-8 overflow-hidden" title={t.logout}>
+                                <button onClick={logout} className="button p-0! min-h-0! bg-transparent! border-none! rounded-full w-8 h-8 overflow-hidden" title={t.logout}>
                                     <UserIcon className="w-full h-full" />
                                 </button>
                             )}
@@ -359,7 +359,7 @@ export function MainAppView() {
                 </div>
                 <div className="app-content">
                     <MainHeader />
-                    <main className="flex-grow min-h-0 relative">
+                    <main className="grow min-h-0 relative">
                         {pageContent}
                     </main>
                 </div>
