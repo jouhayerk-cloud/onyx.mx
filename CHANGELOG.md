@@ -5,6 +5,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.13] — 2026-02-27
+
+### Fixed
+- **Pricing & Codes (utils.tsx):** Explicitly updated mathematical conversion schemas based on exact specification logic for US/MX acquisitions mapping.
+- **SKU Tag Formatter:** Completely revised logic parsing to correctly concatenate all custom vendor string variants together seamlessly (e.g. `SU3271XO`).
+
+---
+
 ## [2.10.12] — 2026-02-27
 
 ### Fixed
