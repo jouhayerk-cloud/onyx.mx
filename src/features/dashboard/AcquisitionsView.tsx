@@ -33,7 +33,7 @@ import {
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, getTextColorForBg, numberToCypher, calculateCodesAndPrices } from '../../lib/utils';
+import { imageCache, fetchImageBatch, getTextColorForBg, numberToCypher, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { useNotify, useTranslation, useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ItemThumbnail } from '../../components/ItemThumbnail';
@@ -94,12 +94,15 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
             return;
         }
         const sub = db.inventory.find().$.subscribe((docs: any) => {
-            setAllAcquisitions(docs.map((doc: any) => ({
-                row: doc.id,
-                label: `${doc.shape} #${doc.itemNumber}`,
-                imageUrl: doc.generatedPngUrl || (doc.mediaUrls ? doc.mediaUrls.split(',')[0].trim() : null),
-                data: doc.toJSON()
-            })));
+            setAllAcquisitions(docs.map((doc: any) => {
+                const norm = normalizeInventoryData(doc.toJSON());
+                return {
+                    row: doc.id,
+                    label: `${norm.shape || '?'} #${norm.itemNumber || '?'}`,
+                    imageUrl: norm.generatedPngUrl || (norm.mediaUrls ? norm.mediaUrls.split(',')[0].trim() : null),
+                    data: norm
+                };
+            }));
             setIsLoading(false);
         });
         return () => sub.unsubscribe();

@@ -594,8 +594,37 @@ export const numberToCypher = (num: number): string => {
   return String(Math.ceil(num)).split('').map(digit => key[parseInt(digit, 10)] || '').join('');
 };
 
+export const normalizeInventoryData = (data: any): any => {
+  if (!data) return data;
+  return {
+    ...data,
+    itemId: data.itemId || data.item_id,
+    itemNumber: data.itemNumber || data.item_number,
+    price: data.price || data.price_mxn,
+    shortDescription: data.shortDescription || data.short_description,
+    widthCm: data.widthCm || data.width_cm,
+    heightCm: data.heightCm || data.height_cm,
+    lengthCm: data.lengthCm || data.length_cm,
+    weightKg: data.weightKg || data.weight_kg,
+    generatedPngUrl: data.generatedPngUrl || data.generated_png_url,
+    generatedSvgUrl: data.generatedSvgUrl || data.generated_svg_url,
+    spatialMasks: data.spatialMasks || data.spatial_masks,
+    spatialBoxes2d: data.spatialBoxes2d || data.spatial_boxes_2d,
+    spatialPoints: data.spatialPoints || data.spatial_points,
+    generatedDescription: data.generatedDescription || data.generated_description,
+    generatedImageUrls: data.generatedImageUrls || data.generated_image_urls,
+    mediaUrls: data.mediaUrls || data.media_urls,
+    payDate: data.payDate || data.pay_date,
+    payReq: data.payReq || data.pay_req,
+    sentDate: data.sentDate || data.sent_date,
+    printDate: data.printDate || data.print_date,
+    dispersal_status: data.dispersal_status // Ensure this is preserved
+  };
+};
+
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
-  const costMxn = parseFloat(data.price) || 0;
+  const norm = normalizeInventoryData(data);
+  const costMxn = parseFloat(norm.price) || 0;
   if (costMxn === 0 || !exchangeRate || isNaN(exchangeRate)) {
     return {
       bookLanded: '-',
@@ -619,7 +648,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookRetail: retailPrice.toFixed(2),
     bookAqCode: numberToCypher(costUsdRounded),
     bookLandCode: numberToCypher(landedCostRounded),
-    bookBardcode: `${data.itemId || ''}${String(data.workbook || workbookPrefix).replace(/v/gi, '')}${data.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
+    bookBardcode: `${norm.itemId || ''}${String(norm.workbook || workbookPrefix).replace(/v/gi, '')}${norm.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
   };
 };
 
