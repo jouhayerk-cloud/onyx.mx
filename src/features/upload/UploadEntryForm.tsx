@@ -6,7 +6,7 @@ import {
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
-import { handleFileUpload, generateUniqueId, readFileAsDataURL } from '../../lib/utils';
+import { handleFileUpload, generateUniqueId, readFileAsDataURL, calculateCodesAndPrices } from '../../lib/utils';
 import { useDatabase } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
@@ -157,6 +157,12 @@ export function UploadEntryForm() {
                 ? `${itemData.vendorId}-${itemData.itemId}`
                 : itemData.itemId;
 
+            const calculated = calculateCodesAndPrices(
+                { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v326', itemNumber: '1' },
+                exchangeRate,
+                'v326'
+            );
+
             const dbRow = {
                 item_id: finalItemId,
                 shape: itemData.shape,
@@ -172,6 +178,11 @@ export function UploadEntryForm() {
                 status: itemData.status || 'Catalog',
                 workbook: itemData.workbook || 'v326',
                 media_urls: uploadedUrls.join(','),
+                book_landed: calculated.bookLanded !== '-' ? Number(calculated.bookLanded) : null,
+                book_retail: calculated.bookRetail !== '-' ? Number(calculated.bookRetail) : null,
+                book_barcode: calculated.bookBardcode,
+                book_aq_code: calculated.bookAqCode,
+                box_land_code: calculated.bookLandCode,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };

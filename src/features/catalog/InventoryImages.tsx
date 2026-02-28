@@ -230,8 +230,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   };
 
   const norm = normalizeInventoryData(item.data);
+  const vendorPrefix = norm.itemId?.split('-')[0] || '';
   const vendorColor =
-    vendors[norm.itemId as keyof typeof vendors]?.color || '#ccc';
+    vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
 
   const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
   const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
@@ -239,7 +240,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   return (
     <button
       ref={ref}
-      className="inventory-item-card w-full aspect-[4/3] relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20"
+      className="inventory-item-card w-full aspect-[4/3] relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20 hover:scale-[1.02] hover:z-10"
       onClick={handleClick}
       title={item.label}
       disabled={isLoading}>
@@ -258,10 +259,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
           style={{ backgroundColor: vendorColor }}
-          title={`Vendor: ${norm.itemId}`}>
-          {norm.itemId?.split('-')[0] || '?'}
+          title={`Vendor: ${vendorPrefix}`}>
+          {vendorPrefix || '?'}
         </div>
-        <StatusMarkers data={norm} />
       </div>
 
       {/* Bottom text block */}
