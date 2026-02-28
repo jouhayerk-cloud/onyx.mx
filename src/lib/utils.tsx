@@ -644,8 +644,8 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const landedCostRounded = Math.ceil(landedCost);
 
   return {
-    bookLanded: landedCost.toFixed(2),
-    bookRetail: retailPrice.toFixed(2),
+    bookLanded: Math.ceil(landedCost).toString(),
+    bookRetail: Math.ceil(retailPrice).toString(),
     bookAqCode: numberToCypher(costUsdRounded),
     bookLandCode: numberToCypher(landedCostRounded),
     bookBardcode: `${norm.itemId || ''}${String(norm.workbook || workbookPrefix).replace(/v/gi, '')}${norm.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
