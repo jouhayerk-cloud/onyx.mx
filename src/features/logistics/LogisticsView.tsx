@@ -6,6 +6,7 @@ import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { ShippingView } from '../dashboard/ShippingView';
+import { PackingModule } from './PackingModule';
 
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -63,7 +64,7 @@ export const LogisticsView: React.FC = () => {
             </div>
             {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
-                {activeTab === 'packing' && <PackingPanel docs={docs} onRefresh={refresh} />}
+                {activeTab === 'packing' && <PackingModule />}
                 {activeTab === 'trucking' && <ShippingView />}
                 {activeTab === 'shipping' && <ShipmentTrackingPanel docs={docs} onRefresh={refresh} />}
             </div>
@@ -71,36 +72,7 @@ export const LogisticsView: React.FC = () => {
     );
 };
 
-// Packing Panel — Crates/warehouse management
-const PackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
-    const warehouseDocs = useMemo(() => docs.filter(d => !d.status || d.status === 'Warehouse'), [docs]);
 
-    return (
-        <div className="h-full overflow-y-auto custom-scrollbar p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {warehouseDocs.map(c => {
-                    const color = vendors[c.vendor_id as keyof typeof vendors]?.color || vendors[c.vendors as keyof typeof vendors]?.color || '#555';
-                    return (
-                        <div key={c.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2 relative hover:bg-white/[0.04] transition-colors">
-                            <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: color }} />
-                            <div className="flex justify-between items-center">
-                                <span className="px-2 py-0.5 rounded text-[8px] font-black text-black" style={{ backgroundColor: color }}>{c.vendor_id || c.vendors || '—'}</span>
-                                <span className="text-[8px] font-black text-[#FFED00] uppercase tracking-widest">WAREHOUSE</span>
-                            </div>
-                            <div className="text-xs font-bold text-white line-clamp-1">{c.description || c.contents_summary || 'Crate'}</div>
-                            <div className="flex gap-4 py-2 border-y border-white/5 mt-1 justify-between">
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Weight</span><span className="text-[10px] font-mono font-bold text-white">{c.weight_kg || 0}kg</span></div>
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">L×W×H</span><span className="text-[10px] font-mono font-bold text-white">{c.length_cm || 0}×{c.width_cm || 0}×{c.height_cm || 0}</span></div>
-                                <div className="flex flex-col"><span className="text-[8px] text-white/20 uppercase">Crates</span><span className="text-[10px] font-mono font-bold text-white">{c.crate_count || c.quantity || 1}</span></div>
-                            </div>
-                        </div>
-                    );
-                })}
-                {warehouseDocs.length === 0 && <div className="col-span-3 py-16 text-center text-white/10 text-sm font-black tracking-widest">NO CRATES IN WAREHOUSE</div>}
-            </div>
-        </div>
-    );
-};
 
 // Shipment Tracking Panel — All shipments with status workflow
 const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
