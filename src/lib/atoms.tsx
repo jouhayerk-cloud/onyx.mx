@@ -198,6 +198,7 @@ export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
   material?: string;
   shape?: string;
   itemType?: string;
+  itemNumber?: string;
   weightKg?: string;
   widthCm?: string;
   heightCm?: string;
