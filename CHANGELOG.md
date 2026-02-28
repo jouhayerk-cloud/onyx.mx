@@ -5,6 +5,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.14] — 2026-02-27
+
+### Added
+- **Unified Inventory View:** Introduced a completely redesigned, dynamic inventory workflow consolidating all item stages (Available, Production, Acquisition) into a single, scrollable grid view.
+- **Accordion Item Cards:** Redesigned inventory cards to support an expanding accordion effect for data-density without leaving the view.
+- **Top Bar Filters:** Added robust click-filters (All, Available, Production, Acquisition) and dynamic Vendor Color-Coded tags directly onto the unified view's toolbar.
+- **Delete Feature Integration:** Introduced comprehensive item deletion mechanics—Users via soft "Request Delete" and Developers via "Hard Delete"—directly visible within the Edit Item sidebar.
+
+### Changed
+- **Pricing Visibility:** Toggled collapsed item cards to strictly display local, uncalculated MXN acquisition pricing unless expanded. Toggle switch allows masking full financial details at a glance.
+- **Dimension Conversion:** Automatically converts physical specifications on metrics into imperial logic explicitly paired with the default metric UI (e.g. Dimensions and Weight conversions).
+- **Vendor TAG Identification:** The generated code TAG ID now prominently flashes inside the UI badges on both the Details Panel and the actual cards.
+
+---
+
 ## [2.10.13] — 2026-02-27
 
 ### Fixed
