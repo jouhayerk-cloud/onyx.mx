@@ -618,7 +618,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookRetail: retailPrice.toFixed(2),
     bookAqCode: numberToCypher(costUsdRounded),
     bookLandCode: numberToCypher(landedCostRounded),
-    bookBardcode: `${data.itemId}${workbookPrefix}${String(data.itemNumber || '').slice(-2).padStart(2, '0')}${numberToCypher(landedCostRounded)}`,
+    bookBardcode: `${data.itemId}${data.workbook || workbookPrefix}${String(data.quantity || '1')}${numberToCypher(landedCostRounded)}`,
   };
 };
 
