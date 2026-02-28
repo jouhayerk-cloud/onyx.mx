@@ -47,7 +47,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const StatusMarkers = ({
@@ -229,11 +229,12 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
     }
   };
 
+  const norm = normalizeInventoryData(item.data);
   const vendorColor =
-    vendors[item.data.itemId as keyof typeof vendors]?.color || '#ccc';
+    vendors[norm.itemId as keyof typeof vendors]?.color || '#ccc';
 
-  const dimensions = [item.data.widthCm, item.data.heightCm, item.data.lengthCm].filter(Boolean).join('x');
-  const calculated = calculateCodesAndPrices(item.data, exchangeRate, '326');
+  const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
+  const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
   return (
     <button
@@ -257,28 +258,28 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
           style={{ backgroundColor: vendorColor }}
-          title={`Vendor: ${item.data.itemId}`}>
-          {item.data.itemId?.split('-')[0] || '?'}
+          title={`Vendor: ${norm.itemId}`}>
+          {norm.itemId?.split('-')[0] || '?'}
         </div>
-        <StatusMarkers data={item.data} />
+        <StatusMarkers data={norm} />
       </div>
 
       {/* Bottom text block */}
       <div className="absolute bottom-0 inset-x-0 p-3 pt-8 flex flex-col justify-end text-left pointer-events-none">
         <div className="flex items-end justify-between mb-1">
-          <p className="font-black text-white text-base leading-tight truncate drop-shadow-md">{item.data.shape || 'Unknown Object'}</p>
-          <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{item.data.itemNumber}</p>
+          <p className="font-black text-white text-base leading-tight truncate drop-shadow-md">{norm.shape || 'Unknown Object'}</p>
+          <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
         </div>
 
         <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
-          <p className="truncate uppercase font-medium tracking-wide drop-shadow-md">{item.data.material || 'Mixed Material'} · {item.data.shortDescription || 'Misc'}</p>
+          <p className="truncate uppercase font-medium tracking-wide drop-shadow-md">{norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}</p>
         </div>
 
         <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">
           <div className="flex items-center gap-1.5 font-mono text-[9px] text-white/90 shrink-0">
             <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
             <span>{dimensions ? `${dimensions}` : '—'}</span>
-            <span className="text-white/40 ml-1">{item.data.weightKg ? `${item.data.weightKg}kg` : ''}</span>
+            <span className="text-white/40 ml-1">{norm.weightKg ? `${norm.weightKg}kg` : ''}</span>
           </div>
           <div className="flex flex-col items-end">
             <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
@@ -344,12 +345,15 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
       try {
         const db = await import('../../lib/database').then(m => m.getDatabase());
         sub = db.inventory.find().$.subscribe((docs: any) => {
-          setInventory(docs.map((doc: any) => ({
-            row: doc.id,
-            label: `${doc.shape || '?'} #${doc.item_number || '?'}`,
-            imageUrl: doc.generated_png_url || (doc.media_urls ? doc.media_urls.split(',')[0].trim() : null),
-            data: doc.toJSON()
-          })));
+          setInventory(docs.map((doc: any) => {
+            const norm = normalizeInventoryData(doc.toJSON());
+            return {
+              row: doc.id,
+              label: `${norm.shape || '?'} #${norm.itemNumber || '?'}`,
+              imageUrl: norm.generatedPngUrl || (norm.mediaUrls ? norm.mediaUrls.split(',')[0].trim() : null),
+              data: norm
+            };
+          }));
           setIsLoading(false);
         });
       } catch (error) {

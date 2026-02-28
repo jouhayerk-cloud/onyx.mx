@@ -41,7 +41,7 @@ import { vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {
@@ -131,10 +131,11 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
     }
   };
 
-  const vendorColor = vendors[item.data.itemId as keyof typeof vendors]?.color || '#ccc';
-  const dimensions = [item.data.widthCm, item.data.heightCm, item.data.lengthCm].filter(Boolean).join('x');
-  const statusClass = getStatusClass(item.data);
-  const calculated = calculateCodesAndPrices(item.data, exchangeRate, '326');
+  const norm = normalizeInventoryData(item.data);
+  const vendorColor = vendors[norm.itemId as keyof typeof vendors]?.color || '#ccc';
+  const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
+  const statusClass = getStatusClass(norm);
+  const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
   return (
     <button
@@ -170,24 +171,24 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
       {/* Info */}
       <div className="flex flex-col flex-grow min-w-0 relative z-10 justify-between py-1">
         <div className="flex justify-between items-start">
-          <p className="font-bold text-sm truncate">{item.data.shape}</p>
-          <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{item.data.itemNumber}</span>
+          <p className="font-bold text-sm truncate">{norm.shape}</p>
+          <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{norm.itemNumber}</span>
         </div>
 
         <div>
-          <p className="text-xs opacity-80 truncate">{item.data.material}</p>
+          <p className="text-xs opacity-80 truncate">{norm.material}</p>
           {dimensions && <p className="text-[10px] opacity-70 truncate font-mono mt-1">{dimensions} cm</p>}
         </div>
 
         <div className="flex justify-end items-center mt-1">
-          {item.data.price && (
+          {norm.price && (
             <div className="flex gap-2 items-center">
               <div className="flex flex-col text-[9px] text-right font-mono opacity-80 leading-none">
                 <span>AQ: {calculated.bookAqCode}</span>
                 <span>LD: {calculated.bookLandCode}</span>
               </div>
               <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
-                <span className="font-bold text-green-300 text-sm">${(parseFloat(String(item.data.price)) / exchangeRate).toFixed(2)}</span>
+                <span className="font-bold text-green-300 text-sm">${(parseFloat(String(norm.price)) / exchangeRate).toFixed(2)}</span>
                 <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
               </div>
             </div>
