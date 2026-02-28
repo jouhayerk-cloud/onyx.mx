@@ -72,7 +72,7 @@ const FormInput = ({
   ...props
 }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">
+    <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
       {label}
     </label>
     <input {...props} className="w-full" />
@@ -85,7 +85,7 @@ const FormSelect = ({
   ...props
 }: { label: string; children: React.ReactNode } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">
+    <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
       {label}
     </label>
     <select {...props} className="w-full">
@@ -99,7 +99,7 @@ const FormTextarea = ({
   ...props
 }: { label: string } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <div className="flex flex-col gap-1">
-    <label className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">
+    <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
       {label}
     </label>
     <textarea {...props} className="w-full" rows={3} />
@@ -166,8 +166,8 @@ export function InventoryForm({
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
         {autofillData && Object.keys(autofillData).length > 0 && (
-          <div className="p-3 border border-[var(--border-color)] rounded-lg space-y-2 bg-black/10">
-            <h4 className="text-xs uppercase text-[var(--text-color-secondary)]">
+          <div className="p-3 border border-(--border-color) rounded-lg space-y-2 bg-black/10">
+            <h4 className="text-xs uppercase text-(--text-color-secondary)">
               {t.aiSuggestions}
             </h4>
             <pre className="text-xs whitespace-pre-wrap font-mono bg-transparent p-0 max-h-40 overflow-y-auto">
@@ -273,9 +273,9 @@ export function InventoryForm({
         </div>
 
         {isEditMode && (
-          <div className="flex flex-col gap-1 pt-2 border-t border-[var(--border-color)]">
-            <label className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">
-              Add More Media
+          <div className="flex flex-col gap-1 pt-2 border-t border-(--border-color)">
+            <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
+              Media
             </label>
             <input
               type="file"
@@ -285,9 +285,9 @@ export function InventoryForm({
               className="w-full text-xs"
             />
             {newFiles.length > 0 && (
-              <div className="flex gap-2 mt-2 overflow-x-auto p-1">
+              <div className="flex gap-2 mt-2 overflow-x-auto p-1 text-(--text-color-secondary)">
                 {newFiles.map((file, index) => (
-                  <img key={index} src={file.dataUrl} className="h-16 w-16 object-cover rounded-md flex-shrink-0" alt="New upload preview" />
+                  <img key={index} src={file.dataUrl} className="h-14 w-14 object-cover rounded-lg shrink-0 border border-white/10" alt="Preview" />
                 ))}
               </div>
             )}

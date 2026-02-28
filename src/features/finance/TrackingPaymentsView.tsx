@@ -20,7 +20,7 @@ const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
 
-const SUBCATEGORIES = ['All', 'Acquisition', 'Monthly Expense', 'Supplies', 'Labor', 'Crate/Pallet', 'Operating'] as const;
+const SUBCATEGORIES = ['All', 'Acq', 'Mo-Exp', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
 type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number };
@@ -105,7 +105,7 @@ const AddPaymentModal: React.FC<{
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
             <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-7 w-[520px] max-w-[95vw] shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
-                    <span className="text-[var(--main-color)]">＋</span> Add Payment / Expense
+                    <span className="text-(--main-color)">＋</span> Add Payment / Expense
                 </h3>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -141,12 +141,12 @@ const AddPaymentModal: React.FC<{
                                 <button
                                     key={key} type="button"
                                     onClick={() => set('destination', key as PaymentDestination)}
-                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${form.destination === key ? 'border-[var(--main-color)] bg-[var(--main-color)]/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}
+                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}
                                 >
                                     <img src={cfg.icon} alt={cfg.name} className="h-8 w-full object-contain" />
                                     <span className="text-[9px] text-center font-bold text-white/60 leading-tight">{cfg.name}</span>
                                     {form.amount && !isNaN(parseFloat(form.amount)) && (
-                                        <span className="text-[9px] font-mono text-[var(--main-color)]">
+                                        <span className="text-[9px] font-mono text-(--main-color)">
                                             +{fmtMXN(cfg.calculateCommission(parseFloat(form.amount)))} fee
                                         </span>
                                     )}
@@ -171,7 +171,7 @@ const AddPaymentModal: React.FC<{
 
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                        <button type="submit" disabled={saving || !form.destination} className="flex-1 py-3 bg-[var(--main-color)] text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">
+                        <button type="submit" disabled={saving || !form.destination} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">
                             {saving ? 'SAVING…' : 'COMMIT'}
                         </button>
                     </div>
@@ -200,17 +200,17 @@ const RequestPaymentModal: React.FC<{
                         const comm = cfg.calculateCommission(group.total);
                         return (
                             <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
-                                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${dest === key ? 'border-[var(--main-color)] bg-[var(--main-color)]/10' : 'border-white/10 hover:border-white/30'}`}>
+                                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${dest === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30'}`}>
                                 <img src={cfg.icon} alt={cfg.name} className="h-8 w-full object-contain" />
                                 <span className="text-[9px] font-bold text-white/50 text-center leading-tight">{cfg.name}</span>
-                                <span className="text-[9px] font-mono text-[var(--main-color)]">{fmtMXN(group.total + comm)}</span>
+                                <span className="text-[9px] font-mono text-(--main-color)">{fmtMXN(group.total + comm)}</span>
                             </button>
                         );
                     })}
                 </div>
                 <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                    <button onClick={() => dest && onConfirm(dest)} disabled={!dest} className="flex-1 py-3 bg-[var(--main-color)] text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">CONFIRM</button>
+                    <button onClick={() => dest && onConfirm(dest)} disabled={!dest} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">CONFIRM</button>
                 </div>
             </div>
         </div>
@@ -341,13 +341,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     </button>
                     {Object.entries(destinationsConfig).map(([key, cfg]) => (
                         <button key={key} onClick={() => setDestinationFilter(key as PaymentDestination)} title={cfg.name}
-                            className={`p-2 rounded-xl border-2 transition-all ${destinationFilter === key ? 'border-[var(--main-color)] bg-[var(--main-color)]/10 scale-105 shadow-lg' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}>
+                            className={`p-2 rounded-xl border-2 transition-all ${destinationFilter === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}>
                             <img src={cfg.icon} alt={cfg.name} className="h-6 w-auto object-contain" />
                         </button>
                     ))}
                     <button onClick={() => setShowAdd(true)}
-                        className="ml-2 px-4 py-2 bg-[var(--main-color)] text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
-                        + ADD
+                        className="ml-2 px-4 py-2 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
+                        <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>ADD
                     </button>
                 </div>
             </div>
@@ -374,7 +374,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
                         const txt = getTextColorForBg(color);
                         return (
-                            <div key={group.vendorId} className="flex-shrink-0 p-3 rounded-xl min-w-[180px]" style={{ backgroundColor: color, color: txt }}>
+                            <div key={group.vendorId} className="shrink-0 p-3 rounded-xl min-w-[180px]" style={{ backgroundColor: color, color: txt }}>
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="font-bold text-sm">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
@@ -397,7 +397,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             {/* ── Summary cards ── */}
             <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
                 {Object.entries(subcatTotals).map(([k, v]) => (
-                    <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/[0.02] border border-white/5 min-w-[130px] shrink-0">
+                    <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
                         <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
                         <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
                         <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
@@ -411,17 +411,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     <thead className="sticky top-0 bg-[#0d0d1a] z-10">
                         <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
                             <th className="px-4 py-3">Date</th>
-                            <th className="px-4 py-3">Account</th>
-                            <th className="px-4 py-3">Category</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="px-4 py-3">Vendor</th>
-                            <th className="px-4 py-3 text-right">Amount</th>
-                            <th className="px-4 py-3 text-center">Status</th>
+                            <th className="px-4 py-3">Acc</th>
+                            <th className="px-4 py-3">Cat</th>
+                            <th className="px-4 py-3">Desc</th>
+                            <th className="px-4 py-3">Vend</th>
+                            <th className="px-4 py-3 text-right">Amt</th>
+                            <th className="px-4 py-3 text-center">Stat</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.03]">
+                    <tbody className="divide-y divide-white/3">
                         {filtered.map(r => (
-                            <tr key={r.id} className="hover:bg-white/[0.03] transition-all">
+                            <tr key={r.id} className="hover:bg-white/3 transition-all">
                                 <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
                                     {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
                                 </td>

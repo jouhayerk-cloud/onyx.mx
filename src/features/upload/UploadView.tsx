@@ -12,21 +12,21 @@ export function UploadView() {
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* ── Tab bar ── */}
-            <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-white/[0.015] border-b border-white/[0.04]">
+            <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-white/1.5 border-b border-white/4">
                 <button onClick={() => setTab('entry')}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border
                         ${tab === 'entry'
                             ? 'bg-[#8DC63F]/15 border-[#8DC63F]/50 text-[#8DC63F]'
-                            : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:text-white/60'}`}>
-                    ✚ New Entry
+                            : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60'}`}>
+                    <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>Add
                 </button>
                 {canUseAI && (
                     <button onClick={() => setTab('ai')}
                         className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border
                             ${tab === 'ai'
-                                ? 'bg-[var(--main-color)]/15 border-[var(--main-color)]/50 text-[var(--main-color)]'
-                                : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:text-white/60'}`}>
-                        ✨ AI Tools
+                                ? 'bg-(--main-color)/15 border-(--main-color)/50 text-(--main-color)'
+                                : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60'}`}>
+                        <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#cpu" /></svg>AI
                     </button>
                 )}
                 <div className="ml-auto text-[8px] font-black text-white/10 uppercase tracking-widest">

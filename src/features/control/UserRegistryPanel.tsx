@@ -131,54 +131,54 @@ ${appUrl}`
             {/* Toolbar */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <span className="text-base text-[var(--text-color-secondary)] font-medium">
-                        {users.length} registered user{users.length !== 1 ? 's' : ''}
+                    <span className="text-sm text-(--text-color-secondary) font-bold uppercase tracking-widest">
+                        USERS ({users.length})
                     </span>
                     <button
                         onClick={fetchUsers}
-                        className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-[var(--text-color-secondary)] hover:text-white"
-                        title="Refresh"
+                        className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-(--text-color-secondary) hover:text-white"
+                        title="SYNC"
                     >
                         <svg className="w-4 h-4"><use href="#refresh" /></svg>
                     </button>
                 </div>
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
-                    className="button !py-2 !px-4 text-sm flex items-center gap-2 font-medium"
+                    className="button py-2! px-4! text-xs font-black tracking-widest flex items-center gap-2"
                 >
                     <svg className="w-4 h-4"><use href="#plus" /></svg>
-                    Register User
+                    REG
                 </button>
             </div>
 
             {/* Add User Form */}
             {showAddForm && (
                 <form onSubmit={handleAdd} className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4 animate-in slide-in-from-top-4 duration-200">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--main-color)]">New User</h3>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-(--main-color)">NEW</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
-                            <label className="text-[11px] uppercase font-bold tracking-widest text-white/50">Email *</label>
-                            <input type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="user@company.com" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-base text-white focus:outline-none focus:border-[var(--main-color)]" />
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-white/50">Mail *</label>
+                            <input type="email" required value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="user@company.com" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-(--main-color)" />
                         </div>
                         <div className="flex flex-col gap-1">
-                            <label className="text-[11px] uppercase font-bold tracking-widest text-white/50">Role *</label>
-                            <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} className="bg-[var(--glass-bg)] border border-white/10 rounded-xl px-4 py-2.5 text-base text-white focus:outline-none focus:border-[var(--main-color)]">
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-white/50">Role *</label>
+                            <select value={newRole} onChange={e => setNewRole(e.target.value as UserRole)} className="bg-(--glass-bg) border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-(--main-color)">
                                 {(['Developer', 'Admin', 'Vendor', 'Client'] as UserRole[]).map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <label className="text-[11px] uppercase font-bold tracking-widest text-white/50">Display Name</label>
-                            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full Name" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-base text-white focus:outline-none focus:border-[var(--main-color)]" />
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-white/50">Name</label>
+                            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full Name" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-(--main-color)" />
                         </div>
                         <div className="flex flex-col gap-1">
-                            <label className="text-[11px] uppercase font-bold tracking-widest text-white/50">Notes</label>
-                            <input type="text" value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Optional notes" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-base text-white focus:outline-none focus:border-[var(--main-color)]" />
+                            <label className="text-[10px] uppercase font-bold tracking-widest text-white/50">Notes</label>
+                            <input type="text" value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="Notes" className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-(--main-color)" />
                         </div>
                     </div>
                     <div className="flex gap-3 justify-end">
-                        <button type="button" onClick={() => setShowAddForm(false)} className="button !bg-transparent border border-white/20 !py-2 !px-4 text-sm">Cancel</button>
-                        <button type="submit" disabled={submitting} className="button !py-2 !px-6 text-sm font-bold">
-                            {submitting ? 'Adding...' : 'Add User'}
+                        <button type="button" onClick={() => setShowAddForm(false)} className="button bg-transparent! border border-white/20 py-2! px-4! text-xs font-black tracking-widest">CANCEL</button>
+                        <button type="submit" disabled={submitting} className="button py-2! px-6! text-xs font-black tracking-widest">
+                            {submitting ? 'ADD…' : 'ADD'}
                         </button>
                     </div>
                 </form>
@@ -189,16 +189,16 @@ ${appUrl}`
 
             {/* Users Table */}
             {loading ? (
-                <div className="flex items-center justify-center h-40 text-[var(--text-color-secondary)]">
+                <div className="flex items-center justify-center h-40 text-(--text-color-secondary)">
                     <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 border-2 border-[var(--main-color)] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm">Loading users…</span>
+                        <div className="w-6 h-6 border-2 border-(--main-color) border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm uppercase font-black tracking-widest">Loading…</span>
                     </div>
                 </div>
             ) : users.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 gap-3 text-[var(--text-color-secondary)]">
+                <div className="flex flex-col items-center justify-center h-40 gap-3 text-(--text-color-secondary)">
                     <svg className="w-10 h-10 opacity-30"><use href="#users" /></svg>
-                    <p className="text-sm">No users registered yet.</p>
+                    <p className="text-sm font-black uppercase tracking-widest opacity-30">No Users</p>
                 </div>
             ) : (
                 <div className="flex flex-col gap-2">
@@ -209,7 +209,7 @@ ${appUrl}`
                                 <div className="flex items-center justify-between gap-4 py-2.5 px-3 cursor-pointer select-none" onClick={() => toggleUser(user.id)}>
                                     {/* Left: identity */}
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-9 h-9 rounded-full bg-[var(--glass-bg)] border border-white/10 flex items-center justify-center text-base font-bold text-white flex-shrink-0">
+                                        <div className="w-9 h-9 rounded-full bg-(--glass-bg) border border-white/10 flex items-center justify-center text-base font-bold text-white shrink-0">
                                             {(user.display_name || user.email).charAt(0).toUpperCase()}
                                         </div>
                                         <div className="min-w-0">
@@ -220,10 +220,10 @@ ${appUrl}`
                                                     {user.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${user.last_submit_at ? 'bg-transparent text-blue-400 border-blue-500/30' : 'bg-transparent text-amber-400 border-amber-500/30'}`}>
-                                                    {user.last_submit_at ? 'Registered' : 'Pending Auth'}
+                                                    {user.last_submit_at ? 'REG' : 'PEND'}
                                                 </span>
                                             </div>
-                                            {!user.display_name ? null : <p className="text-xs text-[var(--text-color-secondary)] truncate mt-[2px]">{user.email}</p>}
+                                            {!user.display_name ? null : <p className="text-xs text-(--text-color-secondary) truncate mt-[2px]">{user.email}</p>}
                                         </div>
                                     </div>
 
@@ -235,43 +235,43 @@ ${appUrl}`
 
                                 {/* Collapsible Content */}
                                 {isExpanded && (
-                                    <div className="px-3 pb-4 pt-1 border-t border-white/5 bg-white/[0.02]">
+                                    <div className="px-3 pb-4 pt-1 border-t border-white/5 bg-white/2">
                                         {user.notes && <p className="text-xs text-white/40 mb-3 ml-[48px] italic">"{user.notes}"</p>}
 
                                         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-end">
                                             {/* Activity Info */}
                                             <div className="flex gap-6 ml-[48px]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Total Submits</p>
+                                                    <p className="text-[9px] uppercase font-black tracking-widest text-white/30">Submits</p>
                                                     <p className="text-sm font-mono font-bold text-white mt-1">{user.total_submits?.toLocaleString() || '0'}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Last Active</p>
-                                                    <p className="text-xs text-[var(--text-color-secondary)] mt-1">{formatDate(user.last_submit_at)}</p>
+                                                    <p className="text-[9px] uppercase font-black tracking-widest text-white/30">Active</p>
+                                                    <p className="text-xs text-(--text-color-secondary) mt-1">{formatDate(user.last_submit_at)}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Registered</p>
-                                                    <p className="text-xs text-[var(--text-color-secondary)] mt-1">{formatDate(user.created_at)}</p>
+                                                    <p className="text-[9px] uppercase font-black tracking-widest text-white/30">Date</p>
+                                                    <p className="text-xs text-(--text-color-secondary) mt-1">{formatDate(user.created_at)}</p>
                                                 </div>
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                                            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); sendInvite(user); }}
-                                                    className="text-[11px] px-3 py-2 rounded-md border border-[var(--main-color)]/40 text-[var(--main-color)] hover:bg-[var(--main-color)]/10 transition-all font-semibold flex items-center gap-1.5"
-                                                    title={`Send invite email to ${user.email}`}
+                                                    className="text-[10px] px-3 py-1.5 rounded-lg border border-(--main-color)/40 text-(--main-color) hover:bg-(--main-color)/10 transition-all font-black tracking-widest flex items-center gap-1.5"
+                                                    title={`INVITE ${user.email}`}
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                     </svg>
-                                                    Invite
+                                                    INV
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }} className={`text-[11px] px-3 py-2 rounded-md border transition-all font-semibold ${user.is_active ? 'border-white/20 hover:border-red-400/50 hover:text-red-300 text-white/60' : 'border-green-400/40 text-green-400 hover:bg-green-500/10'}`}>
-                                                    {user.is_active ? 'Disable' : 'Enable'}
+                                                <button onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }} className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all font-black tracking-widest ${user.is_active ? 'border-white/20 hover:border-red-400/50 hover:text-red-300 text-white/40' : 'border-green-400/40 text-green-400 hover:bg-green-500/10'}`}>
+                                                    {user.is_active ? 'OFF' : 'ON'}
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(user.id); }} className="text-[11px] px-3 py-2 rounded-md border border-white/10 text-white/40 hover:border-red-500/40 hover:text-red-400 transition-all">
-                                                    Delete
+                                                <button onClick={(e) => { e.stopPropagation(); handleDelete(user.id); }} className="text-[10px] px-3 py-1.5 rounded-lg border border-white/10 text-white/20 hover:border-red-500/40 hover:text-red-400 transition-all font-black tracking-widest">
+                                                    DEL
                                                 </button>
                                             </div>
                                         </div>

@@ -17,11 +17,11 @@ const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 p
 const inpNum = inp + " font-mono";
 
 const MEDIA_TYPES = [
-    { id: 'none', label: 'No Media', emoji: '—' },
-    { id: 'single', label: 'Single Image', emoji: '🖼' },
-    { id: 'sample', label: 'Sample', emoji: '🔍' },
-    { id: 'lot', label: 'Lot Photo', emoji: '📦' },
-    { id: 'video', label: 'Video', emoji: '🎥' },
+    { id: 'none', label: 'None', icon: 'x' },
+    { id: 'single', label: 'Pic', icon: 'image' },
+    { id: 'sample', label: 'Smp', icon: 'search' },
+    { id: 'lot', label: 'Lot', icon: 'package' },
+    { id: 'video', label: 'Vid', icon: 'video' },
 ];
 
 // ── Helper: suggestion chips ──────────────────────────────────────────────────
@@ -234,11 +234,11 @@ export function UploadEntryForm() {
             {/* ── Row 1: Book & Status ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label className={lbl}>Book (Season)</label>
-                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="e.g. v326" />
+                    <label className={lbl}>Book</label>
+                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="v326" />
                 </div>
                 <div>
-                    <label className={lbl}>Status</label>
+                    <label className={lbl}>Stat</label>
                     <div className="flex flex-wrap gap-2 pt-1">
                         {['Catalog', 'Production', 'Acquisitions'].map(s => (
                             <button
@@ -256,7 +256,7 @@ export function UploadEntryForm() {
             {/* ── Row 2: Vendor + Quantity ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div className="flex flex-col h-full justify-start">
-                    <label className={lbl}>Vendor</label>
+                    <label className={lbl}>Vend</label>
                     {canSelectVendor ? (
                         <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar items-center">
                             {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
@@ -283,13 +283,13 @@ export function UploadEntryForm() {
                     )}
                 </div>
                 <div>
-                    <label className={lbl}>Item # (Auto)</label>
+                    <label className={lbl}>Num</label>
                     <input type="number" min="1" name="itemNumber"
                         value={itemData.itemNumber || ''} onChange={handleChange}
                         className={inpNum} placeholder="1" />
                 </div>
                 <div>
-                    <label className={lbl}>Quantity *</label>
+                    <label className={lbl}>Qty</label>
                     <input required type="number" min="1" name="quantity"
                         value={itemData.quantity || '1'} onChange={handleChange}
                         className={inpNum} placeholder="1" />
@@ -298,7 +298,7 @@ export function UploadEntryForm() {
 
             {/* ── Media type picker ── */}
             <div>
-                <label className={lbl}>Media <span className="text-white/20 normal-case tracking-normal">(optional)</span></label>
+                <label className={lbl}>Media <span className="text-white/20 normal-case tracking-normal">(opt)</span></label>
                 <div className="flex gap-2 flex-wrap">
                     {MEDIA_TYPES.map(m => (
                         <button key={m.id} type="button"
@@ -307,7 +307,7 @@ export function UploadEntryForm() {
                                 ${itemData.mediaType === m.id
                                     ? 'bg-(--main-color)/15 border-(--main-color)/60 text-(--main-color)'
                                     : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'}`}>
-                            <span>{m.emoji}</span>{m.label}
+                            <svg className="w-3.5 h-3.5"><use href={`#${m.icon}`} /></svg>{m.label}
                         </button>
                     ))}
                 </div>
@@ -318,8 +318,8 @@ export function UploadEntryForm() {
                         <label className="flex items-center gap-3 border border-dashed border-white/12 rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/2 transition-all">
                             <svg className="w-5 h-5 text-white/20 shrink-0"><use href="#upload" /></svg>
                             <span className="text-xs text-white/30">
-                                {itemData.mediaType === 'video' ? 'Upload video' : 'Upload image(s)'}
-                                {mediaFiles.length > 0 && <span className="ml-2 text-(--main-color) font-black">{mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} selected</span>}
+                                {itemData.mediaType === 'video' ? 'Upload vid' : 'Upload pic'}
+                                {mediaFiles.length > 0 && <span className="ml-2 text-(--main-color) font-black">{mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} sel</span>}
                             </span>
                             <input type="file" className="sr-only" onChange={handleFileChange}
                                 accept={itemData.mediaType === 'video' ? 'video/*' : 'image/*'}
@@ -342,21 +342,21 @@ export function UploadEntryForm() {
 
             {/* ── Description fields panel ── */}
             <div className="bg-white/2 border border-white/6 rounded-2xl p-5 flex flex-col gap-4">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/20">Item Description</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-white/20">Desc</p>
 
                 {/* Color / Material row */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className={lbl}>Color</label>
                         <input type="text" name="color" value={itemData.color || ''} onChange={handleChange}
-                            list="color-list" placeholder="e.g. Cream White" className={inp} autoComplete="off" />
+                            list="color-list" placeholder="Cream" className={inp} autoComplete="off" />
                         <datalist id="color-list">{suggestions.color.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.color} current={itemData.color || ''} onSelect={v => set('color', v)} />
                     </div>
                     <div>
-                        <label className={lbl}>Material</label>
+                        <label className={lbl}>Mat</label>
                         <input type="text" name="material" value={itemData.material || ''} onChange={handleChange}
-                            list="material-list" placeholder="e.g. Glazed Ceramic" className={inp} autoComplete="off" />
+                            list="material-list" placeholder="Ceramic" className={inp} autoComplete="off" />
                         <datalist id="material-list">{suggestions.material.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.material} current={itemData.material || ''} onSelect={v => set('material', v)} />
                     </div>
@@ -365,14 +365,14 @@ export function UploadEntryForm() {
                 {/* Object / Shape + Type row */}
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className={lbl}>Object / Shape</label>
+                        <label className={lbl}>Shape</label>
                         <input type="text" name="shape" value={itemData.shape || ''} onChange={handleChange}
-                            list="shape-list" placeholder="e.g. Vase, Bowl, Platter" className={inp} autoComplete="off" />
+                            list="shape-list" placeholder="Vase" className={inp} autoComplete="off" />
                         <datalist id="shape-list">{suggestions.shape.map(v => <option key={v} value={v} />)}</datalist>
                         <SuggestChips values={suggestions.shape} current={itemData.shape || ''} onSelect={v => set('shape', v)} />
                     </div>
                     <div>
-                        <label className={lbl}>Type / Style</label>
+                        <label className={lbl}>Type</label>
                         <input type="text" name="itemType" value={itemData.itemType || ''} onChange={handleChange}
                             list="type-list" placeholder="e.g. Decorative, Functional" className={inp} autoComplete="off" />
                         <datalist id="type-list">{suggestions.itemType.map(v => <option key={v} value={v} />)}</datalist>
@@ -382,13 +382,13 @@ export function UploadEntryForm() {
 
                 {/* Weight + Dims row */}
                 <div>
-                    <label className={lbl}>Weight & Dimensions</label>
+                    <label className={lbl}>Dims</label>
                     <div className="grid grid-cols-4 gap-2">
                         {[
                             { name: 'weightKg', placeholder: 'kg' },
-                            { name: 'widthCm', placeholder: 'W cm' },
-                            { name: 'heightCm', placeholder: 'H cm' },
-                            { name: 'lengthCm', placeholder: 'L cm' },
+                            { name: 'widthCm', placeholder: 'W' },
+                            { name: 'heightCm', placeholder: 'H' },
+                            { name: 'lengthCm', placeholder: 'L' },
                         ].map(f => (
                             <input key={f.name} type="number" step="0.01" min="0" name={f.name}
                                 value={(itemData as any)[f.name] || ''}
@@ -401,9 +401,9 @@ export function UploadEntryForm() {
 
                 {/* Description textarea */}
                 <div>
-                    <label className={lbl}>Description <span className="text-white/15 normal-case tracking-normal">(optional)</span></label>
+                    <label className={lbl}>Notes <span className="text-white/15 normal-case tracking-normal">(opt)</span></label>
                     <textarea name="description" rows={2} value={itemData.description || ''} onChange={handleChange}
-                        placeholder="Additional notes, condition, origin…"
+                        placeholder="..."
                         className={inp + " resize-none"} />
                 </div>
             </div>
@@ -411,7 +411,7 @@ export function UploadEntryForm() {
             {/* ── Price ── */}
             <div className="grid grid-cols-2 gap-4 items-start">
                 <div>
-                    <label className={lbl}>Cost (MXN) *</label>
+                    <label className={lbl}>Cost</label>
                     <div className="relative">
                         <span className="absolute left-4 top-2.5 text-white/25 text-sm">$</span>
                         <input required type="number" step="0.01" name="price"
@@ -433,7 +433,7 @@ export function UploadEntryForm() {
             {/* ── Submit ── */}
             <button type="submit" disabled={isSubmitting}
                 className="w-full py-3.5 bg-[#8DC63F] text-black text-[11px] font-black tracking-widest rounded-xl shadow-[0_0_24px_rgba(141,198,63,0.25)] hover:shadow-[0_0_40px_rgba(141,198,63,0.45)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
-                {isSubmitting ? <><LoadingIndicator /> SAVING…</> : '✓ SAVE TO INVENTORY'}
+                {isSubmitting ? <><LoadingIndicator /> WAIT</> : '✓ SAVE'}
             </button>
         </form>
     );

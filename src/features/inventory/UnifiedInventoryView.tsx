@@ -68,17 +68,17 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
             className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-300 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20 shadow-md ${isExpanded ? 'col-span-1 md:col-span-2 lg:col-span-3 row-span-2' : 'col-span-1'}`}
             onClick={onExpand}
         >
-            <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-[4/3] flex-col'} relative`}>
+            <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/3 flex-col'} relative`}>
                 {/* Image Section */}
                 <div className={`${isExpanded ? 'h-48 md:h-full md:w-1/3' : 'absolute inset-0'} relative overflow-hidden flex items-center justify-center bg-black/50`}>
                     {imageUrl ? (
                         <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'}`} />
                     ) : (
-                        <div className="w-1/3 h-1/3 opacity-20 text-[var(--secondary-color)]">
+                        <div className="w-1/3 h-1/3 opacity-20 text-(--secondary-color)">
                             <OnyxMiniLogo />
                         </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
 
                     {/* Top badges */}
                     <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none z-10">
@@ -148,7 +148,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                                         Item: #{norm.itemNumber} | Vendor: {vendorPrefix}
                                     </p>
                                 </div>
-                                <button onClick={handleEdit} className="button secondary !py-1 !px-4 text-xs">Edit</button>
+                                <button onClick={handleEdit} className="button secondary py-1! px-4! text-xs"><svg className="w-3 h-3 inline-block mr-1"><use href="#edit" /></svg>Edit</button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -268,12 +268,17 @@ export const UnifiedInventoryView = () => {
             {/* Top Bar for Unified View */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0 overflow-x-auto pb-2">
                 <div className="flex bg-black/20 p-1 rounded-xl border border-white/5">
-                    {['All', 'Available', 'Production', 'Acquisition'].map(status => (
+                    {[
+                        { val: 'All', label: 'All' },
+                        { val: 'Available', label: 'Avail' },
+                        { val: 'Production', label: 'Prod' },
+                        { val: 'Acquisition', label: 'Acq' }
+                    ].map(status => (
                         <button
-                            key={status}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === status ? 'bg-[var(--accent-color)] text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}
-                            onClick={() => setStatusFilter(status as any)}>
-                            {status}
+                            key={status.val}
+                            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${statusFilter === status.val ? 'bg-(--accent-color) text-white shadow-md' : 'text-white/40 hover:text-white/80'}`}
+                            onClick={() => setStatusFilter(status.val as any)}>
+                            {status.label}
                         </button>
                     ))}
                 </div>
@@ -283,7 +288,7 @@ export const UnifiedInventoryView = () => {
                     <button
                         className={`px-3 py-1 text-xs font-bold rounded min-w-max transition-all ${vendorFilter === 'All' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/80'}`}
                         onClick={() => setVendorFilter('All')}>
-                        All Vendors
+                        All Vend
                     </button>
                     {activeVendors.map(vendor => {
                         const vendorColor = vendors[vendor as keyof typeof vendors]?.color || '#ccc';
@@ -309,11 +314,11 @@ export const UnifiedInventoryView = () => {
             </div>
 
             {/* Main Content: Inventory Grid */}
-            <div className="flex-grow h-full glass-panel overflow-y-auto p-4 pr-2 -mr-2">
+            <div className="grow h-full glass-panel overflow-y-auto p-4 pr-2 -mr-2">
                 {isLoading ? (
                     <div className="flex justify-center items-center h-full"><LoadingIndicator /></div>
                 ) : filteredItems.length === 0 ? (
-                    <div className="flex justify-center items-center h-full text-[var(--text-color-secondary)]">No items match your criteria.</div>
+                    <div className="flex justify-center items-center h-full text-(--text-color-secondary)">No items match your criteria.</div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {filteredItems.map(item => (

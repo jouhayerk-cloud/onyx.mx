@@ -57,8 +57,8 @@ const DetailRow = ({ label, value }: { label: string; value: any }) => {
   if (!value) return null;
   return (
     <div>
-      <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">{label}</p>
-      <p className="text-sm text-[var(--text-color-primary)]">{value}</p>
+      <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">{label}</p>
+      <p className="text-sm text-(--text-color-primary)">{value}</p>
     </div>
   );
 };
@@ -150,10 +150,10 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
         imageUrl && <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
       }
       <div className="flex gap-2">
-        <DetailRow label="Vendor ID" value={data.itemId} />
+        <DetailRow label="Vendor" value={data.itemId} />
         {calculated.bookBardcode && (
           <div className="ml-auto">
-            <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">TAG ID</p>
+            <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">TAG ID</p>
             <span
               className="px-2 py-0.5 text-[10px] font-black tracking-wider rounded border border-black text-black shadow-sm"
               style={{ backgroundColor: vendorColor }}
@@ -163,26 +163,26 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
           </div>
         )}
       </div>
-      <DetailRow label="Item #" value={data.itemNumber} />
+      <DetailRow label="Num" value={data.itemNumber} />
       <DetailRow label="Shape" value={data.shape} />
-      <DetailRow label="Material" value={data.material} />
-      <DetailRow label="Description" value={data.description} />
-      <DetailRow label="Dimensions" value={dimensions ? `${dimensions} cm` : 'Not specified'} />
-      <DetailRow label="Weight" value={data.weightKg ? `${data.weightKg} kg` : 'Not specified'} />
-      <DetailRow label="Price" value={data.price ? `$${Math.ceil(Number(data.price))} MXN` : 'Not specified'} />
-      <DetailRow label="Quantity" value={data.quantity} />
+      <DetailRow label="Mat" value={data.material} />
+      <DetailRow label="Desc" value={data.description} />
+      <DetailRow label="Dims" value={dimensions ? `${dimensions} cm` : '—'} />
+      <DetailRow label="Wght" value={data.weightKg ? `${data.weightKg} kg` : '—'} />
+      <DetailRow label="Cost" value={data.price ? `$${Math.ceil(Number(data.price))} MXN` : '—'} />
+      <DetailRow label="Qty" value={data.quantity} />
       {data.color && (
         <div className="flex items-center gap-2">
-          <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">Color</p>
+          <p className="text-[10px] font-bold uppercase text-(--text-color-secondary) tracking-widest">Color</p>
           <div className="w-10 h-5 rounded" style={{ background: data.color }}></div>
         </div>
       )}
-      {data.shortDescription && <DetailRow label="Short Description" value={data.shortDescription} />}
-      {data.generatedDescription && <DetailRow label="Bullet Points" value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
-      {data.detailedDescription && <DetailRow label="Detailed Description" value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
+      {data.shortDescription && <DetailRow label="Short" value={data.shortDescription} />}
+      {data.generatedDescription && <DetailRow label="Points" value={<div className="whitespace-pre-wrap">{data.generatedDescription}</div>} />}
+      {data.detailedDescription && <DetailRow label="Details" value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
       {data.spatialMasks && (
-        <div className="pt-4 border-t border-[var(--border-color)]">
-          <button onClick={handleEditMasks} className="button w-full">Edit Masks</button>
+        <div className="pt-4 border-t border-(--border-color)">
+          <button onClick={handleEditMasks} className="button w-full"><svg className="w-3 h-3 inline-block mr-1"><use href="#edit" /></svg>Masks</button>
         </div>
       )}
     </div>
@@ -402,7 +402,7 @@ export function DetailsPanel() {
 
   const renderContent = () => {
     if (mode === 'market') {
-      if (!data) return <div className="p-4 text-center text-sm text-[var(--text-color-secondary)]">Select an item to see its details.</div>;
+      if (!data) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">Select an item to see its details.</div>;
       return <FullDetailsDisplay data={data as InventoryItemData} />;
     }
 
@@ -420,7 +420,7 @@ export function DetailsPanel() {
             isEditMode={mode === 'edit'}
           />;
         }
-        if (!itemData) return <div className="p-4 text-center text-sm text-[var(--text-color-secondary)]">Select an item to see its details.</div>;
+        if (!itemData) return <div className="p-4 text-center text-sm text-(--text-color-secondary)">Select an item to see its details.</div>;
         return <FullDetailsDisplay data={itemData} />;
     }
   };
@@ -436,7 +436,7 @@ export function DetailsPanel() {
   return (
     <div className={panelClasses}>
       <div className={`flex flex-col h-full ${isFullscreen ? 'max-w-2xl mx-auto w-full pt-8' : ''}`}>
-        <div className={`p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0 ${isFullscreen ? 'bg-black/40 rounded-t-2xl' : ''}`}>
+        <div className={`p-4 border-b border-(--border-color) flex justify-between items-center shrink-0 ${isFullscreen ? 'bg-black/40 rounded-t-2xl' : ''}`}>
           <h2 className={`font-bold ${isFullscreen ? 'text-2xl' : ''}`}>{title}</h2>
           <button onClick={handleClose} className="text-2xl hover:text-white/50 transition-colors">&times;</button>
         </div>
@@ -446,21 +446,22 @@ export function DetailsPanel() {
           </div>
         </div>
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
-            <button className="button w-full" onClick={() => setMode('edit')}>Edit Item & Logistics</button>
+          <div className="p-4 border-t border-(--border-color) shrink-0 flex gap-2">
+            <button className="button w-full" onClick={() => setMode('edit')}><svg className="w-4 h-4 inline-block mr-2"><use href="#edit" /></svg>Edit</button>
           </div>
         )}
         {(mode === 'edit' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
-          <div className={`p-4 border-[var(--border-color)] shrink-0 flex gap-2 ${isFullscreen ? 'border-t-0 pb-8' : 'border-t'}`}>
-            <button className={`button ${user?.role === 'Developer' ? '!bg-red-600' : '!bg-orange-500'} flex-grow`} onClick={handleDelete} disabled={isSaving}>
-              {user?.role === 'Developer' ? 'Hard Delete Item' : 'Request Delete Item'}
+          <div className={`p-4 border-(--border-color) shrink-0 flex gap-2 ${isFullscreen ? 'border-t-0 pb-8' : 'border-t'}`}>
+            <button className={`button ${user?.role === 'Developer' ? 'bg-red-600!' : 'bg-orange-500!'} grow`} onClick={handleDelete} disabled={isSaving}>
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#trash" /></svg>
+              {user?.role === 'Developer' ? 'DELETE' : 'Mark Del'}
             </button>
           </div>
         )}
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Client' || user?.role === 'Developer') && (!itemData?.status || itemData?.status === 'Catalog')) && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0">
+          <div className="p-4 border-t border-(--border-color) shrink-0">
             <button
-              className="button w-full !bg-[var(--main-color)] !text-black font-black"
+              className="button w-full bg-(--main-color)! text-black! font-black"
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
@@ -481,7 +482,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Item Acquired! Check Workbook.', { id: toastId });
+                  toast.success('Acquired!', { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Acquisition failed: ${e.message}`, { id: toastId });
@@ -491,14 +492,14 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              Mark as Acquired
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#check" /></svg>Acquire
             </button>
           </div>
         )}
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && itemData?.status === 'Acquired') && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0">
+          <div className="p-4 border-t border-(--border-color) shrink-0">
             <button
-              className="button w-full !bg-[#F7941D] !text-black font-black"
+              className="button w-full bg-[#F7941D]! text-black! font-black"
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
@@ -517,7 +518,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Item Archived! Moved to Archive 825.', { id: toastId });
+                  toast.success('Archived!', { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Archive failed: ${e.message}`, { id: toastId });
@@ -527,14 +528,14 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              Mark as Archive
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#archive" /></svg>Archive
             </button>
           </div>
         )}
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer') && (itemData?.status === 'Archive' || itemData?.workbook === '825') && itemData?.status !== 'Shipped') && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0">
+          <div className="p-4 border-t border-(--border-color) shrink-0">
             <button
-              className="button w-full !bg-[#8DC63F] !text-black font-black"
+              className="button w-full bg-[#8DC63F]! text-black! font-black"
               onClick={async () => {
                 if (!itemData || !itemRow) return;
                 setIsSaving(true);
@@ -552,7 +553,7 @@ export function DetailsPanel() {
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
-                  toast.success('Item marked as Shipped!', { id: toastId });
+                  toast.success('Shipped!', { id: toastId });
                   handleClose();
                 } catch (e: any) {
                   toast.error(`Shipping failed: ${e.message}`, { id: toastId });
@@ -562,12 +563,12 @@ export function DetailsPanel() {
               }}
               disabled={isSaving}
             >
-              Mark as Shipped
+              <svg className="w-4 h-4 inline-block mr-2"><use href="#truck" /></svg>Ship
             </button>
           </div>
         )}
         {mode === 'edit' && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
+          <div className="p-4 border-t border-(--border-color) shrink-0 flex gap-2">
             <button className="button secondary grow" onClick={handleClose}>Cancel</button>
           </div>
         )}
