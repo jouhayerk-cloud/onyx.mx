@@ -4,6 +4,15 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.9 - Immediate Inventory Sync Update**
+
+### **Date:** 2026-02-27
+
+- **DATABASE: Local Sync on Upload:** Fixed an issue where new uploads from the `UploadEntryForm` were writing to Postgres successfully, but bypassing the local RxDB client cache until a hard refresh occurred. They now inject locally upon successful Supabase insert.
+- **DATABASE: Status Mapping:** Corrected new item status payloads from `'YES'` to `'Catalog'` to ensure the newly saved models bypass strict exclusion filters inside `CatalogMarketView`. All legacy incorrect statuses were mass-migrated.
+
+---
+
 ## **v2.10.8 - UI Optimization & Upload DB Fix**
 
 ### **Date:** 2026-02-27

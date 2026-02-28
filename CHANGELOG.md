@@ -5,6 +5,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.9] — 2026-02-27
+
+### Fixed
+- **Upload Sync:** Modified `UploadEntryForm.tsx` to automatically inject the newly inserted items directly into the local RxDB instance, allowing the Inventory Catalog UI to immediately display newly saved entries without requiring a hard refresh.
+- **Upload Status Mapping:** Modified the default uploaded status in `UploadEntryForm.tsx` from `'YES'` to `'Catalog'` to ensure items aren't immediately filtered out of the active inventory views.
+
+---
+
 ## [2.10.8] — 2026-02-27
 
 ### Fixed
