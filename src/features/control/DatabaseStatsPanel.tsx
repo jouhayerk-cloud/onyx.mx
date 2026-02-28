@@ -19,7 +19,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
         <div className="bg-white/5 border border-white/10 rounded-2xl py-4 px-5 flex flex-col gap-1">
             <p className="text-[11px] uppercase font-bold tracking-widest text-white/50">{label}</p>
             <p className={`text-4xl font-black tabular-nums mt-1 ${color || 'text-white'}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
-            {sub && <p className="text-sm text-[var(--text-color-secondary)]">{sub}</p>}
+            {sub && <p className="text-sm text-(--text-color-secondary)">{sub}</p>}
         </div>
     );
 }
@@ -37,14 +37,14 @@ function BreakdownBar({ data, title }: { data: Record<string, number>; title: st
                     const pct = total > 0 ? (count / total) * 100 : 0;
                     return (
                         <div key={key} className="flex items-center gap-3">
-                            <span className="text-sm text-white/80 w-28 truncate flex-shrink-0">{key || '—'}</span>
+                            <span className="text-sm text-white/80 w-28 truncate shrink-0">{key || '—'}</span>
                             <div className="flex-1 bg-white/5 rounded-full h-1.5 overflow-hidden">
                                 <div
-                                    className="h-full rounded-full bg-[var(--main-color)] transition-all duration-500"
+                                    className="h-full rounded-full bg-(--main-color) transition-all duration-500"
                                     style={{ width: `${pct}%` }}
                                 />
                             </div>
-                            <span className="text-sm font-mono text-white/60 w-12 text-right flex-shrink-0">{count}</span>
+                            <span className="text-sm font-mono text-white/60 w-12 text-right shrink-0">{count}</span>
                         </div>
                     );
                 })}
@@ -159,22 +159,22 @@ export function DatabaseStatsPanel() {
             {/* Toolbar */}
             <div className="flex items-center justify-between">
                 <p className="text-sm text-(--text-color-secondary)">
-                    {lastRefreshed && `Refreshed ${lastRefreshed.toLocaleTimeString()}`}
+                    {lastRefreshed && lastRefreshed.toLocaleTimeString()}
                 </p>
                 <div className="flex gap-2">
                     <button onClick={() => { fetchStats(); fetchDelRequests(); }} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-(--text-color-secondary) hover:text-white">
                         <svg className="w-4 h-4"><use href="#refresh" /></svg>
-                        Refresh
+                        SYNC
                     </button>
                 </div>
             </div>
 
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard label="Total Items" value={stats.total} color="text-white" />
-                <StatCard label="Active Items" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}% of total` : undefined} />
+                <StatCard label="Total" value={stats.total} color="text-white" />
+                <StatCard label="Active" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}%` : undefined} />
                 <StatCard label="Vendors" value={vendorCount} color="text-(--main-color)" />
-                <StatCard label="Categories" value={Object.keys(stats.byCategory).length} />
+                <StatCard label="Cats" value={Object.keys(stats.byCategory).length} />
             </div>
 
             {/* Deletion Requests Table */}
@@ -182,16 +182,16 @@ export function DatabaseStatsPanel() {
                 <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-5 flex flex-col gap-4 mt-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-xs uppercase font-bold tracking-widest text-orange-400 flex items-center gap-2">
-                            Deletion Requests ({delRequests.length})
+                            DEL REQ ({delRequests.length})
                         </h3>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-[11px]">
                             <thead>
                                 <tr className="border-b border-white/5 text-white/30 uppercase tracking-tighter">
-                                    <th className="pb-2 font-black">Item ID</th>
+                                    <th className="pb-2 font-black">ID</th>
                                     <th className="pb-2 font-black">Shape</th>
-                                    <th className="pb-2 font-black">Requested By</th>
+                                    <th className="pb-2 font-black">User</th>
                                     <th className="pb-2 font-black text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -208,14 +208,14 @@ export function DatabaseStatsPanel() {
                                                     className="bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-1 rounded text-[10px] hover:bg-green-500/40"
                                                     disabled={!!isActing}
                                                 >
-                                                    Restore
+                                                    BACK
                                                 </button>
                                                 <button
                                                     onClick={() => handleAuthorize(req.id)}
                                                     className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-1 rounded text-[10px] hover:bg-red-600 hover:text-white"
                                                     disabled={!!isActing}
                                                 >
-                                                    {isActing === req.id ? 'Deleting...' : 'Hard Delete'}
+                                                    {isActing === req.id ? 'DEL…' : 'DELETE'}
                                                 </button>
                                             </div>
                                         </td>
@@ -236,14 +236,14 @@ export function DatabaseStatsPanel() {
 
             {/* Developer Actions */}
             <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3 pb-8">
-                <h3 className="text-xs uppercase font-bold tracking-widest text-[var(--main-color)] flex items-center gap-2">
+                <h3 className="text-xs uppercase font-bold tracking-widest text-(--main-color) flex items-center gap-2">
                     <svg className="w-4 h-4"><use href="#shield" /></svg> Danger Zone
                 </h3>
                 <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <p className="text-sm font-bold text-red-400">Clear Cloud Inventory</p>
-                        <p className="text-xs text-[var(--text-color-secondary)] mt-1">
-                            This will PERMANENTLY delete all records from the 'inventory' table in Supabase. This action cannot be undone.
+                        <p className="text-sm font-bold text-red-400">Clear Cloud</p>
+                        <p className="text-xs text-(--text-color-secondary) mt-1">
+                            PERMANENTLY delete all records from Supabase.
                         </p>
                     </div>
                     <button
@@ -259,17 +259,17 @@ export function DatabaseStatsPanel() {
                                 alert("Failed to clear cloud database: " + err.message);
                             }
                         }}
-                        className="button hover:!bg-red-600 !bg-red-500/20 !text-red-300 border border-red-500/50 whitespace-nowrap !py-2"
+                        className="button hover:bg-red-600! bg-red-500/20! text-red-300! border border-red-500/50 whitespace-nowrap py-2!"
                     >
-                        Clear Cloud Database
+                        Wipe Cloud
                     </button>
                 </div>
 
                 <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <p className="text-sm font-bold text-red-400">Wipe Local Database Cache</p>
-                        <p className="text-xs text-[var(--text-color-secondary)] mt-1">
-                            This will completely destroy your browser's local IndexedDB file segments. The application will immediately hard-refresh and spend significant time rebuilding the cache from the Cloud. Do this only if the database is corrupt or out-of-sync.
+                        <p className="text-sm font-bold text-red-400">Nuke Cache</p>
+                        <p className="text-xs text-(--text-color-secondary) mt-1">
+                            Destroy local IndexedDB. Force rebuild from Cloud.
                         </p>
                     </div>
                     <button
@@ -288,9 +288,9 @@ export function DatabaseStatsPanel() {
                             } catch (_) { } // Firefox lacks .databases() handling
                             window.location.reload();
                         }}
-                        className="button hover:!bg-red-600 !bg-red-500/20 !text-red-300 border border-red-500/50 whitespace-nowrap !py-2"
+                        className="button hover:bg-red-600! bg-red-500/20! text-red-300! border border-red-500/50 whitespace-nowrap py-2!"
                     >
-                        Nuke Cache & Restart
+                        NUKE
                     </button>
                 </div>
             </div>

@@ -106,7 +106,7 @@ export default function App() {
 
   useEffect(() => {
     // Robust theme switching: remove old themes before adding the new one.
-    const themeClasses = ['theme-obsidian', 'theme-midnight', 'theme-forest-night', 'theme-snow', 'theme-sand', 'theme-sky'];
+    const themeClasses = ['theme-obsidian', 'theme-fluorite', 'theme-malaquite', 'theme-nacar', 'theme-tehu', 'theme-tekis'];
     document.documentElement.classList.remove(...themeClasses);
     document.documentElement.classList.add(`theme-${theme}`);
   }, [theme]);
@@ -143,7 +143,7 @@ export default function App() {
               <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" /></svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
-            <p className="text-sm text-[var(--text-color-secondary)] mb-6">
+            <p className="text-sm text-(--text-color-secondary) mb-6">
               Your email is not registered for Onyx.mx access. Contact your system administrator.
             </p>
             <button
@@ -152,7 +152,7 @@ export default function App() {
                 await supabase.auth.signOut();
                 setUser(null);
               }}
-              className="button w-full !py-3 text-sm"
+              className="button w-full py-3! text-sm"
             >
               Return to Login
             </button>

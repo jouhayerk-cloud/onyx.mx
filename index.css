@@ -477,109 +477,109 @@ html.theme-obsidian {
   color-scheme: dark;
 }
 
-/* MIDNIGHT (Dark) */
-html.theme-midnight {
-  --c1: #17102e;
-  --c2: #211942;
-  --c3: #2d235c;
-  --c4: #211942;
-  --c5: #17102e;
-  --c6: #0b071a;
-  --app-bg: rgba(15, 10, 30, 0.4);
-  --sidebar-bg: rgba(30, 20, 55, 0.85);
-  --main-color: #aa77ff;
-  --secondary-color: #8855dd;
+/* FLUORITE (Dark) */
+html.theme-fluorite {
+  --c1: #2a0a4a;
+  --c2: #1c0e3a;
+  --c3: #0a2a40;
+  --c4: #0a4a50;
+  --c5: #003b36;
+  --c6: #1a0a30;
+  --app-bg: rgba(20, 10, 35, 0.4);
+  --sidebar-bg: rgba(30, 15, 50, 0.85);
+  --main-color: #00e5ff;
+  --secondary-color: #00b0ff;
   --text-color: #ffffff;
   --text-color-primary: #ffffff;
-  --secondary-text-color: #bbb2d6;
-  --text-color-secondary: #bbb2d6;
-  --border-color: rgba(170, 119, 255, 0.15);
+  --secondary-text-color: #a0f0ef;
+  --text-color-secondary: #a0f0ef;
+  --border-color: rgba(0, 229, 255, 0.2);
   --input-color: rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
-/* FOREST NIGHT (Dark) */
-html.theme-forest-night {
-  --c1: #0f1c16;
-  --c2: #162a21;
-  --c3: #1c382b;
-  --c4: #162a21;
-  --c5: #0f1c16;
-  --c6: #080f0a;
-  --app-bg: rgba(10, 20, 15, 0.4);
-  --sidebar-bg: rgba(25, 45, 35, 0.85);
-  --main-color: #4db885;
-  --secondary-color: #389568;
+/* MALAQUITE (Dark) */
+html.theme-malaquite {
+  --c1: #081f13;
+  --c2: #0b2f20;
+  --c3: #0f4028;
+  --c4: #165b38;
+  --c5: #0b2f20;
+  --c6: #051a0e;
+  --app-bg: rgba(5, 20, 15, 0.4);
+  --sidebar-bg: rgba(12, 40, 25, 0.85);
+  --main-color: #4ade80;
+  --secondary-color: #22c55e;
   --text-color: #ffffff;
   --text-color-primary: #ffffff;
-  --secondary-text-color: #a4c4b5;
-  --text-color-secondary: #a4c4b5;
-  --border-color: rgba(77, 184, 133, 0.15);
+  --secondary-text-color: #bbf7d0;
+  --text-color-secondary: #bbf7d0;
+  --border-color: rgba(74, 222, 128, 0.15);
   --input-color: rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
-/* SNOW (Light) */
-html.theme-snow {
-  --c1: #f2f5f9;
-  --c2: #e6ebf2;
-  --c3: #d9e1ec;
-  --c4: #e6ebf2;
-  --c5: #f2f5f9;
+/* NACAR (Light) */
+html.theme-nacar {
+  --c1: #fdfcf0;
+  --c2: #f4fae8;
+  --c3: #eef9e4;
+  --c4: #fdf3e7;
+  --c5: #fffce0;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(246, 248, 251, 0.9);
-  --main-color: #3b82f6;
-  --secondary-color: #2563eb;
-  --text-color: #0f172a;
-  --text-color-primary: #0f172a;
-  --secondary-text-color: #475569;
-  --text-color-secondary: #475569;
-  --border-color: rgba(15, 23, 42, 0.1);
+  --sidebar-bg: rgba(250, 251, 245, 0.9);
+  --main-color: #84cc16;
+  --secondary-color: #65a30d;
+  --text-color: #1a2e05;
+  --text-color-primary: #1a2e05;
+  --secondary-text-color: #3f6212;
+  --text-color-secondary: #3f6212;
+  --border-color: rgba(63, 98, 18, 0.1);
   --input-color: rgba(255, 255, 255, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;
 }
 
-/* SAND (Light) */
-html.theme-sand {
-  --c1: #faf6f0;
-  --c2: #f2ece1;
-  --c3: #e8ded1;
-  --c4: #f2ece1;
-  --c5: #faf6f0;
+/* TEHU (Light) */
+html.theme-tehu {
+  --c1: #fdfafa;
+  --c2: #f6efe8;
+  --c3: #eff6ec;
+  --c4: #fdf3e7;
+  --c5: #fcf6ef;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(250, 246, 240, 0.9);
-  --main-color: #d97706;
-  --secondary-color: #b45309;
-  --text-color: #291c0e;
-  --text-color-primary: #291c0e;
-  --secondary-text-color: #5c4b3a;
-  --text-color-secondary: #5c4b3a;
-  --border-color: rgba(41, 28, 14, 0.1);
+  --sidebar-bg: rgba(252, 249, 246, 0.9);
+  --main-color: #f97316;
+  --secondary-color: #ea580c;
+  --text-color: #431407;
+  --text-color-primary: #431407;
+  --secondary-text-color: #7c2d12;
+  --text-color-secondary: #7c2d12;
+  --border-color: rgba(124, 45, 18, 0.1);
   --input-color: rgba(255, 255, 255, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;
 }
 
-/* SKY (Light) */
-html.theme-sky {
-  --c1: #f0f7ff;
-  --c2: #e0f2fe;
-  --c3: #bae6fd;
-  --c4: #e0f2fe;
-  --c5: #f0f7ff;
+/* TEKIS (Light) */
+html.theme-tekis {
+  --c1: #fffff0;
+  --c2: #fdfbf0;
+  --c3: #fefce8;
+  --c4: #fdfbf0;
+  --c5: #fffdd0;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(248, 250, 255, 0.9);
-  --main-color: #0284c7;
-  --secondary-color: #0369a1;
-  --text-color: #082f49;
-  --text-color-primary: #082f49;
-  --secondary-text-color: #0ea5e9;
-  --text-color-secondary: #0ea5e9;
-  --border-color: rgba(8, 47, 73, 0.1);
+  --sidebar-bg: rgba(252, 250, 240, 0.9);
+  --main-color: #eab308;
+  --secondary-color: #ca8a04;
+  --text-color: #422006;
+  --text-color-primary: #422006;
+  --secondary-text-color: #713f12;
+  --text-color-secondary: #713f12;
+  --border-color: rgba(113, 63, 18, 0.1);
   --input-color: rgba(255, 255, 255, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;

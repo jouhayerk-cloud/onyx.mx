@@ -118,11 +118,11 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
 
 const themes = [
     { name: 'obsidian', gradient: 'linear-gradient(135deg, #1a1a24, #212130, #2a2a3d)' },
-    { name: 'midnight', gradient: 'linear-gradient(135deg, #17102e, #211942, #2d235c)' },
-    { name: 'forest-night', gradient: 'linear-gradient(135deg, #0f1c16, #162a21, #1c382b)' },
-    { name: 'snow', gradient: 'linear-gradient(135deg, #f2f5f9, #e6ebf2, #d9e1ec)' },
-    { name: 'sand', gradient: 'linear-gradient(135deg, #faf6f0, #f2ece1, #e8ded1)' },
-    { name: 'sky', gradient: 'linear-gradient(135deg, #f0f7ff, #e0f2fe, #bae6fd)' },
+    { name: 'fluorite', gradient: 'linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40)' },
+    { name: 'malaquite', gradient: 'linear-gradient(135deg, #081f13, #0b2f20, #0f4028)' },
+    { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
+    { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
+    { name: 'tekis', gradient: 'linear-gradient(135deg, #fffff0, #fdfbf0, #fefce8)' },
 ];
 
 export function MainAppView() {
@@ -193,7 +193,7 @@ export function MainAppView() {
 
     const uploadSubItems = [
         {
-            id: 'upload-wizard', label: 'Create entry', icon: 'upload', isActive: activeView === 'upload', action: () => {
+            id: 'upload-wizard', label: 'Create', icon: 'upload', isActive: activeView === 'upload', action: () => {
                 setActiveView('upload');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
@@ -203,21 +203,21 @@ export function MainAppView() {
 
     const logisticsSubItems = [
         {
-            id: 'packing', label: 'Packing', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
+            id: 'packing', label: 'Pack', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('packing');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'trucking', label: 'Trucking', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
+            id: 'trucking', label: 'Truck', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('trucking');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'shipping', label: t.shipping, icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
+            id: 'shipping', label: 'Ship', icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('shipping');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -227,14 +227,14 @@ export function MainAppView() {
 
     const financeSubItems = [
         {
-            id: 'payments', label: t.payments, icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
+            id: 'payments', label: 'Pay', icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
                 setActiveView('finance');
                 setFinanceSubTab('payments');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'expenses', label: 'Expenses', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
+            id: 'expenses', label: 'Exp', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
                 setActiveView('finance');
                 setFinanceSubTab('expenses');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -276,7 +276,7 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'control' ? 'active' : ''}`} onClick={() => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#shield"></use></svg>
-                                    <span className="sidebar-list-item-text">Control Center</span>
+                                    <span className="sidebar-list-item-text">Ctrl</span>
                                 </div>
                             </li>
                         )}
@@ -291,19 +291,19 @@ export function MainAppView() {
                         <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                             <div className="sidebar-list-item-main">
                                 <svg><use href="#package"></use></svg>
-                                <span className="sidebar-list-item-text">{t.inventory || 'Inventory'}</span>
+                                <span className="sidebar-list-item-text">Inv</span>
                             </div>
                         </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#credit-card"></use></svg>
-                                    <span className="sidebar-list-item-text">Payments</span>
+                                    <span className="sidebar-list-item-text">Pay</span>
                                 </div>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
+                            <NavItemWithSubmenu viewId="logistics" label="Log" icon="truck" subItems={logisticsSubItems} />
                         )}
                     </ul>
                     <div className="sidebar-footer">
