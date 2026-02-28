@@ -118,9 +118,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                                     </p>
                                 )}
                             </div>
-                            <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5 pointer-events-auto">
-                                <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{showFinancials ? (calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-') : '***'}</span>
-                                <span className="font-medium text-[9px] text-green-300">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span>
+                            <div className="flex items-center justify-center bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5 pointer-events-auto">
+                                <span className="font-bold text-[11px] text-[#AEE6F5]">
+                                    {showFinancials ? `$${norm.price || 0} MXN` : '***'}
+                                </span>
                             </div>
                         </div>
                     )}
