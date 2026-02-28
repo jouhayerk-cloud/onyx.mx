@@ -219,6 +219,9 @@ ${appUrl}`
                                                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${user.is_active ? 'bg-transparent text-green-400 border-green-500/30' : 'bg-transparent text-red-400 border-red-500/30'}`}>
                                                     {user.is_active ? 'Active' : 'Inactive'}
                                                 </span>
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${user.last_submit_at ? 'bg-transparent text-blue-400 border-blue-500/30' : 'bg-transparent text-amber-400 border-amber-500/30'}`}>
+                                                    {user.last_submit_at ? 'Registered' : 'Pending Auth'}
+                                                </span>
                                             </div>
                                             {!user.display_name ? null : <p className="text-xs text-[var(--text-color-secondary)] truncate mt-[2px]">{user.email}</p>}
                                         </div>
@@ -239,11 +242,11 @@ ${appUrl}`
                                             {/* Activity Info */}
                                             <div className="flex gap-6 ml-[48px]">
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Submits</p>
-                                                    <p className="text-sm font-mono font-bold text-white mt-1">{user.total_submits.toLocaleString()}</p>
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Total Submits</p>
+                                                    <p className="text-sm font-mono font-bold text-white mt-1">{user.total_submits?.toLocaleString() || '0'}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Last Submit</p>
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/40">Last Active</p>
                                                     <p className="text-xs text-[var(--text-color-secondary)] mt-1">{formatDate(user.last_submit_at)}</p>
                                                 </div>
                                                 <div>

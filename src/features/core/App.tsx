@@ -79,6 +79,12 @@ export default function App() {
           name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
           role: appUser.role,
         });
+
+        // Track last active (repurposing last_submit_at)
+        supabase.from('app_users')
+          .update({ last_submit_at: new Date().toISOString() })
+          .eq('email', email.toLowerCase())
+          .then();
       };
 
       supabase.auth.getSession().then(({ data: { session } }) => {

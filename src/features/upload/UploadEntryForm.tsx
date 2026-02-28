@@ -191,6 +191,14 @@ export function UploadEntryForm() {
                 }
             }
 
+            // Increment user's total_submits in the app_users table
+            if (user?.email) {
+                const { data: userData } = await supabase.from('app_users').select('total_submits').eq('email', user.email).single();
+                if (userData) {
+                    await supabase.from('app_users').update({ total_submits: (userData.total_submits || 0) + 1 }).eq('email', user.email);
+                }
+            }
+
             notify('success', '✓ Item saved to inventory!');
             setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Catalog' });
             setMediaFiles([]);
