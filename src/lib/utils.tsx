@@ -588,17 +588,13 @@ export async function extractGradientFromMask(
 
 export const numberToCypher = (num: number): string => {
   // Alphabet is stored in VITE_CYPHER_KEY (env, gitignored).
-  // Standard mapping: Digit 1 -> Index 0; Digit 2 -> Index 1; ... Digit 0 -> Index 9.
+  // 0=M, 1=O, 2=X, 3=H, 4=E, 5=L, 6=F, 7=A, 8=N, 9=D
   const key = import.meta.env.VITE_CYPHER_KEY as string || 'MOXHELFAND';
   if (!key || key.length < 10) return '—';
 
-  return String(Math.floor(num))
+  return String(Math.ceil(num))
     .split('')
-    .map(digit => {
-      const d = parseInt(digit, 10);
-      const idx = (d === 0) ? 9 : d - 1;
-      return key[idx] || '';
-    })
+    .map(digit => key[parseInt(digit, 10)] || '')
     .join('');
 };
 
@@ -648,8 +644,8 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const landedCost = costUsd * 1.4;
   const retailPrice = landedCost * 12;
 
-  const costUsdRounded = Math.floor(costUsd);
-  const landedCostRounded = Math.floor(landedCost);
+  const costUsdRounded = Math.ceil(costUsd);
+  const landedCostRounded = Math.ceil(landedCost);
 
   // Example Target parsing: SU3271XO
   // SU=Vendor, 327=book, 1=vendorItemCount, XO=cypherLandedCode
