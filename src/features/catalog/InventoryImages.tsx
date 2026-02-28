@@ -344,7 +344,11 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
       setIsLoading(true);
       try {
         const db = await import('../../lib/database').then(m => m.getDatabase());
-        sub = db.inventory.find().$.subscribe((docs: any) => {
+        sub = db.inventory.find({
+          selector: {
+            status: { $ne: 'Pending Deletion' }
+          }
+        }).$.subscribe((docs: any) => {
           setInventory(docs.map((doc: any) => {
             const norm = normalizeInventoryData(doc.toJSON());
             return {

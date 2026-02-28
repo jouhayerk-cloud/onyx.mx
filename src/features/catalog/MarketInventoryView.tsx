@@ -251,7 +251,8 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
   };
 
   const filteredInventory = inventory
-    .filter(item => activeFilter === 'All' || item.data.itemId === activeFilter)
+    .filter(item => item.data.status !== 'Pending Deletion')
+    .filter(item => activeFilter === 'All' || item.data.itemId?.split('-')[0] === activeFilter)
     .filter(item => {
       const lowerCaseSearch = searchTerm.toLowerCase();
       if (!lowerCaseSearch) return true;
