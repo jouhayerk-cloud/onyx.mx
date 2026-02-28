@@ -45,7 +45,7 @@ import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
 import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/Types';
-import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices, handleFileUpload } from '../../lib/utils';
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 
@@ -301,25 +301,51 @@ export function DetailsPanel() {
     const toastId = toast.loading(t.saving);
 
     try {
+      let uploadedUrls: string[] = [];
+      if (newFiles.length > 0) {
+        toast.loading("Uploading new files...", { id: toastId });
+        for (const file of newFiles) {
+          if (file.originalFile) {
+            const result = await handleFileUpload(file.originalFile, user);
+            if (result) uploadedUrls.push(result.thumbnailUrl);
+          }
+        }
+      }
+
       const existingPhotos = (mode === 'edit' && itemData?.mediaUrls)
-        ? itemData.mediaUrls.split(',').map(url => url.trim()).filter(Boolean)
+        ? itemData.mediaUrls.split(',').map((url: string) => url.trim()).filter(Boolean)
         : [];
 
-      const payload = {
-        ...formState,
-        ...newItemFiles,
-        photos: mode === 'edit'
-          ? [...existingPhotos, ...newFiles]
-          : createModeFiles || []
-      };
-      const action = mode === 'edit' ? 'updateFullItem' : 'appendInventory';
-      const body = mode === 'edit'
-        ? JSON.stringify({ action, row: itemRow, itemData: payload, user })
-        : JSON.stringify({ action, inventory: [payload], user });
+      const mediaUrlsStr = mode === 'edit'
+        ? [...existingPhotos, ...uploadedUrls].join(',')
+        : createModeFiles ? createModeFiles.map((f: any) => f.dataUrl).join(',') : '';
 
-      const response = await fetch(SCRIPT_URL, { method: 'POST', body });
-      const result = await response.json();
-      if (result.status !== 'success') throw new Error(result.message);
+      if (mode === 'edit') {
+        const dbRow = {
+          shape: formState.shape,
+          material: formState.material,
+          color: formState.color,
+          description: formState.description,
+          weight_kg: formState.weightKg ? Number(formState.weightKg) : null,
+          height_cm: formState.heightCm ? Number(formState.heightCm) : null,
+          width_cm: formState.widthCm ? Number(formState.widthCm) : null,
+          length_cm: formState.lengthCm ? Number(formState.lengthCm) : null,
+          price_mxn: formState.price ? Number(formState.price) : null,
+          quantity: formState.quantity ? Number(formState.quantity) : 1,
+          media_urls: mediaUrlsStr,
+          updated_at: new Date().toISOString()
+        };
+
+        const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
+        const { error } = await supabase.from(tableName).update(dbRow).eq('id', itemRow);
+        if (error) throw error;
+      } else {
+        const payload = { ...formState, ...newItemFiles, photos: createModeFiles || [] };
+        const body = JSON.stringify({ action: 'appendInventory', inventory: [payload], user });
+        const response = await fetch(SCRIPT_URL, { method: 'POST', body });
+        const result = await response.json();
+        if (result.status !== 'success') throw new Error(result.message);
+      }
 
       toast.success(t.itemSavedSuccess, { id: toastId });
       setInventoryVersion(v => v + 1);
@@ -399,21 +425,22 @@ export function DetailsPanel() {
     }
   };
 
+  const isFullscreen = mode === 'edit';
+
+  const panelClasses = isFullscreen
+    ? "fixed inset-0 z-[100] w-full h-full bg-black/95 backdrop-blur-md overflow-y-auto"
+    : `glass-panel rounded-xl shrink-0 w-[85vw] max-w-sm h-full fixed top-0 right-0 z-50 lg:static lg:w-[420px] lg:h-full lg:transform-none transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`;
+
   if (!isOpen) return null;
 
   return (
-    <div className={`glass-panel rounded-xl shrink-0
-        w-[85vw] max-w-sm h-full
-        fixed top-0 right-0 z-50
-        lg:static lg:w-[420px] lg:h-full lg:transform-none
-        transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
-          <h2 className="font-bold">{title}</h2>
-          <button onClick={handleClose} className="lg:hidden text-2xl">&times;</button>
+    <div className={panelClasses}>
+      <div className={`flex flex-col h-full ${isFullscreen ? 'max-w-2xl mx-auto w-full pt-8' : ''}`}>
+        <div className={`p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0 ${isFullscreen ? 'bg-black/40 rounded-t-2xl' : ''}`}>
+          <h2 className={`font-bold ${isFullscreen ? 'text-2xl' : ''}`}>{title}</h2>
+          <button onClick={handleClose} className="text-2xl hover:text-white/50 transition-colors">&times;</button>
         </div>
-        <div className="grow overflow-y-auto">
+        <div className={`grow overflow-y-auto ${isFullscreen ? 'bg-black/20 p-4' : ''}`}>
           <div className="p-4">
             {isImageLoading && mode !== 'create' ? <LoadingIndicator /> : renderContent()}
           </div>
@@ -424,9 +451,9 @@ export function DetailsPanel() {
           </div>
         )}
         {(mode === 'edit' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
-          <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
+          <div className={`p-4 border-[var(--border-color)] shrink-0 flex gap-2 ${isFullscreen ? 'border-t-0 pb-8' : 'border-t'}`}>
             <button className={`button ${user?.role === 'Developer' ? '!bg-red-600' : '!bg-orange-500'} flex-grow`} onClick={handleDelete} disabled={isSaving}>
-              {user?.role === 'Developer' ? 'Hard Delete' : 'Request Delete'}
+              {user?.role === 'Developer' ? 'Hard Delete Item' : 'Request Delete Item'}
             </button>
           </div>
         )}
