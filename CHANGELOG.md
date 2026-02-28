@@ -5,6 +5,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.8] — 2026-02-27
+
+### Fixed
+- **Create Entry Database Save:** Corrected a bug where `UploadEntryForm.tsx` attempted to save using columns and unique constraints that do not exist natively on the `inventory` table. Replaced `upsert` with `.insert()` and mapped all state payloads onto exact valid `inventory` columns (e.g. `short_description`, `media_urls`, `timestamp`).
+- **Main Header CSS:** Addressed Tailwind v4 syntax warnings across `MainAppView.tsx` and `MainHeader.tsx`.
+
+### Changed
+- **Mobile Header:** Fully optimized the `MainHeader` to render dynamically on all mobile screen sizes. Redundant navigational tabs (Catalog, Payments, Trucking) removed in favor of the Sidebar toggle context.
+
+---
+
 ## [2.10.6] — 2026-02-26
 
 ### Changed
