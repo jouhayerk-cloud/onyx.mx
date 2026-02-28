@@ -143,14 +143,14 @@ export function InventoryForm({
     const { name, value } = e.target;
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
-  
+
   const handleNewFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const uploadedFiles: UploadedFile[] = [];
     for (const file of files) {
-        const type = file.type.startsWith('image/') ? 'image' : 'video';
-        const dataUrl = await readFileAsDataURL(file, type);
-        uploadedFiles.push({ type, dataUrl });
+      const type = file.type.startsWith('image/') ? 'image' : 'video';
+      const dataUrl = await readFileAsDataURL(file, type);
+      uploadedFiles.push({ type, dataUrl });
     }
     setNewFiles(prev => [...prev, ...uploadedFiles]);
   };
@@ -182,6 +182,8 @@ export function InventoryForm({
             name="itemId"
             value={formState.itemId}
             onChange={handleInputChange}
+            disabled={isEditMode}
+            className={`w-full ${isEditMode ? 'opacity-50 cursor-not-allowed' : ''}`}
             required>
             <option value="" disabled>Select...</option>
             {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
@@ -269,16 +271,16 @@ export function InventoryForm({
             onChange={handleInputChange}
           />
         </div>
-        
+
         {isEditMode && (
           <div className="flex flex-col gap-1 pt-2 border-t border-[var(--border-color)]">
             <label className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">
               Add More Media
             </label>
-            <input 
-              type="file" 
-              multiple 
-              onChange={handleNewFiles} 
+            <input
+              type="file"
+              multiple
+              onChange={handleNewFiles}
               accept="image/*,video/*"
               className="w-full text-xs"
             />
