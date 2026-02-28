@@ -592,7 +592,7 @@ export const numberToCypher = (num: number): string => {
   const key = import.meta.env.VITE_CYPHER_KEY as string || 'MOXHELFAND';
   if (!key || key.length < 10) return '—';
 
-  return String(Math.ceil(num))
+  return String(Math.floor(num))
     .split('')
     .map(digit => {
       const d = parseInt(digit, 10);
@@ -648,8 +648,8 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const landedCost = costUsd * 1.4;
   const retailPrice = landedCost * 12;
 
-  const costUsdRounded = Math.ceil(costUsd);
-  const landedCostRounded = Math.ceil(landedCost);
+  const costUsdRounded = Math.floor(costUsd);
+  const landedCostRounded = Math.floor(landedCost);
 
   // Example Target parsing: SU3271XO
   // SU=Vendor, 327=book, 1=vendorItemCount, XO=cypherLandedCode
