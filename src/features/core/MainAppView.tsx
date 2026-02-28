@@ -21,7 +21,6 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     activeViewAtom,
     createViewActiveTabAtom,
-    inventorySubTabAtom,
     logisticsSubTabAtom,
     financeSubTabAtom,
     is3DViewerOpenAtom,
@@ -142,7 +141,6 @@ export function MainAppView() {
     const [createTab, setCreateTab] = useAtom(createViewActiveTabAtom);
     const setWorkflowStep = useSetAtom(workflowStepAtom);
     const setTheme = useSetAtom(themeAtom);
-    const [inventorySubTab, setInventorySubTab] = useAtom(inventorySubTabAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
 
@@ -202,36 +200,6 @@ export function MainAppView() {
         }
     ];
 
-    const inventorySubItems = [
-        {
-            id: 'catalog', label: t.catalog, icon: 'camera', isActive: activeView === 'inventory' && inventorySubTab === 'catalog', action: () => {
-                setActiveView('inventory');
-                setInventorySubTab('catalog');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'production', label: 'Production', icon: 'layers', isActive: activeView === 'inventory' && inventorySubTab === 'production', action: () => {
-                setActiveView('inventory');
-                setInventorySubTab('production');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'acquisitions', label: t.acquisitions, icon: 'archive', isActive: activeView === 'inventory' && inventorySubTab === 'acquisitions', action: () => {
-                setActiveView('inventory');
-                setInventorySubTab('acquisitions');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'archive', label: 'Archive', icon: 'package', isActive: activeView === 'inventory' && inventorySubTab === 'archive', action: () => {
-                setActiveView('inventory');
-                setInventorySubTab('archive');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-    ];
 
     const logisticsSubItems = [
         {
@@ -312,7 +280,12 @@ export function MainAppView() {
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <NavItemWithSubmenu viewId="upload" label="New" icon="upload" subItems={uploadSubItems} />
                         )}
-                        <NavItemWithSubmenu viewId="inventory" label={t.inventory || 'Inventory'} icon="package" subItems={inventorySubItems} />
+                        <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                            <div className="sidebar-list-item-main">
+                                <svg><use href="#package"></use></svg>
+                                <span className="sidebar-list-item-text">{t.inventory || 'Inventory'}</span>
+                            </div>
+                        </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
                         )}

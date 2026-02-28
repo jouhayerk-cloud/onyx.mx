@@ -10,7 +10,8 @@ import {
     inventoryAtom,
     inventoryActiveFilterAtom,
     inventorySearchTermAtom,
-    inventorySubTabAtom,
+    inventoryStatusFilterAtom,
+    showFinancialsAtom,
     dashboardStatusFilterAtom,
     dashboardSearchTermAtom,
     userAtom,
@@ -135,9 +136,10 @@ const ShippingStats: React.FC = () => {
 
 const InventoryBar: React.FC = () => {
     const t = useTranslation();
-    const [subTab, setSubTab] = useAtom(inventorySubTabAtom);
+    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
-    const [statusFilter, setStatusFilter] = useAtom(dashboardStatusFilterAtom);
+    const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
+    const [devStatusFilter, setDevStatusFilter] = useAtom(dashboardStatusFilterAtom);
     const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
     const inventory = useAtomValue(inventoryAtom);
     const [isDetailsOpen, setIsDetailsOpen] = useAtom(isDetailsPanelOpenAtom);
@@ -150,8 +152,9 @@ const InventoryBar: React.FC = () => {
     }, [inventory]);
 
     const cycleFilter = () => {
-        const i = filterCycle.indexOf(statusFilter);
-        setStatusFilter(filterCycle[(i + 1) % filterCycle.length]);
+        const statuses = ['All', 'Available', 'Production', 'Acquisition'] as const;
+        const i = statuses.indexOf(statusFilter);
+        setStatusFilter(statuses[(i + 1) % statuses.length]);
     };
 
     return (
@@ -170,12 +173,19 @@ const InventoryBar: React.FC = () => {
                     </div>
                 )}
                 {/* Traffic light filter */}
-                <button onClick={cycleFilter} title={filterConfig[statusFilter].title}
+                <button onClick={() => {
+                    const statuses = ['ALL', 'RED', 'YELLOW', 'GREEN'] as const;
+                    setDevStatusFilter(statuses[(statuses.indexOf(devStatusFilter) + 1) % statuses.length]);
+                }} title={filterConfig[devStatusFilter].title}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
-                    <svg className="w-3.5 h-3.5"><use href={filterConfig[statusFilter].icon} /></svg>
+                    <svg className="w-3.5 h-3.5"><use href={filterConfig[devStatusFilter].icon} /></svg>
                 </button>
                 <SearchBar value={search} onChange={setSearch} placeholder="Search inventory…" />
                 {/* Details panel toggle on mobile */}
+                <button onClick={() => setShowFinancials(!showFinancials)} title="Toggle Financials"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
+                    <span className="text-xs font-bold">{showFinancials ? '$' : '***'}</span>
+                </button>
                 {selectedItem && (
                     <button onClick={() => setIsDetailsOpen(!isDetailsOpen)} title="Toggle details"
                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 lg:hidden shrink-0">
