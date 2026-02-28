@@ -5,6 +5,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.11] — 2026-02-27
+
+### Changed
+- **Upload Form Redesign:** Replaced the legacy Vendor string input with an interactive, scrollable horizontal slider featuring color-coded vendor tags. Removed internal system accounts (Admins & Clients) from the vendor creation loop.
+- **Upload Form Additions:** Added direct UI toggles for marking a new item's `status` (Catalog, Production, Acquisitions). Added a persistent "Book (Season)" property (e.g. `v326`).
+- **Inventory Cards Redesign:** Completely overhauled the visual presentation of UI item cards across all module grids:
+  - Cleaned up typography for clarity and scaling on mobile environments.
+  - Implemented sleek background blur filters beneath dimensional readouts.
+  - Added new floating color-coded top left ID badges matching the vendor slider in the form.
+
+### Fixed
+- **Database Storage Reboot:** Purged all legacy dummy rows from the `inventory` backend DB cache for a fresh slate.
+
+---
+
 ## [2.10.10] — 2026-02-27
 
 ### Added

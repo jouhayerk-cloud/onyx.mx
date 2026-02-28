@@ -4,6 +4,17 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.11 - Catalog UI & Form Refactor**
+
+### **Date:** 2026-02-27
+
+- **UI: Item Cards:** Upgraded the Inventory Thumbnail Cards with cleaner typography, frosted glass information backgrounds, and integrated the unified vendor-badge system into the top-left corner. Fixed the layout mapping so metrics and dimensions render safely.
+- **UI: Upload Form:** Substituted the static Vendor Selector with a scalable horizontal layout featuring fully interactive, color-coded bubble selectors, and stripped out irrelevant admin logins.
+- **DATABASE: Item Properties:** Added immediate status definition controls right to the Upload Form so an item defaults specifically to 'Catalog', 'Production' or 'Acquisitions', and added dynamic tags to store the season Book Version properties.
+- **DATABASE: DB Reset:** Wiped all legacy items from database and prepped a clean, updated Supabase tableset.
+
+---
+
 ## **v2.10.10 - User Logs & Dev Features**
 
 ### **Date:** 2026-02-27

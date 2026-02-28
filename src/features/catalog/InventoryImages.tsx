@@ -238,59 +238,58 @@ const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   return (
     <button
       ref={ref}
-      className="inventory-item-card w-full aspect-[4/3] relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all group"
+      className="inventory-item-card w-full aspect-[4/3] relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20"
       onClick={handleClick}
       title={item.label}
       disabled={isLoading}>
       {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
       {error && <div className="text-red-500">{error}</div>}
-      {imageDataUrl && <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" />}
+      {imageDataUrl && <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />}
       {!isLoading && !imageDataUrl && !error && (
-        <div className="w-1/2 h-1/2 opacity-30 text-[var(--secondary-color)]">
+        <div className="w-1/3 h-1/3 opacity-20 text-[var(--secondary-color)]">
           <OnyxMiniLogo />
         </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-      <div className="absolute inset-0 p-2 flex flex-col justify-between">
-        <div className="flex justify-between items-start">
-          <div
-            className="w-9 h-9 rounded-md flex items-center justify-center font-bold text-black/70 text-sm shadow-sm"
-            style={{ backgroundColor: vendorColor }}
-            title={`ID: ${item.data.itemId}`}>
-            {item.data.itemId}
-          </div>
-          <StatusMarkers data={item.data} />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+
+      {/* Top badges */}
+      <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
+          style={{ backgroundColor: vendorColor }}
+          title={`Vendor: ${item.data.itemId}`}>
+          {item.data.itemId?.split('-')[0] || '?'}
         </div>
-        <div className="w-full text-white text-left text-xs">
-          <div className="flex justify-between items-start">
-            <p className="font-bold truncate text-lg">{item.data.shape}</p>
-            <p className="font-mono text-[10px] opacity-80 shrink-0 ml-2">#{item.data.itemNumber}</p>
+        <StatusMarkers data={item.data} />
+      </div>
+
+      {/* Bottom text block */}
+      <div className="absolute bottom-0 inset-x-0 p-3 pt-8 flex flex-col justify-end text-left pointer-events-none">
+        <div className="flex items-end justify-between mb-1">
+          <p className="font-black text-white text-base leading-tight truncate drop-shadow-md">{item.data.shape || 'Unknown Object'}</p>
+          <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{item.data.itemNumber}</p>
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
+          <p className="truncate uppercase font-medium tracking-wide drop-shadow-md">{item.data.material || 'Mixed Material'} · {item.data.shortDescription || 'Misc'}</p>
+        </div>
+
+        <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">
+          <div className="flex items-center gap-1.5 font-mono text-[9px] text-white/90 shrink-0">
+            <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+            <span>{dimensions ? `${dimensions}` : '—'}</span>
+            <span className="text-white/40 ml-1">{item.data.weightKg ? `${item.data.weightKg}kg` : ''}</span>
           </div>
-          <div className="flex justify-between items-start text-[11px] opacity-80">
-            <p className="truncate">{item.data.material}</p>
-            <div className="flex items-center gap-2 font-mono shrink-0 ml-2">
-              <span>{dimensions ? `${dimensions} cm` : ''}</span>
-              <span>{item.data.weightKg ? `${item.data.weightKg}kg` : ''}</span>
-            </div>
-          </div>
-          <p className="opacity-60 truncate text-[10px] italic my-0.5 h-3">{item.data.description || ''}</p>
-          <div className="flex justify-between items-center text-[9px] font-mono opacity-80 mt-1">
-            <span>AQ: {calculated.bookAqCode}</span>
-            <span>LD: {calculated.bookLandCode}</span>
-          </div>
-          <div className="flex justify-between items-center mt-1">
+          <div className="flex flex-col items-end">
             {item.data.price ? (
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-base text-green-300">${item.data.price}</span>
-                <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
-              </div>
-            ) : <span />}
-            {item.data.color && <div title="Item Color" className="w-6 h-6 rounded-full border border-white/50 shadow-md flex-shrink-0" style={{ background: item.data.color }} />}
+              <span className="font-bold text-[11px] text-[#AEE6F5]">${item.data.price}</span>
+            ) : <span className="text-[9px] text-white/30">NO PRICE</span>}
           </div>
         </div>
       </div>
+
       {isSelectMode && (
-        <div className={`absolute top-2 right-2 w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
+        <div className={`absolute top-3 right-3 w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
           {isSelected && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
         </div>
       )}

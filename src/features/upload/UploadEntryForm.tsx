@@ -72,9 +72,10 @@ export function UploadEntryForm() {
                 quantity: '1',
                 mediaType: 'none',
                 status: 'Catalog',
+                workbook: 'v326',
             });
         }
-    }, []);
+    }, [defaultVendorId, itemData.itemId, setItemData]);
 
     // Fetch vendor-specific inventory docs for autocomplete
     useEffect(() => {
@@ -166,10 +167,10 @@ export function UploadEntryForm() {
                 weight_kg: itemData.weightKg ? Number(itemData.weightKg) : null,
                 width_cm: itemData.widthCm ? Number(itemData.widthCm) : null,
                 height_cm: itemData.heightCm ? Number(itemData.heightCm) : null,
-                length_cm: itemData.lengthCm ? Number(itemData.lengthCm) : null,
                 price_mxn: itemData.price ? Number(itemData.price) : null,
                 quantity: itemData.quantity ? Number(itemData.quantity) : 1,
-                status: 'Catalog',
+                status: itemData.status || 'Catalog',
+                workbook: itemData.workbook || 'v326',
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString()
@@ -200,7 +201,7 @@ export function UploadEntryForm() {
             }
 
             notify('success', '✓ Item saved to inventory!');
-            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Catalog' });
+            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Catalog', workbook: itemData.workbook || 'v326' });
             setMediaFiles([]);
             setTimeout(() => setView('inventory'), 1200);
         } catch (err: any) {
@@ -217,18 +218,52 @@ export function UploadEntryForm() {
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full max-w-2xl mx-auto pb-8">
 
-            {/* ── Row 1: Vendor + Quantity ── */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* ── Row 1: Book & Status ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                    <label className={lbl}>Book (Season)</label>
+                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="e.g. v326" />
+                </div>
+                <div>
+                    <label className={lbl}>Status</label>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {['Catalog', 'Production', 'Acquisitions'].map(s => (
+                            <button
+                                key={s} type="button"
+                                onClick={() => set('status', s)}
+                                className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${itemData.status === s ? 'bg-[var(--main-color)] text-black border-[var(--main-color)] shadow-md' : 'bg-white/3 border-white/10 text-white/40 hover:border-white/30 hover:text-white/80'}`}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Row 2: Vendor + Quantity ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                <div className="flex flex-col h-full justify-start">
                     <label className={lbl}>Vendor</label>
                     {canSelectVendor ? (
-                        <select name="vendorId" value={itemData.vendorId || ''} onChange={handleChange} className={inp}>
-                            {Object.keys(vendors).map(id => (
-                                <option key={id} value={id}>{id}</option>
-                            ))}
-                        </select>
+                        <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar items-center">
+                            {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
+                                const v = vendors[id as keyof typeof vendors];
+                                const isSelected = itemData.vendorId === id;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={id}
+                                        onClick={() => set('vendorId', id)}
+                                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-50 hover:opacity-100 hover:scale-105 saturate-50 hover:saturate-100 ring-1 ring-white/20'}`}
+                                        style={{ backgroundColor: v.color, color: '#000' }}
+                                    >
+                                        {id}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     ) : (
-                        <div className="flex items-center gap-2 bg-white/2 border border-white/6 rounded-xl px-4 py-2.5">
+                        <div className="flex items-center gap-2 bg-white/2 border border-white/6 rounded-xl px-4 py-2.5 w-fit">
                             <svg className="w-3.5 h-3.5 text-white/20"><use href="#lock" /></svg>
                             <span className="text-sm text-white/40">{itemData.vendorId}</span>
                         </div>
