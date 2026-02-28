@@ -2,6 +2,13 @@
 
 All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+---
+
+## [2.10.15] — 2026-02-27
+
+### Fixed
+- **Component Imports:** Fixed a critical scope bug where `useDatabase`, `useTranslation`, and `getStatusClass` were improperly imported or dropped out of scope during the Unified Inventory View initialization.
+- **Card Expansion Typo:** Addressed various minor logic evaluation issues associated with minimized accordion details and visual badges causing crashes during active runtime layout generation.
 
 ---
 
