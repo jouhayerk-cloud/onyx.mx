@@ -4,6 +4,15 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.13 - Logic Syncs**
+
+### **Date:** 2026-02-27
+
+- **UTILS: Mathematical Mappings:** Adjusted `utils.tsx` hardcoded ratios exactly to custom specification. Acquisitions conversion factor set strictly to `/18`.
+- **UTILS: Barcode Render Tool:** Cleaned up and fully integrated a correct substring formatting sequence spanning Vendor initials, Book digits, Item strings, and Landed cipher letters combined cleanly directly across the card UI view components.
+
+---
+
 ## **v2.10.12 - Acquisitions Visual Parity**
 
 ### **Date:** 2026-02-27
