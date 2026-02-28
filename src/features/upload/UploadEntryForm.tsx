@@ -88,10 +88,16 @@ export function UploadEntryForm() {
                     .map(d => d.toJSON())
                     .filter(d => !itemData.vendorId || d.item_id?.startsWith(itemData.vendorId));
                 setVendorDocs(filtered);
+
+                const maxNum = filtered.reduce((max, d) => {
+                    const num = parseInt(d.item_number || '0', 10);
+                    return !isNaN(num) && num > max ? num : max;
+                }, 0);
+                setItemData(prev => ({ ...prev, itemNumber: String(maxNum + 1) }));
             }, 300);
         });
         return () => { sub.unsubscribe(); clearTimeout(timer); };
-    }, [db, itemData.vendorId]);
+    }, [db, itemData.vendorId, setItemData]);
 
     // Build unique suggestion lists from vendor docs
     const suggestions = useMemo(() => {
@@ -158,13 +164,14 @@ export function UploadEntryForm() {
                 : itemData.itemId;
 
             const calculated = calculateCodesAndPrices(
-                { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v326', itemNumber: '1' },
+                { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v326', itemNumber: itemData.itemNumber || '1' },
                 exchangeRate,
                 'v326'
             );
 
             const dbRow = {
                 item_id: finalItemId,
+                item_number: itemData.itemNumber || '1',
                 shape: itemData.shape,
                 material: itemData.material,
                 color: itemData.color,
@@ -247,7 +254,7 @@ export function UploadEntryForm() {
             </div>
 
             {/* ── Row 2: Vendor + Quantity ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div className="flex flex-col h-full justify-start">
                     <label className={lbl}>Vendor</label>
                     {canSelectVendor ? (
@@ -274,6 +281,12 @@ export function UploadEntryForm() {
                             <span className="text-sm text-white/40">{itemData.vendorId}</span>
                         </div>
                     )}
+                </div>
+                <div>
+                    <label className={lbl}>Item # (Auto)</label>
+                    <input type="number" min="1" name="itemNumber"
+                        value={itemData.itemNumber || ''} onChange={handleChange}
+                        className={inpNum} placeholder="1" />
                 </div>
                 <div>
                     <label className={lbl}>Quantity *</label>

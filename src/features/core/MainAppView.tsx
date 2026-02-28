@@ -284,7 +284,7 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#upload"></use></svg>
-                                    <span className="sidebar-list-item-text">New Inventory</span>
+                                    <span className="sidebar-list-item-text">Add</span>
                                 </div>
                             </li>
                         )}
