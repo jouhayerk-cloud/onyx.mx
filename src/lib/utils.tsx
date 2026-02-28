@@ -587,12 +587,12 @@ export async function extractGradientFromMask(
 
 
 export const numberToCypher = (num: number): string => {
-  // Alphabet is stored in VITE_CYPHER_KEY (env, gitignored).
-  // 0=M, 1=O, 2=X, 3=H, 4=E, 5=L, 6=F, 7=A, 8=N, 9=D
-  const key = import.meta.env.VITE_CYPHER_KEY as string || 'MOXHELFAND';
+  // Alphabet Mapping: 0=D, 1=M, 2=O, 3=X, 4=H, 5=E, 6=L, 7=F, 8=A, 9=N
+  // This matches the user requested "phase": 0123456789=DMOXHELFAN
+  const key = import.meta.env.VITE_CYPHER_KEY as string || 'DMOXHELFAN';
   if (!key || key.length < 10) return '—';
 
-  return String(Math.ceil(num))
+  return String(Math.floor(num))
     .split('')
     .map(digit => key[parseInt(digit, 10)] || '')
     .join('');
@@ -644,8 +644,8 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const landedCost = costUsd * 1.4;
   const retailPrice = landedCost * 12;
 
-  const costUsdRounded = Math.ceil(costUsd);
-  const landedCostRounded = Math.ceil(landedCost);
+  const costUsdRounded = Math.floor(costUsd);
+  const landedCostRounded = Math.floor(landedCost);
 
   // Example Target parsing: SU3271XO
   // SU=Vendor, 327=book, 1=vendorItemCount, XO=cypherLandedCode
@@ -661,8 +661,8 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
 
   return {
-    bookLanded: Math.ceil(landedCost).toString(),
-    bookRetail: Math.ceil(retailPrice).toString(),
+    bookLanded: Math.floor(landedCost).toString(),
+    bookRetail: Math.floor(retailPrice).toString(),
     bookAqCode: numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBardcode: newTagId,
