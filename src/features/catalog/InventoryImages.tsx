@@ -281,9 +281,15 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
             <span className="text-white/40 ml-1">{item.data.weightKg ? `${item.data.weightKg}kg` : ''}</span>
           </div>
           <div className="flex flex-col items-end">
-            {item.data.price ? (
-              <span className="font-bold text-[11px] text-[#AEE6F5]">${item.data.price}</span>
-            ) : <span className="text-[9px] text-white/30">NO PRICE</span>}
+            <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <span className="font-mono text-[8px] text-white/40 tracking-widest">{calculated.bookBardcode || 'N/A'}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[7px] text-white/30 uppercase tracking-widest">Retail</span>
+            <span className="font-medium text-[9px] text-green-300">${calculated.bookRetail}</span>
           </div>
         </div>
       </div>
