@@ -147,6 +147,41 @@ export function DatabaseStatsPanel() {
                 <BreakdownBar data={stats.byVendor} title="By Vendor" />
             </div>
             <BreakdownBar data={stats.byCategory} title="By Category" />
+
+            {/* Developer Actions */}
+            <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3 pb-8">
+                <h3 className="text-xs uppercase font-bold tracking-widest text-[var(--main-color)] flex items-center gap-2">
+                    <svg className="w-4 h-4"><use href="#shield" /></svg> Danger Zone
+                </h3>
+                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-sm font-bold text-red-400">Wipe Local Database Cache</p>
+                        <p className="text-xs text-[var(--text-color-secondary)] mt-1">
+                            This will completely destroy your browser's local IndexedDB file segments. The application will immediately hard-refresh and spend significant time rebuilding the cache from the Cloud. Do this only if the database is corrupt or out-of-sync.
+                        </p>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm("Are you SURE you want to drop all local database tables? This will trigger an immediate system restart.")) return;
+                            try {
+                                const dbs = await window.indexedDB.databases();
+                                await Promise.all(
+                                    dbs.filter((d: any) => d.name?.startsWith('onyxdb'))
+                                        .map((d: any) => new Promise<void>(resolve => {
+                                            const req = window.indexedDB.deleteDatabase(d.name!);
+                                            req.onsuccess = () => resolve();
+                                            req.onerror = () => resolve();
+                                        }))
+                                );
+                            } catch (_) { } // Firefox lacks .databases() handling
+                            window.location.reload();
+                        }}
+                        className="button hover:!bg-red-600 !bg-red-500/20 !text-red-300 border border-red-500/50 whitespace-nowrap !py-2"
+                    >
+                        Nuke Cache & Restart
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

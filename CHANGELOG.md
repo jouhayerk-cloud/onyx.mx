@@ -5,6 +5,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.10] — 2026-02-27
+
+### Added
+- **Developer Action - Wipe Cache:** Added a "Nuke Cache & Restart" option located within the Control Tab's Database Stats Panel. This triggers a total deletion of the IndexedDB client segments and forces a hard refresh to pull cloud cache down again for resolving sync desyncs.
+
+### Changed
+- **Activity Tags Redesign:** Real-time metrics inside the User Registry Panel have been refactored to now utilize real-world database inputs:
+  - Added new "Registered" vs "Pending Auth" tags based on active login timestamps.
+  - Tracking system now intercepts auth sign-ins and saves exact `last_active` stamps to `app_users`.
+  - Added real `UploadEntryForm` submit count injection to securely increment `total_submits` on individual catalog pushes.
+
+---
+
 ## [2.10.9] — 2026-02-27
 
 ### Fixed

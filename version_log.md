@@ -4,6 +4,18 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.10 - User Logs & Dev Features**
+
+### **Date:** 2026-02-27
+
+- **UI: Database Dev Wiping:** Inserted a "Nuke Local Cache" command inside the Database module that immediately drops the RxDB local storage mapping and requests a new fetch.
+- **DATABASE: Real-time User Tracking:** Upgraded the visual data components across `UserRegistryPanel`:
+  - `last_submit_at` repurposed completely into `last_active_at` — updates automatically upon user authentication events.
+  - New "Pending Auth" status tracks if an invited user has never yet successfully logged in.
+  - Real counts: `total_submits` now perfectly scales 1:1 automatically from every successful `UploadEntryForm` push.
+
+---
+
 ## **v2.10.9 - Immediate Inventory Sync Update**
 
 ### **Date:** 2026-02-27
