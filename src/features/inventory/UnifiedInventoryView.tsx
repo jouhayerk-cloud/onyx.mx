@@ -120,7 +120,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                             </div>
                             <div className="flex items-center justify-center bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5 pointer-events-auto">
                                 <span className="font-bold text-[11px] text-[#AEE6F5]">
-                                    {showFinancials ? `$${norm.price || 0} MXN` : '***'}
+                                    {showFinancials ? `$${Math.ceil(Number(norm.price || 0))} MXN` : '***'}
                                 </span>
                             </div>
                         </div>
@@ -176,7 +176,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-white/60">Acquisition</span>
-                                    <span className="font-bold text-[#AEE6F5]">{showFinancials ? `$${(parseFloat(String(norm.price || 0)) / exchangeRate).toFixed(2)}` : '***'}</span>
+                                    <span className="font-bold text-[#AEE6F5]">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span>
                                     <span className="text-[8px] font-mono text-white/30">{calculated.bookAqCode}</span>
                                 </div>
                                 <div className="flex flex-col">

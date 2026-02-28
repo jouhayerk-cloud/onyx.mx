@@ -169,7 +169,7 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       <DetailRow label="Description" value={data.description} />
       <DetailRow label="Dimensions" value={dimensions ? `${dimensions} cm` : 'Not specified'} />
       <DetailRow label="Weight" value={data.weightKg ? `${data.weightKg} kg` : 'Not specified'} />
-      <DetailRow label="Price" value={data.price ? `$${data.price} MXN` : 'Not specified'} />
+      <DetailRow label="Price" value={data.price ? `$${Math.ceil(Number(data.price))} MXN` : 'Not specified'} />
       <DetailRow label="Quantity" value={data.quantity} />
       {data.color && (
         <div className="flex items-center gap-2">
