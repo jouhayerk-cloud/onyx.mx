@@ -71,7 +71,7 @@ export function UploadEntryForm() {
                 vendorId: defaultVendorId,
                 quantity: '1',
                 mediaType: 'none',
-                status: 'YES',
+                status: 'Catalog',
             });
         }
     }, []);
@@ -169,18 +169,30 @@ export function UploadEntryForm() {
                 length_cm: itemData.lengthCm ? Number(itemData.lengthCm) : null,
                 price_mxn: itemData.price ? Number(itemData.price) : null,
                 quantity: itemData.quantity ? Number(itemData.quantity) : 1,
-                status: 'YES',
+                status: 'Catalog',
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
             notify('loading', 'Saving to database…');
-            const { error } = await supabase.from('inventory').insert(dbRow);
+            const { data, error } = await supabase.from('inventory').insert(dbRow).select().single();
             if (error) throw error;
 
+            if (db && data) {
+                try {
+                    await db.inventory.upsert({
+                        ...data,
+                        id: String(data.id),
+                        workbook: data.workbook != null ? String(data.workbook) : null
+                    });
+                } catch (rxErr) {
+                    console.error('Local db sync error:', rxErr);
+                }
+            }
+
             notify('success', '✓ Item saved to inventory!');
-            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'YES' });
+            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Catalog' });
             setMediaFiles([]);
             setTimeout(() => setView('inventory'), 1200);
         } catch (err: any) {
