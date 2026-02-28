@@ -619,7 +619,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookRetail: retailPrice.toFixed(2),
     bookAqCode: numberToCypher(costUsdRounded),
     bookLandCode: numberToCypher(landedCostRounded),
-    bookBardcode: `${data.itemId || ''}${data.workbook || workbookPrefix}${data.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
+    bookBardcode: `${data.itemId || ''}${String(data.workbook || workbookPrefix).replace(/v/gi, '')}${data.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
   };
 };
 
