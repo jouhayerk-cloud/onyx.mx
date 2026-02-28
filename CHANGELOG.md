@@ -4,6 +4,20 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [2.10.18] — 2026-02-28
+
+### Added
+- **SKU Tag ID Generation**: Aligned `bookBardcode` logic to the pattern `[VendorPrefix][BookNo][ItemCount][LandedCypher]` (e.g., `SU3261XO`).
+
+### Fixed
+- **Cypher Character Missing**: Added a strict fallback character set (`MOXHELFAND`) to `numberToCypher` in `utils.tsx` to prevent `—` characters when env variables are unset.
+- **Logistics UI Distribution**: Moved the Warehouse, Trucking, and Perspective camera controls into the Trucking module top bar.
+- **Logistics UI Distribution**: Repositioned Max Weight and Crate counter tracking stats to the Trucking module header.
+
+### Refactor
+- Vendor ID prefixes are now strictly sliced to the first 2 characters for tag generation logic.
+- Logistics module Shipping sub-tab now exclusively handles shipment records and registry tracking, with warehouse/truck controls only visible during Trucking.
+
 ## [2.10.17] — 2026-02-27
 
 ### Fixed
