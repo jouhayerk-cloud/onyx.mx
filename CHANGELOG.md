@@ -4,6 +4,13 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [2.10.19] — 2026-02-28
+
+### Fixed
+- **Sidebar Navigation**: Integrated the "Control Center" submenu directly into the main sidebar. Clicking the "Control Center" menu item now navigates directly to the view instead of requiring a submenu selection.
+
+---
+
 ## [2.10.18] — 2026-02-28
 
 ### Added

@@ -273,9 +273,12 @@ export function MainAppView() {
                     </div>
                     <ul className="sidebar-list">
                         {user?.role === 'Developer' && (
-                            <NavItemWithSubmenu viewId="control" label="Control" icon="shield" subItems={[
-                                { id: 'control-main', label: 'Control Center', icon: 'shield', isActive: activeView === 'control', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); } }
-                            ]} />
+                            <li className={`sidebar-list-item ${activeView === 'control' ? 'active' : ''}`} onClick={() => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <svg><use href="#shield"></use></svg>
+                                    <span className="sidebar-list-item-text">Control Center</span>
+                                </div>
+                            </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
