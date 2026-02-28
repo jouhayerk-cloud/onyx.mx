@@ -278,7 +278,12 @@ export function MainAppView() {
                             ]} />
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
-                            <NavItemWithSubmenu viewId="upload" label="New" icon="upload" subItems={uploadSubItems} />
+                            <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <svg><use href="#upload"></use></svg>
+                                    <span className="sidebar-list-item-text">New</span>
+                                </div>
+                            </li>
                         )}
                         <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                             <div className="sidebar-list-item-main">

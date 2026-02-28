@@ -4,6 +4,17 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [2.10.17] — 2026-02-27
+
+### Fixed
+- Sub-menus for "New" entry removed from the global Side Navigation (`MainAppView.tsx`), mapping purely to active route.
+- Dynamic computed values (`book_landed`, `box_land_code`, etc) decoupled from local Supabase `inventory` table inserts crashing standard uploads mapping.
+
+### Refactor
+- Redesigned the Logisitics `PackingModule.tsx` UI to pop the Search & Headers to the very top framing of the module, and stripped hard-coded `bg-black` rendering forcing local themes.
+
+---
+
 ## [2.10.15] — 2026-02-27
 
 ### Fixed
