@@ -207,7 +207,7 @@ export const UnifiedInventoryView = () => {
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
-    const vendorFilter = useAtomValue(inventoryActiveFilterAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(inventoryActiveFilterAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
 
@@ -254,6 +254,11 @@ export const UnifiedInventoryView = () => {
         }).sort((a, b) => (b.data.updatedAt || 0) - (a.data.updatedAt || 0));
     }, [items, statusFilter, vendorFilter, searchTerm]);
 
+    const activeVendors = useMemo(() => {
+        const vendorNames = Array.from(new Set(items.map(item => item.data.itemId?.split('-')[0]).filter(Boolean)));
+        return vendorNames.sort();
+    }, [items]);
+
     const handleExpandCard = (id: string) => {
         setExpandedCardId(prev => prev === id ? null : id);
     };
@@ -261,7 +266,7 @@ export const UnifiedInventoryView = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-4">
             {/* Top Bar for Unified View */}
-            <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0 overflow-x-auto pb-2">
                 <div className="flex bg-black/20 p-1 rounded-xl border border-white/5">
                     {['All', 'Available', 'Production', 'Acquisition'].map(status => (
                         <button
@@ -272,7 +277,33 @@ export const UnifiedInventoryView = () => {
                         </button>
                     ))}
                 </div>
-                <div className="text-xs text-white/40 font-mono my-auto">
+
+                {/* Vendor Filter Pills */}
+                <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 shrink-0 overflow-x-auto w-full sm:w-auto">
+                    <button
+                        className={`px-3 py-1 text-xs font-bold rounded min-w-max transition-all ${vendorFilter === 'All' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/80'}`}
+                        onClick={() => setVendorFilter('All')}>
+                        All Vendors
+                    </button>
+                    {activeVendors.map(vendor => {
+                        const vendorColor = vendors[vendor as keyof typeof vendors]?.color || '#ccc';
+                        return (
+                            <button
+                                key={vendor}
+                                className={`px-2 py-1 mx-0.5 text-[10px] font-black tracking-widest uppercase rounded min-w-max transition-all ${vendorFilter === vendor ? 'opacity-100 shadow-sm border border-black/20' : 'opacity-40 hover:opacity-100'}`}
+                                style={{
+                                    backgroundColor: vendorFilter === vendor ? vendorColor : 'transparent',
+                                    color: vendorFilter === vendor ? 'black' : vendorColor,
+                                    border: vendorFilter !== vendor ? `1px solid ${vendorColor}` : 'none'
+                                }}
+                                onClick={() => setVendorFilter(vendor)}>
+                                {vendor}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="text-xs text-white/40 font-mono my-auto shrink-0 ml-auto">
                     {filteredItems.length} items found
                 </div>
             </div>
