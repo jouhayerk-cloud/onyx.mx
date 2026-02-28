@@ -284,7 +284,7 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#upload"></use></svg>
-                                    <span className="sidebar-list-item-text">New</span>
+                                    <span className="sidebar-list-item-text">New Inventory</span>
                                 </div>
                             </li>
                         )}
@@ -295,10 +295,15 @@ export function MainAppView() {
                             </div>
                         </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
+                            <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <svg><use href="#credit-card"></use></svg>
+                                    <span className="sidebar-list-item-text">Payments</span>
+                                </div>
+                            </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="finance" label="Finance" icon="credit-card" subItems={financeSubItems} />
+                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
                         )}
                     </ul>
                     <div className="sidebar-footer">

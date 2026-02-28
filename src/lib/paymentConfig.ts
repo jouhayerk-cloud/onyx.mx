@@ -23,7 +23,7 @@ export const destinationsConfig: Record<PaymentDestination, {
     },
     [PaymentDestination.Fast_Cash_Wire]: {
         icon: fastCashIcon,
-        name: 'Fast Cash',
+        name: 'Direct Wire',
         calculateCommission: (amount: number) => amount * 0.10 // Placeholder: 10%
     },
 };
