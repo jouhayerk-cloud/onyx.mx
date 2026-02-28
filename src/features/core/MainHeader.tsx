@@ -227,7 +227,7 @@ const LogisticsBar: React.FC = () => {
         <>
             <ModuleBadge emoji="🚚" label="Logistics" color="#F7941D" />
 
-            {subTab === 'shipping' && (
+            {subTab === 'trucking' && (
                 <div className="hidden md:flex items-center gap-2 ml-2">
                     {/* Warehouse organise */}
                     <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
@@ -262,7 +262,7 @@ const LogisticsBar: React.FC = () => {
             )}
 
             <div className="ml-auto">
-                {subTab === 'shipping' && <ShippingStats />}
+                {subTab === 'trucking' && <ShippingStats />}
             </div>
         </>
     );
