@@ -643,12 +643,25 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const costUsdRounded = Math.ceil(costUsd);
   const landedCostRounded = Math.ceil(landedCost);
 
+  // Example Target parsing: SU3271XO
+  // SU=Vendor, 327=book, 1=vendorItemCount, XO=cypherLandedCode
+  const vendorPrefix = String(norm.vendorId || norm.itemId || '').substring(0, 2).toUpperCase();
+  const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
+
+  // Try parsing to vendorItemCount if available - fallback to "1" or padding logic string.
+  const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
+  const itemCountStr = itemCountNumber.toString();
+
+  const cypherString = numberToCypher(landedCostRounded);
+
+  const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
+
   return {
     bookLanded: Math.ceil(landedCost).toString(),
     bookRetail: Math.ceil(retailPrice).toString(),
     bookAqCode: numberToCypher(costUsdRounded),
-    bookLandCode: numberToCypher(landedCostRounded),
-    bookBardcode: `${norm.itemId || ''}${String(norm.workbook || workbookPrefix).replace(/v/gi, '')}${norm.itemNumber || '1'}${numberToCypher(landedCostRounded)}`,
+    bookLandCode: cypherString,
+    bookBardcode: newTagId,
   };
 };
 
