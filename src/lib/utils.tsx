@@ -606,9 +606,10 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     };
   }
 
+  // The user defined exchange rate passed to this function will be 18 as default
   const costUsd = costMxn / exchangeRate;
   const landedCost = costUsd * 1.4;
-  const retailPrice = landedCost * 8;
+  const retailPrice = landedCost * 12;
 
   const costUsdRounded = Math.ceil(costUsd);
   const landedCostRounded = Math.ceil(landedCost);
