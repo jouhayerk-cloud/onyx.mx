@@ -31,7 +31,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = norm.itemId?.split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
-    const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
+
+    const wInch = norm.widthCm ? (parseFloat(String(norm.widthCm)) * 0.393701).toFixed(1) : '';
+    const hInch = norm.heightCm ? (parseFloat(String(norm.heightCm)) * 0.393701).toFixed(1) : '';
+    const lInch = norm.lengthCm ? (parseFloat(String(norm.lengthCm)) * 0.393701).toFixed(1) : '';
+    const dimensionsCm = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
+    const dimensionsInch = [wInch, hInch, lInch].filter(Boolean).join('x');
+    const dimensionsStr = dimensionsCm ? `${dimensionsCm}cm (${dimensionsInch}")` : '';
+
+    const weightKg = norm.weightKg ? parseFloat(String(norm.weightKg)) : null;
+    const weightLbs = weightKg ? (weightKg * 2.20462).toFixed(1) : null;
+    const weightStr = weightKg ? `${weightKg}kg (${weightLbs}lbs)` : '';
+
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm);
 
@@ -71,12 +82,23 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
 
                     {/* Top badges */}
                     <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none z-10">
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
-                            style={{ backgroundColor: vendorColor }}
-                            title={`Vendor: ${vendorPrefix}`}>
-                            {vendorPrefix || '?'}
-                        </div>
+                        {calculated.bookBardcode ? (
+                            <div
+                                className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center gap-1"
+                                style={{ backgroundColor: vendorColor }}
+                                title={`Vendor: ${vendorPrefix}`}>
+                                <span>{vendorPrefix || '?'}</span>
+                                <span className="opacity-40">|</span>
+                                <span>{calculated.bookBardcode}</span>
+                            </div>
+                        ) : (
+                            <div
+                                className="h-6 px-2 rounded flex items-center justify-center font-bold text-black border border-black shadow-lg text-[10px]"
+                                style={{ backgroundColor: vendorColor }}
+                                title={`Vendor: ${vendorPrefix}`}>
+                                {vendorPrefix || '?'}
+                            </div>
+                        )}
                         <div className={`status-dot ${statusClass} shadow-md`} title={`Status: ${item.source}`} />
                     </div>
 
@@ -86,8 +108,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                             <div className="flex items-end justify-between mb-1">
                                 <p className="font-black text-white text-base leading-tight truncate drop-shadow-md">{norm.shape || 'Unknown Object'}</p>
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
-                                <p className="truncate uppercase font-medium tracking-wide drop-shadow-md">{norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}</p>
+                            <div className="flex flex-col gap-0.5 mb-2">
+                                <p className="text-[10px] uppercase font-medium tracking-wide text-white/80 truncate drop-shadow-md">
+                                    {norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}
+                                </p>
+                                {(dimensionsStr || weightStr) && (
+                                    <p className="text-[9px] text-white/60 tracking-wider truncate drop-shadow-md">
+                                        {dimensionsStr} {dimensionsStr && weightStr ? ' · ' : ''} {weightStr}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5 pointer-events-auto">
                                 <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{showFinancials ? (calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-') : '***'}</span>
@@ -103,8 +132,20 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                         <div>
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 className="text-2xl font-black text-white">{norm.shape || 'Unknown Object'}</h3>
-                                    <p className="text-sm text-white/60 font-mono mt-1">#{norm.itemNumber} | {vendorPrefix}</p>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-2xl font-black text-white">{norm.shape || 'Unknown Object'}</h3>
+                                        {calculated.bookBardcode && (
+                                            <span
+                                                className="px-2 py-0.5 text-[10px] font-black tracking-wider rounded border border-black text-black shadow-sm"
+                                                style={{ backgroundColor: vendorColor }}
+                                            >
+                                                TAG: {calculated.bookBardcode}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-white/60 font-mono mt-1">
+                                        Item: #{norm.itemNumber} | Vendor: {vendorPrefix}
+                                    </p>
                                 </div>
                                 <button onClick={handleEdit} className="button secondary !py-1 !px-4 text-xs">Edit</button>
                             </div>
@@ -116,11 +157,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onExpand, exchangeRate, showFi
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase text-white/40 tracking-wider">Dimensions</p>
-                                    <p className="text-sm font-medium">{dimensions || 'N/A'}</p>
+                                    <p className="text-sm font-medium">{dimensionsStr || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase text-white/40 tracking-wider">Weight</p>
-                                    <p className="text-sm font-medium">{norm.weightKg ? `${norm.weightKg}kg` : 'N/A'}</p>
+                                    <p className="text-sm font-medium">{weightStr || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] uppercase text-white/40 tracking-wider">Source</p>

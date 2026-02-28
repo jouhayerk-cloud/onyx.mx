@@ -45,7 +45,9 @@ import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
 import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/Types';
-import { createCurvePath, imageCache, normalizeInventoryData } from '../../lib/utils';
+import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { exchangeRateAtom } from '../../lib/atoms';
+import { vendors } from '../../lib/consts';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -63,7 +65,12 @@ const DetailRow = ({ label, value }: { label: string; value: any }) => {
 
 const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   const { imageUrl, isLoading } = useItemImage(data);
+  const exchangeRate = useAtomValue(exchangeRateAtom);
   const dimensions = [data.widthCm, data.heightCm, data.lengthCm].filter(Boolean).join(' x ');
+
+  const vendorPrefix = data.itemId?.split('-')[0] || '';
+  const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
+  const calculated = calculateCodesAndPrices(data, exchangeRate, '326');
 
   const setWorkflowStep = useSetAtom(workflowStepAtom);
   const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
@@ -142,7 +149,20 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       {isLoading ? <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><LoadingIndicator /></div> :
         imageUrl && <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
       }
-      <DetailRow label="Vendor ID" value={data.itemId} />
+      <div className="flex gap-2">
+        <DetailRow label="Vendor ID" value={data.itemId} />
+        {calculated.bookBardcode && (
+          <div className="ml-auto">
+            <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">TAG ID</p>
+            <span
+              className="px-2 py-0.5 text-[10px] font-black tracking-wider rounded border border-black text-black shadow-sm"
+              style={{ backgroundColor: vendorColor }}
+            >
+              {calculated.bookBardcode}
+            </span>
+          </div>
+        )}
+      </div>
       <DetailRow label="Item #" value={data.itemNumber} />
       <DetailRow label="Shape" value={data.shape} />
       <DetailRow label="Material" value={data.material} />
@@ -400,8 +420,12 @@ export function DetailsPanel() {
         </div>
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
           <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
-            <button className="button grow" onClick={() => setMode('edit')}>Edit Item</button>
-            <button className={`button ${user?.role === 'Developer' ? '!bg-red-600' : '!bg-orange-500'}`} onClick={handleDelete} disabled={isSaving}>
+            <button className="button w-full" onClick={() => setMode('edit')}>Edit Item & Logistics</button>
+          </div>
+        )}
+        {(mode === 'edit' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
+          <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
+            <button className={`button ${user?.role === 'Developer' ? '!bg-red-600' : '!bg-orange-500'} flex-grow`} onClick={handleDelete} disabled={isSaving}>
               {user?.role === 'Developer' ? 'Hard Delete' : 'Request Delete'}
             </button>
           </div>
