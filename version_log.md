@@ -4,6 +4,16 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.8 - UI Optimization & Upload DB Fix**
+
+### **Date:** 2026-02-27
+
+- **UI: Mobile Header Redesign:** Stripped redundant navigational tabs from `MainHeader` to vastly improve real estate on mobile devices.
+- **UI: V4 Updates:** Cleaned up several Tailwind css style warnings.
+- **DATABASE: Upload Entry Fix:** Corrected an issue where uploading new entries with `.upsert({onConflict: 'item_id'})` was failing due to Postgres constraint conflicts. Rewritten to `.insert()` with correctly mapped payload parameters compatible with `inventory`.
+
+---
+
 ## **v2.6.2 - Archive UI Fixes + Cypher Key Security**
 
 ### **Date:** 2026-02-24
