@@ -155,6 +155,32 @@ export function DatabaseStatsPanel() {
                 </h3>
                 <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
+                        <p className="text-sm font-bold text-red-400">Clear Cloud Inventory</p>
+                        <p className="text-xs text-[var(--text-color-secondary)] mt-1">
+                            This will PERMANENTLY delete all records from the 'inventory' table in Supabase. This action cannot be undone.
+                        </p>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (!confirm("Are you SURE you want to DELETE ALL ITEMS from the cloud database?")) return;
+                            if (!confirm("FINAL WARNING: This will erase all inventory data. Proceed?")) return;
+                            try {
+                                const { error } = await supabase.from('inventory').delete().neq('item_id', 'FORCE_DELETE_ALL');
+                                if (error) throw error;
+                                alert("Cloud database cleared.");
+                                fetchStats();
+                            } catch (err: any) {
+                                alert("Failed to clear cloud database: " + err.message);
+                            }
+                        }}
+                        className="button hover:!bg-red-600 !bg-red-500/20 !text-red-300 border border-red-500/50 whitespace-nowrap !py-2"
+                    >
+                        Clear Cloud Database
+                    </button>
+                </div>
+
+                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
                         <p className="text-sm font-bold text-red-400">Wipe Local Database Cache</p>
                         <p className="text-xs text-[var(--text-color-secondary)] mt-1">
                             This will completely destroy your browser's local IndexedDB file segments. The application will immediately hard-refresh and spend significant time rebuilding the cache from the Cloud. Do this only if the database is corrupt or out-of-sync.

@@ -132,16 +132,17 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
   };
 
   const norm = normalizeInventoryData(item.data);
-  const vendorColor = vendors[norm.itemId as keyof typeof vendors]?.color || '#ccc';
+  const vendorPrefix = norm.itemId?.split('-')[0] || '';
+  const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
   const dimensions = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x');
   const statusClass = getStatusClass(norm);
   const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
   return (
     <button
-      className={`w-full h-24 p-2 rounded-lg flex gap-3 text-left transition-all duration-200 relative overflow-hidden inventory-item-card ${isSelected ? 'ring-2 ring-[var(--main-color)]' : ''}`}
+      className={`w-full h-24 p-2 rounded-lg flex gap-3 text-left transition-all duration-200 relative overflow-hidden inventory-item-card ${isSelected ? 'ring-2 ring-(--main-color)' : ''}`}
       onClick={handleClick}
-      title={`${item.data.shape} #${item.data.itemNumber}`}
+      title={`${norm.shape} #${norm.itemNumber}`}
     >
       {/* Background Gradient */}
       <div
@@ -151,10 +152,10 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
 
       {/* Moved ID Tag */}
       <div
-        className="vendor-tag !text-xs !px-2 !py-1 absolute top-0 left-0 !rounded-none rounded-br-lg rounded-tl-lg z-20"
+        className="vendor-tag text-xs! px-2! py-1! absolute top-0 left-0 rounded-none! rounded-br-lg rounded-tl-lg z-20"
         style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}
       >
-        {item.data.itemId}
+        {vendorPrefix}
       </div>
 
       {/* Floating Image */}
@@ -162,14 +163,14 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
         {statusClass && <div className={`status-dot ${statusClass} absolute top-1 right-1 z-10`} title={`Status: ${statusClass}`}></div>}
         {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
         {imageDataUrl ? (
-          <img src={imageDataUrl} alt={item.data.shape} className="max-w-full max-h-full object-contain drop-shadow-lg" />
+          <img src={imageDataUrl} alt={norm.shape} className="max-w-full max-h-full object-contain drop-shadow-lg" />
         ) : (
-          !isLoading && <div className="w-1/2 h-1/2 opacity-30 text-[var(--secondary-color)]"><OnyxMiniLogo /></div>
+          !isLoading && <div className="w-1/2 h-1/2 opacity-30 text-(--secondary-color)"><OnyxMiniLogo /></div>
         )}
       </div>
 
       {/* Info */}
-      <div className="flex flex-col flex-grow min-w-0 relative z-10 justify-between py-1">
+      <div className="flex flex-col grow min-w-0 relative z-10 justify-between py-1">
         <div className="flex justify-between items-start">
           <p className="font-bold text-sm truncate">{norm.shape}</p>
           <span className="font-mono text-[10px] opacity-70 shrink-0 ml-2">#{norm.itemNumber}</span>
@@ -268,7 +269,7 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
             setIsMarketSelect(!isMarketSelect);
             if (isMarketSelect) setMarketSelected([]); // Clear selection when exiting select mode
           }}
-          className={`button secondary !min-h-0 text-xs py-1 ${!isMarketSelect && 'opacity-60'}`}
+          className={`button secondary min-h-0! text-xs py-1 ${!isMarketSelect && 'opacity-60'}`}
         >
           {isMarketSelect ? 'Cancel' : 'Select'}
         </button>
@@ -281,9 +282,9 @@ export function MarketInventoryView({ onItemSelect }: { onItemSelect?: (item: In
         </div>
       )}
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2 space-y-2">
+      <div className="grow overflow-y-auto pr-2 -mr-2 space-y-2">
         {filteredInventory.length === 0 ? (
-          <p className="text-center text-sm text-[var(--text-color-secondary)] pt-4">{t.noInventoryFound}</p>
+          <p className="text-center text-sm text-(--text-color-secondary) pt-4">{t.noInventoryFound}</p>
         ) : (
           filteredInventory.map(item => (
             <MarketItemCard

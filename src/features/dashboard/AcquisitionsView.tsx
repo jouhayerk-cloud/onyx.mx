@@ -109,8 +109,8 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     }, [db, version]);
 
     const uniqueVendors = useMemo(() => {
-        const vendorSet = new Set(allAcquisitions.map(item => item.data.itemId));
-        return Array.from(vendorSet).sort();
+        const vendorSet = new Set(allAcquisitions.map(item => item.data.itemId?.split('-')[0]));
+        return Array.from(vendorSet).filter(Boolean).sort() as string[];
     }, [allAcquisitions]);
 
     const filteredAcquisitions = useMemo(() => {
@@ -128,7 +128,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                 if (data.status !== 'Acquired' && data.status !== 'Acquisitions') return false;
             }
 
-            const vendorMatch = !activeVendor || data.itemId === activeVendor;
+            const vendorMatch = !activeVendor || data.itemId?.startsWith(activeVendor);
             const searchMatch = !searchTerm || Object.values(data).some(value =>
                 String(value).toLowerCase().includes(searchTerm.toLowerCase())
             );
@@ -237,7 +237,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                         <button key={vendor} onClick={() => setActiveVendor(vendor)} className={`tab-button vendor-tab ${activeVendor === vendor ? 'active' : ''}`}
                             style={activeVendor === vendor ? { backgroundColor: vendorColor, color: textColor, borderColor: vendorColor } : {}}>
                             {vendor}
-                            <span className="count" style={activeVendor === vendor ? { backgroundColor: 'rgba(0,0,0,0.2)', color: textColor } : {}}>{allAcquisitions.filter(i => i.data.itemId === vendor).length}</span>
+                            <span className="count" style={activeVendor === vendor ? { backgroundColor: 'rgba(0,0,0,0.2)', color: textColor } : {}}>{allAcquisitions.filter(i => i.data.itemId?.startsWith(vendor)).length}</span>
                         </button>
                     )
                 })}
