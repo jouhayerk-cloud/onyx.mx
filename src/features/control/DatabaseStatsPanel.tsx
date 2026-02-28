@@ -100,12 +100,46 @@ export function DatabaseStatsPanel() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchStats(); }, [fetchStats]);
+    const [delRequests, setDelRequests] = useState<any[]>([]);
+    const [isActing, setIsActing] = useState<string | null>(null);
+
+    const fetchDelRequests = useCallback(async () => {
+        const { data, error } = await supabase
+            .from('inventory')
+            .select('*')
+            .eq('status', 'Pending Deletion');
+        if (!error) setDelRequests(data || []);
+    }, []);
+
+    const handleAuthorize = async (id: string) => {
+        if (!confirm("Hard delete this item permanently?")) return;
+        setIsActing(id);
+        try {
+            const { error } = await supabase.from('inventory').delete().eq('id', id);
+            if (error) throw error;
+            fetchDelRequests();
+            fetchStats();
+        } catch (err: any) { alert(err.message); }
+        setIsActing(null);
+    };
+
+    const handleRestore = async (id: string) => {
+        setIsActing(id);
+        try {
+            const { error } = await supabase.from('inventory').update({ status: 'Catalog' }).eq('id', id);
+            if (error) throw error;
+            fetchDelRequests();
+            fetchStats();
+        } catch (err: any) { alert(err.message); }
+        setIsActing(null);
+    };
+
+    useEffect(() => { fetchStats(); fetchDelRequests(); }, [fetchStats, fetchDelRequests]);
 
     if (loading) return (
-        <div className="flex items-center justify-center h-40 text-[var(--text-color-secondary)]">
+        <div className="flex items-center justify-center h-40 text-(--text-color-secondary)">
             <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-[var(--main-color)] border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-(--main-color) border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm">Loading database stats…</span>
             </div>
         </div>
@@ -117,29 +151,81 @@ export function DatabaseStatsPanel() {
 
     if (!stats) return null;
 
-    const activeCount = stats.byStatus['YES'] || stats.byStatus['Active'] || stats.byStatus['active'] || 0;
+    const activeCount = stats.byStatus['YES'] || stats.byStatus['Active'] || stats.byStatus['active'] || stats.byStatus['Catalog'] || 0;
     const vendorCount = Object.keys(stats.byVendor).length;
 
     return (
         <div className="flex flex-col gap-4">
             {/* Toolbar */}
             <div className="flex items-center justify-between">
-                <p className="text-sm text-[var(--text-color-secondary)]">
+                <p className="text-sm text-(--text-color-secondary)">
                     {lastRefreshed && `Refreshed ${lastRefreshed.toLocaleTimeString()}`}
                 </p>
-                <button onClick={fetchStats} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-[var(--text-color-secondary)] hover:text-white">
-                    <svg className="w-4 h-4"><use href="#refresh" /></svg>
-                    Refresh
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={() => { fetchStats(); fetchDelRequests(); }} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-(--text-color-secondary) hover:text-white">
+                        <svg className="w-4 h-4"><use href="#refresh" /></svg>
+                        Refresh
+                    </button>
+                </div>
             </div>
 
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <StatCard label="Total Items" value={stats.total} color="text-white" />
                 <StatCard label="Active Items" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}% of total` : undefined} />
-                <StatCard label="Vendors" value={vendorCount} color="text-[var(--main-color)]" />
+                <StatCard label="Vendors" value={vendorCount} color="text-(--main-color)" />
                 <StatCard label="Categories" value={Object.keys(stats.byCategory).length} />
             </div>
+
+            {/* Deletion Requests Table */}
+            {delRequests.length > 0 && (
+                <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-5 flex flex-col gap-4 mt-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xs uppercase font-bold tracking-widest text-orange-400 flex items-center gap-2">
+                            Deletion Requests ({delRequests.length})
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                            <thead>
+                                <tr className="border-b border-white/5 text-white/30 uppercase tracking-tighter">
+                                    <th className="pb-2 font-black">Item ID</th>
+                                    <th className="pb-2 font-black">Shape</th>
+                                    <th className="pb-2 font-black">Requested By</th>
+                                    <th className="pb-2 font-black text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {delRequests.map(req => (
+                                    <tr key={req.id} className="hover:bg-white/5">
+                                        <td className="py-2 text-white/80 font-mono">{req.item_id}</td>
+                                        <td className="py-2 text-white/60">{req.shape}</td>
+                                        <td className="py-2 text-white/40">{req.marked_by || 'Unknown'}</td>
+                                        <td className="py-2 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleRestore(req.id)}
+                                                    className="bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-1 rounded text-[10px] hover:bg-green-500/40"
+                                                    disabled={!!isActing}
+                                                >
+                                                    Restore
+                                                </button>
+                                                <button
+                                                    onClick={() => handleAuthorize(req.id)}
+                                                    className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-1 rounded text-[10px] hover:bg-red-600 hover:text-white"
+                                                    disabled={!!isActing}
+                                                >
+                                                    {isActing === req.id ? 'Deleting...' : 'Hard Delete'}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
             {/* Breakdowns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

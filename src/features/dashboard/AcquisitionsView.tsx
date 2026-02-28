@@ -215,21 +215,23 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     const gridTemplateColumns = '40px 50px 30px 128px 3fr 1.5fr';
 
     return (
-        <div className="flex flex-col h-full gap-4">
-            {isStatsVisible && (
-                <div className="dashboard-stats">
-                    <div className="stat-card">
-                        <label htmlFor="exchange-rate">Exchange Rate (MXN to USD)</label>
-                        <input id="exchange-rate" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
-                    </div>
-                    <div className="stat-card">
-                        <label htmlFor="workbook-prefix">Workbook Prefix</label>
-                        <input id="workbook-prefix" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
+        <div className="flex flex-col h-full overflow-hidden bg-(--bg-color-main)">
+            {mode === 'archive' && (
+                <div className="dashboard-stats py-2 px-4 border-b border-white/5 bg-black/20">
+                    <div className="flex flex-wrap gap-4 items-center">
+                        <div className="flex items-center gap-2">
+                            <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest" htmlFor="exchange-rate">MXN/USD</label>
+                            <input id="exchange-rate" className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs w-16" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest" htmlFor="workbook-prefix">Book</label>
+                            <input id="workbook-prefix" className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs w-16 uppercase" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
+                        </div>
                     </div>
                 </div>
             )}
             <div className="dashboard-tabs">
-                <button onClick={() => setActiveVendor(null)} className={`tab-button ${!activeVendor ? 'active' : ''}`}>All<span className="count">{allAcquisitions.length}</span></button>
+                <button onClick={() => setActiveVendor(null)} className={`tab-button ${!activeVendor ? 'active' : ''}`}>All<span className="count">{allAcquisitions.filter(i => i.data.status !== 'Pending Deletion').length}</span></button>
                 {uniqueVendors.map(vendor => {
                     const vendorColor = vendors[vendor as keyof typeof vendors]?.color;
                     const textColor = getTextColorForBg(vendorColor);
@@ -237,26 +239,26 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                         <button key={vendor} onClick={() => setActiveVendor(vendor)} className={`tab-button vendor-tab ${activeVendor === vendor ? 'active' : ''}`}
                             style={activeVendor === vendor ? { backgroundColor: vendorColor, color: textColor, borderColor: vendorColor } : {}}>
                             {vendor}
-                            <span className="count" style={activeVendor === vendor ? { backgroundColor: 'rgba(0,0,0,0.2)', color: textColor } : {}}>{allAcquisitions.filter(i => i.data.itemId?.startsWith(vendor)).length}</span>
+                            <span className="count" style={activeVendor === vendor ? { backgroundColor: 'rgba(0,0,0,0.2)', color: textColor } : {}}>{allAcquisitions.filter(i => i.data.itemId?.startsWith(vendor) && i.data.status !== 'Pending Deletion').length}</span>
                         </button>
                     )
                 })}
             </div>
 
             {isLoading ? (
-                <div className="flex-grow flex items-center justify-center"><LoadingIndicator /></div>
+                <div className="grow flex items-center justify-center"><LoadingIndicator /></div>
             ) : (
                 <div className="dashboard-content">
                     <div className="projects-section">
                         <div className="projects-section-header">
                             <p className="text-sm font-semibold">
                                 {activeVendor ? `${activeVendor} Acquisitions` : 'All Acquisitions'}
-                                <span className="ml-2 text-xs font-normal text-[var(--secondary-text-color)]">({filteredAcquisitions.length} items)</span>
+                                <span className="ml-2 text-xs font-normal text-(--secondary-text-color)">({filteredAcquisitions.length} items)</span>
                             </p>
                             {selectedRows.length > 0 && (
                                 <div className="flex items-center gap-4">
                                     <span className="text-sm font-bold">{selectedRows.length} selected</span>
-                                    <button onClick={handleCommitSelected} className="button secondary !min-h-0 text-xs py-1 px-3" disabled={isSaving}>
+                                    <button onClick={handleCommitSelected} className="button secondary min-h-0! text-xs py-1 px-3" disabled={isSaving}>
                                         {isSaving ? 'Committing...' : 'Commit Selected'}
                                     </button>
                                 </div>

@@ -18,8 +18,9 @@
 // limitations under the License.
 
 import { GoogleGenAI } from '@google/genai';
-import { useAtom, useSetAtom } from 'jotai/react';
+import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import {
   allAnnotationDataAtom,
@@ -44,7 +45,7 @@ import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
 import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/Types';
-import { createCurvePath, imageCache } from '../../lib/utils';
+import { createCurvePath, imageCache, normalizeInventoryData } from '../../lib/utils';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -311,22 +312,36 @@ export function DetailsPanel() {
   };
 
   const handleDelete = async () => {
-    if (!itemData || !itemRow || !window.confirm(t.deleteConfirm(itemData.shape))) return;
+    if (!itemData || !itemRow) return;
+
+    const isDeveloper = user?.role === 'Developer';
+    const confirmMsg = isDeveloper
+      ? `Are you SURE you want to PERMANENTLY delete ${itemData.shape}? This cannot be undone.`
+      : `Are you sure you want to request deletion for ${itemData.shape}? It will be hidden until a developer confirms.`;
+
+    if (!window.confirm(confirmMsg)) return;
 
     setIsSaving(true);
-    const toastId = toast.loading('Deleting...');
+    const toastId = toast.loading(isDeveloper ? 'Deleting...' : 'Marking for deletion...');
     try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'deleteItem', row: itemRow, user })
-      });
-      const result = await response.json();
-      if (result.status !== 'success') throw new Error(result.message);
-      toast.success(t.deleteSuccess, { id: toastId });
+      if (isDeveloper) {
+        const { error } = await supabase.from('inventory').delete().eq('id', itemRow);
+        if (error) throw error;
+        toast.success('Item deleted permanently', { id: toastId });
+      } else {
+        const { error } = await supabase.from('inventory').update({
+          status: 'Pending Deletion',
+          marked_by: user?.email,
+          updated_at: new Date().toISOString()
+        }).eq('id', itemRow);
+        if (error) throw error;
+        toast.success('Deletion requested', { id: toastId });
+      }
+
       setInventoryVersion(v => v + 1);
       setIsOpen(false);
     } catch (error: any) {
-      toast.error(`${t.deleteError} ${error.message}`, { id: toastId });
+      toast.error(`Operation failed: ${error.message}`, { id: toastId });
     } finally {
       setIsSaving(false);
     }
@@ -383,10 +398,12 @@ export function DetailsPanel() {
             {isImageLoading && mode !== 'create' ? <LoadingIndicator /> : renderContent()}
           </div>
         </div>
-        {(mode === 'view' && user?.role === 'Admin') && (
+        {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Developer')) && (
           <div className="p-4 border-t border-[var(--border-color)] shrink-0 flex gap-2">
             <button className="button grow" onClick={() => setMode('edit')}>Edit Item</button>
-            <button className="button !bg-red-500" onClick={handleDelete} disabled={isSaving}>Delete</button>
+            <button className={`button ${user?.role === 'Developer' ? '!bg-red-600' : '!bg-orange-500'}`} onClick={handleDelete} disabled={isSaving}>
+              {user?.role === 'Developer' ? 'Hard Delete' : 'Request Delete'}
+            </button>
           </div>
         )}
         {(mode === 'view' && (user?.role === 'Admin' || user?.role === 'Client' || user?.role === 'Developer') && (!itemData?.status || itemData?.status === 'Catalog')) && (
