@@ -5,6 +5,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [2.10.12] — 2026-02-27
+
+### Fixed
+- **Acquisitions View Bug:** Fixed a missing filter condition that caused `Acquisitions` uploads to vanish from the Acquisitions View because it specifically looked for the word `Acquired`.
+- **Acquisitions Visuals:** Replaced the legacy Acquisitions project-box grid layout with the fully functional, updated `InventoryImageItem` component format inherited from the main Catalog for visual parity across app tabs.
+
+---
+
 ## [2.10.11] — 2026-02-27
 
 ### Changed

@@ -142,7 +142,7 @@ type InventoryImageItemProps = {
   exchangeRate: number;
 };
 
-const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
+export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   item,
   onClick,
   isSelectMode,

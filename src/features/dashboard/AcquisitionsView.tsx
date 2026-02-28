@@ -37,6 +37,7 @@ import { imageCache, fetchImageBatch, getTextColorForBg, numberToCypher, calcula
 import { useNotify, useTranslation, useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { ItemThumbnail } from '../../components/ItemThumbnail';
+import { InventoryImageItem } from '../catalog/InventoryImages';
 
 interface AcquisitionsViewProps {
     mode?: 'live' | 'archive';
@@ -121,7 +122,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                 if (isFinished) return false;
             } else {
                 // In standard acquisitions view, only show acquired items
-                if (data.status !== 'Acquired') return false;
+                if (data.status !== 'Acquired' && data.status !== 'Acquisitions') return false;
             }
 
             const vendorMatch = !activeVendor || data.itemId === activeVendor;
@@ -132,7 +133,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
             const { status, payReq, payDate, dispersal_status } = item.data;
             const statusMatch = (() => {
                 switch (statusFilter) {
-                    case 'RED': return status === 'Acquired' && !dispersal_status;
+                    case 'RED': return (status === 'Acquired' || status === 'Acquisitions') && !dispersal_status;
                     case 'YELLOW': return dispersal_status === 'Requested' || dispersal_status === 'Sent';
                     case 'GREEN': return dispersal_status === 'Dispersed' || !!payDate;
                     case 'ALL':
@@ -204,7 +205,7 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     const getStatusClass = (data: InventoryItemData) => {
         if (data.dispersal_status === 'Dispersed' || data.payDate) return 'GREEN'; // Paid/Dispersed
         if (data.dispersal_status === 'Requested' || data.dispersal_status === 'Sent') return 'YELLOW'; // In Progress
-        if (data.status === 'Acquired') return 'RED'; // Acquired, pending payment
+        if (data.status === 'Acquired' || data.status === 'Acquisitions') return 'RED'; // Acquired, pending payment
         return ''; // Default
     };
 
@@ -259,112 +260,18 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
                             )}
                         </div>
 
-                        <div className="project-boxes">
-                            <div className="project-box-wrapper">
-                                <div className="project-box-header" style={{ gridTemplateColumns, gap: '1rem' }}>
-                                    <div></div>
-                                    <div className="flex items-center justify-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={filteredAcquisitions.length > 0 && selectedRows.length === filteredAcquisitions.length}
-                                            onChange={() => handleToggleAll()}
-                                            disabled={filteredAcquisitions.length === 0}
-                                        />
-                                    </div>
-                                    <div>S</div>
-                                    <div></div>
-                                    <div>Details</div>
-                                    <div className="text-center">Dimensions</div>
-                                </div>
-                            </div>
-                            {filteredAcquisitions.map((item) => {
-                                const vendorColor = vendors[item.data.itemId as keyof typeof vendors]?.color || '#888';
-                                const statusClass = getStatusClass(item.data);
-                                const calculated = calculateCodesAndPrices(item.data, exchangeRate, workbookPrefix);
-                                const weightKg = parseFloat(item.data.weightKg) || 0;
-                                const weightLbs = weightKg * 2.20462;
-                                const widthIn = (parseFloat(item.data.widthCm) || 0) / 2.54;
-                                const heightIn = (parseFloat(item.data.heightCm) || 0) / 2.54;
-                                const lengthIn = (parseFloat(item.data.lengthCm) || 0) / 2.54;
-
-                                return (
-                                    <div key={item.row} className="project-box-wrapper">
-                                        <div className="project-box" style={{ gridTemplateColumns, gap: '1rem', alignItems: 'center' }} onClick={() => setExpandedRow(expandedRow === item.row ? null : item.row)}>
-                                            <div className="flex items-center justify-center">
-                                                {item.data.status !== 'Acquired' && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleGetItem(item); }}
-                                                        className="button !p-2 !min-h-0 !bg-transparent hover:!bg-green-500/20 text-green-400"
-                                                        title="Mark as Acquired"
-                                                    >
-                                                        <svg className="w-5 h-5"><use href="#check-circle"></use></svg>
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedRows.includes(item.row)}
-                                                    onChange={() => handleToggleRow(item.row)}
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-center">
-                                                <div className={`status-dot ${statusClass}`} title={`Status: ${statusClass || 'N/A'}`}></div>
-                                            </div>
-                                            <div className="relative h-20">
-                                                <ItemThumbnail
-                                                    imageUrl={item.data.generatedPngUrl || (item.data.mediaUrls ? item.data.mediaUrls.split(',')[0].trim() : null)}
-                                                    color={item.data.color}
-                                                    shape={item.data.shape}
-                                                    material={item.data.material}
-                                                />
-                                                <div
-                                                    className="vendor-tag !text-xs !px-2 !py-1 absolute bottom-0 right-0 !rounded-none rounded-tl-lg z-10"
-                                                    style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}
-                                                >
-                                                    {item.data.itemId}
-                                                </div>
-                                            </div>
-                                            <div className="box-content-line gap-1 overflow-hidden">
-                                                <div className="codes-panel flex gap-4 text-xs">
-                                                    <div className="flex items-baseline gap-1.5"><strong>Acq:</strong> <span>{calculated.bookAqCode || '-'}</span></div>
-                                                    <div className="flex items-baseline gap-1.5"><strong>Lnd:</strong> <span>{calculated.bookLandCode || '-'}</span></div>
-                                                </div>
-                                                <p className="text-xs truncate italic opacity-60">{item.data.description}</p>
-                                                <p className="font-mono text-base font-bold opacity-90 pt-1" title="Barcode">{calculated.bookBardcode || 'N/A'}</p>
-                                            </div>
-                                            <div className="dimensions-panel">
-                                                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 text-xs">
-                                                    <strong></strong><span className="text-right opacity-70">Metric</span><span className="text-right opacity-70">Imperial</span>
-                                                    <strong>W:</strong> <span className="text-right">{item.data.widthCm || '-'}</span> <span className="text-right">{widthIn > 0 ? `${widthIn.toFixed(1)}"` : '-'}</span>
-                                                    <strong>H:</strong> <span className="text-right">{item.data.heightCm || '-'}</span> <span className="text-right">{heightIn > 0 ? `${heightIn.toFixed(1)}"` : '-'}</span>
-                                                    <strong>L:</strong> <span className="text-right">{item.data.lengthCm || '-'}</span> <span className="text-right">{lengthIn > 0 ? `${lengthIn.toFixed(1)}"` : '-'}</span>
-                                                    <strong>Wt:</strong> <span className="text-right">{weightKg > 0 ? `${weightKg.toFixed(1)}kg` : '-'}</span> <span className="text-right">{weightLbs > 0 ? `${weightLbs.toFixed(1)}lb` : '-'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {expandedRow === item.row && (
-                                            <div className="expanded-details price-panel">
-                                                <div className="price-total price-mxn">
-                                                    <span className="label">Cost (MXN)</span>
-                                                    <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(parseFloat(item.data.price || '0'))}</span>
-                                                </div>
-                                                <div className="price-total price-landed">
-                                                    <span className="label">Landed (USD)</span>
-                                                    <span className="value">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
-                                                </div>
-                                                <div className="price-total price-retail">
-                                                    <span className="label">Retail (USD)</span>
-                                                    <span className="value">{calculated.bookRetail !== '-' ? `$${calculated.bookRetail}` : '-'}</span>
-                                                </div>
-                                                <div className="col-span-full flex justify-end pt-2 border-t border-[var(--border-color)] mt-2">
-                                                    <button onClick={() => handleViewDetails(item)} className="button secondary !min-h-0 text-xs py-1 px-3">View Details</button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            })}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full mt-4">
+                            {filteredAcquisitions.map((item) => (
+                                <InventoryImageItem
+                                    key={item.row}
+                                    item={item}
+                                    onClick={(i) => handleViewDetails(i)}
+                                    isSelectMode={true}
+                                    isSelected={selectedRows.includes(item.row)}
+                                    onToggleSelect={(i) => handleToggleRow(i.row)}
+                                    exchangeRate={exchangeRate}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
