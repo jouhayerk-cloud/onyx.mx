@@ -4,6 +4,15 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v2.10.12 - Acquisitions Visual Parity**
+
+### **Date:** 2026-02-27
+
+- **UI: Visual Parity:** Exported and mapped the new `InventoryImageItem` card component straight into the Acquisitions View, overriding the legacy list structure so the module possesses total visual parity with the Catalog.
+- **DATABASE: Status Sorting:** Handled a bug that prevented `UploadEntryForm` entries classed as "Acquisitions" from rendering. The Acquisitions dashboard query now appropriately filters `status` matches for both `Acquisitions` AND `Acquired`.
+
+---
+
 ## **v2.10.11 - Catalog UI & Form Refactor**
 
 ### **Date:** 2026-02-27
