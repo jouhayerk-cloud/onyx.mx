@@ -588,10 +588,18 @@ export async function extractGradientFromMask(
 
 export const numberToCypher = (num: number): string => {
   // Alphabet is stored in VITE_CYPHER_KEY (env, gitignored).
-  // Target requested format: MOXHELFAND (length 10)
+  // Standard mapping: Digit 1 -> Index 0; Digit 2 -> Index 1; ... Digit 0 -> Index 9.
   const key = import.meta.env.VITE_CYPHER_KEY as string || 'MOXHELFAND';
   if (!key || key.length < 10) return '—';
-  return String(Math.ceil(num)).split('').map(digit => key[parseInt(digit, 10)] || '').join('');
+
+  return String(Math.ceil(num))
+    .split('')
+    .map(digit => {
+      const d = parseInt(digit, 10);
+      const idx = (d === 0) ? 9 : d - 1;
+      return key[idx] || '';
+    })
+    .join('');
 };
 
 export const normalizeInventoryData = (data: any): any => {
