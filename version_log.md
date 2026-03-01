@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.10.22 - Rendering Resolution**
+
+### **Date:** 2026-03-01
+
+- **MEDIA: Image URL Cleaning** — Implemented `getCleanImageUrl` utility to strip internal system tags (e.g., `&tag=Item`) from URLs before rendering in `<img>` tags, preventing broken media holders.
+- **MEDIA: Google Drive Optimization** — Enhanced Drive URL resolution by automatically converting standard share links to the high-reliability `lh3.googleusercontent.com` direct-view format.
+- **FRONTEND: Defensive UI** — Improved null-safety and defensive property extraction in `UnifiedInventoryView`, resolving rendering failures during data sync.
+
 ## **v1.10.21 - Google Drive Media Fix**
 
 ### **Date:** 2026-03-01

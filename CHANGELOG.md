@@ -4,6 +4,12 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [1.10.22] — 2026-03-01
+
+### Fixed
+- **Media Display**: Resolved "broken image" issues in the inventory list view by stripping internal metadata tags and converting Google Drive URLs to high-reliability `lh3.googleusercontent.com` direct-view format.
+- **Rendering Stability**: Added defensive null-handling for item property extraction across `UnifiedInventoryView` and `InventoryImages` components.
+
 ## [1.10.21] — 2026-03-01
 
 ### Fixed

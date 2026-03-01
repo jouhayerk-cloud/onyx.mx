@@ -15,7 +15,7 @@ import {
     userAtom,
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -36,7 +36,7 @@ const inpNum = inp + " font-mono text-center";
 
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode }: any) => {
     const norm = normalizeInventoryData(item.data);
-    const vendorPrefix = norm.itemId?.split('-')[0] || '';
+    const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
 
     const wInch = norm.widthCm ? (parseFloat(String(norm.widthCm)) * 0.393701).toFixed(1) : '';
@@ -52,7 +52,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm);
-    const imageUrl = norm.generatedPngUrl || (norm.mediaUrls ? norm.mediaUrls.split(',')[0].trim() : null);
+    const baseImg = norm?.generatedPngUrl || (norm?.mediaUrls ? String(norm.mediaUrls).split(',')[0].trim() : null);
+    const imageUrl = getCleanImageUrl(baseImg);
 
     const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);
     const setSelectedItemData = useSetAtom(SelectedItemDataAtom);
@@ -147,7 +148,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     return (
         <div className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-500 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/10 shadow-lg ${isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] ring-1 ring-white/10' : 'col-span-1'}`}>
-            <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-[4/5] flex-col'} relative`}>
+            <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/5 flex-col'} relative`}>
                 <div className={`${isExpanded ? 'h-64 md:h-full md:w-2/5' : 'absolute inset-0'} relative overflow-hidden flex items-center justify-center bg-black/50`}>
                     {imageUrl ? <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'}`} /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
                     <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
@@ -167,7 +168,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
                                 <p className="font-black text-white text-base leading-none truncate drop-shadow-md">{norm.shape || 'OBJ'}</p>
-                                <span className="text-[10px] font-black text-(--main-color) font-mono shrink-0">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
+                                <span className="text-[10px] font-black text-(--main-color) font-mono shrink-0">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
                             </div>
                             <div className="flex flex-col gap-0.5">
                                 <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{descLine || 'ITEM DESCRIPTION'}</p>
@@ -215,7 +216,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
                         <div className="mt-6 pt-5 border-t border-white/10 flex gap-3 shrink-0">
                             <button onClick={onToggleExpand} className="button bg-white/5! border border-white/10 grow py-3! text-[10px] font-black uppercase tracking-[0.2em]">Close View</button>
-                            <button onClick={handleEdit} className="button bg-(--main-color)! text-black! grow py-3! text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)]">Edit Item</button>
+                            <button onClick={handleEdit} className="button bg-(--main-color)! text-black! grow py-3! text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">Edit Item</button>
                         </div>
                     </div>
                 )}
@@ -543,7 +544,7 @@ export const UnifiedInventoryView = () => {
                             </div>
                             <div className="pt-8 border-t border-white/10 flex gap-6">
                                 <button type="button" onClick={() => setMode('view')} className="button bg-white/5! border-none! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase opacity-40 hover:opacity-100 transition-all">Abort Changes</button>
-                                <button type="submit" disabled={isSaving} className="button bg-(--main-color)! text-black! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase shadow-[0_0_50px_rgba(var(--main-color-rgb),0.25)] hover:scale-[1.02] active:scale-98 transition-all">{isSaving ? 'UPLOADING...' : 'SAVE MODULE'}</button>
+                                <button type="submit" disabled={isSaving} className="button bg-(--main-color)! text-black! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase shadow-lg hover:scale-[1.02] active:scale-98 transition-all">{isSaving ? 'UPLOADING...' : 'SAVE MODULE'}</button>
                             </div>
                         </form>
                     </div>

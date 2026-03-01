@@ -92,6 +92,31 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
   });
 }
 
+export function getCleanImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const sForm = String(url);
+  // Strip proprietary tags if present (used for internal metadata)
+  let clean = sForm.split('&tag=')[0].trim();
+
+  // Convert Drive URLs to the higher-reliability Direct-View format (lh3)
+  if (clean.includes('drive.google.com')) {
+    try {
+      if (clean.includes('?id=')) {
+        const urlObj = new URL(clean);
+        const id = urlObj.searchParams.get('id');
+        if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+      } else if (clean.includes('/d/')) {
+        const parts = clean.split('/d/');
+        const id = parts[1]?.split('/')[0]?.split('?')[0];
+        if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+      }
+    } catch (e) {
+      console.warn('[Image Utils] Malformed Drive URL:', clean);
+    }
+  }
+  return clean;
+}
+
 export const imageCache = new Map<string, string>();
 
 let imageRequestQueue = new Set<string>();
