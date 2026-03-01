@@ -87,7 +87,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 {vendorPrefix}
                             </div>
                             <span className="text-[10px] font-mono font-bold text-white/40 tracking-tighter">{norm.itemNumber}</span>
-                            <span className="text-xs font-black text-white truncate">{descLine || 'NO DESCRIPTION'}</span>
+                            <span className="text-xs font-black text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1">
                             <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
@@ -99,7 +99,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <div className="hidden md:flex items-center gap-4 grow justify-around border-x border-white/5 px-4 max-w-[500px]">
                         <div className="flex flex-col min-w-[100px]">
                             <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">TAG ID</span>
-                            <span className="text-[10px] font-mono font-bold text-white/80 whitespace-nowrap">{calculated.bookBardcode || 'N/A'}</span>
+                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[4px] text-black w-fit whitespace-nowrap" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span>
                         </div>
                         <div className="flex gap-4">
                             <div className="flex flex-col items-center">
@@ -124,11 +124,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-base font-mono font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={handleEdit} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/edit" title="Edit Item">
-                                <svg className="w-4 h-4 transition-transform group-hover/edit:scale-110"><use href="#edit" /></svg>
+                            <button onClick={handleEdit} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-(--main-color)/10 border border-white/10 rounded-xl text-white/30 hover:text-(--main-color) transition-all group/edit" title="Edit Item">
+                                <svg className="w-3.5 h-3.5 transition-transform group-hover/edit:scale-110"><use href="#edit" /></svg>
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Edit</span>
                             </button>
-                            <button onClick={onToggleExpand} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
-                                <svg className={`w-4 h-4 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
+                            <button onClick={onToggleExpand} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
+                                <svg className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'ID Close' : 'ID Details'}</span>
                             </button>
                         </div>
                     </div>
@@ -167,15 +169,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {!isExpanded && (
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
-                                <p className="font-black text-white text-base leading-none truncate drop-shadow-md">{norm.shape || 'OBJ'}</p>
+                                <p className="font-black text-white text-base leading-none truncate drop-shadow-md">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
                                 <span className="text-[10px] font-black text-(--main-color) font-mono shrink-0">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
                             </div>
                             <div className="flex flex-col gap-0.5">
-                                <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{descLine || 'ITEM DESCRIPTION'}</p>
+                                <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                 <div className="flex items-center justify-between gap-2 mt-1">
                                     <p className="text-[9px] text-white/40 font-mono tracking-tighter truncate">{dimensionsStr || 'NO DIM'}</p>
                                     <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="p-1 px-2 pointer-events-auto bg-white/5 hover:bg-white/10 rounded-md border border-white/5 text-white/30 hover:text-white transition-all">
-                                        <svg className="w-3 h-3"><use href="#arrow-up-left" /></svg>
+                                        <svg className="w-3 h-3"><use href="#menu" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -187,11 +189,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="overflow-y-auto grow pr-2 custom-scrollbar">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="min-w-0">
-                                    <h3 className="text-2xl font-black text-white truncate">{norm.shape || 'OBJ'}</h3>
-                                    <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mt-1 truncate">{descLine}</p>
+                                    <h3 className="text-2xl font-black text-white truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                    <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                     <p className="text-[10px] text-white/20 font-mono mt-2 uppercase tracking-widest">Item: #{norm.itemNumber} | Vendor: {vendorPrefix}</p>
                                 </div>
-                                <button onClick={handleEdit} className="button secondary py-1.5! px-4! text-[10px] font-black tracking-widest uppercase shrink-0"><svg className="w-3 h-3 inline-block mr-1.5"><use href="#edit" /></svg>Edit</button>
+                                <button onClick={onToggleExpand} className="button secondary py-1.5! px-4! text-[10px] font-black tracking-widest uppercase shrink-0"><svg className="w-3 h-3 inline-block mr-1.5"><use href="#x" /></svg>Close</button>
                             </div>
                             <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8">
                                 <div><p className={lbl}>Material</p><p className="text-sm font-medium text-white/80">{norm.material || '—'}</p></div>
@@ -214,10 +216,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 </div>
                             )}
                         </div>
-                        <div className="mt-6 pt-5 border-t border-white/10 flex gap-3 shrink-0">
-                            <button onClick={onToggleExpand} className="button bg-white/5! border border-white/10 grow py-3! text-[10px] font-black uppercase tracking-[0.2em]">Close View</button>
-                            <button onClick={handleEdit} className="button bg-(--main-color)! text-black! grow py-3! text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">Edit Item</button>
-                        </div>
+                        <button onClick={onToggleExpand} className="button bg-white/5! border border-white/10 grow py-3! text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-white/10"><svg className="w-3 h-3 mr-2 opacity-40"><use href="#x" /></svg>Close View</button>
+                        <button onClick={handleEdit} className="button bg-(--main-color)! text-black! grow py-3! text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all hover:scale-[1.02]"><svg className="w-3 h-3 mr-2"><use href="#edit" /></svg>Edit Item</button>
                     </div>
                 )}
             </div>
