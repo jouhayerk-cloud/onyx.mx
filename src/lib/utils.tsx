@@ -44,16 +44,28 @@ export function generateUniqueId(): string {
   return Array.from({ length: 8 }, () => Math.random().toString(36).charAt(2)).join('').toUpperCase();
 }
 
+import { uploadMedia } from './storage';
+
 export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; } | null> {
-  // Placeholder logic for now, matching the shape required by UploadReviewStep
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        fileId: `drive-id-${Date.now()}`,
-        thumbnailUrl: URL.createObjectURL(file)
-      });
-    }, 1000);
-  });
+  try {
+    // Generate a unique path for the file to prevent collisions
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${generateUniqueId()}_${Date.now()}.${fileExt}`;
+    const path = `uploads/${user?.id || 'anonymous'}/${fileName}`;
+
+    console.log(`[Upload] Starting native upload for ${file.name} (${file.type}, ${Math.round(file.size / 1024 / 1024)}MB)`);
+
+    // Use Supabase Storage for native, unconverted binary upload (supports 4K HDR, Raw, etc.)
+    const publicUrl = await uploadMedia(file, path);
+
+    return {
+      fileId: path,
+      thumbnailUrl: publicUrl
+    };
+  } catch (error) {
+    console.error('File upload error:', error);
+    throw error;
+  }
 }
 
 export const imageCache = new Map<string, string>();
@@ -341,9 +353,14 @@ export function createCurvePath(points: { x: number; y: number }[]): string {
   return d;
 }
 
-export const readFileAsDataURL = (file: File, type: 'image' | 'video') =>
-  new Promise<string>((resolve) => {
-    if (type === 'image') {
+/**
+ * Efficiently reads a file for preview or AI analysis.
+ * For previews, useNativePreview (blob URL) is preferred for 4K/HDR.
+ * For AI (Gemini), we use base64 with resizing to stay under token limits.
+ */
+export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = false) =>
+  new Promise<string>((resolve, reject) => {
+    if (forAI && type === 'image') {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = (e) => {
@@ -351,20 +368,24 @@ export const readFileAsDataURL = (file: File, type: 'image' | 'video') =>
         img.src = e.target!.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const scale = Math.min(1, 800 / img.width);
+          const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
           canvas.width = img.width * scale;
           canvas.height = img.height * scale;
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', 0.7));
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
         };
+        img.onerror = () => reject(new Error('AI Image processing failed'));
       };
+      reader.onerror = () => reject(new Error('File reading failed'));
     } else {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target!.result as string);
-      reader.readAsDataURL(file);
+      // For standard previews, especially 4K/HDR, use Native Blob URLs
+      // These are instantaneous and handle HDR/Log/Raw formats natively in supporting browsers
+      resolve(URL.createObjectURL(file));
     }
   });
+
+export const useNativePreview = (file: File) => URL.createObjectURL(file);
 
 // Color Utility Functions
 export const getTextColorForBg = (hexColor: string | undefined): string => {

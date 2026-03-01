@@ -283,10 +283,18 @@ export const UnifiedInventoryView = () => {
         const uploaded: UploadedFile[] = [];
         for (const file of files) {
             const type = file.type.startsWith('video/') ? 'video' : 'image';
-            const dataUrl = await readFileAsDataURL(file, type);
-            uploaded.push({ type, dataUrl, localUrl: dataUrl, originalFile: file });
+            const localUrl = await readFileAsDataURL(file, type);
+            uploaded.push({ type, localUrl, originalFile: file, tag: 'Item' });
         }
         setNewFiles(prev => [...prev, ...uploaded]);
+    };
+
+    const updateFileTag = (i: number, tag: 'Item' | 'Lot') => {
+        setNewFiles(prev => prev.map((f, idx) => idx === i ? { ...f, tag } : f));
+    };
+
+    const removeNewFile = (i: number) => {
+        setNewFiles(prev => prev.filter((_, idx) => idx !== i));
     };
 
     const handleSaveEdit = async (e: React.FormEvent) => {
@@ -300,7 +308,10 @@ export const UnifiedInventoryView = () => {
                 for (const file of newFiles) {
                     if (file.originalFile) {
                         const result = await handleFileUpload(file.originalFile, user);
-                        if (result) uploadedUrls.push(result.thumbnailUrl);
+                        if (result) {
+                            const taggedUrl = `${result.thumbnailUrl}${file.tag ? `&tag=${file.tag}` : ''}`;
+                            uploadedUrls.push(taggedUrl);
+                        }
                     }
                 }
             }
@@ -467,6 +478,68 @@ export const UnifiedInventoryView = () => {
                                 <div><label className={lbl}>W (cm)</label><input type="number" step="0.1" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
                                 <div><label className={lbl}>H (cm)</label><input type="number" step="0.1" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
                                 <div><label className={lbl}>L (cm)</label><input type="number" step="0.1" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
+                            </div>
+
+                            {/* ── Attach Media Section ── */}
+                            <div className="bg-white/2 border border-white/6 rounded-2xl p-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">Attach Media</h3>
+                                    <span className="text-[10px] font-mono text-white/10">{newFiles.length} New Files</span>
+                                </div>
+
+                                <label className="flex items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-2xl py-10 cursor-pointer hover:border-(--main-color)/40 hover:bg-white/2 transition-all group">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <svg className="w-6 h-6 text-white/20 group-hover:text-(--main-color)"><use href="#upload" /></svg>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/30 group-hover:text-white/60">Import New Media</p>
+                                            <p className="text-[8px] text-white/10 mt-1 uppercase tracking-wider">Images & Videos Supported</p>
+                                        </div>
+                                    </div>
+                                    <input type="file" className="sr-only" onChange={handleFileChange} accept="image/*,video/*" multiple />
+                                </label>
+
+                                {newFiles.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {newFiles.map((f, i) => (
+                                            <div key={i} className="flex gap-4 p-4 bg-white/3 border border-white/5 rounded-2xl relative group">
+                                                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-black/40">
+                                                    {f.type === 'video' ? (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <svg className="w-8 h-8 text-white/20"><use href="#video" /></svg>
+                                                        </div>
+                                                    ) : (
+                                                        <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col justify-between grow min-w-0">
+                                                    <div className="flex items-start justify-between">
+                                                        <p className="text-[9px] font-bold text-white/20 truncate pr-2">{f.originalFile?.name}</p>
+                                                        <button type="button" onClick={() => removeNewFile(i)} className="text-white/10 hover:text-red-400 transition-colors shrink-0">
+                                                            <svg className="w-4 h-4"><use href="#x" /></svg>
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex gap-1.5 mt-2">
+                                                        {['Item', 'Lot'].map((tag) => (
+                                                            <button
+                                                                key={tag}
+                                                                type="button"
+                                                                onClick={() => updateFileTag(i, tag as 'Item' | 'Lot')}
+                                                                className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
+                                                                    ${f.tag === tag
+                                                                        ? 'bg-(--main-color) text-black border-(--main-color) shadow-sm'
+                                                                        : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/40'}`}
+                                                            >
+                                                                {tag}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             <div className="pt-8 border-t border-white/10 flex gap-6">
                                 <button type="button" onClick={() => setMode('view')} className="button bg-white/5! border-none! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase opacity-40 hover:opacity-100 transition-all">Abort Changes</button>

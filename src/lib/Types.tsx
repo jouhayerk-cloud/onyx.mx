@@ -126,6 +126,7 @@ export type UploadedFile = {
   localUrl?: string;
   originalFile?: File;
   name?: string;
+  tag?: 'Item' | 'Lot';
 };
 
 export enum PaymentDestination {
