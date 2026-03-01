@@ -150,7 +150,7 @@ export function InventoryForm({
     for (const file of files) {
       const type = file.type.startsWith('image/') ? 'image' : 'video';
       const dataUrl = await readFileAsDataURL(file, type);
-      uploadedFiles.push({ type, dataUrl });
+      uploadedFiles.push({ type, dataUrl, originalFile: file });
     }
     setNewFiles(prev => [...prev, ...uploadedFiles]);
   };

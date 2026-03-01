@@ -37,13 +37,13 @@ const ColorSwatch: React.FC<{ hex: string; name: string }> = ({ hex, name }) => 
     const [copied, setCopied] = useState(false);
     const copy = () => { navigator.clipboard.writeText(hex); setCopied(true); setTimeout(() => setCopied(false), 1500); };
     return (
-        <div onClick={copy} className="flex items-center gap-2 p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] cursor-pointer hover:bg-white/[0.08] transition-all group">
+        <div onClick={copy} className="flex items-center gap-2 p-2 rounded-xl bg-white/4 border border-white/6 cursor-pointer hover:bg-white/8 transition-all group">
             <div className="w-8 h-8 rounded-lg shrink-0 border border-white/10" style={{ backgroundColor: hex }} />
             <div className="min-w-0">
                 <p className="text-[9px] font-black font-mono text-white/80 truncate">{hex}</p>
                 <p className="text-[8px] text-white/30 truncate">{name}</p>
             </div>
-            <span className="ml-auto text-[8px] font-black text-white/20 group-hover:text-[var(--main-color)] transition-colors shrink-0">
+            <span className="ml-auto text-[8px] font-black text-white/20 group-hover:text-(--main-color) transition-colors shrink-0">
                 {copied ? '✓' : 'COPY'}
             </span>
         </div>
@@ -52,7 +52,7 @@ const ColorSwatch: React.FC<{ hex: string; name: string }> = ({ hex, name }) => 
 
 // ─── Result panel ─────────────────────────────────────────────────────────────
 const ResultPanel: React.FC<{ content: string; onCopy?: () => void }> = ({ content, onCopy }) => (
-    <div className="relative bg-black/20 border border-white/[0.06] rounded-xl p-4">
+    <div className="relative bg-black/20 border border-white/6 rounded-xl p-4">
         <pre className="text-xs text-white/70 whitespace-pre-wrap leading-relaxed font-mono overflow-auto max-h-60">{content}</pre>
         {onCopy && (
             <button onClick={onCopy} className="absolute top-2 right-2 text-[8px] font-black text-white/20 hover:text-white/60 tracking-widest uppercase transition-colors">COPY</button>
@@ -95,7 +95,7 @@ const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
         <div className="flex flex-col gap-3">
             <p className="text-[10px] text-white/30">Gemini analyzes the image and fills form fields automatically.</p>
             <button onClick={run} disabled={!imageSrc || loading}
-                className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[var(--main-color)] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
+                className="flex items-center justify-center gap-2 py-2.5 px-5 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
                 {loading ? '⏳ Analyzing…' : '✨ Generate Description'}
             </button>
             {result && !result.error && (
@@ -261,7 +261,7 @@ export function UploadAIPanel() {
             {/* Image picker */}
             <div>
                 <label className={lbl}>Source Image</label>
-                <label className="flex items-center gap-3 border border-dashed border-white/[0.12] rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/[0.02] transition-all">
+                <label className="flex items-center gap-3 border border-dashed border-white/12 rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/2 transition-all">
                     <svg className="w-5 h-5 text-white/20 shrink-0"><use href="#camera" /></svg>
                     <span className="text-xs text-white/30">
                         {imageSrc ? '✓ Image loaded — click to change' : 'Upload image for AI processing'}
@@ -285,15 +285,15 @@ export function UploadAIPanel() {
                     <button key={t.id} onClick={() => setActiveTab(t.id)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all
                             ${activeTab === t.id
-                                ? 'bg-[var(--main-color)]/15 border-[var(--main-color)]/60 text-[var(--main-color)]'
-                                : 'bg-white/[0.03] border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/20'}`}>
+                                ? 'bg-(--main-color)/15 border-(--main-color)/60 text-(--main-color)'
+                                : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'}`}>
                         {t.emoji} {t.label}
                     </button>
                 ))}
             </div>
 
             {/* Panel content */}
-            <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-5">
                 {activeTab === 'describe' && <DescribePanel imageSrc={imageSrc} />}
                 {activeTab === 'detect' && <DetectPanel imageSrc={imageSrc} />}
                 {activeTab === 'colors' && <ColorPanel imageSrc={imageSrc} />}
