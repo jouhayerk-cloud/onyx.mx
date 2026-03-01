@@ -584,12 +584,10 @@ export async function extractGradientFromMask(
   }
 }
 
-
-
 export const numberToCypher = (num: number): string => {
-  // Alphabet Mapping: 0=D, 1=M, 2=O, 3=X, 4=H, 5=E, 6=L, 7=F, 8=A, 9=N
-  // This matches the user requested "phase": 0123456789=DMOXHELFAN
-  const key = import.meta.env.VITE_CYPHER_KEY as string || 'DMOXHELFAN';
+  // Mapping logic used for price encoding.
+  // Key should be a 10-character string corresponding to digits 0-9.
+  const key = import.meta.env.VITE_CYPHER_KEY as string || 'ABCDEFGHIJ';
   if (!key || key.length < 10) return '—';
 
   return String(Math.floor(num))

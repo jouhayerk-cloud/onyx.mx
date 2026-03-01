@@ -29,11 +29,14 @@ import {
     sidebarStateAtom,
     triggerWarehouseOrganizationAtom,
     exchangeRateAtom,
+    InventoryVersionAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
-import { useTranslation } from '../../lib/hooks';
+import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import { OnyxLogo } from '../../components/OnyxLogo';
+import toast from 'react-hot-toast';
+import userIcons from '../../components/userIcons';
 
 // Injected at build time from package.json via vite.config.ts
 declare const __APP_VERSION__: string;
@@ -94,9 +97,9 @@ const SubTabPills: React.FC<{
 );
 
 // ─── Module badge ─────────────────────────────────────────────────────────────
-const ModuleBadge: React.FC<{ emoji: string; label: string; color: string }> = ({ emoji, label, color }) => (
-    <div className="hidden sm:flex items-center gap-1.5 pr-4 border-r border-white/10 shrink-0 truncate">
-        <span className="text-base">{emoji}</span>
+const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => (
+    <div className="hidden sm:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
+        <svg className="w-4 h-4" style={{ color }}><use href={`#${icon}`} /></svg>
         <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
     </div>
 );
@@ -159,7 +162,7 @@ const InventoryBar: React.FC = () => {
 
     return (
         <>
-            <ModuleBadge emoji="📦" label="Inventory" color="#6BCEBB" />
+            <ModuleBadge icon="store" label="Inventory" color="#6BCEBB" />
             <div className="flex items-center gap-2 ml-auto">
                 {/* Admin vendor filter chips */}
                 {user?.role !== 'Client' && vendorIds.length > 2 && (
@@ -202,7 +205,7 @@ const FinanceBar: React.FC = () => {
 
     return (
         <>
-            <ModuleBadge emoji="💳" label="Finance" color="#00AEEF" />
+            <ModuleBadge icon="credit-card" label="Finance" color="#00AEEF" />
             <div className="ml-auto flex items-center gap-3">
                 <div className="hidden md:flex flex-col items-end">
                     <span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
@@ -225,7 +228,7 @@ const LogisticsBar: React.FC = () => {
 
     return (
         <>
-            <ModuleBadge emoji="🚚" label="Logistics" color="#F7941D" />
+            <ModuleBadge icon="truck" label="Logistics" color="#F7941D" />
 
             {subTab === 'trucking' && (
                 <div className="hidden md:flex items-center gap-2 ml-2">
@@ -272,7 +275,7 @@ const UploadBar: React.FC = () => {
     const tab = useAtomValue(uploadTabAtom);
     return (
         <>
-            <ModuleBadge emoji="⬆" label="Upload" color="#8DC63F" />
+            <ModuleBadge icon="upload" label="Upload" color="#8DC63F" />
             <div className="flex items-center gap-1">
                 <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
                     ${tab === 'entry' ? 'bg-[#8DC63F] text-black' : 'text-white/25'}`}>
@@ -290,7 +293,7 @@ const UploadBar: React.FC = () => {
 
 const ControlBar: React.FC = () => (
     <>
-        <ModuleBadge emoji="🛡" label="Control Center" color="#a78bfa" />
+        <ModuleBadge icon="shield" label="Control" color="#a78bfa" />
         <div className="ml-auto">
             <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
         </div>
@@ -304,6 +307,17 @@ export function MainHeader() {
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
 
     const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
+
+    const user = useAtomValue(userAtom);
+    const logout = useLogout();
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+
+    const handleRefresh = () => {
+        setInventoryVersion(v => v + 1);
+        toast.success("Synchronizing Database...", { icon: '🔄' });
+    };
+
+    const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
         <div className="h-14 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-[var(--main-header-bg)]">
@@ -323,6 +337,29 @@ export function MainHeader() {
                 {(activeView === 'create' || !activeView) && (
                     <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Onyx.mx</span>
                 )}
+            </div>
+
+            {/* User Info & Actions */}
+            <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
+                <div className="hidden lg:flex flex-col items-end">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5">Welcome back,</span>
+                    <span className="text-[11px] font-black text-white leading-none capitalize">{user?.id || 'User'}</span>
+                </div>
+
+                {UserIcon && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-white/5 border border-white/10 shrink-0">
+                        <UserIcon className="w-full h-full" />
+                    </div>
+                )}
+
+                <div className="flex items-center gap-1">
+                    <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all" title="Refresh Sync">
+                        <svg className="w-3.5 h-3.5"><use href="#refresh" /></svg>
+                    </button>
+                    <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-red-400 transition-all" title="Logout Session">
+                        <svg className="w-3.5 h-3.5"><use href="#logout" /></svg>
+                    </button>
+                </div>
             </div>
         </div>
     );

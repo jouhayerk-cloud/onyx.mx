@@ -4,6 +4,24 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [2.10.20] — 2026-02-28
+
+### Added
+- **Dynamic UX Header**: Added a "Welcome back, [User]" title and user avatar icon to the Main Header.
+- **Header Actions**: Integrated a manual **Database Refresh** button and a dedicated **Logout** button.
+- **Scrollable Items Window**: Refactored the Inventory and Edit overlays to ensure full scrollability, preventing layout clipping.
+
+### Refactor
+- **List View Expansion**: Added a secondary informative row to the list items, displaying Landed, Retail, Source, and Material data upon card expansion.
+- **Unified Icons**: Standardized the app's module icons with a single-line "Store" style across the sidebar and top bar.
+- **Redesigned Grid Cards**: Updated the card's expansion icon to a modern arrow-up-left style and added view mode (Grid/List) labels.
+
+### Fixed
+- **Status Filtering**: Corrected the "Available" status filter to only show items explicitly marked as available.
+- **Layout Overflow**: Fixed the items list window not scrolling when too many items were present.
+
+---
+
 ## [2.10.19] — 2026-02-28
 
 ### Fixed
@@ -17,7 +35,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - **SKU Tag ID Generation**: Aligned `bookBardcode` logic to the pattern `[VendorPrefix][BookNo][ItemCount][LandedCypher]` (e.g., `SU3261XO`).
 
 ### Fixed
-- **Cypher Character Missing**: Added a strict fallback character set (`MOXHELFAND`) to `numberToCypher` in `utils.tsx` to prevent `—` characters when env variables are unset.
+- **Cypher Mapping**: Updated the security cypher logic in `utils.tsx` with a strict fallback character set to prevent `—` characters when env variables are unset.
 - **Logistics UI Distribution**: Moved the Warehouse, Trucking, and Perspective camera controls into the Trucking module top bar.
 - **Logistics UI Distribution**: Repositioned Max Weight and Crate counter tracking stats to the Trucking module header.
 
@@ -62,7 +80,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [2.10.13] — 2026-02-27
 
 ### Fixed
-- **Pricing & Codes (utils.tsx):** Explicitly updated mathematical conversion schemas based on exact specification logic for US/MX acquisitions mapping.
+- **Pricing & Codes (utils.tsx)**: Updated mathematical conversion schemas and security cypher mapping for US/MX acquisitions.
 - **SKU Tag Formatter:** Completely revised logic parsing to correctly concatenate all custom vendor string variants together seamlessly (e.g. `SU3271XO`).
 
 ---
