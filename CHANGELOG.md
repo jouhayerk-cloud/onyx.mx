@@ -4,6 +4,12 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [1.10.23] — 2026-03-01
+
+### Fixed
+- **Media Performance**: Optimized Grid and List views to use direct browser image loading instead of base64 proxying. This resolves timeouts and memory issues when displaying 4K/HDR images.
+- **Improved Drive Integration**: Switched Drive image resolution to `lh3.googleusercontent.com` format, which reliably bypasses Google's "Virus Scan" interruption page.
+
 ## [1.10.22] — 2026-03-01
 
 ### Fixed

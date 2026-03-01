@@ -92,28 +92,39 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
   });
 }
 
+/**
+ * Extracts the file ID from a Google Drive URL in various formats.
+ */
+export function extractFileId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const sForm = String(url);
+  // Pattern to find the Google Drive ID
+  const patterns = [
+    /\/d\/([a-zA-Z0-9_-]{25,})/,
+    /[?&]id=([a-zA-Z0-9_-]{25,})/,
+    /\/file\/d\/([a-zA-Z0-9_-]{25,})/
+  ];
+
+  for (const p of patterns) {
+    const m = sForm.match(p);
+    if (m && m[1]) return m[1];
+  }
+  return null;
+}
+
 export function getCleanImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const sForm = String(url);
   // Strip proprietary tags if present (used for internal metadata)
   let clean = sForm.split('&tag=')[0].trim();
 
-  // Convert Drive URLs to the higher-reliability Direct-View format (lh3)
-  if (clean.includes('drive.google.com')) {
-    try {
-      if (clean.includes('?id=')) {
-        const urlObj = new URL(clean);
-        const id = urlObj.searchParams.get('id');
-        if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-      } else if (clean.includes('/d/')) {
-        const parts = clean.split('/d/');
-        const id = parts[1]?.split('/')[0]?.split('?')[0];
-        if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-      }
-    } catch (e) {
-      console.warn('[Image Utils] Malformed Drive URL:', clean);
-    }
+  // Normalize Drive URLs to the higher-reliability Direct-View format (lh3)
+  const fileId = extractFileId(clean);
+  if (fileId && clean.toLowerCase().includes('drive.google.com')) {
+    // lh3 is generally more reliable than uc?export=view for direct embedding in <img> tags
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
+
   return clean;
 }
 
