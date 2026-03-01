@@ -72,31 +72,44 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     if (viewMode === 'list') {
         return (
-            <div className="flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 rounded-xl transition-all group">
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10">
-                    {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
-                </div>
-                <div className="grow min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono text-white/40">{vendorPrefix}-{norm.itemNumber}</span>
-                        <span className="text-xs font-black text-white truncate">{descLine || 'NO DESCRIPTION'}</span>
+            <div className="flex flex-col gap-1">
+                <div className={`flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 rounded-xl transition-all group ${isExpanded ? 'border-(--main-color)/30 bg-black/40' : ''}`}>
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10">
+                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-[9px] text-white/20 uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
-                        <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500' : statusClass === 'YELLOW' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                    <div className="grow min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-white/40">{vendorPrefix}-{norm.itemNumber}</span>
+                            <span className="text-xs font-black text-white truncate">{descLine || 'NO DESCRIPTION'}</span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-[9px] text-white/20 uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500' : statusClass === 'YELLOW' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 px-2">
+                        <span className="text-xs font-mono font-bold text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
+                        <div className="flex gap-1">
+                            <button onClick={handleEdit} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Edit">
+                                <svg className="w-3.5 h-3.5"><use href="#edit" /></svg>
+                            </button>
+                            <button onClick={onToggleExpand} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Expand">
+                                <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><use href="#chevron-down" /></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 px-2">
-                    <span className="text-xs font-mono font-bold text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
-                    <div className="flex gap-1">
-                        <button onClick={handleEdit} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Edit">
-                            <svg className="w-3.5 h-3.5"><use href="#edit" /></svg>
-                        </button>
-                        <button onClick={onToggleExpand} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Expand">
-                            <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><use href="#chevron-down" /></svg>
-                        </button>
+                {isExpanded && (
+                    <div className="ml-16 mr-2 p-4 bg-white/[0.02] border-x border-b border-white/5 rounded-b-xl grid grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-in-from-top-2 duration-300">
+                        <div><p className={lbl}>Material</p><p className="text-[10px] text-white/60">{norm.material || '—'}</p></div>
+                        <div><p className={lbl}>Status</p><p className="text-[10px] text-white/60 capitalize">{norm.status}</p></div>
+                        <div><p className={lbl}>Source</p><p className="text-[10px] text-white/60 capitalize">{item.source}</p></div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col"><span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Landed</span><span className="text-xs font-black text-yellow-300/80 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
+                            <div className="flex flex-col"><span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Retail</span><span className="text-xs font-black text-green-400/80 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     }
@@ -130,7 +143,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div className="flex items-center justify-between gap-2 mt-1">
                                     <p className="text-[9px] text-white/40 font-mono tracking-tighter truncate">{dimensionsStr || 'NO DIM'}</p>
                                     <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="p-1 px-2 pointer-events-auto bg-white/5 hover:bg-white/10 rounded-md border border-white/5 text-white/30 hover:text-white transition-all">
-                                        <svg className="w-3 h-3"><use href="#maximize" /></svg>
+                                        <svg className="w-3 h-3"><use href="#arrow-up-left" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -317,7 +330,7 @@ export const UnifiedInventoryView = () => {
     const filteredItems = useMemo(() => {
         return items.filter(item => {
             if (statusFilter === 'Available') {
-                if (item.source === 'production' || item.data.status === 'Shipped' || item.data.status === 'Archive' || item.data.status === 'Production') return false;
+                if (item.data.status !== 'Available') return false;
             } else if (statusFilter === 'Acquisition') {
                 if (!['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status)) return false;
             } else if (statusFilter === 'Production') {
@@ -346,8 +359,14 @@ export const UnifiedInventoryView = () => {
                     ))}
                 </div>
                 <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 shrink-0">
-                    <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}><svg className="w-4 h-4"><use href="#layout" /></svg></button>
-                    <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}><svg className="w-4 h-4"><use href="#list" /></svg></button>
+                    <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
+                        <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
+                        <span className="text-[8px] font-black uppercase tracking-widest hidden sm:inline">Grid</span>
+                    </button>
+                    <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
+                        <svg className="w-4 h-4"><use href="#list-bullet" /></svg>
+                        <span className="text-[8px] font-black uppercase tracking-widest hidden sm:inline">List</span>
+                    </button>
                 </div>
                 <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 overflow-x-auto grow custom-scrollbar no-scrollbar">
                     <button onClick={() => setVendorFilter('All')} className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 rounded transition-all ${vendorFilter === 'All' ? 'bg-white/10 text-white' : 'hover:text-white'}`}>ALL</button>
@@ -359,11 +378,31 @@ export const UnifiedInventoryView = () => {
                 <div className="text-[10px] font-mono text-white/15 uppercase tracking-[0.3em] shrink-0 font-black">{filteredItems.length} ITEMS</div>
             </div>
 
-            <div className="grow h-full overflow-y-auto p-4 pr-2 -mr-2 custom-scrollbar glass-panel shadow-2xl">
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6" : "flex flex-col gap-3"}>
-                    {isLoading ? <div className="col-span-full h-64 flex items-center justify-center opacity-40"><LoadingIndicator /></div> : filteredItems.length === 0 ? <div className="col-span-full h-64 flex items-center justify-center text-[10px] font-black uppercase tracking-[0.3em] text-white/10">No items found</div> : filteredItems.map(item => (
-                        <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCardId === item.row} onToggleExpand={() => setExpandedCardId(prev => prev === item.row ? null : item.row)} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} />
-                    ))}
+            <div className="grow min-h-0 overflow-hidden glass-panel shadow-2xl rounded-3xl m-2">
+                <div className="h-full overflow-y-auto p-6 custom-scrollbar scroll-smooth">
+                    <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
+                        {isLoading ? (
+                            <div className="col-span-full h-64 flex items-center justify-center opacity-40">
+                                <LoadingIndicator />
+                            </div>
+                        ) : filteredItems.length === 0 ? (
+                            <div className="col-span-full h-64 flex items-center justify-center text-[10px] font-black uppercase tracking-[0.3em] text-white/10">
+                                No items found
+                            </div>
+                        ) : (
+                            filteredItems.map(item => (
+                                <UnifiedInventoryCard
+                                    key={item.row}
+                                    item={item}
+                                    isExpanded={expandedCardId === item.row}
+                                    onToggleExpand={() => setExpandedCardId(prev => prev === item.row ? null : item.row)}
+                                    exchangeRate={exchangeRate}
+                                    showFinancials={showFinancials}
+                                    viewMode={viewMode}
+                                />
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 

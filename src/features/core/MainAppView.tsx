@@ -290,7 +290,7 @@ export function MainAppView() {
                         )}
                         <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                             <div className="sidebar-list-item-main">
-                                <svg><use href="#package"></use></svg>
+                                <svg><use href="#store"></use></svg>
                                 <span className="sidebar-list-item-text">Inv</span>
                             </div>
                         </li>
