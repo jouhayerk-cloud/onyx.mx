@@ -247,8 +247,8 @@ export function UploadAIPanel() {
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0];
         if (!f) return;
-        const url = await readFileAsDataURL(f, 'image');
-        setImageSrc(url);
+        const dataUrl = await readFileAsDataURL(f, 'image', true);
+        setImageSrc(dataUrl);
     };
 
     return (

@@ -124,10 +124,14 @@ export function UploadEntryForm() {
         const uploaded: UploadedFile[] = [];
         for (const file of files) {
             const type = file.type.startsWith('video/') ? 'video' : 'image';
-            const dataUrl = await readFileAsDataURL(file, type);
-            uploaded.push({ type, dataUrl, localUrl: dataUrl, originalFile: file });
+            const localUrl = await readFileAsDataURL(file, type);
+            uploaded.push({ type, localUrl, originalFile: file, tag: 'Item' });
         }
         setMediaFiles(prev => [...prev, ...uploaded]);
+    };
+
+    const updateFileTag = (i: number, tag: 'Item' | 'Lot') => {
+        setMediaFiles(prev => prev.map((f, idx) => idx === i ? { ...f, tag } : f));
     };
 
     const removeFile = (i: number) =>
@@ -146,13 +150,14 @@ export function UploadEntryForm() {
             let uploadedUrls: string[] = [];
             let driveIds: string[] = [];
 
-            if (mediaFiles.length > 0 && itemData.mediaType !== 'none') {
+            if (mediaFiles.length > 0) {
                 notify('loading', `Uploading ${mediaFiles.length} file(s)…`);
                 for (const file of mediaFiles) {
                     if (file.originalFile) {
                         const result = await handleFileUpload(file.originalFile, user);
                         if (result) {
-                            uploadedUrls.push(result.thumbnailUrl);
+                            const taggedUrl = `${result.thumbnailUrl}${file.tag ? `&tag=${file.tag}` : ''}`;
+                            uploadedUrls.push(taggedUrl);
                             driveIds.push(result.fileId);
                         }
                     }
@@ -296,46 +301,63 @@ export function UploadEntryForm() {
                 </div>
             </div>
 
-            {/* ── Media type picker ── */}
-            <div>
-                <label className={lbl}>Media <span className="text-white/20 normal-case tracking-normal">(opt)</span></label>
-                <div className="flex gap-2 flex-wrap">
-                    {MEDIA_TYPES.map(m => (
-                        <button key={m.id} type="button"
-                            onClick={() => { set('mediaType', m.id); if (m.id === 'none') setMediaFiles([]); }}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all
-                                ${itemData.mediaType === m.id
-                                    ? 'bg-(--main-color)/15 border-(--main-color)/60 text-(--main-color)'
-                                    : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'}`}>
-                            <svg className="w-3.5 h-3.5"><use href={`#${m.icon}`} /></svg>{m.label}
-                        </button>
-                    ))}
+            {/* ── Media Upload Section ── */}
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <label className={lbl}>Media Attachments</label>
+                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">{mediaFiles.length} Files</span>
                 </div>
 
-                {/* File input — only when media type is not 'none' */}
-                {needsFile && (
-                    <div className="mt-3">
-                        <label className="flex items-center gap-3 border border-dashed border-white/12 rounded-xl px-4 py-3 cursor-pointer hover:border-white/25 hover:bg-white/2 transition-all">
-                            <svg className="w-5 h-5 text-white/20 shrink-0"><use href="#upload" /></svg>
-                            <span className="text-xs text-white/30">
-                                {itemData.mediaType === 'video' ? 'Upload vid' : 'Upload pic'}
-                                {mediaFiles.length > 0 && <span className="ml-2 text-(--main-color) font-black">{mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} sel</span>}
-                            </span>
-                            <input type="file" className="sr-only" onChange={handleFileChange}
-                                accept={itemData.mediaType === 'video' ? 'video/*' : 'image/*'}
-                                multiple={itemData.mediaType !== 'single' && itemData.mediaType !== 'video'} />
-                        </label>
-                        {mediaFiles.length > 0 && (
-                            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                                {mediaFiles.map((f, i) => (
-                                    <div key={i} className="relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border border-white/10 group">
-                                        <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
-                                        <button type="button" onClick={() => removeFile(i)}
-                                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-lg transition-opacity">✕</button>
-                                    </div>
-                                ))}
+                <div className="flex gap-3 items-center">
+                    <label className="flex-1 flex items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-xl py-8 cursor-pointer hover:border-[var(--main-color)]/40 hover:bg-white/2 transition-all group">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <svg className="w-5 h-5 text-white/40 group-hover:text-[var(--main-color)]"><use href="#upload" /></svg>
                             </div>
-                        )}
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white/25 group-hover:text-white/60">Attach Media (Images / Video)</span>
+                        </div>
+                        <input type="file" className="sr-only" onChange={handleFileChange} accept="image/*,video/*" multiple />
+                    </label>
+                </div>
+
+                {mediaFiles.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                        {mediaFiles.map((f, i) => (
+                            <div key={i} className="flex gap-4 p-3 bg-white/3 border border-white/5 rounded-xl group relative">
+                                <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                                    {f.type === 'video' ? (
+                                        <div className="w-full h-full bg-black flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-white/40"><use href="#video" /></svg>
+                                        </div>
+                                    ) : (
+                                        <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                </div>
+                                <div className="flex flex-col justify-between grow">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-bold text-white/30 truncate max-w-[120px]">{f.originalFile?.name}</span>
+                                        <button type="button" onClick={() => removeFile(i)} className="text-white/20 hover:text-red-400 transition-colors">
+                                            <svg className="w-3.5 h-3.5"><use href="#x" /></svg>
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-1.5 mt-1">
+                                        {['Item', 'Lot'].map((tag) => (
+                                            <button
+                                                key={tag}
+                                                type="button"
+                                                onClick={() => updateFileTag(i, tag as 'Item' | 'Lot')}
+                                                className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
+                                                    ${f.tag === tag
+                                                        ? 'bg-(--main-color) text-black border-(--main-color)'
+                                                        : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'}`}
+                                            >
+                                                {tag}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

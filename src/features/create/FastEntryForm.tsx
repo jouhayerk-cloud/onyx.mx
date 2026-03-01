@@ -80,7 +80,7 @@ export function FastEntryForm() {
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const dataUrl = await readFileAsDataURL(file, 'image');
+            const dataUrl = await readFileAsDataURL(file, 'image', true);
             setImageSrc(dataUrl);
             setActiveInput('shape'); // Auto-advance after image upload
         }
