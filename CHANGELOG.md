@@ -4,7 +4,7 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
-## [2.10.20] — 2026-02-28
+## [1.10.20] — 2026-02-28 (RTM)
 
 ### Added
 - **Dynamic UX Header**: Added a "Welcome back, [User]" title and user avatar icon to the Main Header.
