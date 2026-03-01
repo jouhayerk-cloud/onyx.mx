@@ -156,9 +156,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
                     <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none z-10">
                         {calculated.bookBardcode ? (
-                            <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center gap-1" style={{ backgroundColor: vendorColor }}>
-                                <span>{vendorPrefix || '?'}</span>
-                                <span className="opacity-40">|</span>
+                            <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center" style={{ backgroundColor: vendorColor }}>
                                 <span>{calculated.bookBardcode}</span>
                             </div>
                         ) : (
@@ -175,7 +173,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="flex flex-col gap-0.5">
                                 <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                 <div className="flex items-center justify-between gap-2 mt-1">
-                                    <p className="text-[9px] text-white/40 font-mono tracking-tighter truncate">{dimensionsStr || 'NO DIM'}</p>
+                                    <div className="flex flex-col">
+                                        <p className="text-[10px] font-black text-white/60 font-mono tracking-tight uppercase">{dimensionsStr || 'NO DIM'}</p>
+                                        <div className="flex gap-2 mt-0.5">
+                                            <span className="text-[8px] font-bold text-(--main-color) font-mono">AQ: {calculated.bookAqCode}</span>
+                                            <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
+                                        </div>
+                                    </div>
                                     <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="p-1 px-2 pointer-events-auto bg-white/5 hover:bg-white/10 rounded-md border border-white/5 text-white/30 hover:text-white transition-all">
                                         <svg className="w-3 h-3"><use href="#menu" /></svg>
                                     </button>
@@ -191,7 +195,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div className="min-w-0">
                                     <h3 className="text-2xl font-black text-white truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                     <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
-                                    <p className="text-[10px] text-white/20 font-mono mt-2 uppercase tracking-widest">Item: #{norm.itemNumber} | Vendor: {vendorPrefix}</p>
+                                    <div className="flex gap-4 mt-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">AQ Code</span>
+                                            <span className="text-sm font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
+                                        </div>
+                                        <div className="flex flex-col border-l border-white/10 pl-4">
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">LD Code</span>
+                                            <span className="text-sm font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <button onClick={onToggleExpand} className="button secondary py-1.5! px-4! text-[10px] font-black tracking-widest uppercase shrink-0"><svg className="w-3 h-3 inline-block mr-1.5"><use href="#x" /></svg>Close</button>
                             </div>
