@@ -174,8 +174,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                 <div className="flex items-center justify-between gap-2 mt-1">
                                     <div className="flex flex-col">
-                                        <p className="text-[10px] font-black text-white/60 font-mono tracking-tight uppercase">{dimensionsStr || 'NO DIM'}</p>
-                                        <div className="flex gap-2 mt-0.5">
+                                        <p className="text-[11px] font-black text-white/60 font-mono tracking-tight uppercase leading-none mb-1">{dimensionsStr || 'NO DIM'}</p>
+                                        <div className="flex gap-2">
                                             <span className="text-[8px] font-bold text-(--main-color) font-mono">AQ: {calculated.bookAqCode}</span>
                                             <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
                                         </div>
