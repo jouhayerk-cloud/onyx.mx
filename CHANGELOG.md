@@ -4,6 +4,15 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [1.10.21] — 2026-03-01
+
+### Fixed
+- **Google Drive Upload (uploadMedia)**: Resolved the "Save Error: Invalid action: uploadMedia" error by implementing the missing `uploadMedia` action in the Google Apps Script backend and synchronizing the frontend call signature.
+- **Media Fidelity**: Ensured high-definition HDR images and 4K videos are uploaded in their native format to Google Drive without conversion.
+- **Dependency Fixes**: Fixed missing `handleFileUpload` import in `BatchImportModule.tsx` that caused crashes during bulk uploads.
+- **Tailwind CSS v4 Refactor**: Optimized styling syntax across the codebase to align with Tailwind v4 standards (color variables and `!` importance markers).
+- **Upload Form Structure**: Fixed a layout corruption issue in `UploadEntryForm.tsx`.
+
 ## [1.10.20] — 2026-02-28 (RTM)
 
 ### Added

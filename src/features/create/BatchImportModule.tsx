@@ -5,7 +5,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useNotify } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
-import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
+import { handleFileUpload, createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 // import { v4 as uuidv4 } from 'uuid'; // Removed to avoid dependency
 
@@ -287,12 +287,12 @@ export function BatchImportModule() {
                             <label className="block text-sm font-bold text-slate-700 mb-1">Images ({item.files.length})</label>
                             <div className="flex gap-2 mb-2 overflow-x-auto h-20 bg-white border rounded p-1">
                                 {item.previewUrls.map((src, i) => (
-                                    <div key={i} className="relative flex-shrink-0 w-16 h-full">
+                                    <div key={i} className="relative shrink-0 w-16 h-full">
                                         <img src={src} className="h-full w-full object-cover rounded" />
                                         {i === 0 && <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-[9px] text-center">AI Master</span>}
                                     </div>
                                 ))}
-                                <label className="flex-shrink-0 w-16 h-full border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                <label className="shrink-0 w-16 h-full border-2 border-dashed border-slate-300 rounded flex items-center justify-center cursor-pointer hover:bg-slate-50">
                                     <span className="text-2xl text-slate-400">+</span>
                                     <input type="file" multiple accept="image/*" onChange={(e) => handleFileSelect(index, e)} className="hidden" />
                                 </label>

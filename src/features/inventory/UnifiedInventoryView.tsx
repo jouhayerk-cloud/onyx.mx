@@ -198,7 +198,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div><p className={lbl}>Weight</p><p className="text-sm font-medium text-white/80 font-mono">{weightStr || '—'}</p></div>
                                 <div><p className={lbl}>Source</p><p className="text-sm font-medium capitalize text-white/80">{item.source}</p></div>
                             </div>
-                            <div className="p-5 bg-white/[0.03] rounded-2xl border border-white/5 shadow-inner">
+                            <div className="p-5 bg-white/3 rounded-2xl border border-white/5 shadow-inner">
                                 <h4 className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Financial Analysis</h4>
                                 <div className="grid grid-cols-3 gap-6">
                                     <div className="flex flex-col"><span className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-1">Acq</span><span className="text-lg font-black text-[#AEE6F5] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
@@ -529,7 +529,7 @@ export const UnifiedInventoryView = () => {
                                                                 className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
                                                                     ${f.tag === tag
                                                                         ? 'bg-(--main-color) text-black border-(--main-color) shadow-sm'
-                                                                        : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/40'}`}
+                                                                        : 'bg-white/3 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/40'}`}
                                                             >
                                                                 {tag}
                                                             </button>

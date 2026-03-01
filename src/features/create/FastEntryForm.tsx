@@ -342,13 +342,13 @@ export function FastEntryForm() {
                                 </label>
                             </div>
                         ) : field.type === 'submit' ? (
-                            <button type="submit" className="button !text-2xl !px-12" onFocus={() => setActiveInput(field.name)} ref={el => { if (el) inputRefs.current[field.name] = el; }} disabled={formSubmitted.current}>{field.placeholder}</button>
+                            <button type="submit" className="button text-2xl! px-12!" onFocus={() => setActiveInput(field.name)} ref={el => { if (el) inputRefs.current[field.name] = el; }} disabled={formSubmitted.current}>{field.placeholder}</button>
                         ) : field.type === 'group' ? (
                             <div className="flex gap-4" ref={el => { if (el) inputRefs.current[field.name] = el; }} onFocus={() => setActiveInput(field.name)} tabIndex={-1}>
-                                <input type="number" name="widthCm" value={formState.widthCm} onChange={handleInputChange} placeholder="W cm" className="!text-xl" />
-                                <input type="number" name="heightCm" value={formState.heightCm} onChange={handleInputChange} placeholder="H cm" className="!text-xl" />
-                                <input type="number" name="lengthCm" value={formState.lengthCm} onChange={handleInputChange} placeholder="L cm" className="!text-xl" />
-                                <input type="number" name="weightKg" value={formState.weightKg} onChange={handleInputChange} placeholder="kg" className="!text-xl" />
+                                <input type="number" name="widthCm" value={formState.widthCm} onChange={handleInputChange} placeholder="W cm" className="text-xl!" />
+                                <input type="number" name="heightCm" value={formState.heightCm} onChange={handleInputChange} placeholder="H cm" className="text-xl!" />
+                                <input type="number" name="lengthCm" value={formState.lengthCm} onChange={handleInputChange} placeholder="L cm" className="text-xl!" />
+                                <input type="number" name="weightKg" value={formState.weightKg} onChange={handleInputChange} placeholder="kg" className="text-xl!" />
                             </div>
                         ) : (
                             React.createElement(field.type === 'select' ? 'select' : field.type === 'textarea' ? 'textarea' : 'input', {

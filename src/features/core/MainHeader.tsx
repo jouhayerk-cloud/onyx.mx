@@ -87,7 +87,7 @@ const SubTabPills: React.FC<{
         {tabs.map(t => (
             <button key={t.id} onClick={() => onSelect(t.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
-                    ${active === t.id ? 'text-black shadow-lg scale-[1.03]' : 'bg-white/[0.05] text-white/35 hover:text-white/70 hover:bg-white/[0.09]'}`}
+                    ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-white/35 hover:text-white/70 hover:bg-white/10'}`}
                 style={active === t.id ? { backgroundColor: accentColor } : {}}>
                 {t.icon && <svg className="w-3 h-3"><use href={t.icon} /></svg>}
                 {t.label}
@@ -282,7 +282,7 @@ const UploadBar: React.FC = () => {
                     ✚ Entry
                 </span>
                 <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                    ${tab === 'ai' ? 'bg-[var(--main-color)] text-black' : 'text-white/25'}`}>
+                    ${tab === 'ai' ? 'bg-(--main-color) text-black' : 'text-white/25'}`}>
                     ✨ AI Tools
                 </span>
             </div>
@@ -320,7 +320,7 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="h-14 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-[var(--main-header-bg)]">
+        <div className="h-14 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
             {/* Logo / sidebar toggle */}
             <button className="flex items-center gap-2 pr-3 sm:pr-4 sm:border-r border-white/10 mr-2 sm:mr-3 shrink-0" onClick={toggleSidebar}>
                 <OnyxLogo className="w-7 h-7 sm:w-8 sm:h-8" />
