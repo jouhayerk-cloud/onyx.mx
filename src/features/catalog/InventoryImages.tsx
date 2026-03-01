@@ -47,7 +47,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const StatusMarkers = ({
@@ -190,36 +190,11 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       return;
     }
 
-    try {
-      const url = new URL(firstUrl);
-      const fileId = url.searchParams.get('id');
-
-      if (fileId) {
-        if (imageCache.has(fileId)) {
-          setImageDataUrl(imageCache.get(fileId)!);
-          setIsLoading(false);
-          return;
-        }
-
-        fetchImageBatch(fileId)
-          .then((data) => {
-            const dataUrl = `data:${data.mimeType};base64,${data.base64}`;
-            imageCache.set(fileId, dataUrl);
-            setImageDataUrl(dataUrl);
-          })
-          .catch((e) => {
-            console.error(`[InventoryImageItem] Failed to fetch image (fileId: ${fileId}, url: ${firstUrl}):`, e.message);
-            setError('Failed to load');
-          })
-          .finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
-      }
-    } catch (e) {
-      console.error('Invalid image URL:', firstUrl);
-      setError('Invalid URL');
-      setIsLoading(false);
-    }
+    // Optimized: Direct URL loading for thumbnails/grid view is much faster
+    // than proxying large images through base64 via Apps Script.
+    // Modern browsers handle these direct links very well in <img> tags.
+    setImageDataUrl(firstUrl);
+    setIsLoading(false);
   }, [isVisible, item.imageUrl, item.data.generatedPngUrl]);
 
   const handleClick = () => {
