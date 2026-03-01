@@ -84,8 +84,8 @@ export function BatchImportModule() {
         if (!e.target.files?.length) return;
         const newFiles = Array.from(e.target.files);
 
-        // Generate previews
-        const newPreviews = await Promise.all(newFiles.map(f => readFileAsDataURL(f, 'image')));
+        // Generate instant native previews for UI (supports 4K/HDR without bloat)
+        const newPreviews = newFiles.map(f => URL.createObjectURL(f));
 
         setBatchItems(prev => {
             const newItems = [...prev];
@@ -126,71 +126,68 @@ export function BatchImportModule() {
             let gradientColor = '';
 
             // 2. AI Processing (Only if images exist)
-            if (item.files.length > 0) {
-                const mainImageSrc = item.previewUrls[0]; // Image 1
+            const masterFile = item.files[0];
+            // Generate AI-optimized base64 for Gemini (resized/jpeg)
+            const mainImageSrc = await readFileAsDataURL(masterFile, 'image', true);
 
-                // A. Detect & Segment (Only Image 1)
-                log('Running AI on Image 1...');
+            // A. Detect & Segment (Only Image 1)
+            log('Running AI on Image 1...');
 
-                // Detection
-                const prompt1 = `Detect and tag ${item.data.shape || 'object'}. Output a single JSON object with "boxes" and "points".`;
-                let result1 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt1 }] }, config: { responseMimeType: 'application/json' } });
-                const data1 = JSON.parse(result1.text);
-                const boxes = (data1.boxes || []).map((b: any) => ({ x: b.box_2d[1] / 1000, y: b.box_2d[0] / 1000, width: (b.box_2d[3] - b.box_2d[1]) / 1000, height: (b.box_2d[2] - b.box_2d[0]) / 1000, label: b.label }));
-                const points = (data1.points || []).map((p: any) => ({ point: { x: p.point[1] / 1000, y: p.point[0] / 1000 }, label: p.label }));
+            // Detection
+            const prompt1 = `Detect and tag ${item.data.shape || 'object'}. Output a single JSON object with "boxes" and "points".`;
+            let result1 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt1 }] }, config: { responseMimeType: 'application/json' } });
+            const data1 = JSON.parse(result1.text);
+            const boxes = (data1.boxes || []).map((b: any) => ({ x: b.box_2d[1] / 1000, y: b.box_2d[0] / 1000, width: (b.box_2d[3] - b.box_2d[1]) / 1000, height: (b.box_2d[2] - b.box_2d[0]) / 1000, label: b.label }));
+            const points = (data1.points || []).map((p: any) => ({ point: { x: p.point[1] / 1000, y: p.point[0] / 1000 }, label: p.label }));
 
-                // Segmentation
-                const prompt2 = `Give segmentation masks for ${item.data.shape || 'object'}. Output JSON list with "mask" (base64).`;
-                let result2 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt2 }] }, config: { responseMimeType: 'application/json' } });
-                const rawMasks = JSON.parse(result2.text);
-                const masks = await Promise.all((rawMasks || []).map(async (m: any) => {
-                    const maskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
-                    const maskImage = await loadImage(maskData);
-                    const maskCanvas = document.createElement('canvas');
-                    maskCanvas.width = maskImage.width; maskCanvas.height = maskImage.height;
-                    const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true })!;
-                    maskCtx.drawImage(maskImage, 0, 0);
-                    const imageData = maskCtx.getImageData(0, 0, maskImage.width, maskImage.height);
-                    const contour = findContour(imageData);
-                    const simplified = simplifyContour(contour, 1.5);
-                    return { x: m.box_2d[1] / 1000, y: m.box_2d[0] / 1000, width: (m.box_2d[3] - m.box_2d[1]) / 1000, height: (m.box_2d[2] - m.box_2d[0]) / 1000, label: m.label, maskWidth: maskImage.width, maskHeight: maskImage.height, path: createCurvePath(simplified), points: simplified };
-                }));
+            // Segmentation
+            const prompt2 = `Give segmentation masks for ${item.data.shape || 'object'}. Output JSON list with "mask" (base64).`;
+            let result2 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt2 }] }, config: { responseMimeType: 'application/json' } });
+            const rawMasks = JSON.parse(result2.text);
+            const masks = await Promise.all((rawMasks || []).map(async (m: any) => {
+                const maskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
+                const maskImage = await loadImage(maskData);
+                const maskCanvas = document.createElement('canvas');
+                maskCanvas.width = maskImage.width; maskCanvas.height = maskImage.height;
+                const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true })!;
+                maskCtx.drawImage(maskImage, 0, 0);
+                const imageData = maskCtx.getImageData(0, 0, maskImage.width, maskImage.height);
+                const contour = findContour(imageData);
+                const simplified = simplifyContour(contour, 1.5);
+                return { x: m.box_2d[1] / 1000, y: m.box_2d[0] / 1000, width: (m.box_2d[3] - m.box_2d[1]) / 1000, height: (m.box_2d[2] - m.box_2d[0]) / 1000, label: m.label, maskWidth: maskImage.width, maskHeight: maskImage.height, path: createCurvePath(simplified), points: simplified };
+            }));
 
-                const image = await loadImage(mainImageSrc);
-                const { pngData, svgData } = await generatePngAndSvgFromMasks(mainImageSrc, { width: image.width, height: image.height }, masks);
-                generatedData = { boxes, points, masks, pngData, svgData };
+            const image = await loadImage(mainImageSrc);
+            const { pngData, svgData } = await generatePngAndSvgFromMasks(mainImageSrc, { width: image.width, height: image.height }, masks);
+            generatedData = { boxes, points, masks, pngData, svgData };
 
-                if (masks.length > 0) {
-                    gradientColor = await extractGradientFromMask(mainImageSrc, masks[0], { width: image.width, height: image.height });
-                }
-
-                // Details (Dimensions etc)
-                const prompt3 = `Analyze the product. Estimate dimensions (widthCm, heightCm, lengthCm), weightKg, and descriptions. Return single JSON.`;
-                const schema3 = { type: Type.OBJECT, properties: { widthCm: { type: Type.STRING }, heightCm: { type: Type.STRING }, lengthCm: { type: Type.STRING }, weightKg: { type: Type.STRING }, shortDescription: { type: Type.STRING }, generatedDescription: { type: Type.STRING }, detailedDescription: { type: Type.STRING } } };
-                let result3 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt3 }] }, config: { responseMimeType: 'application/json', responseSchema: schema3 } });
-                details = JSON.parse(result3.text);
-
-                log('AI Processing complete.');
+            if (masks.length > 0) {
+                gradientColor = await extractGradientFromMask(mainImageSrc, masks[0], { width: image.width, height: image.height });
             }
 
+            // Details (Dimensions etc)
+            const prompt3 = `Analyze the product. Estimate dimensions (widthCm, heightCm, lengthCm), weightKg, and descriptions. Return single JSON.`;
+            const schema3 = { type: Type.OBJECT, properties: { widthCm: { type: Type.STRING }, heightCm: { type: Type.STRING }, lengthCm: { type: Type.STRING }, weightKg: { type: Type.STRING }, shortDescription: { type: Type.STRING }, generatedDescription: { type: Type.STRING }, detailedDescription: { type: Type.STRING } } };
+            let result3 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt3 }] }, config: { responseMimeType: 'application/json', responseSchema: schema3 } });
+            details = JSON.parse(result3.text);
+
+            log('AI Processing complete.');
+
             // 3. Prepare Upload Payload
-            // Convert ALL photos, not just the first one
-            /* NOTE: For batch of 50 items with multiple images, we should be careful about payload size. 
-               However, user requested "batch process uploading all images". 
-               We simply send them in the photos array. */
-            const photosPayload = await Promise.all(item.files.map(async (file) => ({
-                dataUrl: await readFileAsDataURL(file, 'image'),
-                type: 'image'
-            })));
+            const photosPayload = await Promise.all(item.files.map(async (file) => {
+                const result = await handleFileUpload(file, user);
+                return result ? result.thumbnailUrl : null;
+            }));
+            const validPhotos = photosPayload.filter(Boolean) as string[];
 
             const payload = {
                 ...item.data,
                 ...details,
-                color: gradientColor || item.data.price, // fallback or use detected color
+                color: gradientColor || item.data.price,
                 spatialBoxes2d: JSON.stringify(generatedData.boxes || []),
                 spatialPoints: JSON.stringify(generatedData.points || []),
                 spatialMasks: JSON.stringify(generatedData.masks?.map(({ path, ...rest }: any) => rest) || []),
-                photos: photosPayload,
+                photos: validPhotos,
             };
 
             // 4. Update Backend
@@ -202,8 +199,19 @@ export function BatchImportModule() {
                     row: selectedItemRow,
                     itemData: payload,
                     user,
-                    generatedPngData: generatedData.pngData,
-                    generatedSvgData: generatedData.svgData
+                    generatedPngUrl: generatedData.pngData ? (await (async () => {
+                        const res = await fetch(generatedData.pngData);
+                        const blob = await res.blob();
+                        const f = new File([blob], 'mask.png', { type: 'image/png' });
+                        const uploadRes = await handleFileUpload(f, user);
+                        return uploadRes?.thumbnailUrl;
+                    })()) : null,
+                    generatedSvgUrl: generatedData.svgData ? (await (async () => {
+                        const blob = new Blob([generatedData.svgData], { type: 'image/svg+xml' });
+                        const f = new File([blob], 'mask.svg', { type: 'image/svg+xml' });
+                        const uploadRes = await handleFileUpload(f, user);
+                        return uploadRes?.thumbnailUrl;
+                    })()) : null
                 }),
             });
             const updateResult = await updateResponse.json();

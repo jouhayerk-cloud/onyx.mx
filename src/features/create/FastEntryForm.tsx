@@ -6,7 +6,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { AudioVisualizer } from '../../components/AudioVisualizer';
 import { useResetState, useNotify, useDatabase } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
-import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
+import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask, handleFileUpload } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 
 
@@ -262,17 +262,24 @@ export function FastEntryForm() {
         const toastId = notify.loading('Saving item...');
 
         try {
-            // 1. Upload images to Supabase Storage
+            // 1. Upload images to Google Drive using unified utility
             let publicMediaUrl = '';
             if (imageSrc) {
-                const fileName = `${formState.itemId}/${selectedItemRow}/main.jpg`;
-                publicMediaUrl = await import('../../lib/storage').then(m => m.uploadImage(imageSrc, fileName));
+                // Convert dataUrl (blob URL or base64) to a File for handleFileUpload
+                const res = await fetch(imageSrc);
+                const blob = await res.blob();
+                const file = new File([blob], 'main_item.jpg', { type: 'image/jpeg' });
+                const result = await handleFileUpload(file, user);
+                if (result) publicMediaUrl = result.thumbnailUrl;
             }
 
             let pngPublicUrl = '';
             if (generatedData?.pngData) {
-                const pngName = `${formState.itemId}/${selectedItemRow}/mask.png`;
-                pngPublicUrl = await import('../../lib/storage').then(m => m.uploadImage(generatedData.pngData!, pngName));
+                const res = await fetch(generatedData.pngData);
+                const blob = await res.blob();
+                const file = new File([blob], 'mask.png', { type: 'image/png' });
+                const result = await handleFileUpload(file, user);
+                if (result) pngPublicUrl = result.thumbnailUrl;
             }
 
             // 2. Prepare payload

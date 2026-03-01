@@ -47,25 +47,43 @@ export function generateUniqueId(): string {
 import { uploadMedia } from './storage';
 
 export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; } | null> {
-  try {
-    // Generate a unique path for the file to prevent collisions
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${generateUniqueId()}_${Date.now()}.${fileExt}`;
-    const path = `uploads/${user?.id || 'anonymous'}/${fileName}`;
-
-    console.log(`[Upload] Starting native upload for ${file.name} (${file.type}, ${Math.round(file.size / 1024 / 1024)}MB)`);
-
-    // Use Supabase Storage for native, unconverted binary upload (supports 4K HDR, Raw, etc.)
-    const publicUrl = await uploadMedia(file, path);
-
-    return {
-      fileId: path,
-      thumbnailUrl: publicUrl
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    // We use readAsDataURL to send base64 to the Apps Script. 
+    // This maintains the original bytes but allows transmission via JSON.
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        console.log(`[Drive] Uploading ${file.name} (${Math.round(file.size / 1024)}KB)...`);
+        const base64Data = (reader.result as string).split(',')[1];
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'uploadFile',
+            fileName: file.name,
+            mimeType: file.type,
+            fileData: base64Data,
+            user
+          }),
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+          console.log(`[Drive] Successfully uploaded: ${result.fileId}`);
+          resolve({
+            fileId: result.fileId,
+            // Using the actual webViewLink/open link from Drive
+            thumbnailUrl: `https://drive.google.com/open?id=${result.fileId}`
+          });
+        } else {
+          throw new Error(result.message || 'Drive Upload failed');
+        }
+      } catch (error) {
+        console.error('Drive upload error:', error);
+        reject(error);
+      }
     };
-  } catch (error) {
-    console.error('File upload error:', error);
-    throw error;
-  }
+    reader.onerror = (error) => reject(error);
+  });
 }
 
 export const imageCache = new Map<string, string>();
