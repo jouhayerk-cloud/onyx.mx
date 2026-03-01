@@ -47,7 +47,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const StatusMarkers = ({
@@ -103,7 +103,7 @@ export const StatusMarkers = ({
             key={key as string}
             title={`View saved ${title}`}
             onClick={() => onMarkerClick && onMarkerClick(key, detectType!)}
-            className="px-3 py-0.5 rounded-full font-bold bg-transparent text-[var(--text-color-primary)] hover:bg-[var(--accent-color)] hover:text-white transition-colors">
+            className="px-3 py-0.5 rounded-full font-bold bg-transparent text-(--text-color-primary) hover:bg-(--accent-color) hover:text-white transition-colors">
             {label}
           </button>
         ))}
@@ -118,7 +118,7 @@ export const StatusMarkers = ({
         const isActive = !!data[key as keyof InventoryItemData];
         const activeClasses = 'bg-green-500 text-black';
         const inactiveClasses =
-          'bg-transparent border border-[var(--text-color-secondary)] text-[var(--text-color-secondary)] opacity-40';
+          'bg-transparent border border-(--text-color-secondary) text-(--text-color-secondary) opacity-40';
         return (
           <div
             key={key as string}
@@ -182,7 +182,8 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
     if (!isVisible) return;
 
     setIsLoading(true);
-    const firstUrl = item.data.generatedPngUrl || (item.imageUrl ? item.imageUrl.split(',')[0].trim() : null);
+    const rawUrl = item.data.generatedPngUrl || (item.imageUrl ? String(item.imageUrl).split(',')[0].trim() : null);
+    const firstUrl = getCleanImageUrl(rawUrl);
 
     if (!firstUrl) {
       setIsLoading(false);
@@ -230,7 +231,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   };
 
   const norm = normalizeInventoryData(item.data);
-  const vendorPrefix = norm.itemId?.split('-')[0] || '';
+  const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
   const vendorColor =
     vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
 
@@ -240,7 +241,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   return (
     <button
       ref={ref}
-      className="inventory-item-card w-full aspect-[4/3] relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20 hover:scale-[1.02] hover:z-10"
+      className="inventory-item-card w-full aspect-4/3 relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20 hover:scale-[1.02] hover:z-10"
       onClick={handleClick}
       title={item.label}
       disabled={isLoading}>
@@ -248,11 +249,11 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       {error && <div className="text-red-500">{error}</div>}
       {imageDataUrl && <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />}
       {!isLoading && !imageDataUrl && !error && (
-        <div className="w-1/3 h-1/3 opacity-20 text-[var(--secondary-color)]">
+        <div className="absolute top-2 right-2 z-10 text-(--secondary-color)">
           <OnyxMiniLogo />
         </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
 
       {/* Top badges */}
       <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none">
@@ -265,7 +266,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       </div>
 
       {/* Bottom text block */}
-      <div className="absolute bottom-0 inset-x-0 p-3 pt-8 flex flex-col justify-end text-left pointer-events-none">
+      <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/80 to-transparent">
         <div className="flex items-end justify-between mb-1">
           <p className="font-black text-white text-base leading-tight truncate drop-shadow-md">{norm.shape || 'Unknown Object'}</p>
           <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
@@ -354,7 +355,7 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
             return {
               row: doc.id,
               label: `${norm.shape || '?'} #${norm.itemNumber || '?'}`,
-              imageUrl: norm.generatedPngUrl || (norm.mediaUrls ? norm.mediaUrls.split(',')[0].trim() : null),
+              imageUrl: getCleanImageUrl(norm.generatedPngUrl || (norm.mediaUrls ? String(norm.mediaUrls).split(',')[0].trim() : null)),
               data: norm
             };
           }));
@@ -441,7 +442,7 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
               setMarketSelected([]);
             }
           }}
-          className={`button secondary !min-h-0 text-xs py-1 ${!isSelectMode && 'opacity-60'}`}>
+          className={`button secondary min-h-0! text-xs py-1 ${!isSelectMode && 'opacity-60'}`}>
           {isSelectMode ? t.cancel : t.select}
         </button>
       </div>
@@ -451,7 +452,7 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
           <span className="text-xs font-semibold">{catSelected.length} selected</span>
           <div className="flex items-center gap-2">
             <button onClick={() => setCatSelected([])} className="text-xs underline opacity-70 hover:opacity-100">{t.clear}</button>
-            <button onClick={handleBatchAction} className="button secondary !min-h-0 text-xs py-1">{t.batchActions}</button>
+            <button onClick={handleBatchAction} className="button secondary min-h-0! text-xs py-1">{t.batchActions}</button>
           </div>
         </div>
       )}
@@ -463,9 +464,9 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
         </div>
       )}
 
-      <div className="flex-grow overflow-y-auto pr-2 -mr-2">
+      <div className="grow overflow-y-auto pr-2 -mr-2">
         {inventory.length === 0 && !isLoading ? (
-          <p className="text-center text-sm text-[var(--text-color-secondary)] pt-4">{t.noInventoryFound}</p>
+          <p className="text-center text-sm text-(--text-color-secondary) pt-4">{t.noInventoryFound}</p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
             {filteredInventory.map((item) => (

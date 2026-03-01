@@ -256,7 +256,7 @@ export function UploadEntryForm() {
                             <button
                                 key={s} type="button"
                                 onClick={() => set('status', s)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${itemData.status === s ? 'bg-[--main-color]/10 border-[--main-color] text-[--main-color]' : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/80'}`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${itemData.status === s ? 'bg-(--main-color)/10 border-(--main-color) text-(--main-color)' : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/80'}`}
                             >
                                 {s}
                             </button>
@@ -316,9 +316,9 @@ export function UploadEntryForm() {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                    <label className="group flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 hover:border-[--main-color]/40 rounded-2xl cursor-pointer transition-all bg-white/5 py-10">
+                    <label className="group grow flex flex-col items-center justify-center border-2 border-dashed border-white/5 hover:border-(--main-color)/40 rounded-2xl cursor-pointer transition-all bg-white/5 py-10">
                         <div className="flex flex-col items-center gap-3">
-                            <svg className="w-5 h-5 text-white/40 group-hover:text-[--main-color]"><use href="#upload" /></svg>
+                            <svg className="w-5 h-5 text-white/40 group-hover:text-(--main-color)"><use href="#upload" /></svg>
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-widest text-white/25 group-hover:text-white/60">Attach Media (Images / Video)</span>
                         <input type="file" className="sr-only" onChange={handleFileChange} accept="image/*,video/*" multiple />
@@ -353,7 +353,7 @@ export function UploadEntryForm() {
                                                 onClick={() => updateFileTag(i, tag as 'Item' | 'Lot')}
                                                 className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
                                                     ${f.tag === tag
-                                                        ? 'bg-[--main-color] text-black border-[--main-color]'
+                                                        ? 'bg-(--main-color) text-black border-(--main-color)'
                                                         : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'}`}
                                             >
                                                 {tag}
