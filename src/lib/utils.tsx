@@ -46,7 +46,7 @@ export function generateUniqueId(): string {
 
 import { uploadMedia } from './storage';
 
-export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; } | null> {
+export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; originalFile: File } | null> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     // We use readAsDataURL to send base64 to the Apps Script. 
@@ -54,25 +54,31 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
     reader.readAsDataURL(file);
     reader.onload = async () => {
       try {
-        console.log(`[Drive] Uploading ${file.name} (${Math.round(file.size / 1024)}KB)...`);
+        console.log(`[Drive] Uploading ${file.name} (${Math.round(file.size / 1024)}KB) using action: uploadMedia...`);
         const base64Data = (reader.result as string).split(',')[1];
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
+          mode: 'cors',
+          cache: 'no-cache',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
-            action: 'uploadFile',
+            action: 'uploadMedia',
             fileName: file.name,
             mimeType: file.type,
             fileData: base64Data,
             user
           }),
         });
+
+        if (!response.ok) throw new Error(`Network response error: ${response.status}`);
+
         const result = await response.json();
         if (result.status === 'success') {
           console.log(`[Drive] Successfully uploaded: ${result.fileId}`);
           resolve({
             fileId: result.fileId,
-            // Using the actual webViewLink/open link from Drive
-            thumbnailUrl: `https://drive.google.com/open?id=${result.fileId}`
+            thumbnailUrl: `https://drive.google.com/open?id=${result.fileId}`,
+            originalFile: file
           });
         } else {
           throw new Error(result.message || 'Drive Upload failed');

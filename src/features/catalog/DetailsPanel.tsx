@@ -303,11 +303,20 @@ export function DetailsPanel() {
     try {
       let uploadedUrls: string[] = [];
       if (newFiles.length > 0) {
-        toast.loading("Uploading new files...", { id: toastId });
+        toast.loading("Uploading new files to Drive...", { id: toastId });
         for (const file of newFiles) {
-          if (file.originalFile) {
-            const result = await handleFileUpload(file.originalFile, user);
-            if (result) uploadedUrls.push(result.thumbnailUrl);
+          const fileToUpload = file.originalFile;
+          if (fileToUpload) {
+            try {
+              const result = await handleFileUpload(fileToUpload, user);
+              if (result) {
+                uploadedUrls.push(result.thumbnailUrl);
+                console.log('[DetailsPanel] File uploaded:', fileToUpload.name, '=>', result.fileId);
+              }
+            } catch (uploadErr: any) {
+              console.error('[DetailsPanel] Single file failed:', fileToUpload.name, uploadErr);
+              throw new Error(`Upload failed for ${fileToUpload.name}: ${uploadErr.message}`);
+            }
           }
         }
       }

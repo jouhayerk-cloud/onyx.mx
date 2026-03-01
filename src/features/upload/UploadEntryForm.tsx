@@ -151,14 +151,21 @@ export function UploadEntryForm() {
             let driveIds: string[] = [];
 
             if (mediaFiles.length > 0) {
-                notify('loading', `Uploading ${mediaFiles.length} file(s)…`);
+                notify('loading', `Uploading ${mediaFiles.length} file(s) to Drive…`);
                 for (const file of mediaFiles) {
-                    if (file.originalFile) {
-                        const result = await handleFileUpload(file.originalFile, user);
-                        if (result) {
-                            const taggedUrl = `${result.thumbnailUrl}${file.tag ? `&tag=${file.tag}` : ''}`;
-                            uploadedUrls.push(taggedUrl);
-                            driveIds.push(result.fileId);
+                    const fileToUpload = file.originalFile;
+                    if (fileToUpload) {
+                        try {
+                            const result = await handleFileUpload(fileToUpload, user);
+                            if (result) {
+                                const taggedUrl = `${result.thumbnailUrl}${file.tag ? `&tag=${file.tag}` : ''}`;
+                                uploadedUrls.push(taggedUrl);
+                                driveIds.push(result.fileId);
+                                console.log('[Upload] File uploaded:', fileToUpload.name, '=>', result.fileId);
+                            }
+                        } catch (uploadErr: any) {
+                            console.error('[Upload] Single file failed:', fileToUpload.name, uploadErr);
+                            throw new Error(`Upload failed for ${fileToUpload.name}: ${uploadErr.message}`);
                         }
                     }
                 }
@@ -454,7 +461,7 @@ export function UploadEntryForm() {
 
             {/* ── Submit ── */}
             <button type="submit" disabled={isSubmitting}
-                className="w-full py-3.5 bg-[#8DC63F] text-black text-[11px] font-black tracking-widest rounded-xl shadow-[0_0_24px_rgba(141,198,63,0.25)] hover:shadow-[0_0_40px_rgba(141,198,63,0.45)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
+                className="w-full py-3.5 bg-(--main-color) text-black text-[11px] font-black tracking-widest rounded-xl shadow-[0_0_24px_rgba(141,198,63,0.25)] hover:shadow-[0_0_40px_rgba(141,198,63,0.45)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
                 {isSubmitting ? <><LoadingIndicator /> WAIT</> : '✓ SAVE'}
             </button>
         </form>
