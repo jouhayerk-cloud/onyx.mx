@@ -473,28 +473,7 @@ export const UnifiedInventoryView = () => {
                             <button onClick={() => setMode('view')} className="text-4xl text-white/20 hover:text-white transition-all hover:rotate-90">&times;</button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="overflow-y-auto grow pr-6 custom-scrollbar space-y-10 pb-12">
-                            {imageUrl && <div className="h-56 w-full rounded-[2.5rem] overflow-hidden border border-white/5 relative shrink-0 shadow-2xl"><img src={imageUrl} className="w-full h-full object-cover opacity-60" /><div className="absolute inset-0 bg-linear-to-t from-black via-transparent" /><div className="absolute bottom-6 left-8"><p className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.4em] mb-2">Live Preview</p><h3 className="text-2xl font-black text-white tracking-tight">{editData.shape}</h3></div></div>}
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Status</label><select name="status" value={editData.status} onChange={handleEditChange} className={inp}><option value="Catalog">Catalog</option><option value="Production">Production</option><option value="Acquired">Acquired</option><option value="Archive">Archive</option><option value="Shipped">Shipped</option></select></div>
-                                <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Color Tone</label><input type="text" name="color" value={editData.color} onChange={handleEditChange} className={inp} /></div>
-                                <div><label className={lbl}>Composition</label><input type="text" name="material" value={editData.material} onChange={handleEditChange} className={inp} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Geometric Shape</label><input type="text" name="shape" value={editData.shape} onChange={handleEditChange} className={inp} /></div>
-                                <div><label className={lbl}>Product Category</label><input type="text" name="itemType" value={editData.itemType} onChange={handleEditChange} className={inp} /></div>
-                            </div>
-                            <div><label className={lbl}>Technical Notes</label><textarea name="description" value={editData.description} onChange={handleEditChange} rows={4} className={inp + " resize-none leading-relaxed"} /></div>
-                            <div className="grid grid-cols-4 gap-6">
-                                <div><label className={lbl}>Mass (kg)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>W (cm)</label><input type="number" step="0.1" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>H (cm)</label><input type="number" step="0.1" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>L (cm)</label><input type="number" step="0.1" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
-                            </div>
-
-                            {/* ── Attach Media Section ── */}
+                            {/* ── Attach Media Section (Moved to Top) ── */}
                             <div className="bg-white/2 border border-white/6 rounded-2xl p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">Attach Media</h3>
@@ -555,6 +534,27 @@ export const UnifiedInventoryView = () => {
                                     </div>
                                 )}
                             </div>
+                            {imageUrl && <div className="h-56 w-full rounded-[2.5rem] overflow-hidden border border-white/5 relative shrink-0 shadow-2xl"><img src={imageUrl} className="w-full h-full object-cover opacity-60" /><div className="absolute inset-0 bg-linear-to-t from-black via-transparent" /><div className="absolute bottom-6 left-8"><p className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.4em] mb-2">Live Preview</p><h3 className="text-2xl font-black text-white tracking-tight">{editData.shape}</h3></div></div>}
+                            <div className="grid grid-cols-2 gap-8">
+                                <div><label className={lbl}>Status</label><select name="status" value={editData.status} onChange={handleEditChange} className={inp}><option value="Catalog">Catalog</option><option value="Production">Production</option><option value="Acquired">Acquired</option><option value="Archive">Archive</option><option value="Shipped">Shipped</option></select></div>
+                                <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div><label className={lbl}>Color Tone</label><input type="text" name="color" value={editData.color} onChange={handleEditChange} className={inp} /></div>
+                                <div><label className={lbl}>Composition</label><input type="text" name="material" value={editData.material} onChange={handleEditChange} className={inp} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div><label className={lbl}>Geometric Shape</label><input type="text" name="shape" value={editData.shape} onChange={handleEditChange} className={inp} /></div>
+                                <div><label className={lbl}>Product Category</label><input type="text" name="itemType" value={editData.itemType} onChange={handleEditChange} className={inp} /></div>
+                            </div>
+                            <div><label className={lbl}>Technical Notes</label><textarea name="description" value={editData.description} onChange={handleEditChange} rows={4} className={inp + " resize-none leading-relaxed"} /></div>
+                            <div className="grid grid-cols-4 gap-6">
+                                <div><label className={lbl}>Mass (kg)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
+                                <div><label className={lbl}>W (cm)</label><input type="number" step="0.1" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
+                                <div><label className={lbl}>H (cm)</label><input type="number" step="0.1" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
+                                <div><label className={lbl}>L (cm)</label><input type="number" step="0.1" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
+                            </div>
+
                             <div className="pt-8 border-t border-white/10 flex gap-6">
                                 <button type="button" onClick={() => setMode('view')} className="button bg-white/5! border-none! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase opacity-40 hover:opacity-100 transition-all">Abort Changes</button>
                                 <button type="submit" disabled={isSaving} className="button bg-(--main-color)! text-black! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase shadow-lg hover:scale-[1.02] active:scale-98 transition-all">{isSaving ? 'UPLOADING...' : 'SAVE MODULE'}</button>
