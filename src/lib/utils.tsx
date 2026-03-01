@@ -65,7 +65,7 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
             action: 'uploadMedia',
             fileName: file.name,
             mimeType: file.type,
-            fileData: base64Data,
+            base64: base64Data,
             user
           }),
         });
@@ -77,7 +77,7 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
           console.log(`[Drive] Successfully uploaded: ${result.fileId}`);
           resolve({
             fileId: result.fileId,
-            thumbnailUrl: `https://drive.google.com/open?id=${result.fileId}`,
+            thumbnailUrl: result.url || `https://drive.google.com/uc?export=view&id=${result.fileId}`,
             originalFile: file
           });
         } else {

@@ -4,6 +4,16 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.10.21 - Google Drive Media Fix**
+
+### **Date:** 2026-03-01
+
+- **BACKEND: Apps Script Sync** — Implemented the `uploadMedia` action in the `AppsScript.txt` template and `doPost` switch to support standalone media pushes to Google Drive.
+- **MEDIA: Native Fidelity** — Ensured 4K and HDR files are uploaded in their native state without conversion to preserve quality for export documentation.
+- **FRONTEND: Signature Sync** — Updated `handleFileUpload` in `utils.tsx` to align with the new base64 backend signature and correctly map returned direct-view URLs.
+- **LINT: Tailwind v4 Refactor** — Performed a codebase-wide refactor of Tailwind CSS v4 syntax, updating color variables and importance markers.
+- **FIX: Upload Module Stability** — Resolved a crash in `BatchImportModule.tsx` caused by missing `handleFileUpload` imports and stabilized the `UploadEntryForm.tsx` DOM structure.
+
 ## **v2.10.13 - Logic Syncs**
 
 ### **Date:** 2026-02-27

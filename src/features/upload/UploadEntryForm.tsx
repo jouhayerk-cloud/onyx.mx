@@ -36,7 +36,7 @@ const SuggestChips: React.FC<{
             {values.slice(0, 10).map(v => (
                 <button key={v} type="button" onClick={() => onSelect(v)}
                     className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all
-                        ${v === current ? 'border-[var(--main-color)] text-[var(--main-color)] bg-[var(--main-color)]/10'
+                        ${v === current ? 'border-(--main-color) text-(--main-color) bg-(--main-color)/10'
                             : 'border-white/10 text-white/25 hover:border-white/30 hover:text-white/60'}`}>
                     {v}
                 </button>
@@ -256,7 +256,7 @@ export function UploadEntryForm() {
                             <button
                                 key={s} type="button"
                                 onClick={() => set('status', s)}
-                                className={`px-4 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all ${itemData.status === s ? 'bg-[var(--main-color)] text-black border-[var(--main-color)] shadow-md' : 'bg-white/3 border-white/10 text-white/40 hover:border-white/30 hover:text-white/80'}`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${itemData.status === s ? 'bg-[--main-color]/10 border-[--main-color] text-[--main-color]' : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/80'}`}
                             >
                                 {s}
                             </button>
@@ -316,13 +316,11 @@ export function UploadEntryForm() {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                    <label className="flex-1 flex items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-xl py-8 cursor-pointer hover:border-[var(--main-color)]/40 hover:bg-white/2 transition-all group">
-                        <div className="flex flex-col items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <svg className="w-5 h-5 text-white/40 group-hover:text-[var(--main-color)]"><use href="#upload" /></svg>
-                            </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/25 group-hover:text-white/60">Attach Media (Images / Video)</span>
+                    <label className="group flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 hover:border-[--main-color]/40 rounded-2xl cursor-pointer transition-all bg-white/5 py-10">
+                        <div className="flex flex-col items-center gap-3">
+                            <svg className="w-5 h-5 text-white/40 group-hover:text-[--main-color]"><use href="#upload" /></svg>
                         </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/25 group-hover:text-white/60">Attach Media (Images / Video)</span>
                         <input type="file" className="sr-only" onChange={handleFileChange} accept="image/*,video/*" multiple />
                     </label>
                 </div>
@@ -355,7 +353,7 @@ export function UploadEntryForm() {
                                                 onClick={() => updateFileTag(i, tag as 'Item' | 'Lot')}
                                                 className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
                                                     ${f.tag === tag
-                                                        ? 'bg-(--main-color) text-black border-(--main-color)'
+                                                        ? 'bg-[--main-color] text-black border-[--main-color]'
                                                         : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'}`}
                                             >
                                                 {tag}
@@ -461,7 +459,7 @@ export function UploadEntryForm() {
 
             {/* ── Submit ── */}
             <button type="submit" disabled={isSubmitting}
-                className="w-full py-3.5 bg-(--main-color) text-black text-[11px] font-black tracking-widest rounded-xl shadow-[0_0_24px_rgba(141,198,63,0.25)] hover:shadow-[0_0_40px_rgba(141,198,63,0.45)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none">
+                className="button w-full bg-(--main-color) border-(--main-color) text-black hover:opacity-90 disabled:opacity-50">
                 {isSubmitting ? <><LoadingIndicator /> WAIT</> : '✓ SAVE'}
             </button>
         </form>
