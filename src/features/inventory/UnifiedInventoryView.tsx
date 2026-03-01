@@ -73,41 +73,72 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-1">
-                <div className={`flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 rounded-xl transition-all group ${isExpanded ? 'border-(--main-color)/30 bg-black/40' : ''}`}>
+                <div className={`flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 pr-4 rounded-xl transition-all group ${isExpanded ? 'border-(--main-color)/30 bg-black/40 shadow-lg' : ''}`}>
+                    {/* Thumbnail */}
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10">
                         {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
                     </div>
-                    <div className="grow min-w-0">
+
+                    {/* Meta & Description */}
+                    <div className="grow min-w-0 flex flex-col justify-center max-w-[300px]">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono text-white/40">{vendorPrefix}-{norm.itemNumber}</span>
+                            <div className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black text-black leading-none" style={{ backgroundColor: vendorColor }}>
+                                {vendorPrefix}
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-white/40 tracking-tighter">{norm.itemNumber}</span>
                             <span className="text-xs font-black text-white truncate">{descLine || 'NO DESCRIPTION'}</span>
                         </div>
-                        <div className="flex items-center gap-3 mt-0.5">
-                            <span className="text-[9px] text-white/20 uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
-                            <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500' : statusClass === 'YELLOW' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                        <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : statusClass === 'YELLOW' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 px-2">
-                        <span className="text-xs font-mono font-bold text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
-                        <div className="flex gap-1">
-                            <button onClick={handleEdit} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Edit">
-                                <svg className="w-3.5 h-3.5"><use href="#edit" /></svg>
+
+                    {/* Data Dense Center Section */}
+                    <div className="hidden md:flex items-center gap-4 grow justify-around border-x border-white/5 px-4 max-w-[500px]">
+                        <div className="flex flex-col min-w-[100px]">
+                            <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">TAG ID</span>
+                            <span className="text-[10px] font-mono font-bold text-white/80 whitespace-nowrap">{calculated.bookBardcode || 'N/A'}</span>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="flex flex-col items-center">
+                                <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">AQ CODE</span>
+                                <span className="text-[11px] font-mono font-black text-(--main-color)/80 shadow-sm">{calculated.bookAqCode || '—'}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">LD CODE</span>
+                                <span className="text-[11px] font-mono font-black text-yellow-500/80 shadow-sm">{calculated.bookLandCode || '—'}</span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">BOOK</span>
+                            <span className="text-[10px] font-mono font-bold text-white/60 tracking-tighter">{norm.workbook || '—'}</span>
+                        </div>
+                    </div>
+
+                    {/* Pricing & Actions */}
+                    <div className="flex items-center gap-6 shrink-0 ml-auto">
+                        <div className="flex flex-col items-end mr-2">
+                            <span className="text-[8px] font-black text-white/15 uppercase tracking-widest mb-0.5">ACQ COST</span>
+                            <span className="text-base font-mono font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button onClick={handleEdit} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/edit" title="Edit Item">
+                                <svg className="w-4 h-4 transition-transform group-hover/edit:scale-110"><use href="#edit" /></svg>
                             </button>
-                            <button onClick={onToggleExpand} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors" title="Expand">
-                                <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}><use href="#chevron-down" /></svg>
+                            <button onClick={onToggleExpand} className="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
+                                <svg className={`w-4 h-4 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
                             </button>
                         </div>
                     </div>
                 </div>
                 {isExpanded && (
-                    <div className="ml-16 mr-2 p-4 bg-white/[0.02] border-x border-b border-white/5 rounded-b-xl grid grid-cols-2 md:grid-cols-4 gap-4 animate-in slide-in-from-top-2 duration-300">
-                        <div><p className={lbl}>Material</p><p className="text-[10px] text-white/60">{norm.material || '—'}</p></div>
-                        <div><p className={lbl}>Status</p><p className="text-[10px] text-white/60 capitalize">{norm.status}</p></div>
-                        <div><p className={lbl}>Source</p><p className="text-[10px] text-white/60 capitalize">{item.source}</p></div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Landed</span><span className="text-xs font-black text-yellow-300/80 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
-                            <div className="flex flex-col"><span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Retail</span><span className="text-xs font-black text-green-400/80 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
-                        </div>
+                    <div className="ml-16 mr-4 p-5 bg-black/40 backdrop-blur-md border-x border-b border-white/5 rounded-b-2xl grid grid-cols-2 md:grid-cols-5 gap-6 animate-in slide-in-from-top-4 duration-500 ease-out z-0 relative">
+                        <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
+                        <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
+                        <div><p className={lbl}>Source</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{(item as any).source}</p></div>
+                        <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono tracking-tight">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
+                        <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono tracking-tight">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
                     </div>
                 )}
             </div>
@@ -295,7 +326,7 @@ export const UnifiedInventoryView = () => {
                 updated_at: new Date().toISOString()
             };
 
-            const tableName = itemData?.source === 'production' ? 'production' : 'inventory';
+            const tableName = (itemData as any)?.source === 'production' ? 'production' : 'inventory';
             const { error } = await supabase.from(tableName).update(dbRow).eq('id', itemRow);
             if (error) throw error;
             toast.success('Saved Successfully', { id: toastId });

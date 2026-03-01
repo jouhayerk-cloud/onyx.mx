@@ -343,7 +343,7 @@ export function MainHeader() {
             <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
                 <div className="hidden lg:flex flex-col items-end">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5">Welcome back,</span>
-                    <span className="text-[11px] font-black text-white leading-none capitalize">{user?.id || 'User'}</span>
+                    <span className="text-[11px] font-black text-white leading-none capitalize">{user?.name || user?.email?.split('@')[0] || 'User'}</span>
                 </div>
 
                 {UserIcon && (

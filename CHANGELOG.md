@@ -7,7 +7,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [1.10.20] — 2026-02-28 (RTM)
 
 ### Added
-- **Dynamic UX Header**: Added a "Welcome back, [User]" title and user avatar icon to the Main Header.
+- **High-Density List View**: Completely redesigned the Inventory List mode for maximum data visibility. Added dedicated columns for **TAG ID**, **AQ Code**, **LD Code**, and **Book/Season**.
+- **Visual Markers**: Integrated color-coded vendor badges and glow-effect status indicators into list items.
 - **Header Actions**: Integrated a manual **Database Refresh** button and a dedicated **Logout** button.
 - **Scrollable Items Window**: Refactored the Inventory and Edit overlays to ensure full scrollability, preventing layout clipping.
 
