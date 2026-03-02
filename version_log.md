@@ -4,6 +4,23 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.10.38 - UI & Icon Optimization**
+
+### **Date:** 2026-03-01
+
+- **UI: Unified View Toggle** — Merged the separate Grid and List buttons into a single smart toggle button in the Main Top Bar.
+- **UI: Item Count Tracking** — Relocated the "# ITEMS" count from the inventory container to the top bar for a cleaner workspace.
+- **UI: Icon Visibility Fixes** — Restored missing SVG symbols for bookmarks and increased the contrast/size of header actions (refresh, logout, search).
+- **UI: Native Path Rendering** — Switched refresh and logout icons to direct SVG paths to ensure reliability across all browser environments.
+
+## **v1.10.37 - Advanced Search & State Persistence**
+
+### **Date:** 2026-03-01
+
+- **SEARCH: Multi-Term Filtering** — Enhanced the search engine to support multi-criteria filtering (e.g., ":em 40") using AND logic across descriptions, tags, and codes.
+- **STATE: Global View Persistence** — Migrated the inventory view mode (Grid/List) to a global persisted atom, allowing preferences to save across sessions.
+- **LOGISTICS: Icon Refresh** — Updated the Production status icon to a "Tool" symbol for better semantic clarity.
+
 ## **v1.10.22 - Rendering Resolution**
 
 ### **Date:** 2026-03-01
