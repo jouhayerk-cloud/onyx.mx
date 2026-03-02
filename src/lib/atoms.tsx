@@ -93,6 +93,7 @@ export const PointsAtom = atom(
 // App State
 export type SidebarState = 'expanded' | 'compact' | 'hidden';
 export const sidebarStateAtom = atomWithStorage<SidebarState>('sidebarState', 'expanded');
+export const isUploadWizardOpenAtom = atom<boolean>(false);
 
 export const SelectedMasksAtom = atomWithStorage<number[]>(
   'selectedMasks',

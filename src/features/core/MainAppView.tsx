@@ -50,6 +50,7 @@ import userIcons from '../../components/userIcons';
 import { InventoryView } from '../inventory/InventoryView';
 import { LogisticsView } from '../logistics/LogisticsView';
 import { FinanceView } from '../finance/FinanceView';
+import { UploadWizard } from '../inventory/UploadWizard';
 
 interface NavItemWithSubmenuProps {
     viewId: string;
@@ -355,6 +356,7 @@ export function MainAppView() {
             {/* is3DWorkspaceOpen && <ThreeDWorkspace /> */}
 
             <BatchActionsModal />
+            <UploadWizard />
         </>
     );
 }
