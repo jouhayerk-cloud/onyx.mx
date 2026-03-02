@@ -265,7 +265,7 @@ export function UploadEntryForm() {
                 <div className="flex gap-2 pt-1 overflow-x-auto no-scrollbar">
                     {[
                         { id: 'Catalog', icon: 'layout-grid', label: 'Catalog' },
-                        { id: 'Production', icon: 'gear', label: 'Production' },
+                        { id: 'Production', icon: 'tool', label: 'Production' },
                         { id: 'Acquisitions', icon: 'shopping-bag', label: 'Acquisitions' }
                     ].map(s => (
                         <button
