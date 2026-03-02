@@ -323,7 +323,7 @@ export function MainAppView() {
                             </div>
                             <span className="sidebar-compact-tooltip">Inventory</span>
                         </li>
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <CreditCard size={20} strokeWidth={1.75} />
