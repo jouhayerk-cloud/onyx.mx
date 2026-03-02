@@ -1,4 +1,4 @@
-skillsimport React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai/react';
 import { uploadTabAtom, isUploadWizardOpenAtom } from '../../lib/atoms';
 import { UploadEntryForm } from './UploadEntryForm';
