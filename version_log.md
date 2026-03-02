@@ -4,6 +4,15 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.42 - Finance Wizard: Acquisition & IVA Logic**
+
+### **Date:** 2026-03-01
+
+- **UI: Payment Wizard** — Redesigned the "Add Payment" modal into a 3-step wizard (Category → Details → Account) with a premium glassmorphic aesthetic.
+- **LOGIC: Acquisition Auto-fill** — Implemented automated totals for Vendor Acquisitions by summing items marked as `Acquired` (Price × Quantity).
+- **LOGIC: Tax & Fees** — Added automatic 16% IVA calculation specifically for the `BBVA Ramses` payment destination.
+- **FEATURES: Recurring Payments** — Enhanced monthly expense logic to allow user-defined recurring dates.
+ 
 ## **v1.10.41 - Monochrome Unicode Stability**
 
 ### **Date:** 2026-03-01
