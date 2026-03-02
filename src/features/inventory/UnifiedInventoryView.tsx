@@ -395,8 +395,29 @@ export const UnifiedInventoryView = () => {
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
             if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
             if (searchTerm) {
-                const lowerSearch = searchTerm.toLowerCase();
-                if (!Object.values(item.data).some(v => String(v).toLowerCase().includes(lowerSearch))) return false;
+                const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+                const norm = item.data;
+                const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                const searchableFields = [
+                    norm.itemId,
+                    norm.itemNumber,
+                    norm.color,
+                    norm.material,
+                    norm.shape,
+                    norm.shortDescription,
+                    norm.description,
+                    norm.widthCm,
+                    norm.heightCm,
+                    norm.lengthCm,
+                    norm.weightKg,
+                    calculated.bookAqCode,
+                    calculated.bookLandCode,
+                    calculated.bookBardcode,
+                    norm.status,
+                    norm.workbook,
+                ].map(v => String(v || '').toLowerCase());
+                const searchableString = searchableFields.join(' ');
+                if (!terms.every(term => searchableString.includes(term))) return false;
             }
             return true;
         }).sort((a, b) => (new Date(b.data.updatedAt || 0).getTime()) - (new Date(a.data.updatedAt || 0).getTime()));
