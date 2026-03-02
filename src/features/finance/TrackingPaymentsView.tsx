@@ -23,7 +23,7 @@ const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?
 const SUBCATEGORIES = ['All', 'Acq', 'Mo-Exp', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
-type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number };
+type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number };
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 const appendExpense = async (payload: any, db: any) => {
@@ -325,7 +325,7 @@ const RequestPaymentModal: React.FC<{
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
             <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-7 w-[460px] max-w-[95vw] shadow-2xl" onClick={e => e.stopPropagation()}>
                 <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-1">Request Payment</h3>
-                <p className="text-xs text-white/40 mb-5">{name} · {group.items.length} items · <span className="font-mono text-white/60">{fmtMXN(group.total)} total</span></p>
+                <p className="text-xs text-white/40 mb-5">{name} · {group.items.length} items ({group.totalQty} units) · <span className="font-mono text-white/60">{fmtMXN(group.total)} total</span></p>
 
                 <div className="mb-6">
                     <label className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2 block">Payment Percentage</label>
@@ -415,12 +415,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
             if (!vid) vid = 'Unknown';
 
-            if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0 };
+            if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0, totalQty: 0 };
 
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseFloat(data.quantity || '1') || 1;
             groups[vid].items.push(item);
             groups[vid].total += (price * qty);
+            groups[vid].totalQty += qty;
         }
         return Object.values(groups);
     }, [inventory]);
@@ -577,7 +578,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <p className="font-bold text-sm">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                        <p className="text-[10px] opacity-70">{group.items.length} items ready</p>
+                                        <p className="text-[10px] opacity-70">{group.items.length} items · {group.totalQty} units</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-mono font-bold text-sm">{fmtMXN(group.total)}</p>

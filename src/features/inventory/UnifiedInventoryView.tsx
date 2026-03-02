@@ -90,6 +90,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             </div>
                             <span className="text-[10px] font-mono font-bold text-white/40 tracking-tighter">{norm.itemNumber}</span>
                             <span className="text-xs font-black text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</span>
+                            <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-white/10 text-white/50 whitespace-nowrap">QTY: {norm.quantity || 1}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1">
                             <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
@@ -142,6 +143,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
                         <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
                         <div><p className={lbl}>Source</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{(item as any).source}</p></div>
+                        <div><p className={lbl}>Quantity</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.quantity || 1}</p></div>
                         <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono tracking-tight">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
                         <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono tracking-tight">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
                     </div>
@@ -170,7 +172,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
                                 <p className="font-black text-white text-base leading-none truncate drop-shadow-md">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
-                                <span className="text-[10px] font-black text-(--main-color) font-mono shrink-0">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                                <div className="flex flex-col items-end shrink-0">
+                                    <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                                    <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
+                                </div>
                             </div>
                             <div className="flex flex-col gap-0.5">
                                 <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
@@ -224,6 +229,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div><p className={lbl}>Material</p><p className="text-sm font-medium text-white/80">{norm.material || '—'}</p></div>
                                 <div><p className={lbl}>Dimensions</p><p className="text-sm font-medium text-white/80 font-mono">{dimensionsStr || '—'}</p></div>
                                 <div><p className={lbl}>Weight</p><p className="text-sm font-medium text-white/80 font-mono">{weightStr || '—'}</p></div>
+                                <div><p className={lbl}>Quantity</p><p className="text-sm font-medium text-white/80 font-mono">{norm.quantity || 1}</p></div>
                                 <div><p className={lbl}>Source</p><p className="text-sm font-medium capitalize text-white/80">{item.source}</p></div>
                             </div>
                             <div className="p-5 bg-white/3 rounded-2xl border border-white/5 shadow-inner">
@@ -490,7 +496,7 @@ export const UnifiedInventoryView = () => {
             </div>
 
             {mode === 'edit' && editData && (
-                <div className="fixed inset-0 z-[100] bg-black/98 backdrop-blur-2xl flex flex-col p-8 items-center justify-center animate-in fade-in zoom-in duration-500">
+                <div className="fixed inset-0 z-100 bg-black/98 backdrop-blur-2xl flex flex-col p-8 items-center justify-center animate-in fade-in zoom-in duration-500">
                     <div className="max-w-2xl w-full flex flex-col h-full overflow-hidden">
                         <div className="flex justify-between items-center mb-10 shrink-0">
                             <div className="flex items-center gap-5">
