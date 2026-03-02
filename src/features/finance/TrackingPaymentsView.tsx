@@ -18,9 +18,20 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
-const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
+const normalizeSubcat = (s: string | null | undefined): string => {
+    if (!s) return '—';
+    const low = s.toString().trim().toLowerCase();
+    if (low === 'mo-exp' || low === 'monthly' || low === 'mo-ex') return 'Monthly';
+    if (low === 'acq' || low === 'acquisition') return 'Acq';
+    if (low === 'prod' || low === 'production') return 'Prod';
+    if (low === 'sppl' || low === 'supplies') return 'Sppl';
+    if (low === 'labr' || low === 'labor') return 'Labr';
+    if (low === 'pack' || low === 'packaging') return 'Pack';
+    if (low === 'oprt' || low === 'operations') return 'Oprt';
+    return s;
+};
 
-const SUBCATEGORIES = ['All', 'Acq', 'MONTHLY', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
+const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
 type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
@@ -289,7 +300,7 @@ const AddPaymentModal: React.FC<{
                             <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
 
                             <div className="grid grid-cols-2 gap-5 w-full">
-                                <button onClick={() => { set('subcategory', 'MONTHLY'); setStep(4); }}
+                                <button onClick={() => { set('subcategory', 'Monthly'); setStep(4); }}
                                     className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="w-16 h-16 mb-5 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                                         <svg className="w-8 h-8 opacity-50"><use href="#calendar" /></svg>
@@ -297,7 +308,7 @@ const AddPaymentModal: React.FC<{
                                     <span className="text-[11px] font-black text-white uppercase tracking-widest">MONTHLY FIXED</span>
                                     <span className="text-[8px] text-white/20 font-bold mt-2 uppercase leading-tight text-center">Recurring bills<br />& subscriptions</span>
                                 </button>
-                                <button onClick={() => setStep(3.2)}
+                                <button onClick={() => { setStep(3.2); }}
                                     className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
                                     <div className="w-16 h-16 mb-5 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                                         <svg className="w-8 h-8 opacity-50"><use href="#file" /></svg>
@@ -362,7 +373,7 @@ const AddPaymentModal: React.FC<{
                                         <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
                                             className="w-full h-16 px-6 font-mono text-xl font-bold bg-white/5 border border-white/10 rounded-[24px] text-white outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
                                     </div>
-                                    {form.subcategory === 'MONTHLY' ? (
+                                    {normalizeSubcat(form.subcategory) === 'Monthly' ? (
                                         <div className="space-y-3">
                                             <label className="text-[10px] opacity-40 font-black uppercase tracking-[0.3em] block ml-1">RECURRING DAY</label>
                                             <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => { set('recurring_day', parseInt(e.target.value)); set('recurring', true); }}
@@ -655,7 +666,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const filtered = useMemo(() => {
         return [...docs]
             .filter(r => {
-                const subcat = subcatFilter === 'All' || (r.subcategory || r.category) === subcatFilter;
+                const subcatValue = normalizeSubcat(r.subcategory || r.category || '');
+                const subcat = subcatFilter === 'All' || subcatValue === subcatFilter;
                 const dest = destinationFilter === 'All' || r.destination === destinationFilter;
                 const vendor = vendorFilter === 'All' || getVendorIdFromDescription(r.description || '') === vendorFilter;
                 return subcat && dest && vendor;
@@ -763,7 +775,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     // Summary by subcategory
     const subcatTotals = useMemo(() => {
         const m: Record<string, number> = {};
-        docs.forEach(d => { const k = d.subcategory || d.category || 'Other'; m[k] = (m[k] || 0) + (d.amount || 0); });
+        docs.forEach(d => { const k = normalizeSubcat(d.subcategory || d.category); m[k] = (m[k] || 0) + (d.amount || 0); });
         return m;
     }, [docs]);
 
@@ -843,7 +855,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
+            </div>
 
             {/* ── Pending Bubbles Bar (Collapsible) ── */}
             {pendingGroups.length > 0 && (
@@ -915,121 +928,120 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     </div>
                 </div>
             )}
-        </div>
 
-            {/* ── Summary cards ── */ }
-    <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
-        {Object.entries(subcatTotals).map(([k, v]) => (
-            <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
-                <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
-                <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
-                <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
-            </div>
-        ))}
-    </div>
-
-    {/* ── Records Table ── */ }
-    <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-[#0d0d1a] z-10">
-                <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Acc</th>
-                    <th className="px-4 py-3">Cat</th>
-                    <th className="px-4 py-3">Desc</th>
-                    <th className="px-4 py-3">Vend</th>
-                    <th className="px-4 py-3 text-right">Amt</th>
-                    <th className="px-4 py-3 text-center">Stat</th>
-                </tr>
-            </thead>
-            <tbody className="divide-y divide-white/3">
-                {filtered.map(r => (
-                    <tr key={r.id} className="hover:bg-white/3 transition-all">
-                        <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
-                            {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
-                        </td>
-                        <td className="px-4 py-2">
-                            {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                    alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                    className="h-5 w-auto object-contain" />
-                            ) : <span className="text-white/20 text-[9px]">—</span>}
-                        </td>
-                        <td className="px-4 py-2">
-                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">
-                                {r.subcategory || r.category || '—'}
-                            </span>
-                        </td>
-                        <td className="px-4 py-2 text-xs text-white/70 max-w-[200px] truncate">{r.description || r.notes || '—'}</td>
-                        <td className="px-4 py-2">
-                            {r.vendor_id ? (
-                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black"
-                                    style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
-                                    {r.vendor_id}
-                                </span>
-                            ) : '—'}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/70">
-                            {fmtMXN(r.amount)}
-                            {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                                <button onClick={() => handleToggleStatus(r)}
-                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
-                                    {r.status || 'Requested'}
-                                </button>
-                                {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                    <button onClick={() => handleDeletePayment(r.id)}
-                                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
-                                        ✕
-                                    </button>
-                                )}
-                            </div>
-                        </td>
-                    </tr>
+            {/* ── Summary cards ── */}
+            <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
+                {Object.entries(subcatTotals).map(([k, v]) => (
+                    <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
+                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
+                        <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
+                        <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
+                    </div>
                 ))}
-                {filtered.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>
-                )}
-            </tbody>
-        </table>
-    </div>
+            </div>
 
-    {/* SVG Icons for Wizard */ }
-    <svg style={{ display: 'none' }}>
-        <defs>
-            <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
-            </symbol>
-            <symbol id="dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </symbol>
-            <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-            </symbol>
-            <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-            </symbol>
-            <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-            </symbol>
-            <symbol id="file" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-            </symbol>
-            <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
-            </symbol>
-            <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-            </symbol>
-            <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
-            </symbol>
-        </defs>
-    </svg>
-        </div >
+            {/* ── Records Table ── */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-[#0d0d1a] z-10">
+                        <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Acc</th>
+                            <th className="px-4 py-3">Cat</th>
+                            <th className="px-4 py-3">Desc</th>
+                            <th className="px-4 py-3">Vend</th>
+                            <th className="px-4 py-3 text-right">Amt</th>
+                            <th className="px-4 py-3 text-center">Stat</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/3">
+                        {filtered.map(r => (
+                            <tr key={r.id} className="hover:bg-white/3 transition-all">
+                                <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
+                                    {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
+                                </td>
+                                <td className="px-4 py-2">
+                                    {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
+                                        <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                            alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                            className="h-5 w-auto object-contain" />
+                                    ) : <span className="text-white/20 text-[9px]">—</span>}
+                                </td>
+                                <td className="px-4 py-2">
+                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">
+                                        {normalizeSubcat(r.subcategory || r.category)}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-2 text-xs text-white/70 max-w-[200px] truncate">{r.description || r.notes || '—'}</td>
+                                <td className="px-4 py-2">
+                                    {r.vendor_id ? (
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black"
+                                            style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
+                                            {r.vendor_id}
+                                        </span>
+                                    ) : '—'}
+                                </td>
+                                <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/70">
+                                    {fmtMXN(r.amount)}
+                                    {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
+                                </td>
+                                <td className="px-4 py-2 text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button onClick={() => handleToggleStatus(r)}
+                                            className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
+                                            {r.status || 'Requested'}
+                                        </button>
+                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                            <button onClick={() => handleDeletePayment(r.id)}
+                                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {filtered.length === 0 && (
+                            <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* SVG Icons for Wizard */}
+            <svg style={{ display: 'none' }}>
+                <defs>
+                    <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
+                    </symbol>
+                    <symbol id="dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </symbol>
+                    <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                    </symbol>
+                    <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </symbol>
+                    <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    </symbol>
+                    <symbol id="file" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                    </symbol>
+                    <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+                    </symbol>
+                    <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </symbol>
+                    <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+                    </symbol>
+                </defs>
+            </svg>
+        </div>
     );
 };
