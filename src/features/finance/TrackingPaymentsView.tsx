@@ -61,8 +61,10 @@ const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     onSaved: () => void;
-}> = ({ isOpen, onClose, onSaved }) => {
+    pendingGroups: VendorGroup[];
+}> = ({ isOpen, onClose, onSaved, pendingGroups }) => {
     const db = useDatabase();
+    const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         description: '',
@@ -79,6 +81,40 @@ const AddPaymentModal: React.FC<{
 
     const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
+    useEffect(() => {
+        if (isOpen) {
+            setStep(1);
+            setForm({
+                description: '',
+                amount: '',
+                subcategory: 'Acq',
+                vendor_id: '',
+                destination: null,
+                reference: '',
+                payment_method: 'Wire Transfer',
+                notes: '',
+                recurring: false,
+                recurring_day: new Date().getDate(),
+            });
+        }
+    }, [isOpen]);
+
+    // Acquisition auto-fill
+    useEffect(() => {
+        if (form.subcategory === 'Acq' && form.vendor_id) {
+            const group = pendingGroups.find(g => g.vendorId === form.vendor_id);
+            if (group) {
+                setForm(f => ({
+                    ...f,
+                    amount: group.total.toString(),
+                    description: `Payment for ${group.items.length} items from ${group.vendorId}`
+                }));
+            }
+        }
+    }, [form.vendor_id, form.subcategory]);
+
+    const calculateIVA = (amt: number) => amt * 0.16;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const amt = parseFloat(form.amount);
@@ -88,8 +124,23 @@ const AddPaymentModal: React.FC<{
         setSaving(true);
         const toastId = toast.loading('Saving…');
         try {
-            const commission = destinationsConfig[form.destination].calculateCommission(amt);
-            await appendExpense({ ...form, amount: amt, commission }, db);
+            let commission = destinationsConfig[form.destination].calculateCommission(amt);
+            if (form.destination === PaymentDestination.BBVA_Ramses) {
+                const iva = calculateIVA(amt);
+                commission += iva;
+            }
+
+            // For Acquisitions, we need to find the related inventory items to mark them as pay_req
+            const group = form.subcategory === 'Acq' ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
+            const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
+
+            await appendExpense({
+                ...form,
+                amount: amt,
+                commission,
+                inventoryItemRows
+            }, db);
+
             toast.success('Record added!', { id: toastId });
             onSaved();
             onClose();
@@ -101,81 +152,158 @@ const AddPaymentModal: React.FC<{
     };
 
     if (!isOpen) return null;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
-            <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-7 w-[520px] max-w-[95vw] shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
-                    <span className="text-(--main-color)">＋</span> Add Payment / Expense
-                </h3>
+            <div className="bg-[#1a1a2e] border border-white/10 rounded-4xl p-8 w-[560px] max-w-[95vw] shadow-2xl overflow-hidden relative" onClick={e => e.stopPropagation()}>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    {/* Description */}
-                    <div><label className="field-label">Description *</label>
-                        <input value={form.description} onChange={e => set('description', e.target.value)} className="field-input" placeholder="e.g. Payment for lot #42" required /></div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        {/* Amount */}
-                        <div><label className="field-label">Amount (MXN) *</label>
-                            <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} className="field-input font-mono" required /></div>
-                        {/* Subcategory */}
-                        <div><label className="field-label">Category</label>
-                            <select value={form.subcategory} onChange={e => set('subcategory', e.target.value)} className="field-input">
-                                {SUBCATEGORIES.filter(s => s !== 'All').map(s => <option key={s} value={s}>{s}</option>)}
-                            </select></div>
-                        {/* Vendor */}
-                        <div><label className="field-label">Vendor</label>
-                            <select value={form.vendor_id} onChange={e => set('vendor_id', e.target.value)} className="field-input">
-                                <option value="">— None —</option>
-                                {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
-                            </select></div>
-                        {/* Reference */}
-                        <div><label className="field-label">Reference / Invoice #</label>
-                            <input value={form.reference} onChange={e => set('reference', e.target.value)} className="field-input" /></div>
+                {/* Progress Header */}
+                <div className="flex justify-between items-center mb-8">
+                    <div className="flex gap-2">
+                        {[1, 2, 3].map(s => (
+                            <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-white/10'}`} />
+                        ))}
                     </div>
+                    <button onClick={onClose} className="text-white/20 hover:text-white transition-colors">
+                        <span className="text-xl">✕</span>
+                    </button>
+                </div>
 
-                    {/* Account / Destination selector */}
-                    <div>
-                        <label className="field-label mb-2">Payment Account *</label>
-                        <div className="grid grid-cols-4 gap-2">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                                <button
-                                    key={key} type="button"
-                                    onClick={() => set('destination', key as PaymentDestination)}
-                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}
-                                >
-                                    <img src={cfg.icon} alt={cfg.name} className="h-8 w-full object-contain" />
-                                    <span className="text-[9px] text-center font-bold text-white/60 leading-tight">{cfg.name}</span>
-                                    {form.amount && !isNaN(parseFloat(form.amount)) && (
-                                        <span className="text-[9px] font-mono text-(--main-color)">
-                                            +{fmtMXN(cfg.calculateCommission(parseFloat(form.amount)))} fee
+                <div className="min-h-[360px] flex flex-col">
+                    {/* Step 1: Category */}
+                    {step === 1 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-2xl font-black text-white mb-2">Select Category</h2>
+                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">What type of payment is this?</p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {SUBCATEGORIES.filter(s => s !== 'All').map(cat => (
+                                    <button key={cat}
+                                        onClick={() => { set('subcategory', cat); setStep(2); }}
+                                        className="flex flex-col items-start p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-(--main-color)/50 hover:bg-(--main-color)/10 transition-all group"
+                                    >
+                                        <span className="text-2xl mb-3 group-hover:scale-110 transition-transform">
+                                            {cat === 'Acq' ? '📦' : cat === 'Mo-Exp' ? '📅' : cat === 'Sppl' ? '🛠' : cat === 'Labr' ? '👷' : cat === 'Pack' ? '🏷' : '⚙️'}
                                         </span>
-                                    )}
-                                </button>
-                            ))}
+                                        <span className="text-sm font-black text-white uppercase tracking-wider">{cat}</span>
+                                        <span className="text-[10px] text-white/30 font-medium">
+                                            {cat === 'Acq' ? 'Vendor Acquisitions' : 'Operational Costs'}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Notes + Recurring */}
-                    <div><label className="field-label">Notes</label>
-                        <textarea value={form.notes} onChange={e => set('notes', e.target.value)} className="field-input resize-none h-14" /></div>
+                    {/* Step 2: Details */}
+                    {step === 2 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-2xl font-black text-white mb-2">Details</h2>
+                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">Enter the specifics of the transaction</p>
 
-                    <label className="flex items-center gap-2 text-[10px] font-bold text-white/70 cursor-pointer">
-                        <input type="checkbox" checked={form.recurring} onChange={e => set('recurring', e.target.checked)} className="rounded bg-white/5 border-white/10" />
-                        Recurring expense
-                        {form.recurring && (
-                            <span className="flex items-center gap-1 ml-2 font-normal">
-                                Day <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)} className="w-12 bg-white/5 border border-white/10 rounded px-2 py-0.5 font-mono text-xs text-white/80" />
-                            </span>
-                        )}
-                    </label>
+                            <div className="flex flex-col gap-6">
+                                {form.subcategory === 'Acq' && (
+                                    <div>
+                                        <label className="field-label">Select Vendor</label>
+                                        <select value={form.vendor_id} onChange={e => set('vendor_id', e.target.value)} className="field-input py-4!">
+                                            <option value="">— Choose Vendor —</option>
+                                            {pendingGroups.map(g => (
+                                                <option key={g.vendorId} value={g.vendorId}>{g.vendorId} ({g.items.length} items)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                        <button type="submit" disabled={saving || !form.destination} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">
-                            {saving ? 'SAVING…' : 'COMMIT'}
-                        </button>
-                    </div>
-                </form>
+                                <div>
+                                    <label className="field-label">Description</label>
+                                    <input value={form.description} onChange={e => set('description', e.target.value)}
+                                        className="field-input py-4!" placeholder="Brief summary of payment" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="field-label">Amount (MXN)</label>
+                                        <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                            className="field-input py-4! font-mono text-lg" placeholder="0.00" />
+                                    </div>
+                                    {form.subcategory === 'Mo-Exp' ? (
+                                        <div>
+                                            <label className="field-label">Day of Month</label>
+                                            <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => { set('recurring_day', parseInt(e.target.value)); set('recurring', true); }}
+                                                className="field-input py-4! font-mono text-lg" />
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="field-label">Reference #</label>
+                                            <input value={form.reference} onChange={e => set('reference', e.target.value)}
+                                                className="field-input py-4!" placeholder="Optional" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 mt-12">
+                                <button onClick={() => setStep(1)} className="flex-1 py-4 border border-white/10 text-white/40 rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/5 transition-all">BACK</button>
+                                <button onClick={() => {
+                                    if (!form.amount || parseFloat(form.amount) <= 0) return toast.error('Enter valid amount');
+                                    setStep(3);
+                                }} className="flex-1 py-4 bg-white/10 text-white rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/20 transition-all">CONTINUE</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 3: Account */}
+                    {step === 3 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-2xl font-black text-white mb-2">Payment Method</h2>
+                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">Choose disbursement account</p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                                    const amt = parseFloat(form.amount) || 0;
+                                    const comm = cfg.calculateCommission(amt);
+                                    const iva = (key === PaymentDestination.BBVA_Ramses) ? calculateIVA(amt) : 0;
+                                    const totalExtra = comm + iva;
+
+                                    return (
+                                        <button key={key} type="button"
+                                            onClick={() => set('destination', key as PaymentDestination)}
+                                            className={`flex flex-col items-center gap-3 p-6 rounded-4xl border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/5 bg-white/3 hover:border-white/20 hover:bg-white/5'}`}
+                                        >
+                                            <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain" />
+                                            <div className="text-center">
+                                                <div className="text-[10px] font-black text-white uppercase tracking-wider">{cfg.name}</div>
+                                                {totalExtra > 0 && (
+                                                    <div className="text-[9px] font-mono text-(--main-color) mt-1">
+                                                        +{fmtMXN(totalExtra)} {iva > 0 ? '(IVA incl.)' : 'Fee'}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-12 p-6 rounded-4xl bg-black/40 border border-white/5">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Total Request</span>
+                                    <span className="text-xs font-mono text-white/40">{fmtMXN(parseFloat(form.amount) || 0)} base</span>
+                                </div>
+                                <div className="text-3xl font-mono font-black text-white">
+                                    {form.destination ? fmtMXN((parseFloat(form.amount) || 0) + destinationsConfig[form.destination].calculateCommission(parseFloat(form.amount) || 0) + (form.destination === PaymentDestination.BBVA_Ramses ? calculateIVA(parseFloat(form.amount) || 0) : 0)) : '—'}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 mt-8">
+                                <button onClick={() => setStep(2)} className="flex-1 py-4 border border-white/10 text-white/40 rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/5 transition-all">BACK</button>
+                                <button onClick={handleSubmit} disabled={saving || !form.destination}
+                                    className="flex-1 py-4 bg-(--main-color) text-black rounded-2xl text-[10px] font-black tracking-widest disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02]">
+                                    {saving ? 'PROCESSING…' : 'CONFIRM PAYMENT'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -197,13 +325,16 @@ const RequestPaymentModal: React.FC<{
                 <p className="text-xs text-white/40 mb-5">{name} · {group.items.length} items · <span className="font-mono text-white/60">{fmtMXN(group.total)}</span></p>
                 <div className="grid grid-cols-4 gap-2 mb-6">
                     {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                        const comm = cfg.calculateCommission(group.total);
+                        const amt = group.total;
+                        const comm = cfg.calculateCommission(amt);
+                        const iva = (key === PaymentDestination.BBVA_Ramses) ? (amt * 0.16) : 0;
+                        const totalExtra = comm + iva;
                         return (
                             <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
                                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${dest === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30'}`}>
                                 <img src={cfg.icon} alt={cfg.name} className="h-8 w-full object-contain" />
                                 <span className="text-[9px] font-bold text-white/50 text-center leading-tight">{cfg.name}</span>
-                                <span className="text-[9px] font-mono text-(--main-color)">{fmtMXN(group.total + comm)}</span>
+                                <span className="text-[9px] font-mono text-(--main-color)">{fmtMXN(amt + totalExtra)}</span>
                             </button>
                         );
                     })}
@@ -245,13 +376,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     // Vendor groups pending payment
     const pendingGroups = useMemo<VendorGroup[]>(() => {
-        const approved = inventory.filter(i => i.data.status === 'YES' && !i.data.payReq);
+        const acquired = inventory.filter(i => (i.data.status === 'Acquired' || i.data.status === 'YES') && !i.data.payReq);
         const groups: Record<string, VendorGroup> = {};
-        for (const item of approved) {
-            const vid = item.data.itemId;
+        for (const item of acquired) {
+            const vid = item.data.itemId || item.data.vendorId || 'Unknown';
             if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0 };
+            const price = parseFloat(item.data.price) || 0;
+            const qty = parseFloat(item.data.quantity) || 1;
             groups[vid].items.push(item);
-            groups[vid].total += parseFloat(item.data.price) || 0;
+            groups[vid].total += (price * qty);
         }
         return Object.values(groups);
     }, [inventory]);
@@ -281,10 +414,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const handleRequestPayment = async (group: VendorGroup, dest: PaymentDestination) => {
         const toastId = toast.loading(`Requesting payment for ${group.vendorId}…`);
         try {
-            const commission = destinationsConfig[dest].calculateCommission(group.total);
+            let commission = destinationsConfig[dest].calculateCommission(group.total);
+            if (dest === PaymentDestination.BBVA_Ramses) {
+                commission += group.total * 0.16;
+            }
             await appendExpense({
                 description: `Payment for ${group.items.length} items from ${group.vendorId}`,
-                amount: group.total, commission, destination: dest, status: 'Requested',
+                amount: group.total,
+                commission,
+                destination: dest,
+                status: 'Requested',
+                subcategory: 'Acq',
+                vendor_id: group.vendorId,
                 inventoryItemRows: group.items.map(i => i.row).join(','),
             }, db);
             await appendExpense; // flush
@@ -317,7 +458,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            <AddPaymentModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSaved={() => { setPaymentsVersion(v => v + 1); onRefresh(); }} />
+            <AddPaymentModal
+                isOpen={showAdd}
+                onClose={() => setShowAdd(false)}
+                onSaved={() => { setPaymentsVersion(v => v + 1); onRefresh(); }}
+                pendingGroups={pendingGroups}
+            />
             <RequestPaymentModal group={requestGroup} onClose={() => setRequestGroup(null)} onConfirm={(dest) => requestGroup && handleRequestPayment(requestGroup, dest)} />
 
             {/* ── Filter Bar ── */}
