@@ -21,6 +21,7 @@ import {
     logisticsSubTabAtom,
     financeSubTabAtom,
     uploadTabAtom,
+    uploadItemDataAtom,
     shippingCameraViewAtom,
     shippingCratesAtom,
     shippingTruckDimsAtom,
@@ -272,10 +273,16 @@ const LogisticsBar: React.FC = () => {
 };
 
 const UploadBar: React.FC = () => {
+    const itemData = useAtomValue(uploadItemDataAtom);
     return (
-        <>
+        <div className="flex items-center gap-6">
             <ModuleBadge icon="upload" label="Upload" color="#8DC63F" />
-        </>
+
+            <div className="bg-(--main-color) text-black px-3 py-1 rounded-b-lg shadow-xl flex flex-col items-center min-w-[60px] border-x border-b border-black/10 transform -translate-y-2 hover:translate-y-0 transition-all duration-500 cursor-default group">
+                <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 opacity-60 group-hover:opacity-100 transition-opacity">BOOK V</span>
+                <span className="text-[10px] font-black font-mono leading-none tracking-tighter">{itemData.workbook || 'v326'}</span>
+            </div>
+        </div>
     );
 };
 
