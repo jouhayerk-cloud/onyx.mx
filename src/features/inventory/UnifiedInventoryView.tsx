@@ -150,7 +150,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {/* Thumbnail â€” clickable for fullscreen */}
                     <div className={`w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="absolute inset-0 p-3 opacity-20 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full p-2.5 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                     </div>
 
                     {/* Meta & Description */}
@@ -223,12 +223,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         <div className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-500 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/10 shadow-lg ${isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] ring-1 ring-white/10' : 'col-span-1'}`}>
             {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
             <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/5 flex-col'} relative`}>
-                <div className={`${isExpanded ? 'h-64 md:h-full md:w-2/5' : 'absolute inset-0'} relative overflow-hidden flex items-center justify-center bg-black/50`}>
+                <div className={`${isExpanded ? 'relative h-64 md:h-full md:w-2/5' : 'absolute inset-0'} overflow-hidden flex items-center justify-center bg-black/50`}>
                     {imageUrl ? (
                         <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'} ${isExpanded ? 'cursor-pointer' : ''}`}
                             onClick={() => isExpanded && setShowViewer(true)} />
                     ) : (
-                        <div className="absolute inset-0 p-4 sm:p-8 opacity-10 flex items-center justify-center pointer-events-none">
+                        <div className="absolute inset-0 p-6 sm:p-10 opacity-10 flex items-center justify-center pointer-events-none">
                             <OnyxMiniLogo className="w-full h-full object-contain" />
                         </div>
                     )}
