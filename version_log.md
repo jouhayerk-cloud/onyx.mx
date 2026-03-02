@@ -3,6 +3,13 @@
 This document tracks major changes and milestones as we progress towards the next release.
 
 ---
+ 
+## **v1.10.40 - Visual Prominence: Book V Update**
+
+### **Date:** 2026-03-01
+
+- **UI: Enhanced Bookmark** — Greatly increased the size, padding, and font-weight of the "Book V" tag in the Upload module. Adjusted its positioning so it "hangs" prominently below the top bar with a premium shadow.
+- **LINT: UI Optimizations** — Corrected arbitrary z-index notation in `UnifiedInventoryView`.
 
 ## **v1.10.39 - SVG Stability Patch**
 

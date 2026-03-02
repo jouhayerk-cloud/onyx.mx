@@ -192,6 +192,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 </div>
                 {isExpanded && (
                     <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden bg-black/40 backdrop-blur-md">
+                        <div className="absolute right-4 top-4 z-100 flex flex-col gap-2">
+                            <button onClick={handleEdit} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-(--main-color)/10 border border-white/10 rounded-xl text-white/30 hover:text-(--main-color) transition-all group/edit" title="Edit Item">
+                                <svg className="w-3.5 h-3.5 transition-transform group-hover/edit:scale-110"><use href="#edit" /></svg>
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Edit</span>
+                            </button>
+                            <button onClick={onToggleExpand} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
+                                <svg className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'ID Close' : 'ID Details'}</span>
+                            </button>
+                        </div>
                         <div className="overflow-y-auto grow pr-2 custom-scrollbar">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="min-w-0">
