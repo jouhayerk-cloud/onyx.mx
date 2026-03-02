@@ -409,6 +409,14 @@ export function MainHeader() {
                 {activeView === 'logistics' && <LogisticsBar />}
                 {activeView === 'upload' && <UploadBar />}
                 {activeView === 'control' && <ControlBar />}
+                {activeView === 'dashboard' && (
+                    <>
+                        <ModuleBadge icon="layout-grid" label="Dashboard" color="#6BCEBB" />
+                        <div className="ml-auto">
+                            <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Admin Overview</span>
+                        </div>
+                    </>
+                )}
                 {(activeView === 'create' || !activeView) && (
                     <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Onyx.mx</span>
                 )}
