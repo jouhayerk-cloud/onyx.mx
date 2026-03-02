@@ -275,7 +275,7 @@ const AddPaymentModal: React.FC<{
                                                 <div className="text-[10px] font-black text-white uppercase tracking-wider">{cfg.name}</div>
                                                 {totalExtra > 0 && (
                                                     <div className="text-[9px] font-mono text-(--main-color) mt-1">
-                                                        +{fmtMXN(totalExtra)} {iva > 0 ? '(IVA incl.)' : 'Fee'}
+                                                        +{fmtMXN(totalExtra)} {key === PaymentDestination.BoA_Employee ? '(Bank Fee)' : iva > 0 ? '(IVA incl.)' : 'Fee'}
                                                     </div>
                                                 )}
                                             </div>
@@ -376,13 +376,35 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     // Vendor groups pending payment
     const pendingGroups = useMemo<VendorGroup[]>(() => {
-        const acquired = inventory.filter(i => (i.data.status === 'Acquired' || i.data.status === 'YES') && !i.data.payReq);
+        // We include items that are marked as Acquired or Requested, but NOT yet sent to payReq
+        // Also including 'Catalog' and 'Avaiable' to transition existing data
+        const targetStatuses = ['acquired', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
+
+        const pendingItems = inventory.filter(i => {
+            const status = (i.data.status || '').toLowerCase();
+            return targetStatuses.includes(status) && !i.data.payReq;
+        });
+
         const groups: Record<string, VendorGroup> = {};
-        for (const item of acquired) {
-            const vid = item.data.itemId || item.data.vendorId || 'Unknown';
+        for (const item of pendingItems) {
+            // Priority for grouping:
+            // 1. vendor_id or vendorId field
+            // 2. Prefix from item_id (e.g. "V01-001" -> "V01")
+            // 3. Fallback to Unknown
+            const data = item.data;
+            const itemIdStr = String(data.item_id || data.itemId || '');
+            let vid = data.vendor_id || data.vendorId;
+
+            if (!vid && itemIdStr.includes('-')) {
+                vid = itemIdStr.split('-')[0];
+            }
+
+            if (!vid) vid = 'Unknown';
+
             if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0 };
-            const price = parseFloat(item.data.price) || 0;
-            const qty = parseFloat(item.data.quantity) || 1;
+
+            const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
+            const qty = parseFloat(data.quantity || '1') || 1;
             groups[vid].items.push(item);
             groups[vid].total += (price * qty);
         }

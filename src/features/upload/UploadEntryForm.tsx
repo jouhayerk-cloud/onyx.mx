@@ -69,9 +69,7 @@ export function UploadEntryForm() {
             setItemData({
                 itemId: generateUniqueId(),
                 vendorId: defaultVendorId,
-                quantity: '1',
-                mediaType: 'none',
-                status: 'Catalog',
+                status: 'Avaiable',
                 workbook: 'v326',
             });
         }
@@ -242,7 +240,7 @@ export function UploadEntryForm() {
             }
 
             notify('success', '✓ Item saved to inventory!');
-            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Catalog', workbook: itemData.workbook || 'v326' });
+            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Avaiable', workbook: itemData.workbook || 'v326' });
             setMediaFiles([]);
             setTimeout(() => setView('inventory'), 1200);
         } catch (err: any) {

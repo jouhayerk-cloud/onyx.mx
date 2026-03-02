@@ -9,7 +9,7 @@ export const destinationsConfig: Record<PaymentDestination, {
     [PaymentDestination.BoA_Employee]: {
         icon: boaCardIcon,
         name: 'Bank of America',
-        calculateCommission: () => 100.00 // Placeholder: 100 MXN flat fee
+        calculateCommission: (amount: number) => amount * 0.10 // 10% Bank Fee
     },
     [PaymentDestination.BBVA_Martha]: {
         icon: bbvaMarthaIcon,

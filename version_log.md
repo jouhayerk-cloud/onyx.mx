@@ -4,6 +4,15 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.43 - Item Status Workflow: Avaiable & Vendor Sync**
+
+### **Date:** 2026-03-01
+
+- **UI: Status Workflow** — Implemented the user-defined status lifecycle: `Avaiable`, `Production`, `Acquired`, `Requested`, `Payed`, `Packed`, `Shipped`.
+- **FIX: Vendor Selection** — Fixed the bug where the Payment Wizard showed no vendors by improving grouping logic from `item_id` prefixes.
+- **UI: Upload Defaults** — Set `Avaiable` as the default status for new vendor uploads.
+- **Types: Schema Alignment** — Synchronized TypeScript interfaces with Supabase snake_case fields.
+ 
 ## **v1.10.42 - Finance Wizard: Acquisition & IVA Logic**
 
 ### **Date:** 2026-03-01

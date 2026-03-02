@@ -111,6 +111,9 @@ export interface InventoryItemData {
   sent_at?: string;
   dispersed_at?: string;
   requested_by?: string;
+  item_id?: string;
+  vendor_id?: string;
+  price_mxn?: number | string;
 }
 
 export interface InventoryItem {
