@@ -42,6 +42,11 @@ import { CameraView } from '../../lib/Types';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
+import {
+    Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
+    LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
+    Camera, Play, Wallet, Landmark, X
+} from 'lucide-react';
 
 // Injected at build time from package.json via vite.config.ts
 declare const __APP_VERSION__: string;
@@ -55,28 +60,28 @@ const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> 
     GREEN: { icon: '●', title: 'Paid / shipped' },
 };
 
-const iconToUnicode: Record<string, string> = {
-    'store': '⊞',
-    'finance': '⚖',
-    'trucking': '⛟',
-    'upload': '⤊',
-    'settings': '⚙',
-    'search': '⌕',
-    'refresh': '⤓',
-    'logout': '⎋',
-    'layout-grid': '⊞',
-    'list-bullet': '☰',
-    'shield': '⛊',
-    'tool': '⚒',
-    'bookmark': '⚑',
-    'sun': '☼',
-    'moon': '☾',
-    'layers': '⫘',
-    'camera': '◙',
-    'play': '▶',
-    'credit-card': '💳',
-    'bank': '🏦',
-    'wallet': '👛',
+// Map icon string keys to Lucide components for consistent single-color icons
+const iconToLucide: Record<string, React.FC<any>> = {
+    'store': Store,
+    'finance': CreditCard,
+    'trucking': Truck,
+    'upload': Upload,
+    'shield': Shield,
+    'search': Search,
+    'refresh': RefreshCw,
+    'logout': LogOut,
+    'layout-grid': LayoutGrid,
+    'list-bullet': List,
+    'bookmark': Bookmark,
+    'sun': Sun,
+    'moon': Moon,
+    'layers': Layers,
+    'camera': Camera,
+    'play': Play,
+    'credit-card': CreditCard,
+    'bank': Landmark,
+    'wallet': Wallet,
+    'truck': Truck,
 };
 
 // ─── Search bar (shared) ──────────────────────────────────────────────────────
@@ -87,7 +92,7 @@ const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeh
             className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50 group/search`}
             onClick={() => !expanded && setExpanded(true)}
         >
-            <span className="text-sm shrink-0 text-white/40 group-hover/search:text-(--main-color) transition-colors mt-[-2px]">⌕</span>
+            <Search size={14} strokeWidth={2} className="shrink-0 text-white/40 group-hover/search:text-(--main-color) transition-colors" />
             {expanded && (
                 <>
                     <input autoFocus className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder-white/25 min-w-0"
@@ -95,7 +100,7 @@ const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeh
                         onBlur={() => !value && setExpanded(false)}
                         placeholder={placeholder} />
                     {value && (
-                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors text-[10px]">✕</button>
+                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors"><X size={12} strokeWidth={2.5} /></button>
                     )}
                 </>
             )}
@@ -111,25 +116,31 @@ const SubTabPills: React.FC<{
     accentColor?: string;
 }> = ({ tabs, active, onSelect, accentColor = 'var(--main-color)' }) => (
     <div className="flex items-center gap-1">
-        {tabs.map(t => (
-            <button key={t.id} onClick={() => onSelect(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
-                    ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-white/35 hover:text-white/70 hover:bg-white/10'}`}
-                style={active === t.id ? { backgroundColor: accentColor } : {}}>
-                {t.icon && <span className="text-xs transition-opacity">{iconToUnicode[t.icon.replace('#', '')] || t.icon}</span>}
-                {t.label}
-            </button>
-        ))}
+        {tabs.map(t => {
+            const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
+            return (
+                <button key={t.id} onClick={() => onSelect(t.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
+                        ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-white/35 hover:text-white/70 hover:bg-white/10'}`}
+                    style={active === t.id ? { backgroundColor: accentColor } : {}}>
+                    {TabIcon && <TabIcon size={13} strokeWidth={1.75} />}
+                    {t.label}
+                </button>
+            );
+        })}
     </div>
 );
 
 // ─── Module badge ─────────────────────────────────────────────────────────────
-const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => (
-    <div className="hidden sm:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
-        <span className="text-sm" style={{ color }}>{iconToUnicode[icon] || icon}</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
-    </div>
-);
+const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
+    const BadgeIcon = iconToLucide[icon] || Store;
+    return (
+        <div className="hidden sm:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
+            <BadgeIcon size={16} strokeWidth={1.75} style={{ color }} />
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
+        </div>
+    );
+};
 
 // ─── Shipping Stats chip ──────────────────────────────────────────────────────
 const ShippingStats: React.FC = () => {
@@ -378,7 +389,7 @@ export function MainHeader() {
 
     const handleRefresh = () => {
         setInventoryVersion(v => v + 1);
-        toast.success("Synchronizing Database...", { icon: '🔄' });
+        toast.success("Synchronizing Database...");
     };
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
@@ -422,10 +433,10 @@ export function MainHeader() {
 
                 <div className="flex items-center gap-1">
                     <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="Refresh Sync">
-                        <span className="text-sm">📥</span>
+                        <RefreshCw size={15} strokeWidth={2} />
                     </button>
                     <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-red-400 transition-all" title="Logout Session">
-                        <span className="text-sm">👥</span>
+                        <LogOut size={15} strokeWidth={2} />
                     </button>
                 </div>
             </div>
