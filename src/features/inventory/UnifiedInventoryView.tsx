@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     inventoryStatusFilterAtom,
@@ -36,10 +36,79 @@ const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
 const inpNum = inp + " font-mono text-center";
 
+// â”€â”€â”€ Fullscreen Image Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
+
+    const handleWheel = useCallback((e: React.WheelEvent) => {
+        e.preventDefault();
+        setScale(s => Math.min(5, Math.max(0.5, s - e.deltaY * 0.002)));
+    }, []);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    };
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            if (lastTouchDist !== null) {
+                const delta = dist / lastTouchDist;
+                setScale(s => Math.min(5, Math.max(0.5, s * delta)));
+            }
+            setLastTouchDist(dist);
+        } else if (e.touches.length === 1 && scale > 1) {
+            const touch = e.touches[0];
+            setPosition(p => ({ x: p.x + touch.clientX - (dragStart.x || touch.clientX), y: p.y + touch.clientY - (dragStart.y || touch.clientY) }));
+            setDragStart({ x: touch.clientX, y: touch.clientY });
+        }
+    }, [lastTouchDist, scale, dragStart]);
+
+    const handleTouchEnd = () => setLastTouchDist(null);
+    const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
+
+    return (
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+            onClick={onClose} onWheel={handleWheel}>
+            <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            </button>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">âˆ’</button>
+                <span className="text-[10px] font-mono text-white/40 w-12 text-center">{Math.round(scale * 100)}%</span>
+                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">+</button>
+            </div>
+            <img src={src} alt="" draggable={false}
+                className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform duration-100"
+                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={handleDoubleClick}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            />
+        </div>
+    );
+};
+
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode }: any) => {
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
+    const [showViewer, setShowViewer] = useState(false);
 
     const wInch = norm.widthCm ? (parseFloat(String(norm.widthCm)) * 0.393701).toFixed(1) : '';
     const hInch = norm.heightCm ? (parseFloat(String(norm.heightCm)) * 0.393701).toFixed(1) : '';
@@ -62,8 +131,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const setSelectedItemRow = useSetAtom(SelectedItemRowAtom);
     const setImageSrc = useSetAtom(ImageSrcAtom);
 
-    // Combined COLOR MATERIAL SHAPE TYPE description
-    const descLine = [norm.color, norm.material, norm.shape, norm.shortDescription].filter(Boolean).map(s => s.toUpperCase()).join(' · ');
+    const descLine = [norm.color, norm.material, norm.shape, norm.shortDescription].filter(Boolean).map(s => s.toUpperCase()).join(' Â· ');
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -73,13 +141,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         setDetailsPanelMode('edit');
     };
 
+    // â”€â”€ LIST VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-1">
+                {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
                 <div className={`flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 pr-4 rounded-xl transition-all group ${isExpanded ? 'border-(--main-color)/30 bg-black/40 shadow-lg' : ''}`}>
-                    {/* Thumbnail */}
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10">
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
+                    {/* Thumbnail â€” clickable for fullscreen */}
+                    <div className={`w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
+                        onClick={() => imageUrl && setShowViewer(true)}>
+                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center opacity-20"><OnyxMiniLogo /></div>}
                     </div>
 
                     {/* Meta & Description */}
@@ -93,13 +164,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-white/10 text-white/50 whitespace-nowrap">QTY: {norm.quantity || 1}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} · {weightStr || 'NO WEIGHT'}</span>
+                            <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} Â· {weightStr || 'NO WEIGHT'}</span>
                             <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : statusClass === 'YELLOW' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
                         </div>
                     </div>
 
-                    {/* Data Dense Center Section */}
-                    <div className="hidden md:flex items-center gap-4 grow justify-around border-x border-white/5 px-4 max-w-[500px]">
+                    {/* Data Dense Center â€” removed BOOK column */}
+                    <div className="hidden md:flex items-center gap-4 grow justify-around border-x border-white/5 px-4 max-w-[400px]">
                         <div className="flex flex-col min-w-[100px]">
                             <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">TAG ID</span>
                             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[4px] text-black w-fit whitespace-nowrap" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span>
@@ -107,16 +178,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="flex gap-4">
                             <div className="flex flex-col items-center">
                                 <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">AQ CODE</span>
-                                <span className="text-[11px] font-mono font-black text-(--main-color)/80 shadow-sm">{calculated.bookAqCode || '—'}</span>
+                                <span className="text-[11px] font-mono font-black text-(--main-color)/80 shadow-sm">{calculated.bookAqCode || 'â€”'}</span>
                             </div>
                             <div className="flex flex-col items-center">
                                 <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">LD CODE</span>
-                                <span className="text-[11px] font-mono font-black text-yellow-500/80 shadow-sm">{calculated.bookLandCode || '—'}</span>
+                                <span className="text-[11px] font-mono font-black text-yellow-500/80 shadow-sm">{calculated.bookLandCode || 'â€”'}</span>
                             </div>
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">BOOK</span>
-                            <span className="text-[10px] font-mono font-bold text-white/60 tracking-tighter">{norm.workbook || '—'}</span>
                         </div>
                     </div>
 
@@ -133,16 +200,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             </button>
                             <button onClick={onToggleExpand} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
                                 <svg className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
-                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'ID Close' : 'ID Details'}</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'Close' : 'Details'}</span>
                             </button>
                         </div>
                     </div>
                 </div>
                 {isExpanded && (
-                    <div className="ml-16 mr-4 p-5 bg-black/40 backdrop-blur-md border-x border-b border-white/5 rounded-b-2xl grid grid-cols-2 md:grid-cols-5 gap-6 animate-in slide-in-from-top-4 duration-500 ease-out z-0 relative">
-                        <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
+                    <div className="ml-16 mr-4 p-5 bg-black/40 backdrop-blur-md border-x border-b border-white/5 rounded-b-2xl grid grid-cols-2 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500 ease-out z-0 relative">
+                        <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || 'â€”'}</p></div>
                         <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
-                        <div><p className={lbl}>Source</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{(item as any).source}</p></div>
                         <div><p className={lbl}>Quantity</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.quantity || 1}</p></div>
                         <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono tracking-tight">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
                         <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono tracking-tight">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
@@ -152,22 +218,33 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         );
     }
 
+    // â”€â”€ GRID VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     return (
         <div className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-500 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/10 shadow-lg ${isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] ring-1 ring-white/10' : 'col-span-1'}`}>
+            {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
             <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/5 flex-col'} relative`}>
                 <div className={`${isExpanded ? 'h-64 md:h-full md:w-2/5' : 'absolute inset-0'} relative overflow-hidden flex items-center justify-center bg-black/50`}>
-                    {imageUrl ? <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'}`} /> : <div className="p-3 opacity-20"><OnyxMiniLogo /></div>}
+                    {imageUrl ? <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'} ${isExpanded ? 'cursor-pointer' : ''}`}
+                        onClick={() => isExpanded && setShowViewer(true)} />
+                        : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo className="w-16 h-16" /></div>}
                     <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
-                    <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none z-10">
+
+                    {/* Top bar: vendor tag left, toggle button right */}
+                    <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start z-10">
                         {calculated.bookBardcode ? (
-                            <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center" style={{ backgroundColor: vendorColor }}>
+                            <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center pointer-events-none" style={{ backgroundColor: vendorColor }}>
                                 <span>{calculated.bookBardcode}</span>
                             </div>
                         ) : (
-                            <div className="h-6 px-2 rounded flex items-center justify-center font-bold text-black border border-black shadow-lg text-[10px]" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</div>
+                            <div className="h-6 px-2 rounded flex items-center justify-center font-bold text-black border border-black shadow-lg text-[10px] pointer-events-none" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</div>
                         )}
-                        <div className={`status-dot ${statusClass} shadow-md`} />
+                        {!isExpanded && (
+                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="pointer-events-auto p-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg border border-white/10 text-white/40 hover:text-white transition-all">
+                                <svg className="w-3.5 h-3.5"><use href="#menu" /></svg>
+                            </button>
+                        )}
                     </div>
+
                     {!isExpanded && (
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
@@ -187,8 +264,9 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                             <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
                                         </div>
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="p-1 px-2 pointer-events-auto bg-white/5 hover:bg-white/10 rounded-md border border-white/5 text-white/30 hover:text-white transition-all">
-                                        <svg className="w-3 h-3"><use href="#menu" /></svg>
+                                    {/* Edit button at bottom-right */}
+                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(e); }} className="pointer-events-auto p-1.5 px-2.5 bg-white/5 hover:bg-(--main-color)/20 rounded-lg border border-white/10 text-white/30 hover:text-(--main-color) transition-all" title="Edit">
+                                        <svg className="w-3 h-3"><use href="#edit" /></svg>
                                     </button>
                                 </div>
                             </div>
@@ -197,8 +275,17 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 </div>
                 {isExpanded && (
                     <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden bg-black/40 backdrop-blur-md">
+                        {/* Top-right: Close + Edit */}
+                        <div className="absolute right-4 top-4 z-50 flex flex-col gap-2">
+                            <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/40 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest">
+                                <svg className="w-3 h-3"><use href="#x" /></svg>Close
+                            </button>
+                            <button onClick={handleEdit} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color)/70 hover:text-(--main-color) transition-all text-[9px] font-black uppercase tracking-widest">
+                                <svg className="w-3 h-3"><use href="#edit" /></svg>Edit
+                            </button>
+                        </div>
                         <div className="overflow-y-auto grow pr-2 custom-scrollbar">
-                            <div className="flex justify-between items-start mb-6">
+                            <div className="flex justify-between items-start mb-6 pr-24">
                                 <div className="min-w-0">
                                     <h3 className="text-2xl font-black text-white truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                     <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
@@ -213,14 +300,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={onToggleExpand} className="button secondary py-1.5! px-4! text-[10px] font-black tracking-widest uppercase shrink-0"><svg className="w-3 h-3 inline-block mr-1.5"><use href="#x" /></svg>Close</button>
                             </div>
                             <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8">
-                                <div><p className={lbl}>Material</p><p className="text-sm font-medium text-white/80">{norm.material || '—'}</p></div>
-                                <div><p className={lbl}>Dimensions</p><p className="text-sm font-medium text-white/80 font-mono">{dimensionsStr || '—'}</p></div>
-                                <div><p className={lbl}>Weight</p><p className="text-sm font-medium text-white/80 font-mono">{weightStr || '—'}</p></div>
+                                <div><p className={lbl}>Material</p><p className="text-sm font-medium text-white/80">{norm.material || 'â€”'}</p></div>
+                                <div><p className={lbl}>Dimensions</p><p className="text-sm font-medium text-white/80 font-mono">{dimensionsStr || 'â€”'}</p></div>
+                                <div><p className={lbl}>Weight</p><p className="text-sm font-medium text-white/80 font-mono">{weightStr || 'â€”'}</p></div>
                                 <div><p className={lbl}>Quantity</p><p className="text-sm font-medium text-white/80 font-mono">{norm.quantity || 1}</p></div>
-                                <div><p className={lbl}>Source</p><p className="text-sm font-medium capitalize text-white/80">{item.source}</p></div>
                             </div>
                             <div className="p-5 bg-white/3 rounded-2xl border border-white/5 shadow-inner">
                                 <h4 className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Financial Analysis</h4>
@@ -243,6 +328,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         </div>
     );
 };
+
+
 
 export const UnifiedInventoryView = () => {
     const t = useTranslation();
@@ -494,7 +581,7 @@ export const UnifiedInventoryView = () => {
                             <button onClick={() => setMode('view')} className="text-4xl text-white/20 hover:text-white transition-all hover:rotate-90">&times;</button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="overflow-y-auto grow pr-6 custom-scrollbar space-y-10 pb-12">
-                            {/* ── Attach Media Section (Moved to Top) ── */}
+                            {/* â”€â”€ Attach Media Section (Moved to Top) â”€â”€ */}
                             <div className="bg-white/2 border border-white/6 rounded-2xl p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">Attach Media</h3>
