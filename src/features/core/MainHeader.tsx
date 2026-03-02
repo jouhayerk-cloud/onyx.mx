@@ -272,21 +272,9 @@ const LogisticsBar: React.FC = () => {
 };
 
 const UploadBar: React.FC = () => {
-    const tab = useAtomValue(uploadTabAtom);
     return (
         <>
             <ModuleBadge icon="upload" label="Upload" color="#8DC63F" />
-            <div className="flex items-center gap-1">
-                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                    ${tab === 'entry' ? 'bg-[#8DC63F] text-black' : 'text-white/25'}`}>
-                    ✚ Entry
-                </span>
-                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                    ${tab === 'ai' ? 'bg-(--main-color) text-black' : 'text-white/25'}`}>
-                    ✨ AI Tools
-                </span>
-            </div>
-
         </>
     );
 };
