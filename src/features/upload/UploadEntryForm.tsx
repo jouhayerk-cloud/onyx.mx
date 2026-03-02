@@ -108,6 +108,11 @@ export function UploadEntryForm() {
             material: uniq('material'),
             color: uniq('color'),
             itemType: uniq('item_type'),
+            weightKg: uniq('weight_kg'),
+            widthCm: uniq('width_cm'),
+            heightCm: uniq('height_cm'),
+            lengthCm: uniq('length_cm'),
+            price: uniq('price_mxn'),
         };
     }, [vendorDocs]);
 
@@ -192,6 +197,7 @@ export function UploadEntryForm() {
                 weight_kg: itemData.weightKg ? Number(itemData.weightKg) : null,
                 width_cm: itemData.widthCm ? Number(itemData.widthCm) : null,
                 height_cm: itemData.heightCm ? Number(itemData.heightCm) : null,
+                length_cm: itemData.lengthCm ? Number(itemData.lengthCm) : null,
                 price_mxn: itemData.price ? Number(itemData.price) : null,
                 quantity: itemData.quantity ? Number(itemData.quantity) : 1,
                 status: itemData.status || 'Catalog',
@@ -412,26 +418,21 @@ export function UploadEntryForm() {
                     <label className={lbl}>Dims</label>
                     <div className="grid grid-cols-4 gap-2">
                         {[
-                            { name: 'weightKg', placeholder: 'kg' },
-                            { name: 'widthCm', placeholder: 'W' },
-                            { name: 'heightCm', placeholder: 'H' },
-                            { name: 'lengthCm', placeholder: 'L' },
+                            { name: 'weightKg', placeholder: 'kg', suggestions: suggestions.weightKg },
+                            { name: 'widthCm', placeholder: 'W', suggestions: suggestions.widthCm },
+                            { name: 'heightCm', placeholder: 'H', suggestions: suggestions.heightCm },
+                            { name: 'lengthCm', placeholder: 'L', suggestions: suggestions.lengthCm },
                         ].map(f => (
-                            <input key={f.name} type="number" step="0.01" min="0" name={f.name}
-                                value={(itemData as any)[f.name] || ''}
-                                onChange={handleChange}
-                                placeholder={f.placeholder}
-                                className={inpNum} />
+                            <div key={f.name}>
+                                <input type="number" step="0.01" min="0" name={f.name}
+                                    value={(itemData as any)[f.name] || ''}
+                                    onChange={handleChange}
+                                    placeholder={f.placeholder}
+                                    className={inpNum} />
+                                <SuggestChips values={f.suggestions} current={(itemData as any)[f.name] || ''} onSelect={v => set(f.name, v)} />
+                            </div>
                         ))}
                     </div>
-                </div>
-
-                {/* Description textarea */}
-                <div>
-                    <label className={lbl}>Notes <span className="text-white/15 normal-case tracking-normal">(opt)</span></label>
-                    <textarea name="description" rows={2} value={itemData.description || ''} onChange={handleChange}
-                        placeholder="..."
-                        className={inp + " resize-none"} />
                 </div>
             </div>
 
@@ -444,12 +445,21 @@ export function UploadEntryForm() {
                         <input required type="number" step="0.01" name="price"
                             value={itemData.price || ''} onChange={handleChange}
                             placeholder="0.00" className={inpNum + " pl-8"} />
+                        <SuggestChips values={suggestions.price} current={itemData.price || ''} onSelect={v => set('price', v)} />
                     </div>
                 </div>
                 <div className="flex flex-col justify-end pb-1">
                     <span className="text-[8px] font-black text-white/15 uppercase tracking-widest">≈ USD</span>
                     <span className="text-lg font-mono font-black text-white/30">${priceUsd}</span>
                 </div>
+            </div>
+
+            {/* ── Notes at Bottom ── */}
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-5">
+                <label className={lbl}>Notes <span className="text-white/15 normal-case tracking-normal">(opt)</span></label>
+                <textarea name="description" rows={3} value={itemData.description || ''} onChange={handleChange}
+                    placeholder="Enter technical notes or special instructions..."
+                    className={inp + " resize-none"} />
             </div>
 
             {/* ── Item ID (auto) ── */}
