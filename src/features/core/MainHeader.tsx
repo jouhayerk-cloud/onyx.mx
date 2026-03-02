@@ -60,7 +60,7 @@ const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeh
             className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50`}
             onClick={() => !expanded && setExpanded(true)}
         >
-            <svg className="w-3.5 h-3.5 text-white/40 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-4 h-4 text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             {expanded && (
@@ -168,12 +168,12 @@ const InventoryBar: React.FC = () => {
             <ModuleBadge icon="store" label="Inventory" color="#6BCEBB" />
             <div className="flex items-center gap-1.5 ml-4">
                 <button onClick={() => setViewMode('grid')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
-                    <svg className="w-3.5 h-3.5"><use href="#layout-grid" /></svg>
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+                    <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
                 </button>
                 <button onClick={() => setViewMode('list')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
-                    <svg className="w-3.5 h-3.5"><use href="#list-bullet" /></svg>
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+                    <svg className="w-4 h-4"><use href="#list-bullet" /></svg>
                 </button>
             </div>
             <div className="flex items-center gap-2 ml-auto">
@@ -364,11 +364,11 @@ export function MainHeader() {
                 )}
 
                 <div className="flex items-center gap-1">
-                    <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all" title="Refresh Sync">
-                        <svg className="w-3.5 h-3.5"><use href="#refresh" /></svg>
+                    <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="Refresh Sync">
+                        <svg className="w-4 h-4"><use href="#refresh" /></svg>
                     </button>
-                    <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-red-400 transition-all" title="Logout Session">
-                        <svg className="w-3.5 h-3.5"><use href="#logout" /></svg>
+                    <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-red-400 transition-all" title="Logout Session">
+                        <svg className="w-4 h-4"><use href="#logout" /></svg>
                     </button>
                 </div>
             </div>
