@@ -47,10 +47,31 @@ declare const __APP_VERSION__: string;
 // ─── Types ───────────────────────────────────────────────────────────────────
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
 const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> = {
-    ALL: { icon: '#filter-all', title: 'All items' },
-    RED: { icon: '#filter-red', title: 'Approved, pending payment' },
-    YELLOW: { icon: '#filter-yellow', title: 'Payment requested, unpaid' },
-    GREEN: { icon: '#filter-green', title: 'Paid / shipped' },
+    ALL: { icon: '○', title: 'All items' },
+    RED: { icon: '●', title: 'Approved, pending payment' },
+    YELLOW: { icon: '●', title: 'Payment requested, unpaid' },
+    GREEN: { icon: '●', title: 'Paid / shipped' },
+};
+
+const iconToUnicode: Record<string, string> = {
+    'store': '⊞',
+    'finance': '⚖',
+    'trucking': '⛟',
+    'upload': '⤊',
+    'settings': '⚙',
+    'search': '⌕',
+    'refresh': '⤓',
+    'logout': '⎋',
+    'layout-grid': '⊞',
+    'list-bullet': '☰',
+    'shield': '⛊',
+    'tool': '⚒',
+    'bookmark': '⚑',
+    'sun': '☼',
+    'moon': '☾',
+    'layers': '⫘',
+    'camera': '◙',
+    'play': '▶',
 };
 
 // ─── Search bar (shared) ──────────────────────────────────────────────────────
@@ -58,12 +79,10 @@ const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeh
     const [expanded, setExpanded] = useState(false);
     return (
         <div
-            className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50`}
+            className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50 group/search`}
             onClick={() => !expanded && setExpanded(true)}
         >
-            <svg className="w-4 h-4 text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+            <span className="text-sm shrink-0 text-white/40 group-hover/search:text-(--main-color) transition-colors mt-[-2px]">⌕</span>
             {expanded && (
                 <>
                     <input autoFocus className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder-white/25 min-w-0"
@@ -92,7 +111,7 @@ const SubTabPills: React.FC<{
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
                     ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-white/35 hover:text-white/70 hover:bg-white/10'}`}
                 style={active === t.id ? { backgroundColor: accentColor } : {}}>
-                {t.icon && <svg className="w-3 h-3"><use href={t.icon} /></svg>}
+                {t.icon && <span className="text-xs transition-opacity">{iconToUnicode[t.icon.replace('#', '')] || t.icon}</span>}
                 {t.label}
             </button>
         ))}
@@ -102,7 +121,7 @@ const SubTabPills: React.FC<{
 // ─── Module badge ─────────────────────────────────────────────────────────────
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => (
     <div className="hidden sm:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
-        <svg className="w-4 h-4" style={{ color }}><use href={`#${icon}`} /></svg>
+        <span className="text-sm" style={{ color }}>{iconToUnicode[icon] || icon}</span>
         <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
     </div>
 );
@@ -175,25 +194,7 @@ const InventoryBar: React.FC = () => {
             <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
                 className="w-9 h-8 flex items-center justify-center rounded-lg transition-all bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white"
                 title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}>
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    {viewMode === 'grid' ? (
-                        <>
-                            <line x1="8" y1="6" x2="21" y2="6"></line>
-                            <line x1="8" y1="12" x2="21" y2="12"></line>
-                            <line x1="8" y1="18" x2="21" y2="18"></line>
-                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                        </>
-                    ) : (
-                        <>
-                            <rect x="3" y="3" width="7" height="7"></rect>
-                            <rect x="14" y="3" width="7" height="7"></rect>
-                            <rect x="3" y="14" width="7" height="7"></rect>
-                            <rect x="14" y="14" width="7" height="7"></rect>
-                        </>
-                    )}
-                </svg>
+                <span className="text-sm font-bold">{viewMode === 'grid' ? "☰" : "⊞"}</span>
             </button>
             <div className="flex items-center gap-2 ml-auto">
                 {/* Admin vendor filter chips */}
@@ -213,7 +214,11 @@ const InventoryBar: React.FC = () => {
                     setDevStatusFilter(statuses[(statuses.indexOf(devStatusFilter) + 1) % statuses.length]);
                 }} title={filterConfig[devStatusFilter].title}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
-                    <svg className="w-3.5 h-3.5"><use href={filterConfig[devStatusFilter].icon} /></svg>
+                    <span className={`text-[10px] leading-none ${devStatusFilter === 'RED' ? 'text-red-500' :
+                        devStatusFilter === 'YELLOW' ? 'text-yellow-500' :
+                            devStatusFilter === 'GREEN' ? 'text-green-500' :
+                                'text-white/20'
+                        }`}>{filterConfig[devStatusFilter].icon}</span>
                 </button>
                 <SearchBar value={search} onChange={setSearch} placeholder="Search inventory…" />
                 {/* Details panel toggle on mobile */}
@@ -384,19 +389,10 @@ export function MainHeader() {
 
                 <div className="flex items-center gap-1">
                     <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="Refresh Sync">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
+                        <span className="text-sm">📥</span>
                     </button>
                     <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-red-400 transition-all" title="Logout Session">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
+                        <span className="text-sm">👥</span>
                     </button>
                 </div>
             </div>
