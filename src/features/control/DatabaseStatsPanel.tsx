@@ -4,6 +4,8 @@
  */
 /* tslint:disable */
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAtom, useAtomValue } from 'jotai/react';
+import { uploadItemDataAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 
 interface InventoryStats {
@@ -58,6 +60,9 @@ export function DatabaseStatsPanel() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+    const [itemData, setItemData] = useAtom(uploadItemDataAtom);
+    const user = useAtomValue(userAtom);
+    const isDev = user?.role === 'Developer';
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -134,6 +139,13 @@ export function DatabaseStatsPanel() {
         setIsActing(null);
     };
 
+    const handleSetBook = () => {
+        const newV = prompt("Enter Book Version (e.g. v326):", itemData.workbook || 'v326');
+        if (newV) {
+            setItemData(prev => ({ ...prev, workbook: newV }));
+        }
+    };
+
     useEffect(() => { fetchStats(); fetchDelRequests(); }, [fetchStats, fetchDelRequests]);
 
     if (loading) return (
@@ -158,10 +170,23 @@ export function DatabaseStatsPanel() {
         <div className="flex flex-col gap-4">
             {/* Toolbar */}
             <div className="flex items-center justify-between">
-                <p className="text-sm text-(--text-color-secondary)">
-                    {lastRefreshed && lastRefreshed.toLocaleTimeString()}
-                </p>
+                <div className="flex items-center gap-4">
+                    <p className="text-sm text-(--text-color-secondary)">
+                        {lastRefreshed && lastRefreshed.toLocaleTimeString()}
+                    </p>
+                    {isDev && (
+                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40">
+                            Current Book: <span className="text-(--main-color)">{itemData.workbook || 'v326'}</span>
+                        </div>
+                    )}
+                </div>
                 <div className="flex gap-2">
+                    {isDev && (
+                        <button onClick={handleSetBook} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-(--main-color)/30 bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color)/20 transition-all">
+                            <svg className="w-4 h-4"><use href="#edit" /></svg>
+                            SET BOOK
+                        </button>
+                    )}
                     <button onClick={() => { fetchStats(); fetchDelRequests(); }} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-(--text-color-secondary) hover:text-white">
                         <svg className="w-4 h-4"><use href="#refresh" /></svg>
                         SYNC

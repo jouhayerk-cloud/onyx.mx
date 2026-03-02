@@ -35,21 +35,31 @@ export function ControlView() {
                     </p>
                 </div>
 
-                {/* Right: Tabs */}
-                <div className="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === tab.id
-                                ? 'bg-(--main-color) text-black shadow'
-                                : 'text-(--text-color-secondary) hover:text-white'
-                                }`}
-                        >
-                            <svg className="w-3.5 h-3.5"><use href={`#${tab.icon}`} /></svg>
-                            {tab.label}
-                        </button>
-                    ))}
+                {/* Right: Tabs & Tools */}
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => window.open('https://aistudio.google.com/', '_blank')}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-(--main-color)/10 border border-(--main-color)/20 text-(--main-color) hover:bg-(--main-color)/20 transition-all shadow-sm"
+                    >
+                        <svg className="w-3.5 h-3.5"><use href="#cpu" /></svg>
+                        AI TOOLS DEV
+                    </button>
+
+                    <div className="flex gap-1 bg-white/5 p-1 rounded-xl w-fit">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === tab.id
+                                    ? 'bg-(--main-color) text-black shadow'
+                                    : 'text-(--text-color-secondary) hover:text-white'
+                                    }`}
+                            >
+                                <svg className="w-3.5 h-3.5"><use href={`#${tab.icon}`} /></svg>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

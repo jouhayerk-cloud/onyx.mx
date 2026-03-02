@@ -242,6 +242,7 @@ export function UploadEntryForm() {
         }
     };
 
+    const isDev = user?.role === 'Developer';
     const priceMxn = Number(itemData.price || 0);
     const priceUsd = exchangeRate > 0 ? (priceMxn / exchangeRate).toFixed(2) : '—';
     const needsFile = itemData.mediaType && itemData.mediaType !== 'none';
@@ -251,66 +252,74 @@ export function UploadEntryForm() {
 
             {/* ── Row 1: Book & Status ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label className={lbl}>Book</label>
-                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="v326" />
+                <div className={!isDev ? 'opacity-50 pointer-events-none' : ''}>
+                    <label className={lbl}>Book V</label>
+                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="v326" readOnly={!isDev} />
                 </div>
                 <div>
-                    <label className={lbl}>Stat</label>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                        {['Catalog', 'Production', 'Acquisitions'].map(s => (
+                    <label className={lbl}>Entry Status</label>
+                    <div className="flex gap-2 pt-1 overflow-x-auto no-scrollbar">
+                        {[
+                            { id: 'Catalog', icon: 'layout-grid', label: 'Catalog' },
+                            { id: 'Production', icon: 'settings', label: 'Production' },
+                            { id: 'Acquisitions', icon: 'shopping-bag', label: 'Acquisitions' }
+                        ].map(s => (
                             <button
-                                key={s} type="button"
-                                onClick={() => set('status', s)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${itemData.status === s ? 'bg-(--main-color)/10 border-(--main-color) text-(--main-color)' : 'bg-white/5 border-white/10 text-white/20 hover:bg-white/10 hover:text-white/80'}`}
+                                key={s.id} type="button"
+                                onClick={() => set('status', s.id)}
+                                className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl border transition-all grow ${itemData.status === s.id ? 'bg-(--main-color) border-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/80'}`}
+                                title={s.label}
                             >
-                                {s}
+                                <svg className="w-4 h-4"><use href={`#${s.icon}`} /></svg>
+                                <span className="text-[10px] font-black uppercase tracking-wider hidden md:inline">{s.label}</span>
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* ── Row 2: Vendor + Quantity ── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                <div className="flex flex-col h-full justify-start">
-                    <label className={lbl}>Vend</label>
-                    {canSelectVendor ? (
-                        <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar items-center">
-                            {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
-                                const v = vendors[id as keyof typeof vendors];
-                                const isSelected = itemData.vendorId === id;
-                                return (
-                                    <button
-                                        type="button"
-                                        key={id}
-                                        onClick={() => set('vendorId', id)}
-                                        className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-lg' : 'opacity-50 hover:opacity-100 hover:scale-105 saturate-50 hover:saturate-100 ring-1 ring-white/20'}`}
-                                        style={{ backgroundColor: v.color, color: '#000' }}
-                                    >
-                                        {id}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 bg-white/2 border border-white/6 rounded-xl px-4 py-2.5 w-fit">
-                            <svg className="w-3.5 h-3.5 text-white/20"><use href="#lock" /></svg>
-                            <span className="text-sm text-white/40">{itemData.vendorId}</span>
-                        </div>
-                    )}
-                </div>
-                <div>
+            {/* ── Vendor Selector (Full Width Row) ── */}
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-4">
+                <label className={lbl}>Vendor Selection</label>
+                {canSelectVendor ? (
+                    <div className="flex flex-wrap gap-3 pb-1 items-center justify-between">
+                        {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
+                            const v = vendors[id as keyof typeof vendors];
+                            const isSelected = itemData.vendorId === id;
+                            return (
+                                <button
+                                    type="button"
+                                    key={id}
+                                    onClick={() => set('vendorId', id)}
+                                    className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl' : 'opacity-40 hover:opacity-100 ring-1 ring-white/10'}`}
+                                    style={{ backgroundColor: v.color, color: '#000' }}
+                                >
+                                    {id}
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 bg-white/2 border border-white/6 rounded-xl px-4 py-2.5 w-full">
+                        <svg className="w-3.5 h-3.5 text-white/20"><use href="#lock" /></svg>
+                        <span className="text-sm text-white/40">{itemData.vendorId}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Row 3: Number + Quantity (Re-balanced) ── */}
+            <div className="grid grid-cols-5 gap-4 items-end">
+                <div className="col-span-1">
                     <label className={lbl}>Num</label>
                     <input type="number" min="1" name="itemNumber"
                         value={itemData.itemNumber || ''} onChange={handleChange}
-                        className={inpNum} placeholder="1" />
+                        className={inpNum + " text-center!"} placeholder="1" />
                 </div>
-                <div>
-                    <label className={lbl}>Qty</label>
+                <div className="col-span-4 pl-4 border-l border-white/5">
+                    <label className="text-xs font-black uppercase tracking-[0.2em] text-(--main-color) block mb-2">Item Quantity</label>
                     <input required type="number" min="1" name="quantity"
                         value={itemData.quantity || '1'} onChange={handleChange}
-                        className={inpNum} placeholder="1" />
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-2xl font-black font-mono text-white placeholder-white/5 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/10 shadow-inner transition-all" placeholder="1" />
                 </div>
             </div>
 

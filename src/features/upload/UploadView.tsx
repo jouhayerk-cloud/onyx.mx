@@ -1,18 +1,29 @@
 import React from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { uploadTabAtom, userAtom } from '../../lib/atoms';
+import { uploadTabAtom, userAtom, uploadItemDataAtom } from '../../lib/atoms';
 import { UploadEntryForm } from './UploadEntryForm';
 import { UploadAIPanel } from './UploadAIPanel';
 
 export function UploadView() {
     const [tab, setTab] = useAtom(uploadTabAtom);
     const user = useAtomValue(userAtom);
-    const canUseAI = user?.role === 'Developer' || user?.role === 'Admin';
+    const itemData = useAtomValue(uploadItemDataAtom);
+
+    // Hide AI tools from view as requested, but logic is preserved below
+    const canUseAI = false; // user?.role === 'Developer' || user?.role === 'Admin';
+    const isDev = user?.role === 'Developer';
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* ── Tab bar ── */}
-            <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-white/1.5 border-b border-white/4">
+            <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-white/1.5 border-b border-white/4 relative z-50">
+                <div className="absolute top-0 right-10 -mt-1 flex flex-col items-center">
+                    <div className="bg-(--main-color) text-black px-3 py-1.5 rounded-b-lg shadow-xl flex flex-col items-center min-w-[60px] border-x border-b border-black/10">
+                        <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 opacity-60">BOOK V</span>
+                        <span className="text-xs font-black font-mono leading-none tracking-tighter">{itemData.workbook || 'v326'}</span>
+                    </div>
+                </div>
+
                 <button onClick={() => setTab('entry')}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border
                         ${tab === 'entry'
@@ -29,7 +40,7 @@ export function UploadView() {
                         <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#cpu" /></svg>AI
                     </button>
                 )}
-                <div className="ml-auto text-[8px] font-black text-white/10 uppercase tracking-widest">
+                <div className="ml-auto mr-24 text-[8px] font-black text-white/10 uppercase tracking-widest">
                     {tab === 'entry' ? 'Item Entry Form' : 'AI Processing — Admin / Developer'}
                 </div>
             </div>
