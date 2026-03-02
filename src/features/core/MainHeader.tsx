@@ -283,11 +283,6 @@ const FinanceBar: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4 ml-auto">
-                <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Market Exchange</span>
-                    <span className="text-[10px] font-mono font-black text-white/40 leading-none">1 USD = {exchangeRate.toFixed(2)} MXN</span>
-                </div>
-                <div className="w-px h-8 bg-white/10" />
                 <div className="flex flex-col items-end mr-4">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Pending USD</span>
                     <span className="text-xs font-mono font-black text-(--main-color) leading-none">${(pending / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>

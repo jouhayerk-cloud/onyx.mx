@@ -707,8 +707,20 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             if (isProduction) {
                 if (isPartial) {
                     await supabase.from('inventory').update({ pay_req: `requested ${percentage}%` }).in('id', ids);
+                    for (const id of ids) {
+                        try {
+                            const localDoc = await db.inventory.findOne({ selector: { id } }).exec();
+                            if (localDoc) await localDoc.patch({ pay_req: `requested ${percentage}%` });
+                        } catch (e) { }
+                    }
                 } else {
                     await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                    for (const id of ids) {
+                        try {
+                            const localDoc = await db.inventory.findOne({ selector: { id } }).exec();
+                            if (localDoc) await localDoc.patch({ pay_req: true });
+                        } catch (e) { }
+                    }
                 }
             }
 
@@ -736,9 +748,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const handleDeletePayment = async (id: string) => {
         if (!confirm('Are you sure you want to delete this payment record?')) return;
         const { error } = await supabase.from('finance').delete().eq('id', id);
-        if (error) toast.error(error.message);
-        else {
+        if (error) {
+            toast.error(error.message);
+        } else {
+            try {
+                const localDoc = await db.finance.findOne({ selector: { id } }).exec();
+                if (localDoc) await localDoc.remove();
+            } catch (e) {
+                console.error('Error removing local doc', e);
+            }
             toast.success('Payment deleted');
+            setPaymentsVersion(v => v + 1);
             onRefresh();
         }
     };
@@ -749,15 +769,24 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
-        const { error } = await supabase.from('finance').update({
+        const updatePayload = {
             status: next,
             pay_date: next === 'Paid' ? new Date().toISOString() : null,
             updated_at: new Date().toISOString()
-        }).eq('id', r.id);
+        };
+
+        const { error } = await supabase.from('finance').update(updatePayload).eq('id', r.id);
 
         if (error) {
             toast.error(error.message);
         } else {
+            try {
+                const localDoc = await db.finance.findOne({ selector: { id: r.id } }).exec();
+                if (localDoc) await localDoc.patch(updatePayload);
+            } catch (e) {
+                console.error('Error patching local doc', e);
+            }
+
             // PRODUCTION / ACQ Tagging Persistence
             if (next === 'Paid') {
                 const ids = r.related_ids || r.related_inventory_ids?.split(',');
@@ -770,6 +799,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     }
                 }
             }
+            setPaymentsVersion(v => v + 1);
             onRefresh();
         }
     };
@@ -810,7 +840,29 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             <span className="text-xs font-mono font-black text-white/40">1 USD = {exchangeRate.toFixed(2)} MXN</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center -space-x-4 hover:space-x-1 transition-all duration-500 group/stack mr-4">
+                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                                const isActive = destinationFilter === key;
+                                return (
+                                    <div key={key} onClick={() => setDestinationFilter(isActive ? 'All' : key as PaymentDestination)}
+                                        className={`relative cursor-pointer transition-all duration-500 ease-out flex items-center gap-3 p-2 rounded-xl border backdrop-blur-md shadow-2xl
+                                            ${isActive
+                                                ? 'w-32 bg-(--main-color)/20 border-(--main-color) z-30 translate-x-0 scale-100 opacity-100'
+                                                : 'w-10 bg-white/2 border-white/5 z-10 hover:z-20 group-hover/stack:scale-105 opacity-60 hover:opacity-100'}`}>
+
+                                        <img src={cfg.icon} alt={cfg.name} className={`h-5 w-auto object-contain transition-all duration-500 ${isActive ? 'scale-110' : 'grayscale group-hover/stack:grayscale-0'}`} />
+
+                                        {isActive && (
+                                            <div className="flex flex-col overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
+                                                <span className="text-[9px] font-black text-white uppercase tracking-tighter truncate">{cfg.name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
                         <button onClick={() => setShowAdd(true)}
                             className="px-4 py-2 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
                             <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>ADD
@@ -829,32 +881,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     {s.toUpperCase()}
                                 </button>
                             ))}
-                        </div>
-
-                        <div className="flex flex-col gap-1 border-l border-white/10 pl-4 pt-2">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Account Filter</span>
-                            <div className="flex items-center -space-x-4 hover:space-x-1 transition-all duration-500 group/stack">
-                                {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                    const isActive = destinationFilter === key;
-                                    return (
-                                        <div key={key} onClick={() => setDestinationFilter(isActive ? 'All' : key as PaymentDestination)}
-                                            className={`relative cursor-pointer transition-all duration-500 ease-out flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-md shadow-2xl
-                                                ${isActive
-                                                    ? 'w-48 bg-(--main-color)/20 border-(--main-color) z-30 translate-x-0 scale-100 opacity-100'
-                                                    : 'w-12 bg-white/2 border-white/5 z-10 hover:z-20 group-hover/stack:scale-105 opacity-60 hover:opacity-100'}`}>
-
-                                            <img src={cfg.icon} alt={cfg.name} className={`h-6 w-auto object-contain transition-all duration-500 ${isActive ? 'scale-110' : 'grayscale group-hover/stack:grayscale-0'}`} />
-
-                                            {isActive && (
-                                                <div className="flex flex-col overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
-                                                    <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate">{cfg.name}</span>
-                                                    <span className="text-[8px] font-bold text-(--main-color) uppercase tracking-widest">ACTIVE</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         </div>
                     </div>
                 )}
