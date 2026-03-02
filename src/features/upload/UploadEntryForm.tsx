@@ -101,18 +101,28 @@ export function UploadEntryForm() {
 
     // Build unique suggestion lists from vendor docs
     const suggestions = useMemo(() => {
-        const uniq = (key: string): string[] =>
-            [...new Set(vendorDocs.map(d => d[key]).filter(Boolean))].sort();
+        const u = (keys: string[]): string[] => {
+            const vals = new Set<string>();
+            vendorDocs.forEach(d => {
+                for (const k of keys) {
+                    if (d[k]) {
+                        vals.add(String(d[k]));
+                        break;
+                    }
+                }
+            });
+            return Array.from(vals).sort();
+        };
         return {
-            shape: uniq('shape'),
-            material: uniq('material'),
-            color: uniq('color'),
-            itemType: uniq('item_type'),
-            weightKg: uniq('weight_kg'),
-            widthCm: uniq('width_cm'),
-            heightCm: uniq('height_cm'),
-            lengthCm: uniq('length_cm'),
-            price: uniq('price_mxn'),
+            shape: u(['shape', 'Shape']),
+            material: u(['material', 'Material']),
+            color: u(['color', 'Color']),
+            itemType: u(['short_description', 'shortDescription', 'item_type', 'type']),
+            weightKg: u(['weight_kg', 'weightKg']),
+            widthCm: u(['width_cm', 'widthCm']),
+            heightCm: u(['height_cm', 'heightCm']),
+            lengthCm: u(['length_cm', 'lengthCm']),
+            price: u(['price_mxn', 'priceMxn', 'price']),
         };
     }, [vendorDocs]);
 
