@@ -232,12 +232,10 @@ export function AdminDashboard() {
             {/* Scrollable content */}
             <div className="grow min-h-0 overflow-y-auto pr-2 custom-scrollbar space-y-6">
                 {/* ── KPI Cards ──────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     <StatCard icon={Package} label="Total Items" value={totals.totalItems.toLocaleString()} color="#6BCEBB" />
                     <StatCard icon={Users} label="Vendors" value={String(vendorSummaries.length)} color="#00AEEF" />
                     <StatCard icon={DollarSign} label="Acquisition MXN" value={fmt(totals.totalAcqMxn)} subtitle={`≈ ${fmt(totals.totalAcqUsd)} USD`} color="#A78BFA" />
-                    <StatCard icon={TrendingUp} label="Landed USD" value={fmt(totals.totalLandedUsd)} color="#FACC15" trend="up" />
-                    <StatCard icon={Layers} label="Retail USD" value={fmt(totals.totalRetailUsd)} color="#4ADE80" trend="up" />
                     <StatCard icon={DollarSign} label="Total Expenses" value={fmt(totals.totalExpenses)} subtitle={`Paid: ${fmt(totals.paidExpenses)}`} color="#F87171" />
                 </div>
 

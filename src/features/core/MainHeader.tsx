@@ -35,6 +35,9 @@ import {
     filteredInventoryCountAtom,
     financeDataAtom,
     isUploadWizardOpenAtom,
+    languageAtom,
+    themeAtom,
+    performanceModeAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -45,11 +48,20 @@ import userIcons from '../../components/userIcons';
 import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
-    Camera, Play, Wallet, Landmark, X
+    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe
 } from 'lucide-react';
 
 // Injected at build time from package.json via vite.config.ts
 declare const __APP_VERSION__: string;
+
+const themes = [
+    { name: 'obsidian', gradient: 'linear-gradient(135deg, #1a1a24, #212130, #2a2a3d)' },
+    { name: 'fluorite', gradient: 'linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40)' },
+    { name: 'malaquite', gradient: 'linear-gradient(135deg, #081f13, #0b2f20, #0f4028)' },
+    { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
+    { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
+    { name: 'tekis', gradient: 'linear-gradient(135deg, #fffff0, #fdfbf0, #fefce8)' },
+];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
@@ -375,12 +387,17 @@ const ControlBar: React.FC = () => (
 export function MainHeader() {
     const [activeView] = useAtom(activeViewAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [performanceMode, setPerformanceMode] = useAtom(performanceModeAtom);
+    const [language, setLanguage] = useAtom(languageAtom);
+    const [theme, setTheme] = useAtom(themeAtom);
 
     const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
 
     const user = useAtomValue(userAtom);
     const logout = useLogout();
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+    const t = useTranslation();
 
     const handleRefresh = () => {
         setInventoryVersion(v => v + 1);
@@ -434,13 +451,55 @@ export function MainHeader() {
                     </div>
                 )}
 
-                <div className="flex items-center gap-1">
-                    <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="Refresh Sync">
-                        <RefreshCw size={15} strokeWidth={2} />
+                <div className="flex items-center gap-1 relative">
+                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all">
+                        <Settings size={15} strokeWidth={2} className={`transition-transform duration-300 ${isSettingsOpen ? 'rotate-90' : ''}`} />
                     </button>
-                    <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-red-400 transition-all" title="Logout Session">
-                        <LogOut size={15} strokeWidth={2} />
-                    </button>
+                    {isSettingsOpen && (
+                        <div className="absolute top-10 right-0 w-64 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-4 flex flex-col gap-4 z-50">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[#6BCEBB]">Settings</span>
+                                <button onClick={() => setIsSettingsOpen(false)} className="text-white/40 hover:text-white"><X size={14} /></button>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors text-left">
+                                    <Globe size={16} strokeWidth={2} />
+                                    <span className="flex-1 shrink-0 whitespace-nowrap overflow-hidden text-ellipsis w-24">Language</span>
+                                    <span className="text-[10px] uppercase font-bold bg-white/10 px-2 py-0.5 rounded">{language}</span>
+                                </button>
+
+                                <button onClick={() => setPerformanceMode(!performanceMode)} className={`flex items-center gap-3 text-sm transition-colors text-left ${performanceMode ? 'text-yellow-400' : 'text-white/80 hover:text-white'}`}>
+                                    <Zap size={16} strokeWidth={2} />
+                                    <span className="flex-1 shrink-0 whitespace-nowrap overflow-hidden text-ellipsis w-10">Performance Mode</span>
+                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${performanceMode ? 'bg-yellow-400/20 text-yellow-500' : 'bg-white/10 text-white/50'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
+                                </button>
+
+                                <button onClick={handleRefresh} className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors text-left w-full">
+                                    <RefreshCw size={16} strokeWidth={2} />
+                                    <span className="flex-1">Refresh Sync</span>
+                                </button>
+                            </div>
+
+                            <div className="border-t border-white/10 pt-3">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Theme</span>
+                                <div className="grid grid-cols-6 gap-2">
+                                    {themes.map(th => (
+                                        <button key={th.name} onClick={() => setTheme(th.name)}
+                                            className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 border border-white/10 ${theme === th.name ? 'ring-2 ring-white ring-offset-2 ring-offset-[#111]' : ''}`}
+                                            style={{ background: th.gradient }} title={th.name} />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="border-t border-white/10 pt-3">
+                                <button onClick={logout} className="flex items-center gap-3 text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left">
+                                    <LogOut size={16} strokeWidth={2} />
+                                    <span className="flex-1">Logout Session</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

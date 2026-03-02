@@ -586,6 +586,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [showAdd, setShowAdd] = useState(false);
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [overviewMode, setOverviewMode] = useState<'extended' | 'minimal' | 'collapsed'>('extended');
+    const [liveExchangeRate, setLiveExchangeRate] = useState<number | null>(null);
+
+    useEffect(() => {
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(r => r.json())
+            .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
+            .catch(() => { });
+    }, []);
 
     // Load inventory for pending payment requests
     const fetchInventory = useCallback(async () => {
@@ -811,6 +820,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         return m;
     }, [docs]);
 
+    const statusTotals = useMemo(() => {
+        const m: Record<string, number> = { Requested: 0, Pending: 0, Paid: 0 };
+        docs.forEach(d => {
+            const s = d.status || 'Requested';
+            if (s === 'Paid') m.Paid += d.amount || 0;
+            else if (s === 'Requested') m.Requested += d.amount || 0;
+            else m.Pending += d.amount || 0;
+        });
+        return m;
+    }, [docs]);
+
     if (isLoading) return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
 
     return (
@@ -827,213 +847,190 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── Filter Bar ── */}
-            <div className="flex flex-col border-b border-white/5 bg-black/10 shrink-0">
-                <div className="flex items-center justify-between px-4 py-2">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setShowFilters(!showFilters)}
-                            className="flex items-center gap-2 text-[10px] font-black tracking-widest text-white/40 hover:text-white transition-colors">
-                            <span className="text-xs">{showFilters ? '−' : '+'}</span> FILTERS
-                        </button>
-                        <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-                            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
-                            <span className="text-xs font-mono font-black text-white/40">1 USD = {exchangeRate.toFixed(2)} MXN</span>
+            {/* ── General Overview ── */}
+            {overviewMode !== 'collapsed' && (
+                <div className={`flex flex-col shrink-0 border-b border-white/10 bg-black/20 ${overviewMode === 'extended' ? 'p-6' : 'p-3'} transition-all duration-300 relative`}>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-6">
+                            <h2 className={`font-black uppercase tracking-widest text-(--text-color-secondary) ${overviewMode === 'extended' ? 'text-lg' : 'text-sm'}`}>General Overview</h2>
+                            <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner hidden md:flex">
+                                <span className="text-[10px] uppercase font-black tracking-widest text-(--text-color-secondary)">Rates</span>
+                                <div className="h-4 w-px bg-white/10" />
+                                <span className="text-xs font-mono font-bold text-[#FACC15]" title="Book Rate">Bk {exchangeRate.toFixed(2)}</span>
+                                <div className="h-4 w-px bg-white/10" />
+                                <span className="text-xs font-mono font-bold text-[#6BCEBB]" title="Live Rate">Lv {liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setOverviewMode('extended')} className={`p-1.5 py-1 rounded-lg border transition-all text-[9px] font-black uppercase tracking-widest ${overviewMode === 'extended' ? 'bg-(--main-color)/20 border-(--main-color) text-(--main-color)' : 'border-white/10 text-white/30 hover:text-white/60'}`}>Full</button>
+                            <button onClick={() => setOverviewMode('minimal')} className={`p-1.5 py-1 rounded-lg border transition-all text-[9px] font-black uppercase tracking-widest ${overviewMode === 'minimal' ? 'bg-(--main-color)/20 border-(--main-color) text-(--main-color)' : 'border-white/10 text-white/30 hover:text-white/60'}`}>Min</button>
+                            <button onClick={() => setOverviewMode('collapsed')} className="p-1.5 py-1 rounded-lg border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60 transition-all text-[9px] font-black uppercase tracking-widest">Hide</button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center -space-x-4 hover:space-x-1 transition-all duration-500 group/stack mr-4">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                const isActive = destinationFilter === key;
-                                return (
-                                    <div key={key} onClick={() => setDestinationFilter(isActive ? 'All' : key as PaymentDestination)}
-                                        className={`relative cursor-pointer transition-all duration-500 ease-out flex items-center gap-3 p-2 rounded-xl border backdrop-blur-md shadow-2xl
-                                            ${isActive
-                                                ? 'w-32 bg-(--main-color)/20 border-(--main-color) z-30 translate-x-0 scale-100 opacity-100'
-                                                : 'w-10 bg-white/2 border-white/5 z-10 hover:z-20 group-hover/stack:scale-105 opacity-60 hover:opacity-100'}`}>
 
-                                        <img src={cfg.icon} alt={cfg.name} className={`h-5 w-auto object-contain transition-all duration-500 ${isActive ? 'scale-110' : 'grayscale group-hover/stack:grayscale-0'}`} />
-
-                                        {isActive && (
-                                            <div className="flex flex-col overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
-                                                <span className="text-[9px] font-black text-white uppercase tracking-tighter truncate">{cfg.name}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                    <div className={`flex ${overviewMode === 'extended' ? 'gap-6' : 'gap-4'} items-stretch`}>
+                        {/* Totals panel */}
+                        <div className={`flex ${overviewMode === 'extended' ? 'flex-col justify-center min-w-[200px]' : 'items-center gap-6'} gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl`}>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">Paid</span>
+                                <span className="text-xl font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">Req & Pend</span>
+                                <span className="text-xl font-mono font-black text-[#FACC15]">{fmtMXN((statusTotals.Pending || 0) + (statusTotals.Requested || 0))}</span>
+                            </div>
                         </div>
 
-                        <button onClick={() => setShowAdd(true)}
-                            className="px-4 py-2 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
-                            <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>ADD
-                        </button>
+                        {/* Add Payment Button */}
+                        <div className="flex items-center">
+                            <button onClick={() => setShowAdd(true)}
+                                className={`flex flex-col items-center justify-center gap-2 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-2xl transition-all shadow-lg hover:scale-105 active:scale-95 ${overviewMode === 'extended' ? 'p-6 w-32 h-full' : 'p-3 w-14 h-full'}`}>
+                                <svg className={`w-6 h-6 flex-shrink-0`}><use href="#plus" /></svg>
+                                {overviewMode === 'extended' && <span className="text-[10px] font-black uppercase tracking-widest text-center leading-tight">Add<br />Payment</span>}
+                            </button>
+                        </div>
+
+                        {/* Payment request cards (Pending bubbles) */}
+                        {pendingGroups.length > 0 && overviewMode === 'extended' && (
+                            <div className="flex-1 overflow-x-auto flex items-center gap-3 custom-scrollbar pr-2 pb-2">
+                                {pendingGroups.map(group => {
+                                    const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
+                                    const txt = getTextColorForBg(color);
+                                    const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
+                                    const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+
+                                    return (
+                                        <div key={group.vendorId}
+                                            onClick={() => setRequestGroup(group)}
+                                            className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] cursor-pointer hover:-translate-y-1 transition-transform border border-white/10 shadow-lg bg-black/20"
+                                            style={{ borderTopColor: color }}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="font-black text-[11px] uppercase tracking-wider text-(--text-color)" style={{ color }}>{group.vendorId}</p>
+                                                <span className="text-[9px] font-mono font-bold bg-white/10 text-(--text-color) px-1.5 py-0.5 rounded">{group.items.length} ITM</span>
+                                            </div>
+                                            <p className="font-mono font-black text-sm text-(--text-color)">{fmtMXN(group.total)}</p>
+                                            {isProd && paidPerc > 0 ? (
+                                                <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2">
+                                                    <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
+                                                </div>
+                                            ) : (
+                                                <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Request Payment</div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
+            )}
 
-                {showFilters && (
-                    <div className="px-4 py-3 bg-black/20 border-t border-white/5 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-1 duration-200">
-                        {/* Subcategory pills */}
-                        <div className="flex flex-wrap gap-1.5 pt-2">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest w-full mb-1">Category (Subcat)</span>
+            {/* ── Payments Details Section ── */}
+            <div className="flex-1 flex flex-col min-h-0 bg-(--glass-bg)">
+                {/* Header/Controls below general overview */}
+                <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
+                    <div className="flex items-center gap-4">
+                        {overviewMode === 'collapsed' && (
+                            <button onClick={() => setOverviewMode('extended')} className="p-2 bg-white/5 hover:bg-white/10 border border-(--border-color) rounded-xl text-(--text-color-secondary) transition-all text-[10px] font-black uppercase tracking-widest mr-2 group/ov">
+                                <span className="group-hover:text-(--text-color)">Show Overview</span>
+                            </button>
+                        )}
+                        <span className="font-black uppercase tracking-widest text-(--text-color-secondary) text-sm border-r border-(--border-color) pr-4 hidden md:block">Details</span>
+
+                        {/* Filters embedded here */}
+                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
                             {SUBCATEGORIES.map(s => (
                                 <button key={s} onClick={() => setSubcatFilter(s)}
-                                    className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-[#6BCEBB] text-black shadow' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
                                     {s.toUpperCase()}
                                 </button>
                             ))}
                         </div>
                     </div>
-                )}
-            </div>
 
-            {/* ── Pending Bubbles Bar (Collapsible) ── */}
-            {pendingGroups.length > 0 && (
-                <div className="flex flex-col border-t border-white/5 bg-black/5">
-                    <div className="flex justify-between items-center px-4 py-1.5 h-8">
-                        <button onClick={() => setIsBubblesCollapsed(!isBubblesCollapsed)}
-                            className="flex items-center gap-2 text-[9px] font-black tracking-[0.2em] text-white/30 hover:text-(--main-color) transition-all">
-                            <span>{isBubblesCollapsed ? '+' : '−'}</span>
-                            PENDING REQUESTS
-                            <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/5 text-[8px]">{pendingGroups.length}</span>
-                        </button>
-
-                        {!isBubblesCollapsed && (
-                            <div className="flex items-center gap-2 overflow-x-auto max-w-[400px] no-scrollbar">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest shrink-0">Filter:</span>
-                                <button onClick={() => setVendorFilter('All')} className={`tab-button ${vendorFilter === 'All' ? 'active' : ''}`}>All</button>
-                                {Object.entries(vendorTotals).map(([vid, total]) => (
-                                    <button key={vid} onClick={() => setVendorFilter(vid)}
-                                        className={`tab-button vendor-tab ${vendorFilter === vid ? 'active' : ''}`}
-                                        style={vendorFilter === vid ? { backgroundColor: vendors[vid as keyof typeof vendors]?.color, color: getTextColorForBg(vendors[vid as keyof typeof vendors]?.color || '#555') } : {}}>
-                                        {vid} <span className="count">{fmtMXN(total as number)}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={`px-4 transition-all duration-500 overflow-hidden ${isBubblesCollapsed ? 'max-h-0 py-0' : 'max-h-[200px] py-3'}`}>
-                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                            {pendingGroups.map(group => {
-                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                                const txt = getTextColorForBg(color);
-                                const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
-                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                const isExpanded = expandedBubble === group.vendorId;
-
-                                return (
-                                    <div key={group.vendorId}
-                                        onClick={() => setExpandedBubble(isExpanded ? null : group.vendorId)}
-                                        className={`shrink-0 rounded-2xl flex flex-col gap-1 group/card relative overflow-hidden transition-all cursor-pointer shadow-sm hover:shadow-md ${isExpanded ? 'p-2.5 min-w-[160px]' : 'p-2 min-w-[100px]'}`}
-                                        style={{ backgroundColor: color, color: txt }}>
-                                        <div className="flex justify-between items-center gap-2">
-                                            <div className="flex items-center gap-1.5">
-                                                <p className="font-black text-[10px] uppercase tracking-wider leading-none opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                                <span className="text-[8px] font-mono font-bold opacity-50 bg-black/10 px-1 rounded">{group.items.length}</span>
-                                                {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">P</span>}
-                                            </div>
-                                            <p className="font-mono font-black text-[10px] leading-none shrink-0">{fmtMXN(group.total)}</p>
-                                        </div>
-
-                                        {/* Expanded: show progress + action button */}
-                                        {isExpanded && (
-                                            <div className="flex flex-col gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                {isProd && paidPerc > 0 && (
-                                                    <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
-                                                    </div>
-                                                )}
-                                                <button onClick={(e) => { e.stopPropagation(); setRequestGroup(group); }}
-                                                    className="w-full py-1.5 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase">
-                                                    {isProd && paidPerc > 0 ? `Liquidate ${paidPerc}%` : 'Request'}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                    <div className="flex items-center gap-2">
+                        {/* Destination Picker inline */}
+                        <div className="flex items-center bg-white/5 rounded-xl border border-(--border-color) p-1 overflow-x-auto no-scrollbar max-w-[150px] md:max-w-none">
+                            {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
+                                    className={`p-1.5 rounded-lg transition-all ${destinationFilter === key ? 'bg-white/10 shadow-sm border border-white/10' : 'hover:bg-white/5 border border-transparent opacity-50 hover:opacity-100'}`}
+                                    title={cfg.name}>
+                                    <img src={cfg.icon} alt={cfg.name} className="h-4 w-auto object-contain" />
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* ── Summary cards ── */}
-            <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
-                {Object.entries(subcatTotals).map(([k, v]) => (
-                    <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
-                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
-                        <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
-                        <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
-                    </div>
-                ))}
-            </div>
-
-            {/* ── Records Table ── */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#0d0d1a] z-10">
-                        <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
-                            <th className="px-4 py-3">Date</th>
-                            <th className="px-4 py-3">Acc</th>
-                            <th className="px-4 py-3">Cat</th>
-                            <th className="px-4 py-3">Desc</th>
-                            <th className="px-4 py-3">Vend</th>
-                            <th className="px-4 py-3 text-right">Amt</th>
-                            <th className="px-4 py-3 text-center">Stat</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/3">
-                        {filtered.map(r => (
-                            <tr key={r.id} className="hover:bg-white/3 transition-all">
-                                <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
-                                    {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
-                                </td>
-                                <td className="px-4 py-2">
-                                    {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                        <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                            alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                            className="h-5 w-auto object-contain" />
-                                    ) : <span className="text-white/20 text-[9px]">—</span>}
-                                </td>
-                                <td className="px-4 py-2">
-                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">
-                                        {normalizeSubcat(r.subcategory || r.category)}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-2 text-xs text-white/70 max-w-[200px] truncate">{r.description || r.notes || '—'}</td>
-                                <td className="px-4 py-2">
-                                    {r.vendor_id ? (
-                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black"
-                                            style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
-                                            {r.vendor_id}
-                                        </span>
-                                    ) : '—'}
-                                </td>
-                                <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/70">
-                                    {fmtMXN(r.amount)}
-                                    {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
-                                </td>
-                                <td className="px-4 py-2 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button onClick={() => handleToggleStatus(r)}
-                                            className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
-                                            {r.status || 'Requested'}
-                                        </button>
-                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                            <button onClick={() => handleDeletePayment(r.id)}
-                                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
-                                                ✕
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
+                {/* Data dense table */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 bg-(--glass-bg) z-10 backdrop-blur-3xl shadow-sm">
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) bg-black/5 dark:bg-black/20 border-b border-(--border-color)">
+                                <th className="px-5 py-3 border-r border-white/5">Date</th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Acc</th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Cat</th>
+                                <th className="px-5 py-3 border-r border-white/5">Desc</th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Vend</th>
+                                <th className="px-5 py-3 border-r border-white/5 text-right">Amount</th>
+                                <th className="px-5 py-3 text-center">Status</th>
                             </tr>
-                        ))}
-                        {filtered.length === 0 && (
-                            <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-(--border-color)">
+                            {filtered.map(r => (
+                                <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
+                                    <td className="px-5 py-3 font-mono text-[10px] text-(--text-color-secondary) whitespace-nowrap">
+                                        {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                        {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
+                                            <div className="w-6 h-6 mx-auto bg-white rounded-md flex items-center justify-center border border-black/10 shadow-sm">
+                                                <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                                    alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                                    className="h-3 w-auto object-contain" />
+                                            </div>
+                                        ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
+                                    </td>
+                                    <td className="px-3 py-3 text-center">
+                                        <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-black bg-black/10 dark:bg-white/10 text-(--text-color)">
+                                            {normalizeSubcat(r.subcategory || r.category)}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-3 text-xs font-medium text-(--text-color) max-w-[250px] truncate">{r.description || r.notes || '—'}</td>
+                                    <td className="px-3 py-3 text-center">
+                                        {r.vendor_id ? (
+                                            <span className="px-2 py-1 rounded-[4px] text-[9px] font-black shadow-sm"
+                                                style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
+                                                {r.vendor_id}
+                                            </span>
+                                        ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
+                                    </td>
+                                    <td className="px-5 py-3 text-right">
+                                        <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(r.amount)}</span>
+                                        {(r.commission || 0) > 0 && <span className="text-(--text-color-secondary) font-mono text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
+                                    </td>
+                                    <td className="px-5 py-3">
+                                        <div className="flex items-center justify-center gap-3">
+                                            <button onClick={() => handleToggleStatus(r)}
+                                                className={`min-w-[80px] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/50 hover:bg-[#8DC63F]/30' : 'bg-[#FACC15]/20 text-[#FACC15] border border-[#FACC15]/50 hover:bg-[#FACC15]/30'}`}>
+                                                {r.status || 'Requested'}
+                                            </button>
+                                            {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                                <button onClick={() => handleDeletePayment(r.id)}
+                                                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100" title="Delete record">
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {filtered.length === 0 && (
+                                <tr><td colSpan={7} className="px-4 py-16 text-center text-(--text-color-secondary) text-xs font-black tracking-[0.2em] uppercase">No payment records match criteria</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* SVG Icons for Wizard */}

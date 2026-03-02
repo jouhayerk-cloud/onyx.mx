@@ -279,51 +279,51 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     )}
                 </div>
                 {isExpanded && (
-                    <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden bg-black/40 backdrop-blur-md">
+                    <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden bg-(--glass-bg) backdrop-blur-md">
                         {/* Top-right: Close + Edit */}
                         <div className="absolute right-4 top-4 z-50 flex flex-col gap-2">
-                            <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/40 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest">
+                            <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 border border-white/10 rounded-xl text-(--text-color) hover:opacity-100 opacity-60 transition-all text-[10px] font-black uppercase tracking-widest">
                                 <svg className="w-3 h-3"><use href="#x" /></svg>Close
                             </button>
-                            <button onClick={handleEdit} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color)/70 hover:text-(--main-color) transition-all text-[9px] font-black uppercase tracking-widest">
+                            <button onClick={handleEdit} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-[10px] font-black uppercase tracking-widest">
                                 <svg className="w-3 h-3"><use href="#edit" /></svg>Edit
                             </button>
                         </div>
                         <div className="overflow-y-auto grow pr-2 custom-scrollbar">
                             <div className="flex justify-between items-start mb-6 pr-24">
                                 <div className="min-w-0">
-                                    <h3 className="text-2xl font-black text-white truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                    <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
+                                    <h3 className="text-3xl font-black text-(--text-color) truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                    <p className="text-[12px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                     <div className="flex gap-4 mt-3">
                                         <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">AQ Code</span>
-                                            <span className="text-sm font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
+                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">AQ Code</span>
+                                            <span className="text-base font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
                                         </div>
-                                        <div className="flex flex-col border-l border-white/10 pl-4">
-                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">LD Code</span>
-                                            <span className="text-sm font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
+                                        <div className="flex flex-col border-l border-(--border-color) pl-4">
+                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">LD Code</span>
+                                            <span className="text-base font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8">
-                                <div><p className={lbl}>Material</p><p className="text-sm font-medium text-white/80">{norm.material || 'â€”'}</p></div>
-                                <div><p className={lbl}>Dimensions</p><p className="text-sm font-medium text-white/80 font-mono">{dimensionsStr || 'â€”'}</p></div>
-                                <div><p className={lbl}>Weight</p><p className="text-sm font-medium text-white/80 font-mono">{weightStr || 'â€”'}</p></div>
-                                <div><p className={lbl}>Quantity</p><p className="text-sm font-medium text-white/80 font-mono">{norm.quantity || 1}</p></div>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8 bg-black/5 dark:bg-black/20 p-5 rounded-2xl border border-(--border-color)">
+                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Material</p><p className="text-lg font-bold text-(--text-color)">{norm.material || '—'}</p></div>
+                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Dimensions</p><p className="text-lg font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
+                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Weight</p><p className="text-lg font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
+                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Quantity</p><p className="text-lg font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
                             </div>
-                            <div className="p-5 bg-white/3 rounded-2xl border border-white/5 shadow-inner">
-                                <h4 className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em] mb-4">Financial Analysis</h4>
+                            <div className="p-6 bg-(--glass-bg) rounded-2xl border border-(--border-color) shadow-inner">
+                                <h4 className="text-[11px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Financial Analysis</h4>
                                 <div className="grid grid-cols-3 gap-6">
-                                    <div className="flex flex-col"><span className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-1">Acq</span><span className="text-lg font-black text-[#AEE6F5] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
-                                    <div className="flex flex-col"><span className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-1">Land</span><span className="text-lg font-black text-yellow-300 font-mono leading-none">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
-                                    <div className="flex flex-col"><span className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-1">Ret</span><span className="text-lg font-black text-green-400 font-mono leading-none">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Acq</span><span className="text-2xl font-black text-[#6BCEBB] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Land</span><span className="text-2xl font-black text-yellow-500 font-mono leading-none">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Ret</span><span className="text-2xl font-black text-green-500 font-mono leading-none">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
                                 </div>
                             </div>
                             {norm.description && (
-                                <div className="mt-8">
-                                    <p className={lbl}>Notes</p>
-                                    <p className="text-xs text-white/60 leading-relaxed font-medium">{norm.description}</p>
+                                <div className="mt-8 bg-black/5 dark:bg-black/10 p-5 rounded-2xl border border-(--border-color)">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Notes</p>
+                                    <p className="text-sm text-(--text-color) leading-relaxed font-medium">{norm.description}</p>
                                 </div>
                             )}
                         </div>
