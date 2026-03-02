@@ -116,9 +116,25 @@ const AddPaymentModal: React.FC<{
                 commission += iva;
             }
 
-            // For Acquisitions, we need to find the related inventory items to mark them as pay_req
-            const group = (form.subcategory === 'Acq' || form.subcategory === 'Prod') ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
+            const isProd = form.subcategory === 'Prod';
+            const group = (form.subcategory === 'Acq' || isProd) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
+            const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
+
+            // If it's a manual entry for an existing group, handle tagging
+            if (ids.length > 0) {
+                const isPartial = group && amt < (group.total - group.paidTotal);
+                const perc = group ? Math.round(((group.paidTotal + amt) / group.total) * 100) : 100;
+
+                if (isProd && isPartial) {
+                    await supabase.from('inventory').update({
+                        pay_req: `requested ${perc}%`,
+                        notes: `Partial payment of ${amt} recorded.`
+                    }).in('id', ids);
+                } else {
+                    await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                }
+            }
 
             await appendExpense({
                 ...form,
@@ -141,7 +157,7 @@ const AddPaymentModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
             <div className="bg-[#0d0d1a] border border-white/10 rounded-[40px] w-full max-w-[600px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
                 {/* Progress Header */}
@@ -457,7 +473,7 @@ const RequestPaymentModal: React.FC<{
     const amountToRequest = Math.max(0, targetAmount - group.paidTotal);
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
             <div className="bg-[#0d0d1a] border border-white/10 rounded-[40px] w-full max-w-[500px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
                 <div className="px-10 pt-10 flex justify-between items-center mb-6">
@@ -498,20 +514,27 @@ const RequestPaymentModal: React.FC<{
                             </div>
                         </div>
 
-                        {/* Control Slider */}
-                        <div>
-                            <div className="flex justify-between items-center mb-4">
-                                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">TARGET PERCENTAGE</label>
-                                <span className="text-xl font-mono font-black text-(--main-color) leading-none">{percentage}%</span>
-                            </div>
-                            <input type="range" min={Math.max(10, paidPerc + (isProduction ? 5 : 0))} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
-                                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-(--main-color) mb-4" />
+                        {/* Control Slider - Only for Production */}
+                        {isProduction ? (
+                            <div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <label className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">TARGET PERCENTAGE</label>
+                                    <span className="text-xl font-mono font-black text-(--main-color) leading-none">{percentage}%</span>
+                                </div>
+                                <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-(--main-color) mb-4" />
 
-                            <div className="p-5 rounded-[24px] bg-(--main-color)/5 border border-(--main-color)/10 text-center">
-                                <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em] mb-1">AMOUNT TO DISBURSE</p>
+                                <div className="p-5 rounded-[24px] bg-(--main-color)/5 border border-(--main-color)/10 text-center">
+                                    <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em] mb-1">AMOUNT TO DISBURSE</p>
+                                    <p className="text-3xl font-mono font-black text-white">{fmtMXN(amountToRequest)}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-6 rounded-[32px] bg-white/2 border border-white/5 text-center">
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-2">FULL PAYMENT REQUIRED</p>
                                 <p className="text-3xl font-mono font-black text-white">{fmtMXN(amountToRequest)}</p>
                             </div>
-                        </div>
+                        )}
 
                         {/* Destination Picker */}
                         <div className="grid grid-cols-4 gap-2">
@@ -541,6 +564,7 @@ const RequestPaymentModal: React.FC<{
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
+    const user = useAtomValue(userAtom);
     const [inventory, setInventory] = useAtom(inventoryAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
@@ -663,6 +687,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 : `Liquidation Payment for ${group.items.length} items from ${group.vendorId}`;
 
             const itemIdsStr = group.items.map(i => String(i.row)).join(',');
+            const ids = itemIdsStr.split(',');
+
+            // PRODUCTION Progress Tracking
+            if (isProduction) {
+                if (isPartial) {
+                    await supabase.from('inventory').update({ pay_req: `requested ${percentage}%` }).in('id', ids);
+                } else {
+                    await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                }
+            }
 
             await appendExpense({
                 description: desc,
@@ -670,7 +704,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 commission,
                 destination: dest,
                 status: 'Requested',
-                subcategory: 'Acq',
+                subcategory: isProduction ? 'Prod' : 'Acq',
                 vendor_id: group.vendorId,
                 inventoryItemRows: isPartial ? null : itemIdsStr,
                 linkedRows: isPartial ? itemIdsStr : null,
@@ -685,13 +719,44 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         setRequestGroup(null);
     };
 
+    const handleDeletePayment = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this payment record?')) return;
+        const { error } = await supabase.from('finance').delete().eq('id', id);
+        if (error) toast.error(error.message);
+        else {
+            toast.success('Payment deleted');
+            onRefresh();
+        }
+    };
+
     const [showFilters, setShowFilters] = useState(false);
     const [isBubblesCollapsed, setIsBubblesCollapsed] = useState(false);
 
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
-        const { error } = await supabase.from('finance').update({ status: next, pay_date: next === 'Paid' ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq('id', r.id);
-        if (error) toast.error(error.message); else onRefresh();
+        const { error } = await supabase.from('finance').update({
+            status: next,
+            pay_date: next === 'Paid' ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+        }).eq('id', r.id);
+
+        if (error) {
+            toast.error(error.message);
+        } else {
+            // PRODUCTION / ACQ Tagging Persistence
+            if (next === 'Paid') {
+                const ids = r.related_ids || r.related_inventory_ids?.split(',');
+                if (ids?.length > 0) {
+                    if (r.description?.includes('%')) {
+                        const perc = r.description.match(/(\d+)%/)?.[1];
+                        await supabase.from('inventory').update({ pay_req: `paid ${perc || 'partial'}%` }).in('id', ids);
+                    } else {
+                        await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                    }
+                }
+            }
+            onRefresh();
+        }
     };
 
     // Summary by subcategory
@@ -801,46 +866,48 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             )}
 
             {/* ── Pending vendor payment request cards ── */}
-            {pendingGroups.length > 0 && !isBubblesCollapsed && (
-                <div className="flex gap-2 px-4 py-3 border-b border-white/5 shrink-0 overflow-x-auto bg-white/1">
-                    {pendingGroups.map(group => {
-                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                        const txt = getTextColorForBg(color);
-                        const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
-                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+            {pendingGroups.length > 0 && (
+                <div className={`px-4 transition-all duration-500 overflow-hidden ${isBubblesCollapsed ? 'max-h-0 py-0 overflow-hidden' : 'max-h-[200px] py-3 border-b border-white/5 bg-white/1'}`}>
+                    <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                        {pendingGroups.map(group => {
+                            const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
+                            const txt = getTextColorForBg(color);
+                            const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
+                            const paidPerc = Math.round((group.paidTotal / group.total) * 100);
 
-                        return (
-                            <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02]" style={{ backgroundColor: color, color: txt }}>
-                                <div className="flex justify-between items-start">
-                                    <div className="flex flex-col">
-                                        <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
-                                            {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
+                            return (
+                                <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02] shadow-sm hover:shadow-md" style={{ backgroundColor: color, color: txt }}>
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex flex-col">
+                                            <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
+                                                {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
+                                            </div>
                                         </div>
+                                        <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
                                     </div>
-                                    <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
+
+                                    {isProd && paidPerc > 0 && (
+                                        <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
+                                            <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
+                                        </div>
+                                    )}
+
+                                    <button onClick={() => setRequestGroup(group)}
+                                        className="w-full py-1 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
+                                        {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
+                                    </button>
+
+                                    {isProd && paidPerc > 0 && (
+                                        <div className="absolute top-0 right-0 p-1 opacity-40">
+                                            <span className="text-[7px] font-black">{paidPerc}%</span>
+                                        </div>
+                                    )}
                                 </div>
-
-                                {isProd && paidPerc > 0 && (
-                                    <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
-                                        <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
-                                    </div>
-                                )}
-
-                                <button onClick={() => setRequestGroup(group)}
-                                    className="w-full py-1.5 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
-                                    {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
-                                </button>
-
-                                {isProd && paidPerc > 0 && (
-                                    <div className="absolute top-0 right-0 p-1 opacity-40">
-                                        <span className="text-[7px] font-black">{paidPerc}%</span>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
@@ -901,10 +968,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
                                 </td>
                                 <td className="px-4 py-2 text-center">
-                                    <button onClick={() => handleToggleStatus(r)}
-                                        className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
-                                        {r.status || 'Requested'}
-                                    </button>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <button onClick={() => handleToggleStatus(r)}
+                                            className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
+                                            {r.status || 'Requested'}
+                                        </button>
+                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                            <button onClick={() => handleDeletePayment(r.id)}
+                                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
+                                                ✕
+                                            </button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
