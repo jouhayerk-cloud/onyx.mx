@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.44 - Partial Payments & Production Fetching**
+
+### **Date:** 2026-03-01
+
+- **Finance: Partial Payments** — Added a percentage slider (10%–100%) to the Payment Request modal, allowing for partial payments on production items.
+- **Finance: Status Fetching** — Updated the payments module to include items marked as `Production` or `Avaiable` in the pending request groups.
+- **UI: Payment Descriptions** — Automatically generates "Partial Payment" or "Liquidation Payment" descriptions based on the selected percentage.
+ 
 ## **v1.10.43 - Item Status Workflow: Avaiable & Vendor Sync**
 
 ### **Date:** 2026-03-01
