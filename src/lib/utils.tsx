@@ -701,6 +701,7 @@ export const normalizeInventoryData = (data: any): any => {
     payReq: data.payReq || data.pay_req,
     sentDate: data.sentDate || data.sent_date,
     printDate: data.printDate || data.print_date,
+    isClientVisible: data.isClientVisible !== undefined ? data.isClientVisible : data.is_client_visible,
     dispersal_status: data.dispersal_status // Ensure this is preserved
   };
 };

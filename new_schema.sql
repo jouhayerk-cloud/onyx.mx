@@ -58,6 +58,8 @@ CREATE TABLE inventory (
     spatial_points JSONB,
     spatial_masks JSONB,
     spatial_boxes_3d JSONB,              -- NEW: 3D bounding boxes
+    is_client_visible BOOLEAN DEFAULT TRUE,
+    expires TEXT,
 
     -- Payment
     pay_req BOOLEAN DEFAULT FALSE,
@@ -79,20 +81,30 @@ DROP TABLE IF EXISTS finance CASCADE;
 CREATE TABLE finance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    type TEXT, -- 'Payment', 'Withdrawal', 'Recurring', 'Invoice', 'Expense'
-    category TEXT, -- Logistics, Labor, Supplies, Monthly, Crates, Pallets, Laborers
+    type TEXT,                           -- 'Payment', 'Withdrawal', 'Recurring', 'Invoice', 'Expense'
+    category TEXT,                       -- Logistics, Labor, Supplies, Monthly, Crates, Pallets, Laborers
+    subcategory TEXT,                    -- NEW: more granular category
+    description TEXT,                    -- NEW: summary of payment
     amount NUMERIC,
     commission NUMERIC DEFAULT 0,
-    currency TEXT DEFAULT 'USD',
-    bank_account TEXT, -- 'Ramses BBVA', 'Martha BBVA', 'BOA', 'Direct Client Wire'
-    status TEXT DEFAULT 'Requested', -- 'Requested', 'Sent', 'Dispersed'
-    requested_by TEXT, -- Email of the Admin who requested
+    currency TEXT DEFAULT 'MXN',
+    bank_account TEXT,                   -- 'Ramses BBVA', 'Martha BBVA', 'BOA', 'Direct Client Wire'
+    payment_method TEXT,                 -- NEW: Wire, Cash, etc.
+    pay_date TIMESTAMPTZ,                -- NEW: actual payment date
+    reference TEXT,                      -- NEW: transaction reference
+    exchange_rate NUMERIC,               -- NEW: rate at time of payment
+    status TEXT DEFAULT 'Requested',      -- 'Requested', 'Paid', 'Sent', 'Dispersed'
+    requested_by TEXT,                   -- Email of the Admin who requested
+    approved_by TEXT,                    -- NEW: who approved the expense
     sent_at TIMESTAMPTZ,
     dispersed_at TIMESTAMPTZ,
     destination TEXT,
     vendor_id TEXT,
-    related_ids UUID[], -- Array of inventory IDs
+    related_ids UUID[],                  -- Array of inventory IDs
+    related_inventory_ids TEXT,          -- NEW: legacy string support
     notes TEXT,
+    recurring BOOLEAN DEFAULT FALSE,     -- NEW: is it a monthly recurring expense?
+    recurring_day INTEGER,               -- NEW: day of month (1-31)
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -117,8 +129,9 @@ CREATE TABLE production (
 DROP TABLE IF EXISTS logistics CASCADE;
 CREATE TABLE logistics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT, -- Crate, Pallet, Box
-    vendors TEXT, -- List of vendors in the container
+    type TEXT,                           -- Crate, Pallet, Box
+    vendors TEXT,                        -- List of vendors in the container
+    vendor_id TEXT,                      -- NEW: single vendor reference
     length_cm NUMERIC,
     width_cm NUMERIC,
     height_cm NUMERIC,
@@ -127,6 +140,21 @@ CREATE TABLE logistics (
     truck_position TEXT,
     ship_date TIMESTAMPTZ,
     status TEXT DEFAULT 'Warehouse',
+    origin TEXT,                         -- NEW: starting point
+    destination_address TEXT,            -- NEW: final delivery point
+    contents_summary TEXT,               -- NEW: brief manifest
+    insurance_value NUMERIC,             -- NEW: declared value
+    customs_status TEXT,                 -- NEW: Pending, Cleared, etc.
+    pallet_count INTEGER,                -- NEW: number of pallets
+    crate_count INTEGER,                 -- NEW: number of crates
+    freight_cost NUMERIC,                -- NEW: transport cost
+    description TEXT,                    -- NEW: notes/details
+    tracking_number TEXT,                -- NEW: carrier tracking
+    carrier TEXT,                        -- NEW: carrier company
+    inventory_ids TEXT,                  -- NEW: related inventory (comma separated)
+    quantity NUMERIC,                    -- NEW: total units
+    cost_mxn NUMERIC,                    -- NEW: total value in pesos
+    date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 

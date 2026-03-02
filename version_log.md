@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.46 - Supabase Schema Alignment**
+
+### **Date:** 2026-03-01
+
+- **FIX: Supabase Schema** — Resolved "Missing column 'description' in finance" error by adding missing fields to `new_schema.sql`.
+- **Database: Metadata Sync** — Fully aligned `finance`, `logistics`, and `inventory` SQL definitions with the application's data models.
+- **System: Repair** — Fixed `package.json` corruption.
+
 ## **v1.10.45 - Inventory Quantity & Payment Summation**
 
 ### **Date:** 2026-03-01
