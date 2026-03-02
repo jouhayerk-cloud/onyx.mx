@@ -4,6 +4,12 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.48 - UI Default View Update**
+
+### **Date:** 2026-03-01
+
+- **UI: Default View** — Set the **List View** as the default initial view for the Inventory module for improved data density and readability upon load.
+
 ## **v1.10.47 - Cypher Key Fix & Fallback**
 
 ### **Date:** 2026-03-01
