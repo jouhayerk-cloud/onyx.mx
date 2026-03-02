@@ -668,7 +668,7 @@ export async function extractGradientFromMask(
 export const numberToCypher = (num: number): string => {
   // Mapping logic used for price encoding.
   // Key should be a 10-character string corresponding to digits 0-9.
-  const key = import.meta.env.VITE_CYPHER_KEY as string || 'ABCDEFGHIJ';
+  const key = import.meta.env.VITE_CYPHER_KEY as string || 'DOXHELFANM';
   if (!key || key.length < 10) return '—';
 
   return String(Math.floor(num))
