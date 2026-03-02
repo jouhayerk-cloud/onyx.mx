@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.47 - Cypher Key Fix & Fallback**
+
+### **Date:** 2026-03-01
+
+- **Database: Cypher Integrity** — Fixed an issue where the `VITE_CYPHER_KEY` was not being correctly injected into production builds, causing codes to revert to defaults.
+- **System: Fallback Logic** — Updated the application's default cypher key to `DOXHELFANM` to ensure code consistency even if environment variables are missing.
+- **Build: Explicit Injection** — Enhanced `vite.config.ts` to explicitly define and replace the cypher key during the build process.
+
 ## **v1.10.46 - Supabase Schema Alignment**
 
 ### **Date:** 2026-03-01
