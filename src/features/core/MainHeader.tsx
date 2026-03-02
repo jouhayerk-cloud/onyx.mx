@@ -96,29 +96,7 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'truck': Truck,
 };
 
-// ─── Search bar (shared) ──────────────────────────────────────────────────────
-const SearchBar: React.FC<{ value: string; onChange: (v: string) => void; placeholder: string }> = ({ value, onChange, placeholder }) => {
-    const [expanded, setExpanded] = useState(false);
-    return (
-        <div
-            className={`flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl transition-all duration-300 ${expanded ? 'w-48 px-3' : 'w-8 justify-center cursor-pointer hover:bg-white/10'} h-8 overflow-hidden shrink-0 z-50 group/search`}
-            onClick={() => !expanded && setExpanded(true)}
-        >
-            <Search size={14} strokeWidth={2} className="shrink-0 text-white/40 group-hover/search:text-(--main-color) transition-colors" />
-            {expanded && (
-                <>
-                    <input autoFocus className="flex-1 bg-transparent text-[10px] text-white outline-none placeholder-white/25 min-w-0"
-                        value={value} onChange={e => onChange(e.target.value)}
-                        onBlur={() => !value && setExpanded(false)}
-                        placeholder={placeholder} />
-                    {value && (
-                        <button onClick={() => onChange('')} className="text-white/30 hover:text-white/70 transition-colors"><X size={12} strokeWidth={2.5} /></button>
-                    )}
-                </>
-            )}
-        </div>
-    );
-};
+// Search component is inline in InventoryBar
 
 // ─── Sub-tab pill strip (shared) ─────────────────────────────────────────────
 const SubTabPills: React.FC<{
@@ -188,80 +166,46 @@ const ShippingStats: React.FC = () => {
 // ─── MODULE BARS ──────────────────────────────────────────────────────────────
 
 const InventoryBar: React.FC = () => {
-    const t = useTranslation();
-    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
-    const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
     const [devStatusFilter, setDevStatusFilter] = useAtom(dashboardStatusFilterAtom);
-    const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
-    const inventory = useAtomValue(inventoryAtom);
-    const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
-    const filteredCount = useAtomValue(filteredInventoryCountAtom);
-    const [isDetailsOpen, setIsDetailsOpen] = useAtom(isDetailsPanelOpenAtom);
-    const selectedItem = useAtomValue(SelectedItemDataAtom);
-    const user = useAtomValue(userAtom);
-
-    const vendorIds = useMemo(() => {
-        const ids = new Set(inventory.map(i => i.data.itemId));
-        return ['All', ...Array.from(ids).sort()];
-    }, [inventory]);
-
-    const cycleFilter = () => {
-        const statuses = ['All', 'Available', 'Production', 'Acquisition'] as const;
-        const i = statuses.indexOf(statusFilter);
-        setStatusFilter(statuses[(i + 1) % statuses.length]);
-    };
 
     return (
-        <>
-            <ModuleBadge icon="store" label="Inventory" color="#6BCEBB" />
-            <div className="flex items-center gap-1.5 ml-2.5 mr-4 text-[#6BCEBB] opacity-60">
-                <span className="text-[10px] font-black font-mono tracking-widest">{filteredCount} ITEMS</span>
+        <div className="flex flex-1 items-center gap-4 ml-2">
+            <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden sm:block" />
+
+            <div className="flex-1 w-full relative group/search max-w-3xl mx-auto">
+                {/* Large liquid glass search bar */}
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
+                </div>
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search inventory entirely..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-lg backdrop-blur-md"
+                />
+                {search && (
+                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
+                        <X size={16} strokeWidth={2.5} />
+                    </button>
+                )}
             </div>
 
-            <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
-                className="w-9 h-8 flex items-center justify-center rounded-lg transition-all bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white"
-                title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}>
-                <span className="text-sm font-bold">{viewMode === 'grid' ? "☰" : "⊞"}</span>
-            </button>
             <div className="flex items-center gap-2 ml-auto">
-                {/* Admin vendor filter chips */}
-                {user?.role !== 'Client' && vendorIds.length > 2 && (
-                    <div className="hidden md:flex items-center gap-1 overflow-x-auto max-w-[150px]">
-                        {vendorIds.slice(0, 5).map(id => (
-                            <button key={id} onClick={() => setInventoryFilter(id)}
-                                className={`px-1.5 py-0.5 text-[8px] font-black rounded-md transition-all border ${inventoryFilter === id ? 'border-[#6BCEBB] bg-[#6BCEBB]/10 text-[#6BCEBB]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
-                                {id}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {/* Traffic light filter */}
                 <button onClick={() => {
                     const statuses = ['ALL', 'RED', 'YELLOW', 'GREEN'] as const;
                     setDevStatusFilter(statuses[(statuses.indexOf(devStatusFilter) + 1) % statuses.length]);
                 }} title={filterConfig[devStatusFilter].title}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
-                    <span className={`text-[10px] leading-none ${devStatusFilter === 'RED' ? 'text-red-500' :
+                    className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0 shadow-lg cursor-pointer">
+                    <span className={`text-base leading-none ${devStatusFilter === 'RED' ? 'text-red-500' :
                         devStatusFilter === 'YELLOW' ? 'text-yellow-500' :
                             devStatusFilter === 'GREEN' ? 'text-green-500' :
                                 'text-white/20'
                         }`}>{filterConfig[devStatusFilter].icon}</span>
                 </button>
-                <SearchBar value={search} onChange={setSearch} placeholder="Search inventory…" />
-                {/* Details panel toggle on mobile */}
-                <button onClick={() => setShowFinancials(!showFinancials)} title="Toggle Financials"
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0">
-                    <span className="text-xs font-bold">{showFinancials ? '$' : '***'}</span>
-                </button>
-                {selectedItem && (
-                    <button onClick={() => setIsDetailsOpen(!isDetailsOpen)} title="Toggle details"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 lg:hidden shrink-0">
-                        <svg className="w-3.5 h-3.5"><use href="#layout-sidebar-right" /></svg>
-                    </button>
-                )}
             </div>
-        </>
+        </div>
     );
 };
 
@@ -407,12 +351,14 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="h-14 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
-            {/* Logo / sidebar toggle */}
-            <button className="flex items-center gap-2 pr-3 sm:pr-4 sm:border-r border-white/10 mr-2 sm:mr-3 shrink-0" onClick={toggleSidebar}>
-                <OnyxLogo className="w-7 h-7 sm:w-8 sm:h-8" />
-                <span className="text-[9px] sm:text-[10px] font-black text-white/20 tracking-tighter mt-4 ml-[-8px]">v{__APP_VERSION__}</span>
-            </button>
+        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
+
+            {/* Mobile Sidebar toggle if needed, or simply let FAB handle it mostly, but good to have a simple button here */}
+            {sidebarState !== 'expanded' && (
+                <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 mr-2 sm:mr-3 shrink-0 lg:hidden" onClick={toggleSidebar}>
+                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+            )}
 
             {/* Dynamic module bar — grows to fill available space */}
             <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">

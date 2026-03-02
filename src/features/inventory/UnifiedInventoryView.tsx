@@ -342,6 +342,7 @@ export const UnifiedInventoryView = () => {
     const [items, setItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
@@ -530,25 +531,64 @@ export const UnifiedInventoryView = () => {
         return Array.from(new Set(items.map(item => item.data.itemId?.split('-')[0]).filter(Boolean))).sort();
     }, [items]);
 
+    const totalCount = useMemo(() => {
+        return filteredItems.reduce((acc, item) => acc + (parseInt(item.data.quantity) || 1), 0);
+    }, [filteredItems]);
+
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-4">
-            <div className="flex flex-col md:flex-row items-center gap-4 shrink-0 px-2 py-1">
-                <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 shrink-0">
-                    {['All', 'Available', 'Production', 'Acquisition'].map(s => (
-                        <button key={s} onClick={() => setStatusFilter(s as any)} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${statusFilter === s ? 'bg-(--main-color) text-black shadow-lg' : 'text-white/30 hover:text-white/60'}`}>{s.slice(0, 3)}</button>
-                    ))}
+        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
+
+            {/* Top row with Types, Count, toggle Display, and Filter expander */}
+            <div className="flex justify-between items-center px-5 py-3 mt-4 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.3)] mx-2 shrink-0 z-30 relative">
+                <div className="flex gap-8 items-center">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-0.5">Types</span>
+                        <span className="text-sm font-mono font-black text-white leading-none">{filteredItems.length.toLocaleString('en-US')}</span>
+                    </div>
+                    <div className="w-px h-8 bg-white/10" />
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
+                        <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalCount.toLocaleString('en-US')}</span>
+                    </div>
                 </div>
-                <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 overflow-x-auto grow custom-scrollbar no-scrollbar">
-                    <button onClick={() => setVendorFilter('All')} className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 rounded transition-all ${vendorFilter === 'All' ? 'bg-white/10 text-white' : 'hover:text-white'}`}>ALL</button>
-                    {activeVendors.map(v => {
-                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                        return <button key={v} onClick={() => setVendorFilter(v)} className={`px-2.5 py-1 mx-0.5 text-[10px] font-black rounded transition-all ${vendorFilter === v ? 'opacity-100 shadow-sm' : 'opacity-30 hover:opacity-60'}`} style={{ backgroundColor: vendorFilter === v ? color : 'transparent', color: vendorFilter === v ? 'black' : color, border: vendorFilter === v ? 'none' : `1px solid ${color}` }}>{v}</button>;
-                    })}
+
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white transition-all shadow-sm"
+                        title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}>
+                        <span className="text-lg! leading-none font-black opacity-80">{viewMode === 'grid' ? '☰' : '⊞'}</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                        className={`px-4 h-10 flex items-center gap-2.5 rounded-xl transition-all border shadow-sm ${isFiltersOpen ? 'bg-[#6BCEBB]/15 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'}`}>
+                        <svg className={`w-4 h-4 transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`}><use href="#filter" /></svg>
+                        <span className="text-[10px] uppercase font-black tracking-[0.1em] hidden sm:block mt-0.5">Filters</span>
+                    </button>
                 </div>
             </div>
 
-            <div className="grow min-h-0 overflow-hidden glass-panel shadow-2xl rounded-3xl m-2">
-                <div className="h-full overflow-y-auto p-6 custom-scrollbar scroll-smooth">
+            {/* Collapsible Filters Panel */}
+            <div className={`transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shrink-0 overflow-hidden relative z-20 ${isFiltersOpen ? 'max-h-64 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4 -mt-4'}`}>
+                <div className="flex flex-col md:flex-row items-center gap-4 px-2 py-2 mx-2">
+                    <div className="flex bg-black/30 p-1.5 rounded-xl border border-white/5 shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar no-scrollbar shadow-inner">
+                        {['All', 'Available', 'Production', 'Acquisition'].map(s => (
+                            <button key={s} onClick={() => setStatusFilter(s as any)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all whitespace-nowrap ${statusFilter === s ? 'bg-[#6BCEBB] text-black shadow-lg translate-y-[-1px]' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}>{s}</button>
+                        ))}
+                    </div>
+                    <div className="flex bg-black/30 p-1.5 rounded-xl border border-white/5 overflow-x-auto grow custom-scrollbar no-scrollbar w-full shadow-inner">
+                        <button onClick={() => setVendorFilter('All')} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40 rounded-lg transition-all shrink-0 ${vendorFilter === 'All' ? 'bg-white/15 text-white shadow-sm' : 'hover:text-white hover:bg-white/5'}`}>ALL</button>
+                        <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
+                        {activeVendors.map(v => {
+                            const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                            return <button key={v} onClick={() => setVendorFilter(v)} className={`px-3 py-1.5 mx-0.5 text-[10px] font-black rounded-lg transition-all shrink-0 ${vendorFilter === v ? 'opacity-100 shadow-md translate-y-[-1px]' : 'opacity-30 hover:opacity-60'}`} style={{ backgroundColor: vendorFilter === v ? color : 'transparent', color: vendorFilter === v ? 'black' : color, border: vendorFilter === v ? 'none' : `1px solid ${color}` }}>{v}</button>;
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grow min-h-0 overflow-hidden glass-panel shadow-2xl rounded-[2rem] m-2 mt-0">
+                <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
                         {isLoading ? (
                             <div className="col-span-full h-64 flex items-center justify-center opacity-40">
