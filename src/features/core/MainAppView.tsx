@@ -134,14 +134,7 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
 };
 
 
-const themes = [
-    { name: 'obsidian', gradient: 'linear-gradient(135deg, #1a1a24, #212130, #2a2a3d)' },
-    { name: 'fluorite', gradient: 'linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40)' },
-    { name: 'malaquite', gradient: 'linear-gradient(135deg, #081f13, #0b2f20, #0f4028)' },
-    { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
-    { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
-    { name: 'tekis', gradient: 'linear-gradient(135deg, #fffff0, #fdfbf0, #fefce8)' },
-];
+
 
 export function MainAppView() {
     const t = useTranslation();
@@ -152,13 +145,7 @@ export function MainAppView() {
     const is3DViewerOpen = useAtomValue(is3DViewerOpenAtom);
     const [is3DWorkspaceOpen, setIs3DWorkspaceOpen] = useAtom(is3DWorkspaceOpenAtom);
     const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
-    const logout = useLogout();
-    const [performanceMode, setPerformanceMode] = useAtom(performanceModeAtom);
-    const [language, setLanguage] = useAtom(languageAtom);
-
-    const [createTab, setCreateTab] = useAtom(createViewActiveTabAtom);
     const setWorkflowStep = useSetAtom(workflowStepAtom);
-    const setTheme = useSetAtom(themeAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
 
@@ -181,10 +168,6 @@ export function MainAppView() {
         // Initial check is removed to prevent auto-hiding on load.
         return () => window.removeEventListener('resize', handleResize);
     }, [setSidebarState]);
-
-    const toggleLanguage = () => {
-        setLanguage(lang => lang === 'en' ? 'es' : 'en');
-    };
 
     const pageContent = (() => {
         if (isEditingMask || workflowStep === 'fullscreenEdit') {
@@ -353,40 +336,7 @@ export function MainAppView() {
                             <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
                         )}
                     </ul>
-                    <div className="sidebar-footer">
-                        <div className="flex items-center justify-center gap-3 flex-wrap">
-                            <button onClick={toggleLanguage} className="button p-2! min-h-0! bg-transparent! border border-white/20" title={t.language}>
-                                <Globe size={16} strokeWidth={1.75} />
-                            </button>
-                            <nav className="menu">
-                                <input type="checkbox" className="menu-open" name="menu-open" id="menu-open" />
-                                <label className="menu-open-button bg-transparent! border border-white/20" htmlFor="menu-open">
-                                    <svg className="w-5 h-5 text-white"><use href="#palette"></use></svg>
-                                </label>
-                                {themes.map((theme) => (
-                                    <button
-                                        key={theme.name}
-                                        className="menu-item"
-                                        style={{ background: theme.gradient }}
-                                        onClick={() => setTheme(theme.name)}
-                                        title={theme.name.charAt(0).toUpperCase() + theme.name.slice(1)}
-                                    />
-                                ))}
-                            </nav>
-                            <button
-                                onClick={() => setPerformanceMode(!performanceMode)}
-                                className={`button p-2! min-h-0! bg-transparent! border ${performanceMode ? 'border-yellow-400' : 'border-white/20'}`}
-                                title={performanceMode ? t.perfModeOn : t.perfModeOff}
-                            >
-                                <Zap size={16} strokeWidth={1.75} className={performanceMode ? 'text-yellow-400' : ''} />
-                            </button>
-                            {UserIcon && (
-                                <button onClick={logout} className="button p-0! min-h-0! bg-transparent! border-none! rounded-full w-8 h-8 overflow-hidden" title={t.logout}>
-                                    <UserIcon className="w-full h-full" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
+
                 </div>
                 <div className="app-content">
                     <MainHeader />
