@@ -4,6 +4,13 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.41 - Monochrome Unicode Stability**
+
+### **Date:** 2026-03-01
+
+- **UI: Monochrome Iconography** — Substituted colored emojis with standard monochrome Unicode symbols (e.g., `⊞`, `☰`, `⌕`, `⤓`) to ensure consistent visual style and total rendering reliability across platforms.
+- **UI: Thematic Alignment** — All top bar icons now inherit the active theme color, eliminating visual clutter from OS-specific emoji rendering.
+ 
 ## **v1.10.40 - Visual Prominence: Book V Update**
 
 ### **Date:** 2026-03-01
