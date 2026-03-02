@@ -13,6 +13,7 @@ import {
     ImageSrcAtom,
     InventoryVersionAtom,
     userAtom,
+    inventoryViewModeAtom,
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
@@ -244,7 +245,7 @@ export const UnifiedInventoryView = () => {
     const [items, setItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
@@ -434,16 +435,6 @@ export const UnifiedInventoryView = () => {
                     {['All', 'Available', 'Production', 'Acquisition'].map(s => (
                         <button key={s} onClick={() => setStatusFilter(s as any)} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all ${statusFilter === s ? 'bg-(--main-color) text-black shadow-lg' : 'text-white/30 hover:text-white/60'}`}>{s.slice(0, 3)}</button>
                     ))}
-                </div>
-                <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 shrink-0">
-                    <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all flex items-center gap-2 ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
-                        <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
-                        <span className="text-[8px] font-black uppercase tracking-widest hidden sm:inline">Grid</span>
-                    </button>
-                    <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all flex items-center gap-2 ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
-                        <svg className="w-4 h-4"><use href="#list-bullet" /></svg>
-                        <span className="text-[8px] font-black uppercase tracking-widest hidden sm:inline">List</span>
-                    </button>
                 </div>
                 <div className="flex bg-black/20 p-1 rounded-xl border border-white/5 overflow-x-auto grow custom-scrollbar no-scrollbar">
                     <button onClick={() => setVendorFilter('All')} className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/40 rounded transition-all ${vendorFilter === 'All' ? 'bg-white/10 text-white' : 'hover:text-white'}`}>ALL</button>

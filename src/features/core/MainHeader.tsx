@@ -31,6 +31,7 @@ import {
     triggerWarehouseOrganizationAtom,
     exchangeRateAtom,
     InventoryVersionAtom,
+    inventoryViewModeAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -146,6 +147,7 @@ const InventoryBar: React.FC = () => {
     const [devStatusFilter, setDevStatusFilter] = useAtom(dashboardStatusFilterAtom);
     const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
     const inventory = useAtomValue(inventoryAtom);
+    const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isDetailsOpen, setIsDetailsOpen] = useAtom(isDetailsPanelOpenAtom);
     const selectedItem = useAtomValue(SelectedItemDataAtom);
     const user = useAtomValue(userAtom);
@@ -164,6 +166,16 @@ const InventoryBar: React.FC = () => {
     return (
         <>
             <ModuleBadge icon="store" label="Inventory" color="#6BCEBB" />
+            <div className="flex items-center gap-1.5 ml-4">
+                <button onClick={() => setViewMode('grid')}
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                    <svg className="w-3.5 h-3.5"><use href="#layout-grid" /></svg>
+                </button>
+                <button onClick={() => setViewMode('list')}
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                    <svg className="w-3.5 h-3.5"><use href="#list-bullet" /></svg>
+                </button>
+            </div>
             <div className="flex items-center gap-2 ml-auto">
                 {/* Admin vendor filter chips */}
                 {user?.role !== 'Client' && vendorIds.length > 2 && (
