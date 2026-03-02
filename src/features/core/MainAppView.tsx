@@ -57,6 +57,9 @@ import { FinanceView } from '../finance/FinanceView';
 import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
 
+// Injected at build time from package.json via vite.config.ts
+declare const __APP_VERSION__: string;
+
 interface NavItemWithSubmenuProps {
     viewId: string;
     label: string;
@@ -337,6 +340,21 @@ export function MainAppView() {
                         )}
                     </ul>
 
+                    {/* Branding at bottom of sidebar */}
+                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-white/5 opacity-40 mix-blend-screen shrink-0 relative overflow-hidden">
+                        {sidebarState === 'expanded' && (
+                            <>
+                                <OnyxLogo className="w-8 h-8 mb-2" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-white">v{__APP_VERSION__}</span>
+                            </>
+                        )}
+                        {sidebarState === 'compact' && (
+                            <>
+                                <OnyxMiniLogo className="w-6 h-6 mb-2" />
+                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-white">{__APP_VERSION__}</span>
+                            </>
+                        )}
+                    </div>
                 </div>
                 <div className="app-content">
                     <MainHeader />

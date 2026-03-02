@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useAtomValue } from 'jotai/react';
+import { useAtomValue, useAtom } from 'jotai/react';
 import { exchangeRateAtom, showFinancialsAtom, financeDataAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
@@ -78,7 +78,7 @@ const BarRow = ({ label, value, max, color, count, showValue }: {
 export function AdminDashboard() {
     const db = useDatabase();
     const exchangeRate = useAtomValue(exchangeRateAtom);
-    const showFinancials = useAtomValue(showFinancialsAtom);
+    const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const [items, setItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -221,11 +221,18 @@ export function AdminDashboard() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowFinancials(!showFinancials)}
+                        title="Toggle Financials Display"
+                        className={`flex items-center gap-1.5 border rounded-full px-2.5 py-1 hover:brightness-125 transition-all ${showFinancials ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}
+                    >
+                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financial Info' : 'Unlock Financial Info'}</span>
+                    </button>
                     <div className="flex items-center gap-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full px-2.5 py-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />
                         <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">Live</span>
                     </div>
-                    <span className="text-[9px] font-mono text-white/15">{items.length} records</span>
+                    <span className="text-[9px] font-mono text-white/15 hidden sm:block">{items.length} records</span>
                 </div>
             </div>
 
