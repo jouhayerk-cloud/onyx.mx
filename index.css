@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
 /* CodePen styles adapted for the app */
 
@@ -2352,4 +2352,400 @@ html.performance-mode-active .shipping-sidebar {
 html.performance-mode-active .shipping-sidebar-footer,
 html.performance-mode-active .crate-content-label {
   background: var(--glass-bg);
+}
+
+/* ============================================================
+   UI OVERHAUL v1.10.57
+   Global improvements: typography, light themes, sidebar,
+   animations, mobile, transitions, scrollbars
+   ============================================================ */
+
+/* --- Easing tokens --- */
+:root {
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --transition-base: 0.25s var(--ease-smooth);
+  --transition-spring: 0.4s var(--ease-spring);
+}
+
+/* --- Typography upgrade --- */
+body {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  font-feature-settings: "ss01", "cv01", "kern";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display/headline font for module titles */
+.font-display {
+  font-family: "Instrument Serif", Georgia, serif;
+}
+
+/* --- Improved sidebar transitions --- */
+.sidebar {
+  transition: all 0.35s var(--ease-smooth);
+}
+
+.sidebar-list-item {
+  transition: all 0.2s var(--ease-smooth);
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+.sidebar-list-item:hover {
+  transform: translateX(2px);
+}
+
+.sidebar-list-item.active {
+  transform: translateX(0);
+}
+
+/* --- Sidebar logo animation tokens --- */
+@keyframes logoSlideIn {
+  from { opacity: 0; transform: scaleX(0.8) translateX(-8px); filter: blur(4px); }
+  to   { opacity: 1; transform: scaleX(1) translateX(0); filter: blur(0); }
+}
+
+@keyframes logoSlideOut {
+  from { opacity: 1; transform: scaleX(1); }
+  to   { opacity: 0; transform: scaleX(0.8); }
+}
+
+.sidebar-logo-text {
+  animation: logoSlideIn 0.4s var(--ease-spring) forwards;
+  transform-origin: left center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.app-container.sidebar-compact .sidebar-logo-text {
+  display: none;
+}
+
+/* --- Sidebar FAB (mini logo when sidebar is hidden) --- */
+.sidebar-fab {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 200;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.2s ease;
+  animation: fabAppear 0.35s var(--ease-spring) forwards;
+}
+
+.sidebar-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--main-color);
+}
+
+@keyframes fabAppear {
+  from { opacity: 0; transform: scale(0.7) rotate(-10deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* Compact sidebar: icons only, no text */
+.app-container.sidebar-compact .sidebar {
+  flex-basis: 72px;
+  max-width: 72px;
+}
+
+.app-container.sidebar-compact .sidebar-list-item {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.app-container.sidebar-compact .sidebar-list-item-main svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Remove state toggle button from visible area (sidebar has FAB instead) */
+.app-container.sidebar-hidden .sidebar-state-toggle {
+  display: none;
+}
+
+/* --- Light theme text readability fixes --- */
+/* Problem: Many Tailwind classes use text-white which is invisible on light themes.
+   Solution: Override at the theme level. */
+
+html.theme-nacar,
+html.theme-tehu,
+html.theme-tekis {
+  /* Sidebar active item: readable on main-color backgrounds */
+  .sidebar-list-item.active {
+    color: #1a1a1a !important;
+    text-shadow: none;
+  }
+
+  .sidebar-list-item.active svg {
+    color: #1a1a1a;
+  }
+
+  /* Tab buttons with colored backgrounds */
+  .tab-button.active {
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  /* Scrollbar on light themes */
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.25);
+  }
+
+  /* Input fields on light theme */
+  input, select, textarea {
+    background: rgba(255,255,255,0.8) !important;
+    color: var(--text-color) !important;
+  }
+
+  /* Sidebar footer area */
+  .sidebar-footer button {
+    color: var(--text-color);
+  }
+
+  /* Project boxes */
+  .project-box:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* Light theme: fix dark mode Tailwind hardcoded colors in wizard/upload */
+html.theme-nacar .wizardstate-indicator,
+html.theme-tehu .wizardstate-indicator,
+html.theme-tekis .wizardstate-indicator {
+  color: var(--text-color);
+}
+
+/* --- Improved scrollbar globally --- */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* --- Mobile responsiveness improvements --- */
+@media (max-width: 640px) {
+  body {
+    font-size: clamp(13px, 3.5vw, 15px);
+  }
+
+  .sidebar-list-item {
+    padding: 0.875rem 1rem;
+    min-height: 44px;
+  }
+
+  .sidebar-submenu-item {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Full width modal on mobile */
+  .modal-overlay {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    border-radius: 24px 24px 0 0;
+    max-height: 85vh;
+  }
+
+  /* Header: compact icons on mobile */
+  .main-header {
+    padding: 0 0.75rem;
+    height: 56px;
+  }
+
+  /* Better mobile touch targets for all buttons */
+  button, .button, [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Dashboard cards: single column */
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  /* Shipping layout: full width on mobile */
+  .shipping-view-container {
+    flex-direction: column;
+  }
+
+  .shipping-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    max-height: 200px;
+  }
+}
+
+/* --- Page transition animations --- */
+@keyframes viewEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.view-enter {
+  animation: viewEnter 0.3s var(--ease-out-quart) forwards;
+}
+
+/* --- Button polish --- */
+.button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  transition: all 0.2s var(--ease-spring);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0px);
+  transition: all 0.1s ease;
+}
+
+/* --- Focus ring for accessibility --- */
+:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Active sidebar item: ensure text is always readable --- */
+.sidebar-list-item.active {
+  /* Auto-detect text color based on background luminance */
+  color: color-mix(in srgb, var(--main-color) 0%, black);
+}
+
+/* For dark themes where main-color is light, black text works.
+   For themes where main-color is dark, white is safer.
+   We handle this with per-theme overrides below. */
+html.theme-obsidian .sidebar-list-item.active,
+html.theme-fluorite .sidebar-list-item.active,
+html.theme-malaquite .sidebar-list-item.active {
+  color: #000; /* dark text on bright main-color backgrounds */
+}
+
+/* --- Sidebar logo in hidden state: show mini FAB --- */
+@media (min-width: 769px) {
+  .app-container.sidebar-hidden .sidebar {
+    flex-basis: 0;
+    max-width: 0;
+    overflow: hidden;
+    border: none;
+  }
+}
+
+/* --- Smooth submenu animation --- */
+.sidebar-list-item.open + .sidebar-submenu {
+  animation: submenuOpen 0.25s var(--ease-out-quart) forwards;
+}
+
+@keyframes submenuOpen {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- DM Sans optical sizing --- */
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  p {
+    line-height: 1.65;
+  }
+
+  small, .text-xs, .text-\[9px\], .text-\[10px\], .text-\[11px\] {
+    letter-spacing: 0.01em;
+  }
+}
+
+/* --- Micro-animations for interactive elements --- */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--main-color) 40%, transparent); }
+  70%  { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.pulse-on-active:active {
+  animation: pulse-ring 0.4s ease;
+}
+
+/* --- Sidebar submenu icon sizing --- */
+.sidebar-submenu-item .submenu-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.sidebar-submenu-item.active .submenu-icon {
+  opacity: 1;
+}
+
+/* --- Modal: improved animation --- */
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-content {
+  animation: modalEnter 0.3s var(--ease-spring) forwards;
+}
+
+/* --- Tooltip for compact sidebar ---*/
+.sidebar-compact-tooltip {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 200;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.app-container.sidebar-compact .sidebar-list-item:hover .sidebar-compact-tooltip {
+  opacity: 1;
 }

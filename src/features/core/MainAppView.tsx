@@ -37,6 +37,10 @@ import {
     SidebarState,
 } from '../../lib/atoms';
 import React, { useEffect } from 'react';
+import {
+    Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings
+} from 'lucide-react';
 // import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
@@ -73,6 +77,10 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
     const isOpen = activeSubMenu === viewId;
     const isParentActive = activeView === viewId;
 
+    // Map icon string to Lucide component
+    const IconMap: Record<string, React.FC<any>> = { truck: Truck, package: Package, 'map-pin': MapPin };
+    const NavIcon = IconMap[icon] || Truck;
+
     const handleToggle = () => {
         setActiveSubMenu(isOpen ? null : viewId);
     };
@@ -81,35 +89,43 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
         <>
             <li className={`sidebar-list-item ${isParentActive ? 'active' : ''} ${isOpen ? 'open' : ''}`} onClick={handleToggle}>
                 <div className="sidebar-list-item-main">
-                    <svg><use href={`#${icon}`}></use></svg>
+                    <NavIcon size={20} strokeWidth={1.75} />
                     <span className="sidebar-list-item-text">{label}</span>
                 </div>
-                <svg className="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <ChevronRight size={14} strokeWidth={2} className={`chevron transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+                {/* Tooltip for compact mode */}
+                <span className="sidebar-compact-tooltip">{label}</span>
                 {/* Pop-out submenu for compact mode */}
                 {sidebarState === 'compact' && (
                     <ul className="sidebar-submenu">
-                        {subItems.map(item => (
-                            <li key={item.id}>
-                                <a className={`sidebar-submenu-item ${item.isActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); item.action(); }}>
-                                    <svg className="submenu-icon"><use href={`#${item.icon}`}></use></svg>
-                                    <span>{item.label}</span>
-                                </a>
-                            </li>
-                        ))}
+                        {subItems.map(item => {
+                            const SubIcon = IconMap[item.icon] || Package;
+                            return (
+                                <li key={item.id}>
+                                    <a className={`sidebar-submenu-item ${item.isActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); item.action(); }}>
+                                        <SubIcon size={15} strokeWidth={1.75} className="submenu-icon" />
+                                        <span>{item.label}</span>
+                                    </a>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </li>
             {/* Standard slide-down submenu */}
             {sidebarState !== 'compact' && (
                 <ul className="sidebar-submenu">
-                    {subItems.map(item => (
-                        <li key={item.id}>
-                            <a className={`sidebar-submenu-item ${item.isActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); item.action(); }}>
-                                <svg className="submenu-icon"><use href={`#${item.icon}`}></use></svg>
-                                <span>{item.label}</span>
-                            </a>
-                        </li>
-                    ))}
+                    {subItems.map(item => {
+                        const SubIcon = IconMap[item.icon] || Package;
+                        return (
+                            <li key={item.id}>
+                                <a className={`sidebar-submenu-item ${item.isActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); item.action(); }}>
+                                    <SubIcon size={15} strokeWidth={1.75} className="submenu-icon" />
+                                    <span>{item.label}</span>
+                                </a>
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </>
@@ -258,49 +274,68 @@ export function MainAppView() {
 
     return (
         <>
+            {/* Sidebar FAB — only visible when sidebar is hidden */}
+            {sidebarState === 'hidden' && (
+                <button
+                    className="sidebar-fab"
+                    onClick={() => setSidebarState('expanded')}
+                    title="Open Navigation"
+                >
+                    <OnyxMiniLogo className="w-6 h-6" />
+                </button>
+            )}
+
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar">
                     <div className="sidebar-header">
                         <div className="sidebar-logo">
-                            {sidebarState === 'compact' ? <OnyxMiniLogo /> : <OnyxLogo />}
-                            <span className="sidebar-logo-text">Onyx.mx</span>
+                            {/* Logo: full in expanded, mini icon in compact, nothing in hidden (FAB handles that) */}
+                            {sidebarState === 'expanded' && <OnyxLogo className="w-10 h-10" />}
+                            {sidebarState === 'compact' && <OnyxMiniLogo className="w-8 h-8" />}
+                            {sidebarState === 'expanded' && (
+                                <span className="sidebar-logo-text">Onyx.mx</span>
+                            )}
                         </div>
-                        <button className="sidebar-state-toggle" onClick={handleSidebarStateToggle} title="Toggle Sidebar">
-                            {sidebarState === 'hidden' ?
-                                <OnyxMiniLogo className="w-6 h-6 text-(--text-color)" /> :
-                                <svg className="w-6 h-6"><use href="#arrow-left"></use></svg>
-                            }
-                        </button>
+                        {/* Toggle: arrow to collapse/hide */}
+                        {sidebarState !== 'hidden' && (
+                            <button className="sidebar-state-toggle" onClick={handleSidebarStateToggle} title="Toggle Sidebar">
+                                <ArrowLeft size={18} strokeWidth={2} className={`transition-transform duration-300 ${sidebarState === 'compact' ? 'rotate-180' : ''}`} />
+                            </button>
+                        )}
                     </div>
                     <ul className="sidebar-list">
                         {user?.role === 'Developer' && (
                             <li className={`sidebar-list-item ${activeView === 'control' ? 'active' : ''}`} onClick={() => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
-                                    <svg><use href="#shield"></use></svg>
+                                    <Shield size={20} strokeWidth={1.75} />
                                     <span className="sidebar-list-item-text">Control Center</span>
                                 </div>
+                                <span className="sidebar-compact-tooltip">Control Center</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
-                                    <svg><use href="#upload"></use></svg>
+                                    <Upload size={20} strokeWidth={1.75} />
                                     <span className="sidebar-list-item-text">Add Entry</span>
                                 </div>
+                                <span className="sidebar-compact-tooltip">Add Entry</span>
                             </li>
                         )}
                         <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                             <div className="sidebar-list-item-main">
-                                <svg><use href="#store"></use></svg>
+                                <Store size={20} strokeWidth={1.75} />
                                 <span className="sidebar-list-item-text">Inventory</span>
                             </div>
+                            <span className="sidebar-compact-tooltip">Inventory</span>
                         </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
-                                    <svg><use href="#credit-card"></use></svg>
+                                    <CreditCard size={20} strokeWidth={1.75} />
                                     <span className="sidebar-list-item-text">Payments</span>
                                 </div>
+                                <span className="sidebar-compact-tooltip">Payments</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
@@ -308,9 +343,9 @@ export function MainAppView() {
                         )}
                     </ul>
                     <div className="sidebar-footer">
-                        <div className="flex items-center justify-center gap-4">
+                        <div className="flex items-center justify-center gap-3 flex-wrap">
                             <button onClick={toggleLanguage} className="button p-2! min-h-0! bg-transparent! border border-white/20" title={t.language}>
-                                <span className="w-5 h-5 font-bold text-sm flex items-center justify-center">{language.toUpperCase()}</span>
+                                <Globe size={16} strokeWidth={1.75} />
                             </button>
                             <nav className="menu">
                                 <input type="checkbox" className="menu-open" name="menu-open" id="menu-open" />
@@ -332,9 +367,7 @@ export function MainAppView() {
                                 className={`button p-2! min-h-0! bg-transparent! border ${performanceMode ? 'border-yellow-400' : 'border-white/20'}`}
                                 title={performanceMode ? t.perfModeOn : t.perfModeOff}
                             >
-                                <svg className={`w-5 h-5 transition-colors ${performanceMode ? 'text-yellow-400' : 'text-white'}`}>
-                                    <use href="#zap"></use>
-                                </svg>
+                                <Zap size={16} strokeWidth={1.75} className={performanceMode ? 'text-yellow-400' : ''} />
                             </button>
                             {UserIcon && (
                                 <button onClick={logout} className="button p-0! min-h-0! bg-transparent! border-none! rounded-full w-8 h-8 overflow-hidden" title={t.logout}>
