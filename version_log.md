@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.10.39 - SVG Stability Patch**
+
+### **Date:** 2026-03-01
+
+- **UI: Direct SVG Paths** — Replaced all critical top bar icons (Refresh/Download, Logout/Users, View Toggle) with inline SVG paths to bypass fragment resolution issues.
+- **UI: Icon Refresh** — Updated Refresh icon to "Download" and Logout icon to "Users" per design request.
+- **UI: Toggle Logic** — Refined the Grid/List toggle to show the *alternative* view icon (e.g., when in Grid, show List icon) for improved UX.
+
 ## **v1.10.38 - UI & Icon Optimization**
 
 ### **Date:** 2026-03-01
