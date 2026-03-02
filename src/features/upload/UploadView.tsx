@@ -12,16 +12,7 @@ export function UploadView() {
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* ── Top Bar ── */}
-            <div className="shrink-0 flex items-center justify-between px-6 py-3 bg-black/40 border-b border-white/5 relative z-50">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-(--main-color)/20 border border-(--main-color)/30 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-(--main-color)"><use href="#plus" /></svg>
-                    </div>
-                    <div>
-                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white">Add New Item</h2>
-                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.1em] mt-0.5">Inventory Entry Form</p>
-                    </div>
-                </div>
+            <div className="shrink-0 flex items-center justify-end px-6 py-3 bg-black/40 border-b border-white/5 relative z-50">
 
                 <div className="flex items-center gap-10">
                     <div className="flex flex-col items-center">
