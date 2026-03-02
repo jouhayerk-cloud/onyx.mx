@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.45 - Inventory Quantity & Payment Summation**
+
+### **Date:** 2026-03-01
+
+- **Inventory: Quantity Display** — Item cards now show the quantity in both Grid and List views. Expanded views also include a dedicated Quantity field.
+- **Finance: Vendor Payment Summation** — Enhanced the payment calculation logic to explicitly sum up `Price * Quantity` for all items per vendor.
+- **Finance: UI Transparency** — Payment request cards and modals now display the total number of items and units correctly.
+
 ## **v1.10.44 - Partial Payments & Production Fetching**
 
 ### **Date:** 2026-03-01
