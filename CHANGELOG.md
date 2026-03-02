@@ -4,6 +4,35 @@ All notable changes to the `/git/app` production deployment are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ---
 
+## [1.10.60] — 2026-03-02
+
+### Added
+- **Payments Real-time UI**: Integrated RxDB mutations to instantly update the UI when payments are deleted or toggle status (Requested ↔ Paid), eliminating the need for a page refresh.
+
+### Changed
+- **Payments UI UX**: Moved the "Account Filter" (destination grouped cards like BBVA, Bank of America, etc.) out of the toggleable filter panel to the top main bar next to the "ADD" button for immediate access.
+- **Top Bar Cleanup**: Removed the redundant "Market Exchange" section from the Header to reduce clutter.
+
+### Fixed
+- **Image Placeholder Layout Bug**: Fixed a flex/sizing bug in the inventory grid view where items without images rendered an improperly sized placeholder, breaking the card's row layout. Forced explicit dims and a 10% opacity threshold onto the OnyxMiniLogo SVG component.
+
+---
+
+## [1.10.59] — 2026-03-02
+
+### Added
+- **Fullscreen Image Viewer**: Integrated a rich image inspection overlay with support for trackpad zooming, panning, and touch pinch-to-zoom across desktop and mobile. Double-click acts as a 3x ↔ 1x instant toggle zoom.
+- **New List Interactivity**: Secondary image thumbnails in the List View are now fully interactive, deploying the fullscreen viewer on click.
+- **Persistent Edit Buttons**: Added direct inline "Edit" buttons (pencil icon) mapped across all states of the item card (Grid Compact bottom-right, Grid Expanded top-right under Close).
+
+### Changed
+- **Grid Layout Overhaul**: 
+  - Restructured the top-bar absolute wrappers in Grid views.
+  - Relocated the "Expand Details" menu-toggle to float over the top-right corner over the product imagery.
+  - Spliced out the "BOOK v32n" internal reference tagging from both the Grid core dense centers and the specific expanded List tables to preserve visual density solely for active transit properties.
+  - Fully removed the static "Source: PRODUCTION" tag variables from the Details panel in List Mode, condensing the grid from 5 variables strictly into 4.
+
+---
 ## [1.10.23] — 2026-03-01
 
 ### Fixed
