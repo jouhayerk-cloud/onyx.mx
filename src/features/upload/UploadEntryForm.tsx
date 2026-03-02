@@ -10,6 +10,9 @@ import { handleFileUpload, generateUniqueId, readFileAsDataURL, calculateCodesAn
 import { useDatabase } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
+import { GoogleGenAI, Type } from '@google/genai';
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const lbl = "text-[10px] font-black uppercase tracking-widest text-white/50 block mb-2";
@@ -194,14 +197,60 @@ export function UploadEntryForm() {
                 'v326'
             );
 
+            // AI Autocorrect & Translation for text fields
+            let translatedShape = itemData.shape;
+            let translatedMaterial = itemData.material;
+            let translatedColor = itemData.color;
+            let translatedDesc = itemData.description;
+            let translatedType = itemData.itemType;
+
+            try {
+                if (user?.role === 'Vendor' && (itemData.shape || itemData.material || itemData.color || itemData.description || itemData.itemType)) {
+                    notify('loading', 'AI Translating input to Standard English…');
+                    const promptText = `Please translate the following product attributes from Spanish (or any language) to standard English, and correct any obvious spelling errors. If already in English, simply return the autocorrected English values. Do not change the meaning. Return a JSON object with only the properties provided:
+                    shape: "${itemData.shape || ''}",
+                    material: "${itemData.material || ''}",
+                    color: "${itemData.color || ''}",
+                    description: "${itemData.description || ''}",
+                    itemType: "${itemData.itemType || ''}"`;
+
+                    const schema = {
+                        type: Type.OBJECT,
+                        properties: {
+                            shape: { type: Type.STRING },
+                            material: { type: Type.STRING },
+                            color: { type: Type.STRING },
+                            description: { type: Type.STRING },
+                            itemType: { type: Type.STRING }
+                        }
+                    };
+
+                    const aiResult = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: promptText,
+                        config: { responseMimeType: 'application/json', responseSchema: schema, thinkingConfig: { thinkingBudget: 0 } }
+                    });
+
+                    const parsed = JSON.parse(aiResult.text.trim());
+                    translatedShape = parsed.shape || translatedShape;
+                    translatedMaterial = parsed.material || translatedMaterial;
+                    translatedColor = parsed.color || translatedColor;
+                    translatedDesc = parsed.description || translatedDesc;
+                    translatedType = parsed.itemType || translatedType;
+                }
+            } catch (aiErr) {
+                console.warn('AI Translation skipped/failed:', aiErr);
+                // Non-fatal, proceed with existing values
+            }
+
             const dbRow = {
                 item_id: finalItemId,
                 item_number: itemData.itemNumber || '1',
-                shape: itemData.shape,
-                material: itemData.material,
-                color: itemData.color,
-                description: itemData.description,
-                short_description: itemData.itemType,
+                shape: translatedShape,
+                material: translatedMaterial,
+                color: translatedColor,
+                description: translatedDesc,
+                short_description: translatedType,
                 weight_kg: itemData.weightKg ? Number(itemData.weightKg) : null,
                 width_cm: itemData.widthCm ? Number(itemData.widthCm) : null,
                 height_cm: itemData.heightCm ? Number(itemData.heightCm) : null,

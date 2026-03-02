@@ -282,10 +282,49 @@ export function FastEntryForm() {
                 if (result) pngPublicUrl = result.thumbnailUrl;
             }
 
+            let finalShape = formState.shape;
+            let finalMaterial = formState.material;
+            let finalDesc = formState.description;
+
+            try {
+                if (user?.role === 'Vendor' && (formState.shape || formState.material || formState.description)) {
+                    notify.loading('Translating to Standard English...', { id: toastId });
+                    const promptText = `Translate the following product attributes from Spanish to standard English and autocorrect spelling errors. Return a JSON object with only the properties provided:
+                    shape: "${formState.shape || ''}",
+                    material: "${formState.material || ''}",
+                    description: "${formState.description || ''}"`;
+
+                    const schema = {
+                        type: Type.OBJECT,
+                        properties: {
+                            shape: { type: Type.STRING },
+                            material: { type: Type.STRING },
+                            description: { type: Type.STRING }
+                        }
+                    };
+
+                    const aiResult = await ai.models.generateContent({
+                        model: 'gemini-2.5-flash',
+                        contents: promptText,
+                        config: { responseMimeType: 'application/json', responseSchema: schema, thinkingConfig: { thinkingBudget: 0 } }
+                    });
+
+                    const parsed = JSON.parse(aiResult.text.trim());
+                    finalShape = parsed.shape || finalShape;
+                    finalMaterial = parsed.material || finalMaterial;
+                    finalDesc = parsed.description || finalDesc;
+                }
+            } catch (aiErr) {
+                console.warn('AI Translation failed:', aiErr);
+            }
+
             // 2. Prepare payload
             const masksForSaving = generatedData?.masks?.map(({ path, ...rest }) => rest) || [];
             const payload = {
                 ...formState,
+                shape: finalShape,
+                material: finalMaterial,
+                description: finalDesc,
                 id: selectedItemRow,
                 status: 'Catalog',
                 workbook: '326',

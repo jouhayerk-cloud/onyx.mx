@@ -18,9 +18,9 @@
 // limitations under the License.
 
 import React, { useEffect } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
-import { themeAtom, userAtom, performanceModeAtom } from '../../lib/atoms';
+import { themeAtom, userAtom, performanceModeAtom, languageAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
@@ -30,6 +30,7 @@ export default function App() {
   const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
+  const setLanguage = useSetAtom(languageAtom);
 
   useEffect(() => {
     import('../../lib/supabase').then(({ supabase }) => {
@@ -79,6 +80,9 @@ export default function App() {
           name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
           role: appUser.role,
         });
+
+        // Language constraint
+        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
 
         // Track last active (repurposing last_submit_at)
         supabase.from('app_users')
