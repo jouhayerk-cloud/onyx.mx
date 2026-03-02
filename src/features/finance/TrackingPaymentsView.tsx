@@ -745,6 +745,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     const [showFilters, setShowFilters] = useState(false);
     const [isBubblesCollapsed, setIsBubblesCollapsed] = useState(false);
+    const [expandedBubble, setExpandedBubble] = useState<string | null>(null);
 
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
@@ -892,34 +893,34 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const txt = getTextColorForBg(color);
                                 const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                const isExpanded = expandedBubble === group.vendorId;
 
                                 return (
-                                    <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02] shadow-sm hover:shadow-md" style={{ backgroundColor: color, color: txt }}>
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex flex-col">
-                                                <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
-                                                    {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
-                                                </div>
+                                    <div key={group.vendorId}
+                                        onClick={() => setExpandedBubble(isExpanded ? null : group.vendorId)}
+                                        className={`shrink-0 rounded-2xl flex flex-col gap-1 group/card relative overflow-hidden transition-all cursor-pointer shadow-sm hover:shadow-md ${isExpanded ? 'p-2.5 min-w-[160px]' : 'p-2 min-w-[100px]'}`}
+                                        style={{ backgroundColor: color, color: txt }}>
+                                        <div className="flex justify-between items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
+                                                <p className="font-black text-[10px] uppercase tracking-wider leading-none opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
+                                                <span className="text-[8px] font-mono font-bold opacity-50 bg-black/10 px-1 rounded">{group.items.length}</span>
+                                                {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">P</span>}
                                             </div>
-                                            <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
+                                            <p className="font-mono font-black text-[10px] leading-none shrink-0">{fmtMXN(group.total)}</p>
                                         </div>
 
-                                        {isProd && paidPerc > 0 && (
-                                            <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
-                                                <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
-                                            </div>
-                                        )}
-
-                                        <button onClick={() => setRequestGroup(group)}
-                                            className="w-full py-1 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
-                                            {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
-                                        </button>
-
-                                        {isProd && paidPerc > 0 && (
-                                            <div className="absolute top-0 right-0 p-1 opacity-40">
-                                                <span className="text-[7px] font-black">{paidPerc}%</span>
+                                        {/* Expanded: show progress + action button */}
+                                        {isExpanded && (
+                                            <div className="flex flex-col gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                {isProd && paidPerc > 0 && (
+                                                    <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
+                                                    </div>
+                                                )}
+                                                <button onClick={(e) => { e.stopPropagation(); setRequestGroup(group); }}
+                                                    className="w-full py-1.5 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase">
+                                                    {isProd && paidPerc > 0 ? `Liquidate ${paidPerc}%` : 'Request'}
+                                                </button>
                                             </div>
                                         )}
                                     </div>

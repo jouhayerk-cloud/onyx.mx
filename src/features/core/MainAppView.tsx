@@ -39,7 +39,7 @@ import {
 import React, { useEffect } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
-    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3
 } from 'lucide-react';
 // import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
 import { MainHeader } from './MainHeader';
@@ -55,6 +55,7 @@ import { InventoryView } from '../inventory/InventoryView';
 import { LogisticsView } from '../logistics/LogisticsView';
 import { FinanceView } from '../finance/FinanceView';
 import { UploadWizard } from '../inventory/UploadWizard';
+import { AdminDashboard } from '../dashboard/AdminDashboard';
 
 interface NavItemWithSubmenuProps {
     viewId: string;
@@ -199,6 +200,7 @@ export function MainAppView() {
 
         switch (activeView) {
             case 'control': return <ControlView />;
+            case 'dashboard': return <AdminDashboard />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
@@ -311,6 +313,15 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Control Center</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Control Center</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <BarChart3 size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Dashboard</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Dashboard</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (

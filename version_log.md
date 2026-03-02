@@ -3,7 +3,35 @@
 This document tracks major changes and milestones as we progress towards the next release.
 
 ---
- 
+
+## **v1.10.58 - Admin Dashboard & Payments UX**
+
+### **Date:** 2026-03-02
+
+- **NEW: Admin Dashboard** — Full analytics dashboard for Admin and Developer roles with live KPI cards (total items, vendors, acquisition MXN/USD, landed cost, retail projection, total expenses).
+- **Dashboard: Vendor Acquisition Bars** — Horizontal bar chart showing acquisition totals per vendor with color-coded vendor identifiers and item counts.
+- **Dashboard: Shape × Type Breakdown** — Ranked list of the top 15 product categories by combined Shape · Type, with visual bar indicators.
+- **Dashboard: Material Summary** — Ranked breakdown of inventory by material composition.
+- **Dashboard: Expense Categories** — Grid view of all payment categories with total amounts and entry counts, sourced live from finance data.
+- **Payments: Compact Request Tags** — Payment request bubbles are now 2-stage: compact by default (vendor + total only), tap to expand and reveal the Request/Liquidate button. Significantly reduces the height of the pending requests bar.
+- **Sidebar: Dashboard Nav** — Added a new "Dashboard" item with `BarChart3` icon in the sidebar, visible to Admin and Developer roles.
+- **Header: Dashboard Bar** — Added a dedicated header bar for the Dashboard module with "Admin Overview" label.
+
+## **v1.10.57 - UI Overhaul: Icons, Typography & Responsiveness**
+
+### **Date:** 2026-03-02
+
+- **Icons: Lucide Migration** — Installed `lucide-react` and created a unified `Icon.tsx` wrapper component. Replaced all full-color unicode/emoji icons across the top bar (refresh, logout, search, close, module badges, sub-tab pills, payments card) with single-color SVG icons.
+- **Typography: Dual Font System** — Integrated "Instrument Serif" for display elements alongside upgraded "DM Sans" with optical sizing and refined font-feature-settings.
+- **Sidebar: Floating Action Button** — Added a mini-logo FAB that appears only when the sidebar is hidden, acting as a toggle to deploy it.
+- **Sidebar: Logo Animation** — Implemented `logoSlideIn`/`logoSlideOut` keyframe animations for the Onyx.mx text label.
+- **Sidebar: Compact Tooltips** — Added hover tooltips for all sidebar items in compact mode.
+- **Light Theme Readability** — Fixed invisible text on light themes (nacar, tehu, tekis) with CSS overrides for active sidebar items and input fields.
+- **Mobile Responsiveness** — Minimum 44px touch targets, responsive font scaling via `clamp()`, bottom-sheet modals on mobile, single-column dashboard grids under 640px.
+- **Animations** — New easing tokens (`--ease-spring`, `--ease-smooth`, `--ease-out-quart`), sidebar nav items slide on hover, modals animate with scale+translateY.
+- **Scrollbars** — Global scrollbar polish with theme-aware thumb colors.
+- **Inventory Cards** — Removed redundant Close View, Edit Item, and top-right corner buttons from expanded grid cards.
+
 ## **v1.10.49 - Production Payment Liquidation**
 
 ### **Date:** 2026-03-01
