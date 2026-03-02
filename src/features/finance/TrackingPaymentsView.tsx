@@ -681,6 +681,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 commission += amount * 0.16;
             }
 
+            const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
             const isPartial = percentage < 100;
             const desc = isPartial
                 ? `Partial Payment (${percentage}%) for ${group.items.length} items from ${group.vendorId}`
@@ -842,188 +843,193 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
-
-            {/* ── Vendor filter chips (pending payments) ── */}
-            {Object.keys(vendorTotals).length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 shrink-0 overflow-x-auto bg-black/5">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest shrink-0">By Vendor:</span>
-                    <button onClick={() => setVendorFilter('All')} className={`tab-button ${vendorFilter === 'All' ? 'active' : ''}`}>All</button>
-                    {Object.entries(vendorTotals).map(([vid, total]) => (
-                        <button key={vid} onClick={() => setVendorFilter(vid)}
-                            className={`tab-button vendor-tab ${vendorFilter === vid ? 'active' : ''}`}
-                            style={vendorFilter === vid ? { backgroundColor: vendors[vid as keyof typeof vendors]?.color, color: getTextColorForBg(vendors[vid as keyof typeof vendors]?.color || '#555') } : {}}>
-                            {vid} <span className="count">{fmtMXN(total as number)}</span>
-                        </button>
-                    ))}
-
-                    <button onClick={() => setIsBubblesCollapsed(!isBubblesCollapsed)}
-                        className="ml-auto text-[8px] font-black text-white/20 hover:text-white uppercase tracking-widest">
-                        {isBubblesCollapsed ? 'Expand Bubbles' : 'Collapse Bubbles'}
-                    </button>
                 </div>
-            )}
 
-            {/* ── Pending vendor payment request cards ── */}
+            {/* ── Pending Bubbles Bar (Collapsible) ── */}
             {pendingGroups.length > 0 && (
-                <div className={`px-4 transition-all duration-500 overflow-hidden ${isBubblesCollapsed ? 'max-h-0 py-0 overflow-hidden' : 'max-h-[200px] py-3 border-b border-white/5 bg-white/1'}`}>
-                    <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                        {pendingGroups.map(group => {
-                            const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                            const txt = getTextColorForBg(color);
-                            const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
-                            const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                <div className="flex flex-col border-t border-white/5 bg-black/5">
+                    <div className="flex justify-between items-center px-4 py-1.5 h-8">
+                        <button onClick={() => setIsBubblesCollapsed(!isBubblesCollapsed)}
+                            className="flex items-center gap-2 text-[9px] font-black tracking-[0.2em] text-white/30 hover:text-(--main-color) transition-all">
+                            <span>{isBubblesCollapsed ? '+' : '−'}</span>
+                            PENDING REQUESTS
+                            <span className="ml-2 px-1.5 py-0.5 rounded-md bg-white/5 text-[8px]">{pendingGroups.length}</span>
+                        </button>
 
-                            return (
-                                <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02] shadow-sm hover:shadow-md" style={{ backgroundColor: color, color: txt }}>
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex flex-col">
-                                            <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
-                                                {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
-                                            </div>
-                                        </div>
-                                        <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
-                                    </div>
-
-                                    {isProd && paidPerc > 0 && (
-                                        <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
-                                            <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
-                                        </div>
-                                    )}
-
-                                    <button onClick={() => setRequestGroup(group)}
-                                        className="w-full py-1 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
-                                        {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
+                        {!isBubblesCollapsed && (
+                            <div className="flex items-center gap-2 overflow-x-auto max-w-[400px] no-scrollbar">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest shrink-0">Filter:</span>
+                                <button onClick={() => setVendorFilter('All')} className={`tab-button ${vendorFilter === 'All' ? 'active' : ''}`}>All</button>
+                                {Object.entries(vendorTotals).map(([vid, total]) => (
+                                    <button key={vid} onClick={() => setVendorFilter(vid)}
+                                        className={`tab-button vendor-tab ${vendorFilter === vid ? 'active' : ''}`}
+                                        style={vendorFilter === vid ? { backgroundColor: vendors[vid as keyof typeof vendors]?.color, color: getTextColorForBg(vendors[vid as keyof typeof vendors]?.color || '#555') } : {}}>
+                                        {vid} <span className="count">{fmtMXN(total as number)}</span>
                                     </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
 
-                                    {isProd && paidPerc > 0 && (
-                                        <div className="absolute top-0 right-0 p-1 opacity-40">
-                                            <span className="text-[7px] font-black">{paidPerc}%</span>
+                    <div className={`px-4 transition-all duration-500 overflow-hidden ${isBubblesCollapsed ? 'max-h-0 py-0' : 'max-h-[200px] py-3'}`}>
+                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                            {pendingGroups.map(group => {
+                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
+                                const txt = getTextColorForBg(color);
+                                const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
+                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+
+                                return (
+                                    <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02] shadow-sm hover:shadow-md" style={{ backgroundColor: color, color: txt }}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex flex-col">
+                                                <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
+                                                    {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
+                                                </div>
+                                            </div>
+                                            <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
-            {/* ── Summary cards ── */}
-            <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
-                {Object.entries(subcatTotals).map(([k, v]) => (
-                    <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
-                        <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
-                        <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
-                        <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
-                    </div>
-                ))}
-            </div>
+                                        {isProd && paidPerc > 0 && (
+                                            <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
+                                                <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
+                                            </div>
+                                        )}
 
-            {/* ── Records Table ── */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#0d0d1a] z-10">
-                        <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
-                            <th className="px-4 py-3">Date</th>
-                            <th className="px-4 py-3">Acc</th>
-                            <th className="px-4 py-3">Cat</th>
-                            <th className="px-4 py-3">Desc</th>
-                            <th className="px-4 py-3">Vend</th>
-                            <th className="px-4 py-3 text-right">Amt</th>
-                            <th className="px-4 py-3 text-center">Stat</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/3">
-                        {filtered.map(r => (
-                            <tr key={r.id} className="hover:bg-white/3 transition-all">
-                                <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
-                                    {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
-                                </td>
-                                <td className="px-4 py-2">
-                                    {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                        <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                            alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                            className="h-5 w-auto object-contain" />
-                                    ) : <span className="text-white/20 text-[9px]">—</span>}
-                                </td>
-                                <td className="px-4 py-2">
-                                    <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">
-                                        {r.subcategory || r.category || '—'}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-2 text-xs text-white/70 max-w-[200px] truncate">{r.description || r.notes || '—'}</td>
-                                <td className="px-4 py-2">
-                                    {r.vendor_id ? (
-                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black"
-                                            style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
-                                            {r.vendor_id}
-                                        </span>
-                                    ) : '—'}
-                                </td>
-                                <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/70">
-                                    {fmtMXN(r.amount)}
-                                    {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
-                                </td>
-                                <td className="px-4 py-2 text-center">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button onClick={() => handleToggleStatus(r)}
-                                            className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
-                                            {r.status || 'Requested'}
+                                        <button onClick={() => setRequestGroup(group)}
+                                            className="w-full py-1 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
+                                            {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
                                         </button>
-                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                            <button onClick={() => handleDeletePayment(r.id)}
-                                                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
-                                                ✕
-                                            </button>
+
+                                        {isProd && paidPerc > 0 && (
+                                            <div className="absolute top-0 right-0 p-1 opacity-40">
+                                                <span className="text-[7px] font-black">{paidPerc}%</span>
+                                            </div>
                                         )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {filtered.length === 0 && (
-                            <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* SVG Icons for Wizard */}
-            <svg style={{ display: 'none' }}>
-                <defs>
-                    <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                        <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
-                    </symbol>
-                    <symbol id="dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                    </symbol>
-                    <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                    </symbol>
-                    <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                        <circle cx="12" cy="12" r="3" />
-                    </symbol>
-                    <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                    </symbol>
-                    <symbol id="file" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                    </symbol>
-                    <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
-                    </symbol>
-                    <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-                    </symbol>
-                    <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
-                    </symbol>
-                </defs>
-            </svg>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+
+            {/* ── Summary cards ── */ }
+    <div className="flex gap-3 px-4 py-3 shrink-0 overflow-x-auto border-b border-white/5">
+        {Object.entries(subcatTotals).map(([k, v]) => (
+            <div key={k} className="px-4 py-2.5 rounded-2xl bg-white/2 border border-white/5 min-w-[130px] shrink-0">
+                <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">{k}</div>
+                <div className="text-sm font-mono font-black text-white">{fmtMXN(v)}</div>
+                <div className="text-[8px] font-mono text-white/20">${((v) / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>
+            </div>
+        ))}
+    </div>
+
+    {/* ── Records Table ── */ }
+    <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-[#0d0d1a] z-10">
+                <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5">
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Acc</th>
+                    <th className="px-4 py-3">Cat</th>
+                    <th className="px-4 py-3">Desc</th>
+                    <th className="px-4 py-3">Vend</th>
+                    <th className="px-4 py-3 text-right">Amt</th>
+                    <th className="px-4 py-3 text-center">Stat</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-white/3">
+                {filtered.map(r => (
+                    <tr key={r.id} className="hover:bg-white/3 transition-all">
+                        <td className="px-4 py-2 font-mono text-[10px] text-white/40 whitespace-nowrap">
+                            {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
+                        </td>
+                        <td className="px-4 py-2">
+                            {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
+                                <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                    alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                    className="h-5 w-auto object-contain" />
+                            ) : <span className="text-white/20 text-[9px]">—</span>}
+                        </td>
+                        <td className="px-4 py-2">
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black bg-white/5 text-white/50">
+                                {r.subcategory || r.category || '—'}
+                            </span>
+                        </td>
+                        <td className="px-4 py-2 text-xs text-white/70 max-w-[200px] truncate">{r.description || r.notes || '—'}</td>
+                        <td className="px-4 py-2">
+                            {r.vendor_id ? (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black"
+                                    style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
+                                    {r.vendor_id}
+                                </span>
+                            ) : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-xs font-bold text-white/70">
+                            {fmtMXN(r.amount)}
+                            {(r.commission || 0) > 0 && <span className="text-white/30 text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                                <button onClick={() => handleToggleStatus(r)}
+                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/30' : 'bg-[#FFED00]/10 text-[#FFED00] border border-[#FFED00]/20 hover:bg-[#FFED00]/20'}`}>
+                                    {r.status || 'Requested'}
+                                </button>
+                                {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                    <button onClick={() => handleDeletePayment(r.id)}
+                                        className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-500/60 hover:text-red-500 hover:bg-red-500/20 transition-all text-[10px]" title="Delete Payment Record">
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+                {filtered.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-12 text-center text-white/10 text-sm font-black tracking-widest">NO RECORDS</td></tr>
+                )}
+            </tbody>
+        </table>
+    </div>
+
+    {/* SVG Icons for Wizard */ }
+    <svg style={{ display: 'none' }}>
+        <defs>
+            <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
+            </symbol>
+            <symbol id="dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </symbol>
+            <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </symbol>
+            <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </symbol>
+            <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </symbol>
+            <symbol id="file" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+            </symbol>
+            <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+            </symbol>
+            <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </symbol>
+            <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+            </symbol>
+        </defs>
+    </svg>
+        </div >
     );
 };
