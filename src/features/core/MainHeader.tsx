@@ -32,6 +32,7 @@ import {
     exchangeRateAtom,
     InventoryVersionAtom,
     inventoryViewModeAtom,
+    filteredInventoryCountAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -148,6 +149,7 @@ const InventoryBar: React.FC = () => {
     const [inventoryFilter, setInventoryFilter] = useAtom(inventoryActiveFilterAtom);
     const inventory = useAtomValue(inventoryAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
+    const filteredCount = useAtomValue(filteredInventoryCountAtom);
     const [isDetailsOpen, setIsDetailsOpen] = useAtom(isDetailsPanelOpenAtom);
     const selectedItem = useAtomValue(SelectedItemDataAtom);
     const user = useAtomValue(userAtom);
@@ -166,16 +168,14 @@ const InventoryBar: React.FC = () => {
     return (
         <>
             <ModuleBadge icon="store" label="Inventory" color="#6BCEBB" />
-            <div className="flex items-center gap-1.5 ml-4">
-                <button onClick={() => setViewMode('grid')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
-                    <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
-                </button>
-                <button onClick={() => setViewMode('list')}
-                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${viewMode === 'list' ? 'bg-[#6BCEBB] text-black shadow-sm' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
-                    <svg className="w-4 h-4"><use href="#list-bullet" /></svg>
-                </button>
+            <div className="flex items-center gap-1.5 ml-2.5 mr-4 text-[#6BCEBB] opacity-60">
+                <span className="text-[10px] font-black font-mono tracking-widest">{filteredCount} ITEMS</span>
             </div>
+
+            <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
+                className={`w-9 h-8 flex items-center justify-center rounded-lg transition-all bg-white/5 border border-white/10 hover:bg-white/10 text-white/60 hover:text-white`}>
+                <svg className="w-4 h-4"><use href={viewMode === 'grid' ? "#list-bullet" : "#layout-grid"} /></svg>
+            </button>
             <div className="flex items-center gap-2 ml-auto">
                 {/* Admin vendor filter chips */}
                 {user?.role !== 'Client' && vendorIds.length > 2 && (
@@ -365,10 +365,17 @@ export function MainHeader() {
 
                 <div className="flex items-center gap-1">
                     <button onClick={handleRefresh} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all" title="Refresh Sync">
-                        <svg className="w-4 h-4"><use href="#refresh" /></svg>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                        </svg>
                     </button>
                     <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-red-400 transition-all" title="Logout Session">
-                        <svg className="w-4 h-4"><use href="#logout" /></svg>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
                     </button>
                 </div>
             </div>

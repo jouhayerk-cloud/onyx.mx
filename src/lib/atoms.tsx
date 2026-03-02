@@ -242,6 +242,7 @@ export const is3DWorkspaceDetailsOpenAtom = atom(false);
 export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
 export const inventoryActiveFilterAtom = atom('All');
+export const filteredInventoryCountAtom = atom(0);
 
 // Workbook State
 export const workbookVersionAtom = atom<'825' | '326'>('825');
