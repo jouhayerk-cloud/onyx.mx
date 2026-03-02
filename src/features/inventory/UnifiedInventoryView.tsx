@@ -150,7 +150,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {/* Thumbnail â€” clickable for fullscreen */}
                     <div className={`w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center opacity-20"><OnyxMiniLogo /></div>}
+                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="absolute inset-0 p-3 opacity-20 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                     </div>
 
                     {/* Meta & Description */}
@@ -228,8 +228,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'} ${isExpanded ? 'cursor-pointer' : ''}`}
                             onClick={() => isExpanded && setShowViewer(true)} />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center opacity-10">
-                            <OnyxMiniLogo className="w-16 h-16" />
+                        <div className="absolute inset-0 p-4 sm:p-8 opacity-10 flex items-center justify-center pointer-events-none">
+                            <OnyxMiniLogo className="w-full h-full object-contain" />
                         </div>
                     )}
                     <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
