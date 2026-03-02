@@ -150,7 +150,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {/* Thumbnail â€” clickable for fullscreen */}
                     <div className={`w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center opacity-20"><OnyxMiniLogo className="w-8 h-8" /></div>}
+                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center opacity-20"><OnyxMiniLogo /></div>}
                     </div>
 
                     {/* Meta & Description */}
