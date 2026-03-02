@@ -1,47 +1,35 @@
 import React from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtomValue } from 'jotai/react';
 import { uploadTabAtom, userAtom, uploadItemDataAtom } from '../../lib/atoms';
 import { UploadEntryForm } from './UploadEntryForm';
 import { UploadAIPanel } from './UploadAIPanel';
 
 export function UploadView() {
-    const [tab, setTab] = useAtom(uploadTabAtom);
     const user = useAtomValue(userAtom);
     const itemData = useAtomValue(uploadItemDataAtom);
-
-    // Hide AI tools from view as requested, but logic is preserved below
-    const canUseAI = false; // user?.role === 'Developer' || user?.role === 'Admin';
-    const isDev = user?.role === 'Developer';
+    const tab = useAtomValue(uploadTabAtom);
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* ── Tab bar ── */}
-            <div className="shrink-0 flex items-center gap-2 px-6 py-2 bg-white/1.5 border-b border-white/4 relative z-50">
-                <div className="absolute top-0 right-10 -mt-1 flex flex-col items-center">
-                    <div className="bg-(--main-color) text-black px-3 py-1.5 rounded-b-lg shadow-xl flex flex-col items-center min-w-[60px] border-x border-b border-black/10">
-                        <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1 opacity-60">BOOK V</span>
-                        <span className="text-xs font-black font-mono leading-none tracking-tighter">{itemData.workbook || 'v326'}</span>
+            {/* ── Top Bar ── */}
+            <div className="shrink-0 flex items-center justify-between px-6 py-3 bg-black/40 border-b border-white/5 relative z-50">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-(--main-color)/20 border border-(--main-color)/30 flex items-center justify-center">
+                        <svg className="w-4 h-4 text-(--main-color)"><use href="#plus" /></svg>
+                    </div>
+                    <div>
+                        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white">Add New Item</h2>
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.1em] mt-0.5">Inventory Entry Form</p>
                     </div>
                 </div>
 
-                <button onClick={() => setTab('entry')}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border
-                        ${tab === 'entry'
-                            ? 'bg-[#8DC63F]/15 border-[#8DC63F]/50 text-[#8DC63F]'
-                            : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60'}`}>
-                    <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>Add
-                </button>
-                {canUseAI && (
-                    <button onClick={() => setTab('ai')}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border
-                            ${tab === 'ai'
-                                ? 'bg-(--main-color)/15 border-(--main-color)/50 text-(--main-color)'
-                                : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60'}`}>
-                        <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#cpu" /></svg>AI
-                    </button>
-                )}
-                <div className="ml-auto mr-24 text-[8px] font-black text-white/10 uppercase tracking-widest">
-                    {tab === 'entry' ? 'Item Entry Form' : 'AI Processing — Admin / Developer'}
+                <div className="flex items-center gap-10">
+                    <div className="flex flex-col items-center">
+                        <div className="bg-(--main-color) text-black px-4 py-2 rounded-b-xl shadow-2xl flex flex-col items-center min-w-[70px] border-x border-b border-black/20 transform -translate-y-3 hover:translate-y-0 transition-all duration-500 cursor-default group">
+                            <span className="text-[8px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">BOOK V</span>
+                            <span className="text-sm font-black font-mono leading-none tracking-tighter">{itemData.workbook || 'v326'}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
