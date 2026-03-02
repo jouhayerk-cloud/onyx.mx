@@ -12,9 +12,9 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block mb-1.5";
-const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/15 focus:outline-none focus:border-[var(--main-color)]/50 focus:bg-white/[0.07] transition-all";
-const inpNum = inp + " font-mono";
+const lbl = "text-[10px] font-black uppercase tracking-widest text-white/50 block mb-2";
+const inp = "w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
+const inpNum = inp + " font-mono text-center text-white/90";
 
 const MEDIA_TYPES = [
     { id: 'none', label: 'None', icon: 'x' },
@@ -250,39 +250,32 @@ export function UploadEntryForm() {
     return (
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full max-w-2xl mx-auto pb-8">
 
-            {/* ── Row 1: Book & Status ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className={!isDev ? 'opacity-50 pointer-events-none' : ''}>
-                    <label className={lbl}>Book V</label>
-                    <input type="text" name="workbook" value={itemData.workbook || 'v326'} onChange={handleChange} className={inpNum} placeholder="v326" readOnly={!isDev} />
-                </div>
-                <div>
-                    <label className={lbl}>Entry Status</label>
-                    <div className="flex gap-2 pt-1 overflow-x-auto no-scrollbar">
-                        {[
-                            { id: 'Catalog', icon: 'layout-grid', label: 'Catalog' },
-                            { id: 'Production', icon: 'settings', label: 'Production' },
-                            { id: 'Acquisitions', icon: 'shopping-bag', label: 'Acquisitions' }
-                        ].map(s => (
-                            <button
-                                key={s.id} type="button"
-                                onClick={() => set('status', s.id)}
-                                className={`flex items-center justify-center gap-2 px-6 py-2 rounded-xl border transition-all grow ${itemData.status === s.id ? 'bg-(--main-color) border-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/80'}`}
-                                title={s.label}
-                            >
-                                <svg className="w-4 h-4"><use href={`#${s.icon}`} /></svg>
-                                <span className="text-[10px] font-black uppercase tracking-wider hidden md:inline">{s.label}</span>
-                            </button>
-                        ))}
-                    </div>
+            <div className="flex flex-col gap-2">
+                <label className={lbl}>Entry Status</label>
+                <div className="flex gap-2 pt-1 overflow-x-auto no-scrollbar">
+                    {[
+                        { id: 'Catalog', icon: 'layout-grid', label: 'Catalog' },
+                        { id: 'Production', icon: 'gear', label: 'Production' },
+                        { id: 'Acquisitions', icon: 'shopping-bag', label: 'Acquisitions' }
+                    ].map(s => (
+                        <button
+                            key={s.id} type="button"
+                            onClick={() => set('status', s.id)}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl border transition-all grow ${itemData.status === s.id ? 'bg-(--main-color) border-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/80'}`}
+                            title={s.label}
+                        >
+                            <svg className="w-4 h-4"><use href={`#${s.icon}`} /></svg>
+                            <span className="text-[11px] font-black uppercase tracking-wider hidden md:inline">{s.label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* ── Vendor Selector (Full Width Row) ── */}
-            <div className="bg-white/2 border border-white/6 rounded-2xl p-4">
+            {/* ── Vendor Selector (Single Scrollable Row) ── */}
+            <div className="bg-white/2 border border-white/6 rounded-2xl p-4 overflow-hidden">
                 <label className={lbl}>Vendor Selection</label>
                 {canSelectVendor ? (
-                    <div className="flex flex-wrap gap-3 pb-1 items-center justify-between">
+                    <div className="flex flex-nowrap gap-4 pb-2 items-center overflow-x-auto custom-scrollbar-thin">
                         {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
                             const v = vendors[id as keyof typeof vendors];
                             const isSelected = itemData.vendorId === id;
@@ -291,7 +284,7 @@ export function UploadEntryForm() {
                                     type="button"
                                     key={id}
                                     onClick={() => set('vendorId', id)}
-                                    className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl' : 'opacity-40 hover:opacity-100 ring-1 ring-white/10'}`}
+                                    className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl border-2 border-black/20' : 'opacity-40 hover:opacity-100 ring-1 ring-white/10'}`}
                                     style={{ backgroundColor: v.color, color: '#000' }}
                                 >
                                     {id}
@@ -302,7 +295,7 @@ export function UploadEntryForm() {
                 ) : (
                     <div className="flex items-center gap-2 bg-white/2 border border-white/6 rounded-xl px-4 py-2.5 w-full">
                         <svg className="w-3.5 h-3.5 text-white/20"><use href="#lock" /></svg>
-                        <span className="text-sm text-white/40">{itemData.vendorId}</span>
+                        <span className="text-sm text-white/60">{itemData.vendorId}</span>
                     </div>
                 )}
             </div>
