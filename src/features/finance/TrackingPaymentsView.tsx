@@ -23,10 +23,11 @@ const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?
 const SUBCATEGORIES = ['All', 'Acq', 'Mo-Exp', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
-type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number };
+type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
 const appendExpense = async (payload: any, db: any) => {
+    const idsToLink = payload.inventoryItemRows || payload.linkedRows;
     const { error, data } = await supabase.from('finance').insert({
         amount: payload.amount,
         commission: payload.commission ?? 0,
@@ -44,7 +45,7 @@ const appendExpense = async (payload: any, db: any) => {
         notes: payload.notes ?? null,
         recurring: payload.recurring ?? false,
         recurring_day: payload.recurring ? payload.recurring_day ?? null : null,
-        related_ids: payload.inventoryItemRows ? payload.inventoryItemRows.split(',') : [],
+        related_ids: idsToLink ? idsToLink.split(',') : [],
         updated_at: new Date().toISOString(),
     }).select();
     if (error) throw error;
@@ -316,25 +317,56 @@ const RequestPaymentModal: React.FC<{
     onConfirm: (dest: PaymentDestination, percentage: number) => void;
 }> = ({ group, onClose, onConfirm }) => {
     const [dest, setDest] = useState<PaymentDestination | null>(null);
+    const paidPerc = group ? Math.round((group.paidTotal / group.total) * 100) : 0;
     const [percentage, setPercentage] = useState(100);
+
+    useEffect(() => {
+        if (paidPerc > 0 && paidPerc < 100) {
+            setPercentage(100); // Default to full liquidation if partial already exists
+        }
+    }, [paidPerc]);
+
     if (!group) return null;
     const name = appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId;
-    const amountToRequest = group.total * (percentage / 100);
+    const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
+
+    // Amount calculation: If target is 100%, we request Total - AlreadyPaid.
+    // If target is less than 100%, we calculate the "new" amount to reach that percentage or just proportional.
+    // Simplifying: The slider represents the TARGET total percentage.
+    const targetAmount = group.total * (percentage / 100);
+    const amountToRequest = Math.max(0, targetAmount - group.paidTotal);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
             <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-7 w-[460px] max-w-[95vw] shadow-2xl" onClick={e => e.stopPropagation()}>
-                <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-1">Request Payment</h3>
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Request Payment</h3>
+                    {paidPerc > 0 && <span className="text-[10px] font-black px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-widest">{paidPerc}% PAID</span>}
+                </div>
                 <p className="text-xs text-white/40 mb-5">{name} · {group.items.length} items ({group.totalQty} units) · <span className="font-mono text-white/60">{fmtMXN(group.total)} total</span></p>
 
+                {paidPerc > 0 && (
+                    <div className="mb-6 bg-white/3 rounded-2xl p-4 border border-white/5">
+                        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">
+                            <span>Payment Progress</span>
+                            <span>{fmtMXN(group.paidTotal)} / {fmtMXN(group.total)}</span>
+                        </div>
+                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
+                            <div className="h-full bg-green-500/50" style={{ width: `${paidPerc}%` }} />
+                            <div className="h-full bg-(--main-color)/30 animate-pulse" style={{ width: `${percentage - paidPerc}%` }} />
+                        </div>
+                    </div>
+                )}
+
                 <div className="mb-6">
-                    <label className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2 block">Payment Percentage</label>
+                    <label className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2 block">Target Payment Percentage</label>
                     <div className="flex items-center gap-4">
-                        <input type="range" min="10" max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                        <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
                             className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-(--main-color)" />
                         <span className="text-lg font-mono font-black text-(--main-color) w-12">{percentage}%</span>
                     </div>
-                    {percentage < 100 && <p className="text-[9px] text-yellow-400/50 mt-1 italic uppercase tracking-wider">Partial Payment Request</p>}
+                    {percentage < 100 && <p className="text-[9px] text-yellow-400/50 mt-1 italic uppercase tracking-wider">Additional Partial Payment</p>}
+                    {percentage === 100 && paidPerc > 0 && <p className="text-[9px] text-green-400/50 mt-1 italic uppercase tracking-wider">Liquidation Payment ({fmtMXN(amountToRequest)})</p>}
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 mb-6">
@@ -355,7 +387,9 @@ const RequestPaymentModal: React.FC<{
                 </div>
                 <div className="flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                    <button onClick={() => dest && onConfirm(dest, percentage)} disabled={!dest} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40">CONFIRM</button>
+                    <button onClick={() => dest && onConfirm(dest, percentage)} disabled={!dest || amountToRequest <= 0} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40 uppercase">
+                        {paidPerc > 0 && percentage === 100 ? 'LIQUIDATE' : 'CONFIRM REQUEST'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -415,7 +449,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
             if (!vid) vid = 'Unknown';
 
-            if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0, totalQty: 0 };
+            if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0, totalQty: 0, paidTotal: 0 };
 
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseFloat(data.quantity || '1') || 1;
@@ -423,8 +457,23 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             groups[vid].total += (price * qty);
             groups[vid].totalQty += qty;
         }
-        return Object.values(groups);
-    }, [inventory]);
+
+        // Aggregate existing partial payments from finance records
+        const groupList = Object.values(groups);
+        for (const group of groupList) {
+            const itemIds = new Set(group.items.map(i => String(i.row)));
+            const relatedExpenses = docs.filter(d =>
+                d.vendor_id === group.vendorId &&
+                ['Requested', 'Paid', 'Sent', 'Dispersed'].includes(d.status) &&
+                (d.related_ids?.some((id: any) => itemIds.has(String(id))) ||
+                    d.related_inventory_ids?.split(',').some((id: any) => itemIds.has(String(id))))
+            );
+            // Sum only successful amounts linked to these items
+            group.paidTotal = relatedExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+        }
+
+        return groupList;
+    }, [inventory, docs]);
 
     // Pending vendor totals for tab chips
     const vendorTotals = useMemo(() => {
@@ -453,7 +502,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         const group = requestGroup;
         const toastId = toast.loading(`Requesting payment for ${group.vendorId}…`);
         try {
-            const amount = group.total * (percentage / 100);
+            const targetAmount = group.total * (percentage / 100);
+            const amount = Math.max(0, targetAmount - group.paidTotal);
+
+            if (amount <= 0 && percentage < 100) {
+                toast.error('No balanced remaining at this percentage.', { id: toastId });
+                return;
+            }
+
             let commission = destinationsConfig[dest].calculateCommission(amount);
             if (dest === PaymentDestination.BBVA_Ramses) {
                 commission += amount * 0.16;
@@ -464,6 +520,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 ? `Partial Payment (${percentage}%) for ${group.items.length} items from ${group.vendorId}`
                 : `Liquidation Payment for ${group.items.length} items from ${group.vendorId}`;
 
+            const itemIdsStr = group.items.map(i => String(i.row)).join(',');
+
             await appendExpense({
                 description: desc,
                 amount: amount,
@@ -472,21 +530,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 status: 'Requested',
                 subcategory: 'Acq',
                 vendor_id: group.vendorId,
-                inventoryItemRows: isPartial ? null : group.items.map(i => i.row).join(','),
-                notes: isPartial ? `Partial payment of total ${fmtMXN(group.total)}` : null
+                inventoryItemRows: isPartial ? null : itemIdsStr,
+                linkedRows: isPartial ? itemIdsStr : null,
+                notes: isPartial ? `Partial payment for total ${fmtMXN(group.total)}. Current paid: ${fmtMXN(group.paidTotal + amount)}` : null
             }, db);
-
-            // Only mark items as requested if it's a 100% liquidation
-            if (!isPartial) {
-                for (const item of group.items) {
-                    await supabase.from('inventory').update({ pay_req: true }).eq('id', item.row);
-                }
-            }
 
             toast.success(isPartial ? `Partial payment requested.` : `Liquidation requested.`, { id: toastId });
             setInventoryVersion(v => v + 1);
             setPaymentsVersion(v => v + 1);
-            onRefresh();
+            onRefresh && onRefresh();
         } catch (err: any) { toast.error(err.message, { id: toastId }); }
         setRequestGroup(null);
     };

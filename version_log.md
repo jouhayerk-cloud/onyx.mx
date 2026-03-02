@@ -4,6 +4,14 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
  
+## **v1.10.49 - Production Payment Liquidation**
+
+### **Date:** 2026-03-01
+
+- **Finance: Payment Progress** — Added a visual progress bar and "Paid" percentage tracking to the Request Payment UI for production items.
+- **Finance: Liquidation Logic** — Implemented a "LIQUIDATE" action that automatically calculates the remaining balance for items with prior partial payments.
+- **Finance: Item Linking** — Enhanced partial payment requests to maintain direct links to inventory items in the database without marking them as fully requested until liquidation.
+
 ## **v1.10.48 - UI Default View Update**
 
 ### **Date:** 2026-03-01
