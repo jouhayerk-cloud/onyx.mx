@@ -20,7 +20,7 @@ const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency'
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
 
-const SUBCATEGORIES = ['All', 'Acq', 'Mo-Exp', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
+const SUBCATEGORIES = ['All', 'Acq', 'MONTHLY', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
 type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
@@ -70,7 +70,7 @@ const AddPaymentModal: React.FC<{
     const [form, setForm] = useState({
         description: '',
         amount: '',
-        subcategory: 'Acquisition' as string,
+        subcategory: 'Acq' as string,
         vendor_id: '',
         destination: null as PaymentDestination | null,
         reference: '',
@@ -100,24 +100,9 @@ const AddPaymentModal: React.FC<{
         }
     }, [isOpen]);
 
-    // Acquisition auto-fill
-    useEffect(() => {
-        if (form.subcategory === 'Acq' && form.vendor_id) {
-            const group = pendingGroups.find(g => g.vendorId === form.vendor_id);
-            if (group) {
-                setForm(f => ({
-                    ...f,
-                    amount: group.total.toString(),
-                    description: `Payment for ${group.items.length} items from ${group.vendorId}`
-                }));
-            }
-        }
-    }, [form.vendor_id, form.subcategory]);
-
     const calculateIVA = (amt: number) => amt * 0.16;
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         const amt = parseFloat(form.amount);
         if (!form.description || isNaN(amt) || amt <= 0 || !form.destination) {
             return toast.error('Fill in description, amount, and select an account.');
@@ -132,14 +117,15 @@ const AddPaymentModal: React.FC<{
             }
 
             // For Acquisitions, we need to find the related inventory items to mark them as pay_req
-            const group = form.subcategory === 'Acq' ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
+            const group = (form.subcategory === 'Acq' || form.subcategory === 'Prod') ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
 
             await appendExpense({
                 ...form,
                 amount: amt,
                 commission,
-                inventoryItemRows
+                inventoryItemRows: (form.subcategory === 'Acq' && !form.vendor_id.includes('%')) ? inventoryItemRows : null,
+                linkedRows: (form.subcategory === 'Prod' || form.vendor_id.includes('%')) ? inventoryItemRows : null
             }, db);
 
             toast.success('Record added!', { id: toastId });
@@ -155,109 +141,246 @@ const AddPaymentModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
-            <div className="bg-[#1a1a2e] border border-white/10 rounded-4xl p-8 w-[560px] max-w-[95vw] shadow-2xl overflow-hidden relative" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
+            <div className="bg-[#0d0d1a] border border-white/10 rounded-[40px] w-full max-w-[600px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
                 {/* Progress Header */}
-                <div className="flex justify-between items-center mb-8">
+                <div className="px-10 pt-10 flex justify-between items-center mb-8">
                     <div className="flex gap-2">
-                        {[1, 2, 3].map(s => (
-                            <div key={s} className={`h-1.5 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-white/10'}`} />
+                        {[1, 2, 3, 4, 5].map(s => (
+                            <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-white/10'}`} />
                         ))}
                     </div>
-                    <button onClick={onClose} className="text-white/20 hover:text-white transition-colors">
-                        <span className="text-xl">✕</span>
-                    </button>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all text-sm">✕</button>
                 </div>
 
-                <div className="min-h-[360px] flex flex-col">
-                    {/* Step 1: Category */}
+                <div className="px-10 pb-10 flex flex-col min-h-[460px]">
+                    {/* Stage 1: Merch vs Expenses */}
                     {step === 1 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-2xl font-black text-white mb-2">Select Category</h2>
-                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">What type of payment is this?</p>
+                            <h2 className="text-4xl font-black text-white mb-3 leading-tight tracking-tight uppercase">TRANSACTION<br />CLASSIFICATION</h2>
+                            <p className="text-[11px] text-white/30 mb-10 uppercase tracking-[0.3em] font-bold">Define the primary nature of this expenditure</p>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {SUBCATEGORIES.filter(s => s !== 'All').map(cat => (
-                                    <button key={cat}
-                                        onClick={() => { set('subcategory', cat); setStep(2); }}
-                                        className="flex flex-col items-start p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-(--main-color)/50 hover:bg-(--main-color)/10 transition-all group"
-                                    >
-                                        <span className="text-2xl mb-3 group-hover:scale-110 transition-transform">
-                                            {cat === 'Acq' ? '📦' : cat === 'Mo-Exp' ? '📅' : cat === 'Sppl' ? '🛠' : cat === 'Labr' ? '👷' : cat === 'Pack' ? '🏷' : '⚙️'}
-                                        </span>
-                                        <span className="text-sm font-black text-white uppercase tracking-wider">{cat}</span>
-                                        <span className="text-[10px] text-white/30 font-medium">
-                                            {cat === 'Acq' ? 'Vendor Acquisitions' : 'Operational Costs'}
-                                        </span>
-                                    </button>
-                                ))}
+                            <div className="grid grid-cols-2 gap-5">
+                                <button onClick={() => setStep(2.1)}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-[#F7941D]/50 hover:bg-[#F7941D]/5 transition-all group">
+                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#F7941D]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 text-[#F7941D] opacity-70"><use href="#pkg" /></svg>
+                                    </div>
+                                    <span className="text-[12px] font-black text-white uppercase tracking-[0.2em]">MERCHANDISE</span>
+                                    <span className="text-[9px] text-white/20 font-bold mt-3 text-center leading-relaxed">Inventory acquisitions,<br />production & labor costs</span>
+                                </button>
+                                <button onClick={() => setStep(2.2)}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-[#00AEEF]/50 hover:bg-[#00AEEF]/5 transition-all group">
+                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#00AEEF]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 text-[#00AEEF] opacity-70"><use href="#dollar" /></svg>
+                                    </div>
+                                    <span className="text-[12px] font-black text-white uppercase tracking-[0.2em]">OPERATIONS</span>
+                                    <span className="text-[9px] text-white/20 font-bold mt-3 text-center leading-relaxed">Business services,<br />fixed bills & utilities</span>
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 2: Details */}
-                    {step === 2 && (
+                    {/* Stage 2.1: Merch Type (Acq vs Prod) */}
+                    {step === 2.1 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-2xl font-black text-white mb-2">Details</h2>
-                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">Enter the specifics of the transaction</p>
+                            <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-tight">MERCHANDISE</h2>
+                            <p className="text-[11px] text-white/30 mb-8 uppercase tracking-widest font-bold">Classify the inventory transaction type</p>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK TO TYPE
+                            </button>
 
-                            <div className="flex flex-col gap-6">
-                                {form.subcategory === 'Acq' && (
-                                    <div>
-                                        <label className="field-label">Select Vendor</label>
-                                        <select value={form.vendor_id} onChange={e => set('vendor_id', e.target.value)} className="field-input py-4!">
-                                            <option value="">— Choose Vendor —</option>
-                                            {pendingGroups.map(g => (
-                                                <option key={g.vendorId} value={g.vendorId}>{g.vendorId} ({g.items.length} items)</option>
-                                            ))}
-                                        </select>
+                            <div className="grid grid-cols-2 gap-5">
+                                <button onClick={() => { set('subcategory', 'Acq'); setStep(3.1); }}
+                                    className="flex flex-col items-center p-8 rounded-[40px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
+                                    <div className="w-14 h-14 mb-4 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-7 h-7 opacity-50"><use href="#download" /></svg>
                                     </div>
-                                )}
+                                    <span className="text-[11px] font-black text-white uppercase tracking-[0.15em]">ACQUISITIONS</span>
+                                    <span className="text-[8px] text-white/20 font-bold mt-2 text-center uppercase leading-tight">Bulk purchase from<br />authorized vendors</span>
+                                </button>
+                                <button onClick={() => { set('subcategory', 'Prod'); setStep(3.1); }}
+                                    className="flex flex-col items-center p-8 rounded-[40px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
+                                    <div className="w-14 h-14 mb-4 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-7 h-7 opacity-50"><use href="#settings" /></svg>
+                                    </div>
+                                    <span className="text-[11px] font-black text-white uppercase tracking-[0.15em]">PRODUCTION</span>
+                                    <span className="text-[8px] text-white/20 font-bold mt-2 text-center uppercase leading-tight">Manufacturing labor<br />& custom processing</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
-                                <div>
-                                    <label className="field-label">Description</label>
+                    {/* Stage 3.1: Select Bubble */}
+                    {step === 3.1 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-tight">VENDORS</h2>
+                            <button onClick={() => setStep(2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">
+                                <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK
+                            </button>
+
+                            <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                                {pendingGroups.length === 0 ? (
+                                    <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-[40px]">
+                                        <p className="text-white/10 text-[10px] font-black tracking-[0.3em] uppercase">No pending items found</p>
+                                    </div>
+                                ) : (
+                                    pendingGroups
+                                        .filter(g => {
+                                            const isProdGroup = g.items.some(i => i.data?.status?.toLowerCase() === 'production');
+                                            return form.subcategory === 'Prod' ? isProdGroup : !isProdGroup;
+                                        })
+                                        .map(group => {
+                                            const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
+                                            const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                            return (
+                                                <button key={group.vendorId}
+                                                    onClick={() => {
+                                                        set('vendor_id', group.vendorId);
+                                                        set('amount', (group.total - group.paidTotal).toString());
+                                                        set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${group.vendorId}`);
+                                                        setStep(4);
+                                                    }}
+                                                    className="flex justify-between items-center p-5 rounded-[32px] bg-white/2 border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-left group"
+                                                >
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-12 h-12 rounded-[20px] flex items-center justify-center font-black text-base" style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
+                                                            {group.vendorId[0]}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-black text-white leading-none mb-1">{group.vendorId}</p>
+                                                            <p className="text-[10px] text-white/30 uppercase tracking-widest leading-none">{group.items.length} items · {paidPerc > 0 ? `${paidPerc}% Paid` : 'Unpaid'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-sm font-mono font-black text-white leading-none mb-1">{fmtMXN(group.total - group.paidTotal)}</p>
+                                                        <span className="text-[9px] font-black text-(--main-color) opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest block">Select Vendor</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stage 2.2: Expenses Stage 1 (Monthly vs Specific) */}
+                    {step === 2.2 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-tight text-center">OPERATING COSTS</h2>
+                            <p className="text-[11px] text-white/30 mb-10 uppercase tracking-widest font-bold text-center">Classify the administrative cost</p>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
+
+                            <div className="grid grid-cols-2 gap-5 w-full">
+                                <button onClick={() => { set('subcategory', 'MONTHLY'); setStep(4); }}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
+                                    <div className="w-16 h-16 mb-5 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 opacity-50"><use href="#calendar" /></svg>
+                                    </div>
+                                    <span className="text-[11px] font-black text-white uppercase tracking-widest">MONTHLY FIXED</span>
+                                    <span className="text-[8px] text-white/20 font-bold mt-2 uppercase leading-tight text-center">Recurring bills<br />& subscriptions</span>
+                                </button>
+                                <button onClick={() => setStep(3.2)}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-white/2 border border-white/5 hover:border-white/20 transition-all group">
+                                    <div className="w-16 h-16 mb-5 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 opacity-50"><use href="#file" /></svg>
+                                    </div>
+                                    <span className="text-[11px] font-black text-white uppercase tracking-widest">VARIABLE COST</span>
+                                    <span className="text-[8px] text-white/20 font-bold mt-2 uppercase leading-tight text-center">One-time operational<br />expenditure</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stage 3.2: Expense Categories */}
+                    {step === 3.2 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-tight">CATEGORIES</h2>
+                            <p className="text-[11px] text-white/30 mb-8 uppercase tracking-widest font-bold">Select expense department</p>
+                            <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {['Sppl', 'Labr', 'Pack', 'Oprt'].map(cat => {
+                                    const labels: Record<string, { t: string, s: string, i: string }> = {
+                                        Sppl: { t: 'SUPPLIES', s: 'Equipment & tools', i: '#hammer' },
+                                        Labr: { t: 'LABOR', s: 'Workforce payments', i: '#user' },
+                                        Pack: { t: 'PACKAGING', s: 'Shipping materials', i: '#label' },
+                                        Oprt: { t: 'OPERATIONS', s: 'General services', i: '#settings' }
+                                    };
+                                    return (
+                                        <button key={cat}
+                                            onClick={() => { set('subcategory', cat); setStep(4); }}
+                                            className="flex flex-col items-start p-7 rounded-[32px] bg-white/2 border border-white/5 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all group"
+                                        >
+                                            <div className="w-12 h-12 mb-4 rounded-full border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform group-hover:border-(--main-color)/30">
+                                                <svg className="w-6 h-6 opacity-30 group-hover:opacity-100 group-hover:text-(--main-color) transition-all">
+                                                    <use href={labels[cat].i} />
+                                                </svg>
+                                            </div>
+                                            <span className="text-[12px] font-black text-white uppercase tracking-[0.1em]">{labels[cat].t}</span>
+                                            <span className="text-[8px] text-white/20 font-bold mt-1 uppercase leading-none">{labels[cat].s}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stage 4: Final Form */}
+                    {step === 4 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-white mb-2 uppercase tracking-tight">DETAILS</h2>
+                            <p className="text-[11px] text-white/30 mb-10 uppercase tracking-widest font-bold">Specify payment details for {form.subcategory}</p>
+
+                            <div className="flex flex-col gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] opacity-40 font-black uppercase tracking-[0.3em] block ml-1">DESCRIPTION</label>
                                     <input value={form.description} onChange={e => set('description', e.target.value)}
-                                        className="field-input py-4!" placeholder="Brief summary of payment" />
+                                        className="w-full h-16 px-6 rounded-[24px] bg-white/5 border border-white/10 text-white placeholder:text-white/10 focus:border-(--main-color)/50 focus:bg-white/10 transition-all outline-none" placeholder="Brief summary of payment" />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="field-label">Amount (MXN)</label>
+                                <div className="grid grid-cols-2 gap-5">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] opacity-40 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
                                         <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                                            className="field-input py-4! font-mono text-lg" placeholder="0.00" />
+                                            className="w-full h-16 px-6 font-mono text-xl font-bold bg-white/5 border border-white/10 rounded-[24px] text-white outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
                                     </div>
-                                    {form.subcategory === 'Mo-Exp' ? (
-                                        <div>
-                                            <label className="field-label">Day of Month</label>
+                                    {form.subcategory === 'MONTHLY' ? (
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] opacity-40 font-black uppercase tracking-[0.3em] block ml-1">RECURRING DAY</label>
                                             <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => { set('recurring_day', parseInt(e.target.value)); set('recurring', true); }}
-                                                className="field-input py-4! font-mono text-lg" />
+                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-white/5 border border-white/10 rounded-[24px] text-white outline-none focus:border-(--main-color)/50 transition-all" />
                                         </div>
                                     ) : (
-                                        <div>
-                                            <label className="field-label">Reference #</label>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] opacity-40 font-black uppercase tracking-[0.3em] block ml-1">REFERENCE</label>
                                             <input value={form.reference} onChange={e => set('reference', e.target.value)}
-                                                className="field-input py-4!" placeholder="Optional" />
+                                                className="w-full h-16 px-6 rounded-[24px] bg-white/5 border border-white/10 text-white placeholder:text-white/10 outline-none focus:border-(--main-color)/50 transition-all" placeholder="Optional #" />
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 mt-12">
-                                <button onClick={() => setStep(1)} className="flex-1 py-4 border border-white/10 text-white/40 rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/5 transition-all">BACK</button>
+                            <div className="flex gap-5 mt-16">
+                                <button onClick={() => {
+                                    if (form.vendor_id) setStep(3.1);
+                                    else if (['Sppl', 'Labr', 'Pack', 'Oprt'].includes(form.subcategory)) setStep(3.2);
+                                    else setStep(2.2);
+                                }} className="flex-1 py-5 border border-white/10 text-white/30 rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-white/5 transition-all">BACK</button>
                                 <button onClick={() => {
                                     if (!form.amount || parseFloat(form.amount) <= 0) return toast.error('Enter valid amount');
-                                    setStep(3);
-                                }} className="flex-1 py-4 bg-white/10 text-white rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/20 transition-all">CONTINUE</button>
+                                    setStep(5);
+                                }} className="flex-1 py-5 bg-white/10 text-white rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-white/20 transition-all">CONTINUE</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 3: Account */}
-                    {step === 3 && (
+                    {/* Stage 5: Account Selection */}
+                    {step === 5 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-2xl font-black text-white mb-2">Payment Method</h2>
-                            <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">Choose disbursement account</p>
+                            <h2 className="text-4xl font-black text-white mb-3 uppercase tracking-tight">SOURCE</h2>
+                            <p className="text-[11px] text-white/30 mb-8 uppercase tracking-widest font-bold">Select payment disbursement account</p>
 
                             <div className="grid grid-cols-2 gap-4">
                                 {Object.entries(destinationsConfig).map(([key, cfg]) => {
@@ -269,14 +392,14 @@ const AddPaymentModal: React.FC<{
                                     return (
                                         <button key={key} type="button"
                                             onClick={() => set('destination', key as PaymentDestination)}
-                                            className={`flex flex-col items-center gap-3 p-6 rounded-4xl border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/5 bg-white/3 hover:border-white/20 hover:bg-white/5'}`}
+                                            className={`flex flex-col items-center gap-3 p-6 rounded-[32px] border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/5 bg-white/2 hover:border-white/20'}`}
                                         >
-                                            <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain" />
+                                            <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain mb-1" />
                                             <div className="text-center">
-                                                <div className="text-[10px] font-black text-white uppercase tracking-wider">{cfg.name}</div>
+                                                <div className="text-[11px] font-black text-white uppercase tracking-widest opacity-80">{cfg.name}</div>
                                                 {totalExtra > 0 && (
-                                                    <div className="text-[9px] font-mono text-(--main-color) mt-1">
-                                                        +{fmtMXN(totalExtra)} {key === PaymentDestination.BoA_Employee ? '(Bank Fee)' : iva > 0 ? '(IVA incl.)' : 'Fee'}
+                                                    <div className="text-[9px] font-mono text-(--main-color) mt-1 font-bold">
+                                                        +{fmtMXN(totalExtra)} FEE
                                                     </div>
                                                 )}
                                             </div>
@@ -285,20 +408,20 @@ const AddPaymentModal: React.FC<{
                                 })}
                             </div>
 
-                            <div className="mt-12 p-6 rounded-4xl bg-black/40 border border-white/5">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Total Request</span>
-                                    <span className="text-xs font-mono text-white/40">{fmtMXN(parseFloat(form.amount) || 0)} base</span>
+                            <div className="mt-10 p-8 rounded-[40px] bg-black/40 border border-white/5">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">TOTAL TRANSACTION</span>
+                                    <span className="text-xs font-mono text-white/40">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                 </div>
-                                <div className="text-3xl font-mono font-black text-white">
+                                <div className="text-4xl font-mono font-black text-white tracking-tighter">
                                     {form.destination ? fmtMXN((parseFloat(form.amount) || 0) + destinationsConfig[form.destination].calculateCommission(parseFloat(form.amount) || 0) + (form.destination === PaymentDestination.BBVA_Ramses ? calculateIVA(parseFloat(form.amount) || 0) : 0)) : '—'}
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 mt-8">
-                                <button onClick={() => setStep(2)} className="flex-1 py-4 border border-white/10 text-white/40 rounded-2xl text-[10px] font-black tracking-widest hover:bg-white/5 transition-all">BACK</button>
+                            <div className="flex gap-5 mt-10">
+                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-white/10 text-white/30 rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-white/5 transition-all">BACK</button>
                                 <button onClick={handleSubmit} disabled={saving || !form.destination}
-                                    className="flex-1 py-4 bg-(--main-color) text-black rounded-2xl text-[10px] font-black tracking-widest disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02]">
+                                    className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[28px] text-[11px] font-black tracking-[0.2em] disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02] active:scale-95">
                                     {saving ? 'PROCESSING…' : 'CONFIRM PAYMENT'}
                                 </button>
                             </div>
@@ -322,7 +445,7 @@ const RequestPaymentModal: React.FC<{
 
     useEffect(() => {
         if (paidPerc > 0 && paidPerc < 100) {
-            setPercentage(100); // Default to full liquidation if partial already exists
+            setPercentage(100);
         }
     }, [paidPerc]);
 
@@ -330,66 +453,85 @@ const RequestPaymentModal: React.FC<{
     const name = appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId;
     const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
 
-    // Amount calculation: If target is 100%, we request Total - AlreadyPaid.
-    // If target is less than 100%, we calculate the "new" amount to reach that percentage or just proportional.
-    // Simplifying: The slider represents the TARGET total percentage.
     const targetAmount = group.total * (percentage / 100);
     const amountToRequest = Math.max(0, targetAmount - group.paidTotal);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md" onClick={onClose}>
-            <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-7 w-[460px] max-w-[95vw] shadow-2xl" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Request Payment</h3>
-                    {paidPerc > 0 && <span className="text-[10px] font-black px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30 uppercase tracking-widest">{paidPerc}% PAID</span>}
-                </div>
-                <p className="text-xs text-white/40 mb-5">{name} · {group.items.length} items ({group.totalQty} units) · <span className="font-mono text-white/60">{fmtMXN(group.total)} total</span></p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4" onClick={onClose}>
+            <div className="bg-[#0d0d1a] border border-white/10 rounded-[40px] w-full max-w-[500px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
-                {paidPerc > 0 && (
-                    <div className="mb-6 bg-white/3 rounded-2xl p-4 border border-white/5">
-                        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">
-                            <span>Payment Progress</span>
-                            <span>{fmtMXN(group.paidTotal)} / {fmtMXN(group.total)}</span>
-                        </div>
-                        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden flex">
-                            <div className="h-full bg-green-500/50" style={{ width: `${paidPerc}%` }} />
-                            <div className="h-full bg-(--main-color)/30 animate-pulse" style={{ width: `${percentage - paidPerc}%` }} />
-                        </div>
+                <div className="px-10 pt-10 flex justify-between items-center mb-6">
+                    <div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                            {paidPerc > 0 && percentage === 100 ? 'LIQUIDATE BALANCE' : 'PAYMENT REQUEST'}
+                        </h3>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mt-1">FOR {group.vendorId}</p>
                     </div>
-                )}
-
-                <div className="mb-6">
-                    <label className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-2 block">Target Payment Percentage</label>
-                    <div className="flex items-center gap-4">
-                        <input type="range" min={Math.max(10, paidPerc + 5)} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
-                            className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-(--main-color)" />
-                        <span className="text-lg font-mono font-black text-(--main-color) w-12">{percentage}%</span>
-                    </div>
-                    {percentage < 100 && <p className="text-[9px] text-yellow-400/50 mt-1 italic uppercase tracking-wider">Additional Partial Payment</p>}
-                    {percentage === 100 && paidPerc > 0 && <p className="text-[9px] text-green-400/50 mt-1 italic uppercase tracking-wider">Liquidation Payment ({fmtMXN(amountToRequest)})</p>}
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all text-sm">✕</button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 mb-6">
-                    {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                        const amt = amountToRequest;
-                        const comm = cfg.calculateCommission(amt);
-                        const iva = (key === PaymentDestination.BBVA_Ramses) ? (amt * 0.16) : 0;
-                        const totalExtra = comm + iva;
-                        return (
-                            <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
-                                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${dest === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30'}`}>
-                                <img src={cfg.icon} alt={cfg.name} className="h-8 w-full object-contain" />
-                                <span className="text-[9px] font-bold text-white/50 text-center leading-tight">{cfg.name}</span>
-                                <span className="text-[9px] font-mono text-(--main-color)">{fmtMXN(amt + totalExtra)}</span>
+                <div className="px-10 pb-10">
+                    <div className="flex flex-col gap-6">
+                        {/* Status Summary */}
+                        <div className="flex justify-between items-end p-6 rounded-[32px] bg-white/2 border border-white/5">
+                            <div>
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">CONTRACT TOTAL</p>
+                                <p className="text-2xl font-mono font-black text-white">{fmtMXN(group.total)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">STAKEHOLDERS</p>
+                                <p className="text-xs font-black text-white uppercase tracking-widest">{group.items.length} ITEMS</p>
+                            </div>
+                        </div>
+
+                        {/* Progress Tracker */}
+                        <div className="bg-white/2 rounded-[32px] p-6 border border-white/5">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">PAYMENT ARCHITECTURE</span>
+                                <span className="text-[10px] font-mono font-black text-white">{paidPerc}% COMPLETE</span>
+                            </div>
+                            <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden flex gap-0.5 p-0.5 border border-white/5">
+                                <div className="h-full bg-green-500/40 rounded-full transition-all duration-1000" style={{ width: `${paidPerc}%` }} />
+                                {percentage > paidPerc && (
+                                    <div className="h-full bg-(--main-color)/40 rounded-full animate-pulse transition-all duration-500" style={{ width: `${percentage - paidPerc}%` }} />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Control Slider */}
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest leading-none">TARGET PERCENTAGE</label>
+                                <span className="text-xl font-mono font-black text-(--main-color) leading-none">{percentage}%</span>
+                            </div>
+                            <input type="range" min={Math.max(10, paidPerc + (isProduction ? 5 : 0))} max="100" step="5" value={percentage} onChange={e => setPercentage(parseInt(e.target.value))}
+                                className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-(--main-color) mb-4" />
+
+                            <div className="p-5 rounded-[24px] bg-(--main-color)/5 border border-(--main-color)/10 text-center">
+                                <p className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em] mb-1">AMOUNT TO DISBURSE</p>
+                                <p className="text-3xl font-mono font-black text-white">{fmtMXN(amountToRequest)}</p>
+                            </div>
+                        </div>
+
+                        {/* Destination Picker */}
+                        <div className="grid grid-cols-4 gap-2">
+                            {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                <button key={key} type="button" onClick={() => setDest(key as PaymentDestination)}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${dest === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/5 bg-white/2 hover:border-white/20'}`}>
+                                    <img src={cfg.icon} alt={cfg.name} className="h-7 w-auto grayscale group-hover:grayscale-0 transition-all opacity-40 hover:opacity-100" />
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-tighter text-center leading-tight">{cfg.name}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-4 mt-2">
+                            <button onClick={onClose} className="flex-1 py-5 border border-white/10 text-white/20 rounded-[24px] text-[10px] font-black tracking-widest hover:bg-white/5 transition-all">CANCEL</button>
+                            <button onClick={() => dest && onConfirm(dest, percentage)} disabled={!dest || amountToRequest <= 0}
+                                className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[24px] text-[10px] font-black tracking-widest disabled:opacity-40 uppercase transition-all shadow-lg hover:scale-[1.02] active:scale-95">
+                                {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL PAYMENT'}
                             </button>
-                        );
-                    })}
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-3 border border-white/10 text-white/40 rounded-xl text-[10px] font-black tracking-widest hover:bg-white/5">CANCEL</button>
-                    <button onClick={() => dest && onConfirm(dest, percentage)} disabled={!dest || amountToRequest <= 0} className="flex-1 py-3 bg-(--main-color) text-black rounded-xl text-[10px] font-black tracking-widest disabled:opacity-40 uppercase">
-                        {paidPerc > 0 && percentage === 100 ? 'LIQUIDATE' : 'CONFIRM REQUEST'}
-                    </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -543,6 +685,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         setRequestGroup(null);
     };
 
+    const [showFilters, setShowFilters] = useState(false);
+    const [isBubblesCollapsed, setIsBubblesCollapsed] = useState(false);
+
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
         const { error } = await supabase.from('finance').update({ status: next, pay_date: next === 'Paid' ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq('id', r.id);
@@ -573,41 +718,72 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             />
 
             {/* ── Filter Bar ── */}
-            <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-white/5 bg-black/10 shrink-0">
-
-                {/* Subcategory pills */}
-                <div className="flex flex-wrap gap-1.5">
-                    {SUBCATEGORIES.map(s => (
-                        <button key={s} onClick={() => setSubcatFilter(s)}
-                            className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-[#6BCEBB] text-black shadow' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>
-                            {s.toUpperCase()}
+            <div className="flex flex-col border-b border-white/5 bg-black/10 shrink-0">
+                <div className="flex items-center justify-between px-4 py-2">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setShowFilters(!showFilters)}
+                            className="flex items-center gap-2 text-[10px] font-black tracking-widest text-white/40 hover:text-white transition-colors">
+                            <span className="text-xs">{showFilters ? '−' : '+'}</span> FILTERS
                         </button>
-                    ))}
+                        <div className="flex items-center gap-2 border-l border-white/10 pl-4">
+                            <span className="text-[10px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
+                            <span className="text-xs font-mono font-black text-white/40">1 USD = {exchangeRate.toFixed(2)} MXN</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setShowAdd(true)}
+                            className="px-4 py-2 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
+                            <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>ADD
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 ml-auto">
-                    {/* Account / destination filter icons */}
-                    <button onClick={() => setDestinationFilter('All')}
-                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black tracking-widest border transition-all ${destinationFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'border-white/10 text-white/30 hover:border-white/20'}`}>
-                        ALL
-                    </button>
-                    {Object.entries(destinationsConfig).map(([key, cfg]) => (
-                        <button key={key} onClick={() => setDestinationFilter(key as PaymentDestination)} title={cfg.name}
-                            className={`p-2 rounded-xl border-2 transition-all ${destinationFilter === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-white/10 hover:border-white/30 hover:bg-white/5'}`}>
-                            <img src={cfg.icon} alt={cfg.name} className="h-6 w-auto object-contain" />
-                        </button>
-                    ))}
-                    <button onClick={() => setShowAdd(true)}
-                        className="ml-2 px-4 py-2 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
-                        <svg className="w-3 h-3 inline-block align-text-top mr-1"><use href="#plus" /></svg>ADD
-                    </button>
-                </div>
+                {showFilters && (
+                    <div className="px-4 py-3 bg-black/20 border-t border-white/5 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-1 duration-200">
+                        {/* Subcategory pills */}
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest w-full mb-1">Category (Subcat)</span>
+                            {SUBCATEGORIES.map(s => (
+                                <button key={s} onClick={() => setSubcatFilter(s)}
+                                    className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-[#6BCEBB] text-black shadow' : 'bg-white/5 text-white/30 hover:text-white/60'}`}>
+                                    {s.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col gap-1 border-l border-white/10 pl-4 pt-2">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Account Filter</span>
+                            <div className="flex items-center -space-x-4 hover:space-x-1 transition-all duration-500 group/stack">
+                                {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                                    const isActive = destinationFilter === key;
+                                    return (
+                                        <div key={key} onClick={() => setDestinationFilter(isActive ? 'All' : key as PaymentDestination)}
+                                            className={`relative cursor-pointer transition-all duration-500 ease-out flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-md shadow-2xl
+                                                ${isActive
+                                                    ? 'w-48 bg-(--main-color)/20 border-(--main-color) z-30 translate-x-0 scale-100 opacity-100'
+                                                    : 'w-12 bg-white/2 border-white/5 z-10 hover:z-20 group-hover/stack:scale-105 opacity-60 hover:opacity-100'}`}>
+
+                                            <img src={cfg.icon} alt={cfg.name} className={`h-6 w-auto object-contain transition-all duration-500 ${isActive ? 'scale-110' : 'grayscale group-hover/stack:grayscale-0'}`} />
+
+                                            {isActive && (
+                                                <div className="flex flex-col overflow-hidden animate-in fade-in slide-in-from-left-2 duration-500">
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate">{cfg.name}</span>
+                                                    <span className="text-[8px] font-bold text-(--main-color) uppercase tracking-widest">ACTIVE</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── Vendor filter chips (pending payments) ── */}
             {Object.keys(vendorTotals).length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 shrink-0 overflow-x-auto">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest shrink-0">Pending:</span>
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 shrink-0 overflow-x-auto bg-black/5">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest shrink-0">By Vendor:</span>
                     <button onClick={() => setVendorFilter('All')} className={`tab-button ${vendorFilter === 'All' ? 'active' : ''}`}>All</button>
                     {Object.entries(vendorTotals).map(([vid, total]) => (
                         <button key={vid} onClick={() => setVendorFilter(vid)}
@@ -616,30 +792,52 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             {vid} <span className="count">{fmtMXN(total as number)}</span>
                         </button>
                     ))}
+
+                    <button onClick={() => setIsBubblesCollapsed(!isBubblesCollapsed)}
+                        className="ml-auto text-[8px] font-black text-white/20 hover:text-white uppercase tracking-widest">
+                        {isBubblesCollapsed ? 'Expand Bubbles' : 'Collapse Bubbles'}
+                    </button>
                 </div>
             )}
 
             {/* ── Pending vendor payment request cards ── */}
-            {pendingGroups.length > 0 && (
-                <div className="flex gap-3 px-4 py-3 border-b border-white/5 shrink-0 overflow-x-auto">
+            {pendingGroups.length > 0 && !isBubblesCollapsed && (
+                <div className="flex gap-2 px-4 py-3 border-b border-white/5 shrink-0 overflow-x-auto bg-white/1">
                     {pendingGroups.map(group => {
                         const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
                         const txt = getTextColorForBg(color);
+                        const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
+                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+
                         return (
-                            <div key={group.vendorId} className="shrink-0 p-3 rounded-xl min-w-[180px]" style={{ backgroundColor: color, color: txt }}>
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-sm">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
-                                        <p className="text-[10px] opacity-70">{group.items.length} items · {group.totalQty} units</p>
+                            <div key={group.vendorId} className="shrink-0 p-2.5 rounded-2xl min-w-[140px] flex flex-col gap-2 group/card relative overflow-hidden transition-all hover:scale-[1.02]" style={{ backgroundColor: color, color: txt }}>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <p className="font-black text-[10px] uppercase tracking-wider leading-none mb-1 opacity-90">{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</p>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[8px] font-mono font-bold opacity-60 bg-black/10 px-1 rounded">{group.items.length} ITM</span>
+                                            {isProd && <span className="text-[7px] font-black uppercase tracking-widest bg-white/20 px-1 rounded">PROD</span>}
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-mono font-bold text-sm">{fmtMXN(group.total)}</p>
-                                        <button onClick={() => setRequestGroup(group)}
-                                            className="mt-1 px-2 py-1 rounded-lg text-[9px] font-black tracking-wide border border-current/30 hover:bg-white/20 transition-all">
-                                            Request
-                                        </button>
-                                    </div>
+                                    <p className="font-mono font-black text-[11px] leading-none pt-0.5">{fmtMXN(group.total)}</p>
                                 </div>
+
+                                {isProd && paidPerc > 0 && (
+                                    <div className="w-full h-1 bg-black/10 rounded-full overflow-hidden mt-1">
+                                        <div className="h-full bg-white/40 rounded-full" style={{ width: `${paidPerc}%` }} />
+                                    </div>
+                                )}
+
+                                <button onClick={() => setRequestGroup(group)}
+                                    className="w-full py-1.5 rounded-lg text-[9px] font-black tracking-widest border border-current/20 hover:bg-white/20 transition-all uppercase mt-1">
+                                    {isProd && paidPerc > 0 ? 'Liquidate' : 'Request'}
+                                </button>
+
+                                {isProd && paidPerc > 0 && (
+                                    <div className="absolute top-0 right-0 p-1 opacity-40">
+                                        <span className="text-[7px] font-black">{paidPerc}%</span>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -716,6 +914,41 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     </tbody>
                 </table>
             </div>
+
+            {/* SVG Icons for Wizard */}
+            <svg style={{ display: 'none' }}>
+                <defs>
+                    <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
+                    </symbol>
+                    <symbol id="dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </symbol>
+                    <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                    </symbol>
+                    <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </symbol>
+                    <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                    </symbol>
+                    <symbol id="file" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                    </symbol>
+                    <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+                    </symbol>
+                    <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </symbol>
+                    <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+                    </symbol>
+                </defs>
+            </svg>
         </div>
     );
 };

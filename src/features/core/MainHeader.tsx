@@ -33,6 +33,7 @@ import {
     InventoryVersionAtom,
     inventoryViewModeAtom,
     filteredInventoryCountAtom,
+    financeDataAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -72,6 +73,9 @@ const iconToUnicode: Record<string, string> = {
     'layers': '⫘',
     'camera': '◙',
     'play': '▶',
+    'credit-card': '💳',
+    'bank': '🏦',
+    'wallet': '👛',
 };
 
 // ─── Search bar (shared) ──────────────────────────────────────────────────────
@@ -239,14 +243,42 @@ const InventoryBar: React.FC = () => {
 
 const FinanceBar: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const docs = useAtomValue(financeDataAtom);
+
+    const grandTotal = useMemo(() => docs.reduce((a, b) => a + (b.amount || 0), 0), [docs]);
+    const paid = useMemo(() => docs.filter((d: any) => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0), [docs]);
+    const pending = grandTotal - paid;
+
+    const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
     return (
         <>
-            <ModuleBadge icon="credit-card" label="Finance" color="#00AEEF" />
-            <div className="ml-auto flex items-center gap-3">
-                <div className="hidden md:flex flex-col items-end">
-                    <span className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exchange</span>
-                    <span className="text-xs font-mono font-black text-white/40">1 USD = {exchangeRate.toFixed(2)} MXN</span>
+            <ModuleBadge icon="credit-card" label="Payments" color="#A78BFA" />
+
+            <div className="flex items-center gap-6 ml-6 mr-4 border-l border-white/10 pl-6 h-8">
+                <div className="flex flex-col justify-center">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none mb-1">Total Expenses</span>
+                    <span className="text-xs font-mono font-black text-white leading-none">{fmt(grandTotal)}</span>
+                </div>
+                <div className="flex flex-col justify-center">
+                    <span className="text-[8px] font-black text-green-400/20 uppercase tracking-[0.2em] leading-none mb-1">Disbursed</span>
+                    <span className="text-xs font-mono font-black text-green-400 leading-none">{fmt(paid)}</span>
+                </div>
+                <div className="flex flex-col justify-center">
+                    <span className="text-[8px] font-black text-yellow-400/20 uppercase tracking-[0.2em] leading-none mb-1">Pending</span>
+                    <span className="text-xs font-mono font-black text-yellow-500 leading-none">{fmt(pending)}</span>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4 ml-auto">
+                <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Market Exchange</span>
+                    <span className="text-[10px] font-mono font-black text-white/40 leading-none">1 USD = {exchangeRate.toFixed(2)} MXN</span>
+                </div>
+                <div className="w-px h-8 bg-white/10" />
+                <div className="flex flex-col items-end mr-4">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Pending USD</span>
+                    <span className="text-xs font-mono font-black text-(--main-color) leading-none">${(pending / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
                 </div>
             </div>
         </>
