@@ -44,6 +44,16 @@ export function generateUniqueId(): string {
   return Array.from({ length: 8 }, () => Math.random().toString(36).charAt(2)).join('').toUpperCase();
 }
 
+export function formatCurrency(amount: number | string, currency: string = 'MXN'): string {
+  const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
 import { uploadMedia } from './storage';
 
 export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; originalFile: File } | null> {

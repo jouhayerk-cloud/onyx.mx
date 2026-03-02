@@ -343,16 +343,9 @@ const LogisticsBar: React.FC = () => {
 
 const UploadBar: React.FC = () => {
     const itemData = useAtomValue(uploadItemDataAtom);
-    const setIsOpen = useSetAtom(isUploadWizardOpenAtom);
     return (
         <div className="flex items-center gap-4">
-            <ModuleBadge icon="upload" label="Upload" color="#8DC63F" />
-
-            <button onClick={() => setIsOpen(true)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-(--main-color) hover:text-black transition-all group shadow-xl"
-                title="Launch Upload Wizard">
-                <span className="text-xl group-hover:scale-125 transition-transform">🪄</span>
-            </button>
+            <ModuleBadge icon="upload" label="Add Entry" color="#8DC63F" />
 
             <div className="bg-(--main-color) text-black px-5 py-2.5 rounded-b-xl shadow-2xl flex flex-col items-center min-w-[90px] border-x border-b border-black/20 transform -translate-y-2 hover:translate-y-1 transition-all duration-700 cursor-default group z-50">
                 <span className="text-[9px] font-black uppercase tracking-[0.25em] leading-none mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">BOOK V</span>

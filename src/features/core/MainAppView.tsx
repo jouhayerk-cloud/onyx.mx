@@ -204,21 +204,21 @@ export function MainAppView() {
 
     const logisticsSubItems = [
         {
-            id: 'packing', label: 'Pack', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
+            id: 'packing', label: 'Packing', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('packing');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'trucking', label: 'Truck', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
+            id: 'trucking', label: 'Trucking', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('trucking');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'shipping', label: 'Ship', icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
+            id: 'shipping', label: 'Shipping', icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('shipping');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -228,14 +228,14 @@ export function MainAppView() {
 
     const financeSubItems = [
         {
-            id: 'payments', label: 'Pay', icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
+            id: 'payments', label: 'Payments', icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
                 setActiveView('finance');
                 setFinanceSubTab('payments');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'expenses', label: 'Exp', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
+            id: 'expenses', label: 'Expenses', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
                 setActiveView('finance');
                 setFinanceSubTab('expenses');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -277,7 +277,7 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'control' ? 'active' : ''}`} onClick={() => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#shield"></use></svg>
-                                    <span className="sidebar-list-item-text">Ctrl</span>
+                                    <span className="sidebar-list-item-text">Control Center</span>
                                 </div>
                             </li>
                         )}
@@ -285,26 +285,26 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#upload"></use></svg>
-                                    <span className="sidebar-list-item-text">Add</span>
+                                    <span className="sidebar-list-item-text">Add Entry</span>
                                 </div>
                             </li>
                         )}
                         <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                             <div className="sidebar-list-item-main">
                                 <svg><use href="#store"></use></svg>
-                                <span className="sidebar-list-item-text">Inv</span>
+                                <span className="sidebar-list-item-text">Inventory</span>
                             </div>
                         </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <svg><use href="#credit-card"></use></svg>
-                                    <span className="sidebar-list-item-text">Pay</span>
+                                    <span className="sidebar-list-item-text">Payments</span>
                                 </div>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="logistics" label="Log" icon="truck" subItems={logisticsSubItems} />
+                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
                         )}
                     </ul>
                     <div className="sidebar-footer">
