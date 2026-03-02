@@ -14,6 +14,7 @@ import {
     InventoryVersionAtom,
     userAtom,
     inventoryViewModeAtom,
+    filteredInventoryCountAtom,
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
@@ -259,6 +260,7 @@ export const UnifiedInventoryView = () => {
     const [isSaving, setIsSaving] = useState(false);
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
     const user = useAtomValue(userAtom);
+    const setFilteredCount = useSetAtom(filteredInventoryCountAtom);
 
     const [editData, setEditData] = useState<any>(null);
     const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
@@ -424,6 +426,10 @@ export const UnifiedInventoryView = () => {
         }).sort((a, b) => (new Date(b.data.updatedAt || 0).getTime()) - (new Date(a.data.updatedAt || 0).getTime()));
     }, [items, statusFilter, vendorFilter, searchTerm]);
 
+    useEffect(() => {
+        setFilteredCount(filteredItems.length);
+    }, [filteredItems.length, setFilteredCount]);
+
     const activeVendors = useMemo(() => {
         return Array.from(new Set(items.map(item => item.data.itemId?.split('-')[0]).filter(Boolean))).sort();
     }, [items]);
@@ -443,7 +449,6 @@ export const UnifiedInventoryView = () => {
                         return <button key={v} onClick={() => setVendorFilter(v)} className={`px-2.5 py-1 mx-0.5 text-[10px] font-black rounded transition-all ${vendorFilter === v ? 'opacity-100 shadow-sm' : 'opacity-30 hover:opacity-60'}`} style={{ backgroundColor: vendorFilter === v ? color : 'transparent', color: vendorFilter === v ? 'black' : color, border: vendorFilter === v ? 'none' : `1px solid ${color}` }}>{v}</button>;
                     })}
                 </div>
-                <div className="text-[10px] font-mono text-white/15 uppercase tracking-[0.3em] shrink-0 font-black">{filteredItems.length} ITEMS</div>
             </div>
 
             <div className="grow min-h-0 overflow-hidden glass-panel shadow-2xl rounded-3xl m-2">
