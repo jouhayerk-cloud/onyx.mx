@@ -775,6 +775,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [showFilters, setShowFilters] = useState(false);
     const [isBubblesCollapsed, setIsBubblesCollapsed] = useState(false);
     const [expandedBubble, setExpandedBubble] = useState<string | null>(null);
+    const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
@@ -1045,54 +1046,123 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-(--border-color)">
-                            {filtered.map(r => (
-                                <tr key={r.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-all group">
-                                    <td className="px-5 py-3 font-mono text-[10px] text-(--text-color-secondary) whitespace-nowrap">
-                                        {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                        {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                            <div className="w-6 h-6 mx-auto bg-white rounded-md flex items-center justify-center border border-black/10 shadow-sm">
-                                                <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                                    alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                                    className="h-3 w-auto object-contain" />
-                                            </div>
-                                        ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
-                                    </td>
-                                    <td className="px-3 py-3 text-center">
-                                        <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-black bg-black/10 dark:bg-white/10 text-(--text-color)">
-                                            {normalizeSubcat(r.subcategory || r.category)}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-3 text-xs font-medium text-(--text-color) max-w-[250px] truncate">{r.description || r.notes || '—'}</td>
-                                    <td className="px-3 py-3 text-center">
-                                        {r.vendor_id ? (
-                                            <span className="px-2 py-1 rounded-[4px] text-[9px] font-black shadow-sm"
-                                                style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
-                                                {r.vendor_id}
-                                            </span>
-                                        ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
-                                    </td>
-                                    <td className="px-5 py-3 text-right">
-                                        <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(r.amount)}</span>
-                                        {(r.commission || 0) > 0 && <span className="text-(--text-color-secondary) font-mono text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
-                                    </td>
-                                    <td className="px-5 py-3">
-                                        <div className="flex items-center justify-center gap-3">
-                                            <button onClick={() => handleToggleStatus(r)}
-                                                className={`min-w-[80px] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/50 hover:bg-[#8DC63F]/30' : 'bg-[#FACC15]/20 text-[#FACC15] border border-[#FACC15]/50 hover:bg-[#FACC15]/30'}`}>
-                                                {r.status || 'Requested'}
-                                            </button>
-                                            {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                                <button onClick={() => handleDeletePayment(r.id)}
-                                                    className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100" title="Delete record">
-                                                    ✕
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {filtered.map(r => {
+                                const isExpanded = expandedRow === r.id;
+                                const relatedIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                                const totalNet = (r.amount || 0) + (r.commission || 0);
+                                const totalUSD = totalNet / (liveExchangeRate || exchangeRate);
+
+                                return (
+                                    <React.Fragment key={r.id}>
+                                        <tr
+                                            onClick={(e) => {
+                                                // Prevent toggling if a button inside the row was clicked
+                                                if ((e.target as HTMLElement).closest('button')) return;
+                                                setExpandedRow(isExpanded ? null : r.id);
+                                            }}
+                                            className={`hover:bg-black/5 dark:hover:bg-white/5 transition-all group cursor-pointer ${isExpanded ? 'bg-black/5 dark:bg-white/5' : ''}`}>
+                                            <td className="px-5 py-3 font-mono text-[10px] text-(--text-color-secondary) whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <svg className={`w-3 h-3 transition-transform text-(--text-color-secondary) ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
+                                                    {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-3 text-center">
+                                                {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
+                                                    <div className="w-6 h-6 mx-auto bg-white rounded-md flex items-center justify-center border border-black/10 shadow-sm">
+                                                        <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                                            alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                                            className="h-3 w-auto object-contain" />
+                                                    </div>
+                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
+                                            </td>
+                                            <td className="px-3 py-3 text-center">
+                                                <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-black bg-black/10 dark:bg-white/10 text-(--text-color)">
+                                                    {normalizeSubcat(r.subcategory || r.category)}
+                                                </span>
+                                            </td>
+                                            <td className="px-5 py-3 text-xs font-medium text-(--text-color) max-w-[250px] truncate">{r.description || r.notes || '—'}</td>
+                                            <td className="px-3 py-3 text-center">
+                                                {r.vendor_id ? (
+                                                    <span className="px-2 py-1 rounded-[4px] text-[9px] font-black shadow-sm"
+                                                        style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
+                                                        {r.vendor_id}
+                                                    </span>
+                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
+                                            </td>
+                                            <td className="px-5 py-3 text-right">
+                                                <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(r.amount)}</span>
+                                                {(r.commission || 0) > 0 && <span className="text-(--text-color-secondary) font-mono text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <button onClick={() => handleToggleStatus(r)}
+                                                        className={`min-w-[80px] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/50 hover:bg-[#8DC63F]/30' : 'bg-[#FACC15]/20 text-[#FACC15] border border-[#FACC15]/50 hover:bg-[#FACC15]/30'}`}>
+                                                        {r.status || 'Requested'}
+                                                    </button>
+                                                    {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                                        <button onClick={() => handleDeletePayment(r.id)}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100" title="Delete record">
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {/* EXPANDED DETAILS PANEL */}
+                                        {isExpanded && (
+                                            <tr>
+                                                <td colSpan={7} className="p-0 border-b border-(--border-color)">
+                                                    <div className="bg-black/5 dark:bg-black/30 p-4 border-l-2 border-(--main-color) flex flex-wrap gap-x-8 gap-y-4 shadow-inner animate-fade-in relative z-0">
+
+                                                        {/* Financial Detail */}
+                                                        <div className="flex flex-col gap-1 min-w-[120px]">
+                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Total Net</span>
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(totalNet)}</span>
+                                                                <span className="font-mono text-[10px] text-(--text-color-secondary)">≈ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Dates Detail */}
+                                                        <div className="flex flex-col gap-1 min-w-[120px]">
+                                                            <div className="flex justify-between gap-4">
+                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Requested</span>
+                                                                <span className="font-mono text-[10px] text-(--text-color)">{new Date(r.date || r.created_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between gap-4">
+                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Paid</span>
+                                                                <span className="font-mono text-[10px] text-(--text-color)">{r.pay_date ? new Date(r.pay_date).toLocaleDateString() : '—'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Tags Deployable List */}
+                                                        {relatedIds.length > 0 && (
+                                                            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
+                                                                <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
+                                                                    {relatedIds.map((id: string, i: number) => (
+                                                                        <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] text-(--text-color-secondary)">{id}</span>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Notes detail if any */}
+                                                        {r.notes && (
+                                                            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Notes</span>
+                                                                <p className="text-[10px] text-(--text-color) font-mono opacity-80 leading-snug">{r.notes}</p>
+                                                            </div>
+                                                        )}
+
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
                             {filtered.length === 0 && (
                                 <tr><td colSpan={7} className="px-4 py-16 text-center text-(--text-color-secondary) text-xs font-black tracking-[0.2em] uppercase">No payment records match criteria</td></tr>
                             )}
