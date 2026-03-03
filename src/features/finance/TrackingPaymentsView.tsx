@@ -8,7 +8,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -587,14 +587,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
-    const [liveExchangeRate, setLiveExchangeRate] = useState<number | null>(null);
+    const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
 
     useEffect(() => {
+        if (liveExchangeRate) return;
         fetch('https://open.er-api.com/v6/latest/USD')
             .then(r => r.json())
             .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
             .catch(() => { });
-    }, []);
+    }, [liveExchangeRate, setLiveExchangeRate]);
 
     // Load inventory for pending payment requests
     const fetchInventory = useCallback(async () => {
