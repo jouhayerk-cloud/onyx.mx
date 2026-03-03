@@ -2737,49 +2737,8 @@ html.theme-tekis .wizardstate-indicator {
   color: var(--text-color);
 }
 
-/* ── Wizard Modal: always uses dark styling regardless of theme ── */
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] {
-  color: white;
-}
 
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white {
-  color: white !important;
-}
 
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/30,
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/20,
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/40,
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/50 {
-  color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] input,
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] select,
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] textarea {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: white !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/5 {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/10 {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/2 {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .border-white\/5 {
-  border-color: rgba(255, 255, 255, 0.05) !important;
-}
-
-.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .border-white\/10 {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
 
 /* --- Improved scrollbar globally --- */
 ::-webkit-scrollbar {

@@ -253,14 +253,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {!isExpanded && (
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
-                                <p className="font-black text-white text-base leading-none truncate drop-shadow-md">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
+                                <p className="font-black text-(--main-color) text-base leading-none truncate drop-shadow-md">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
                                 <div className="flex flex-col items-end shrink-0">
                                     <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
                                     <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
                                 </div>
                             </div>
                             <div className="flex flex-col gap-0.5">
-                                <p className="text-[9px] uppercase font-black tracking-widest text-(--main-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
+                                <p className="text-[9px] uppercase font-black tracking-widest text-(--secondary-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                                 <div className="flex items-center justify-between gap-2 mt-1">
                                     <div className="flex flex-col">
                                         <p className="text-[11px] font-black text-white/60 font-mono tracking-tight uppercase leading-none mb-1">{dimensionsStr || 'NO DIM'}</p>
