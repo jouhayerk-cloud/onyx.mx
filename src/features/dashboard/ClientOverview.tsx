@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { default as toast } from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 
 interface ClientVendorSummary {
     vendorId: string;
@@ -97,6 +99,42 @@ export const ClientOverview: React.FC = () => {
         };
     }, [vendorSummaries]);
 
+    const handleMarkAsPaid = async (destId: string, destReqMXN: number, destDocs: any[]) => {
+        const toastId = toast.loading(`Marking ${fmtMXN(destReqMXN)} as Paid...`);
+        try {
+            const docIds = destDocs.map(d => d.id);
+            if (docIds.length === 0) return;
+
+            // 1. Update remote finance
+            const { error: finErr } = await supabase.from('finance').update({ status: 'Paid' }).in('id', docIds);
+            if (finErr) throw finErr;
+
+            // 2. Update local finance
+            for (const id of docIds) {
+                const localDoc = await db?.finance.findOne({ selector: { id } }).exec();
+                if (localDoc) await localDoc.patch({ status: 'Paid' });
+            }
+
+            // 3. Update related inventory (using logic from tracking payments view)
+            for (const req of destDocs) {
+                const ids = req.related_ids || req.related_inventory_ids?.split(',') || [];
+                if (ids.length > 0) {
+                    if (req.description?.includes('%')) {
+                        const perc = req.description.match(/(\d+)%/)?.[1];
+                        await supabase.from('inventory').update({ pay_req: `paid ${perc || 'partial'}%` }).in('id', ids);
+                    } else {
+                        await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                    }
+                }
+            }
+
+            toast.success('Payment successfully finalized.', { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to mark as paid', { id: toastId });
+        }
+    };
+
     if (isLoading) return <LoadingIndicator />;
 
     return (
@@ -140,9 +178,9 @@ export const ClientOverview: React.FC = () => {
                                 if (destReqMXN <= 0) return null;
 
                                 return (
-                                    <div key={key} className="flex items-center justify-between p-4 bg-white/5 border border-(--border-color) hover:border-[#00AEEF]/40 transition-all rounded-2xl group">
+                                    <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/5 border border-(--border-color) hover:border-[#00AEEF]/40 transition-all rounded-2xl group gap-4">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-14 h-10 p-1 bg-white rounded flex items-center justify-center shadow-lg">
+                                            <div className="w-14 h-10 p-1 bg-white rounded flex items-center justify-center shadow-lg shrink-0">
                                                 <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
                                             </div>
                                             <div>
@@ -150,9 +188,16 @@ export const ClientOverview: React.FC = () => {
                                                 <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-60">Pending Requests</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
-                                            <p className="text-[10px] font-mono font-bold text-(--text-color-secondary)">≈ {fmtUSD(destReqMXN / exchangeRate)}</p>
+                                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                                            <div className="text-right">
+                                                <p className="text-lg font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+                                                <p className="text-[10px] font-mono font-bold text-(--text-color-secondary)">≈ {fmtUSD(destReqMXN / exchangeRate)}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
+                                                className="w-full md:w-auto px-4 py-2 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-md shrink-0">
+                                                Mark as Paid
+                                            </button>
                                         </div>
                                     </div>
                                 );
