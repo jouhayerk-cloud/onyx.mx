@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.10.69
+- **Payments UX Overhaul:** Refactored the payments list into a responsive, modern expandable table. Each row is now a dynamic two-line panel that can be clicked to reveal deep financial data (Total Net MXN, USD equivalent at live rate, Requested/Paid dates, and a deployable tag IDs list for Acquisition records).
+- **Payment Destination UX:** Tweaked the stacked card icons filter to be perfectly symmetrical, tighter packed, and dynamically highlight the total requested value on top of the selected active icon.
+
 ## v1.10.68
 - **Light Theme Overhaul:** Comprehensive fixes for all light themes (Nacar, Tehu, Tekis) across Dashboard, Inventory, Payments, Upload, and Wizard views
 - **Drop Shadows Removed:** Removed all text drop-shadows from grid cards, catalog images, and item thumbnails for cleaner rendering
