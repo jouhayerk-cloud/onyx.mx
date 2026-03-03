@@ -997,21 +997,32 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                     <div className="flex items-center gap-2">
                         {/* Destination Picker — stacked card animation */}
-                        <div className="flex items-center relative h-12">
+                        <div className="flex items-center justify-center relative h-14 px-2 mt-4">
                             {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
                                 const isActive = destinationFilter === key;
                                 const total = arr.length;
-                                const spread = isActive ? 0 : (idx - total / 2) * 6;
-                                const rotation = isActive ? 0 : (idx - total / 2) * 4;
+                                const offset = idx - (total - 1) / 2;
+                                const spread = isActive ? -8 : Math.pow(offset, 2) * 2;
+                                const rotation = isActive ? 0 : offset * 6;
+
+                                const reqTotal = docs.filter(d => d.destination === key && (d.status === 'Requested' || !d.status)).reduce((acc, d) => acc + (d.amount || 0), 0);
+
                                 return (
                                     <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
-                                        className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer ${isActive ? 'scale-150 z-20 mx-2 brightness-125' : 'opacity-50 hover:opacity-90 -mx-0.5 hover:scale-125'}`}
+                                        className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer outline-none relative ${isActive ? 'scale-150 z-20 mx-4 brightness-125 drop-shadow-2xl' : 'opacity-70 hover:opacity-100 -mx-2.5 hover:scale-125 hover:-translate-y-2 hover:z-30'}`}
                                         style={{
-                                            transform: `translateY(${spread}px) rotate(${rotation}deg) ${isActive ? 'scale(1.5)' : ''}`,
-                                            zIndex: isActive ? 20 : 10 - Math.abs(idx - total / 2),
+                                            transform: `translateY(${spread}px) rotate(${rotation}deg)`,
+                                            zIndex: isActive ? 40 : 10 - Math.abs(offset),
                                         }}
                                         title={cfg.name}>
-                                        <img src={cfg.icon} alt={cfg.name} className={`h-8 w-auto object-contain transition-all drop-shadow-lg`} />
+
+                                        {isActive && reqTotal > 0 && (
+                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[6px] font-mono font-black tracking-widest bg-(--main-color) text-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap animate-fade-in z-50 leading-none">
+                                                {fmtMXN(reqTotal)}
+                                            </div>
+                                        )}
+
+                                        <img src={cfg.icon} alt={cfg.name} className={`h-9 w-auto object-contain transition-all drop-shadow-lg`} />
                                     </button>
                                 );
                             })}
