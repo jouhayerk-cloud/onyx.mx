@@ -39,7 +39,7 @@ import {
 import React, { useEffect } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
-    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard
 } from 'lucide-react';
 // import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
 import { MainHeader } from './MainHeader';
@@ -56,6 +56,7 @@ import { LogisticsView } from '../logistics/LogisticsView';
 import { FinanceView } from '../finance/FinanceView';
 import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
+import { ClientOverview } from '../dashboard/ClientOverview';
 
 // Injected at build time from package.json via vite.config.ts
 declare const __APP_VERSION__: string;
@@ -187,6 +188,7 @@ export function MainAppView() {
         switch (activeView) {
             case 'control': return <ControlView />;
             case 'dashboard': return <AdminDashboard />;
+            case 'overview': return <ClientOverview />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
@@ -308,6 +310,15 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Dashboard</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Dashboard</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <LayoutDashboard size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Overview</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Overview</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
