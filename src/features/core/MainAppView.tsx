@@ -341,17 +341,17 @@ export function MainAppView() {
                     </ul>
 
                     {/* Branding at bottom of sidebar */}
-                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-white/5 opacity-40 mix-blend-screen shrink-0 relative overflow-hidden">
+                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) opacity-60 shrink-0 relative overflow-hidden">
                         {sidebarState === 'expanded' && (
                             <>
                                 <OnyxMiniLogo className="w-7 h-7 mb-2" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-white">v{__APP_VERSION__}</span>
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-(--text-color-secondary)">v{__APP_VERSION__}</span>
                             </>
                         )}
                         {sidebarState === 'compact' && (
                             <>
                                 <OnyxMiniLogo className="w-6 h-6 mb-2" />
-                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-white">{__APP_VERSION__}</span>
+                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary)">{__APP_VERSION__}</span>
                             </>
                         )}
                     </div>
