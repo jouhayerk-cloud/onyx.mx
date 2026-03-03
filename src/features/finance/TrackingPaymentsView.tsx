@@ -870,70 +870,53 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                     {/* ─── EXTENDED VIEW ─── */}
                     {overviewMode === 'extended' && (
-                        <div className="flex flex-col gap-4">
-                            {/* Payment Summary + Exchange Row */}
-                            <div className="flex gap-4 items-stretch">
-                                <div className="flex flex-col justify-center min-w-[200px] gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">Paid</span>
-                                        <span className="text-xl font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
-                                        <span className="text-[9px] font-mono text-[#6BCEBB]/50 mt-0.5">≈ ${((statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">Requested</span>
-                                        <span className="text-xl font-mono font-black text-[#FACC15]">{fmtMXN(statusTotals.Requested || 0)}</span>
-                                        <span className="text-[9px] font-mono text-[#FACC15]/50 mt-0.5">≈ ${((statusTotals.Requested || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">Pending</span>
-                                        <span className="text-xl font-mono font-black text-[#F87171]">{fmtMXN(statusTotals.Pending || 0)}</span>
-                                        <span className="text-[9px] font-mono text-[#F87171]/50 mt-0.5">≈ ${((statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
-                                    </div>
+                        <div className="flex gap-4 items-stretch">
+                            {/* Payment Summary panel — Paid & Requested only, MXN + USD side by side */}
+                            <div className="flex flex-col justify-center gap-2.5 p-4 bg-white/5 border border-white/10 rounded-2xl shrink-0">
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#6BCEBB]/60 w-10">Paid</span>
+                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
+                                    <span className="text-sm font-mono font-black text-[#6BCEBB]/40">≈ ${((statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
                                 </div>
-
-                                {/* Payment request cards (Pending bubbles) */}
-                                {pendingGroups.length > 0 && (
-                                    <div className="flex-1 overflow-x-auto flex items-center gap-3 custom-scrollbar pr-2 pb-2">
-                                        {pendingGroups.map(group => {
-                                            const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                                            const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
-                                            const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-
-                                            return (
-                                                <div key={group.vendorId}
-                                                    onClick={() => setRequestGroup(group)}
-                                                    className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] cursor-pointer hover:-translate-y-1 transition-transform border border-white/10 shadow-lg bg-black/20"
-                                                    style={{ borderTopColor: color }}>
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <p className="font-black text-[11px] uppercase tracking-wider" style={{ color }}>{group.vendorId}</p>
-                                                        <span className="text-[9px] font-mono font-bold bg-white/10 text-(--text-color) px-1.5 py-0.5 rounded">{group.items.length} ITM</span>
-                                                    </div>
-                                                    <p className="font-mono font-black text-sm text-(--text-color)">{fmtMXN(group.total)}</p>
-                                                    {isProd && paidPerc > 0 ? (
-                                                        <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2">
-                                                            <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Request Payment</div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#FACC15]/60 w-10">Req</span>
+                                    <span className="text-sm font-mono font-black text-[#FACC15]">{fmtMXN(statusTotals.Requested || 0)}</span>
+                                    <span className="text-sm font-mono font-black text-[#FACC15]/40">≈ ${((statusTotals.Requested || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                                </div>
                             </div>
-                            {/* Add Payment/Expense buttons row */}
-                            <div className="flex items-center gap-3">
+
+                            {/* Add Payment button + Vendor request cards inline */}
+                            <div className="flex-1 overflow-x-auto flex items-center gap-3 custom-scrollbar pr-2 pb-2">
                                 <button onClick={() => setShowAdd(true)}
-                                    className="flex items-center gap-2.5 px-5 py-3 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-2xl transition-all shadow-lg hover:scale-105 active:scale-95">
-                                    <svg className="w-5 h-5 flex-shrink-0"><use href="#plus" /></svg>
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Add Payment</span>
+                                    className="shrink-0 rounded-2xl flex flex-col items-center justify-center gap-2 p-3 min-w-[100px] h-full bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) cursor-pointer hover:-translate-y-1 transition-all shadow-lg">
+                                    <svg className="w-6 h-6 shrink-0"><use href="#plus" /></svg>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">Add<br />Payment</span>
                                 </button>
-                                <button onClick={() => setShowAdd(true)}
-                                    className="flex items-center gap-2.5 px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white rounded-2xl transition-all">
-                                    <svg className="w-5 h-5 flex-shrink-0"><use href="#dollar" /></svg>
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Add Expense</span>
-                                </button>
+                                {pendingGroups.map(group => {
+                                    const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
+                                    const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
+                                    const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+
+                                    return (
+                                        <div key={group.vendorId}
+                                            onClick={() => setRequestGroup(group)}
+                                            className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] cursor-pointer hover:-translate-y-1 transition-transform border border-white/10 shadow-lg bg-black/20"
+                                            style={{ borderTopColor: color }}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="font-black text-[11px] uppercase tracking-wider" style={{ color }}>{group.vendorId}</p>
+                                                <span className="text-[9px] font-mono font-bold bg-white/10 text-(--text-color) px-1.5 py-0.5 rounded">{group.items.length} ITM</span>
+                                            </div>
+                                            <p className="font-mono font-black text-sm text-(--text-color)">{fmtMXN(group.total)}</p>
+                                            {isProd && paidPerc > 0 ? (
+                                                <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2">
+                                                    <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
+                                                </div>
+                                            ) : (
+                                                <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Request Payment</div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
