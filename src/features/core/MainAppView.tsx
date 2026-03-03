@@ -312,15 +312,13 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Dashboard</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Client') && (
-                            <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <LayoutDashboard size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Overview</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Overview</span>
-                            </li>
-                        )}
+                        <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                            <div className="sidebar-list-item-main">
+                                <LayoutDashboard size={20} strokeWidth={1.75} />
+                                <span className="sidebar-list-item-text">Overview</span>
+                            </div>
+                            <span className="sidebar-compact-tooltip">Overview</span>
+                        </li>
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
