@@ -37,7 +37,8 @@ import {
     isUploadWizardOpenAtom,
     languageAtom,
     themeAtom,
-    performanceModeAtom
+    performanceModeAtom,
+    paymentsOverviewModeAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -212,6 +213,7 @@ const InventoryBar: React.FC = () => {
 const FinanceBar: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const docs = useAtomValue(financeDataAtom);
+    const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
 
     const grandTotal = useMemo(() => docs.reduce((a, b) => a + (b.amount || 0), 0), [docs]);
     const paid = useMemo(() => docs.filter((d: any) => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0), [docs]);
@@ -220,31 +222,38 @@ const FinanceBar: React.FC = () => {
     const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
     return (
-        <>
-            <ModuleBadge icon="credit-card" label="Payments" color="#A78BFA" />
+        <div className="flex flex-1 items-center gap-4 ml-2">
+            <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
 
-            <div className="flex items-center gap-6 ml-6 mr-4 border-l border-white/10 pl-6 h-8">
+            {overviewMode === 'collapsed' && (
+                <button onClick={() => setOverviewMode('extended')}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#A78BFA]/10 border border-[#A78BFA]/30 text-[#A78BFA] hover:bg-[#A78BFA]/20 transition-all text-[10px] font-black uppercase tracking-widest">
+                    Show Overview
+                </button>
+            )}
+
+            <div className="hidden md:flex items-center gap-6 ml-2 h-8">
                 <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none mb-1">Total Expenses</span>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none mb-1">Total</span>
                     <span className="text-xs font-mono font-black text-white leading-none">{fmt(grandTotal)}</span>
                 </div>
                 <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-green-400/20 uppercase tracking-[0.2em] leading-none mb-1">Disbursed</span>
+                    <span className="text-[8px] font-black text-green-400/30 uppercase tracking-[0.2em] leading-none mb-1">Paid</span>
                     <span className="text-xs font-mono font-black text-green-400 leading-none">{fmt(paid)}</span>
                 </div>
                 <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-yellow-400/20 uppercase tracking-[0.2em] leading-none mb-1">Pending</span>
+                    <span className="text-[8px] font-black text-yellow-400/30 uppercase tracking-[0.2em] leading-none mb-1">Pend</span>
                     <span className="text-xs font-mono font-black text-yellow-500 leading-none">{fmt(pending)}</span>
                 </div>
             </div>
 
             <div className="flex items-center gap-4 ml-auto">
-                <div className="flex flex-col items-end mr-4">
+                <div className="hidden lg:flex flex-col items-end mr-2">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Pending USD</span>
-                    <span className="text-xs font-mono font-black text-(--main-color) leading-none">${(pending / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                    <span className="text-xs font-mono font-black text-[#A78BFA] leading-none">${(pending / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 
