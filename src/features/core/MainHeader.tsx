@@ -407,53 +407,65 @@ export function MainHeader() {
                 )}
 
                 <div className="flex items-center gap-1 relative">
-                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all">
-                        <Settings size={15} strokeWidth={2} className={`transition-transform duration-300 ${isSettingsOpen ? 'rotate-90' : ''}`} />
-                    </button>
+                    <Settings size={18} strokeWidth={1.75}
+                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                        className={`cursor-pointer text-white/40 hover:text-white/80 transition-all duration-300 ${isSettingsOpen ? 'rotate-90 text-[#6BCEBB]' : ''}`} />
                     {isSettingsOpen && (
-                        <div className="absolute top-10 right-0 w-64 bg-black/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-4 flex flex-col gap-4 z-50">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[#6BCEBB]">Settings</span>
-                                <button onClick={() => setIsSettingsOpen(false)} className="text-white/40 hover:text-white"><X size={14} /></button>
-                            </div>
+                        <>
+                            {/* Backdrop */}
+                            <div className="fixed inset-0 z-[99]" onClick={() => setIsSettingsOpen(false)} />
+                            {/* Panel */}
+                            <div className="absolute top-12 right-0 w-72 bg-[#0d0d1a]/98 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
 
-                            <div className="flex flex-col gap-3">
-                                <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors text-left">
-                                    <Globe size={16} strokeWidth={2} />
-                                    <span className="flex-1 shrink-0 whitespace-nowrap overflow-hidden text-ellipsis w-24">Language</span>
-                                    <span className="text-[10px] uppercase font-bold bg-white/10 px-2 py-0.5 rounded">{language}</span>
-                                </button>
+                                {/* Header */}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#6BCEBB]">Settings</span>
+                                    <button onClick={() => setIsSettingsOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/30 hover:text-white transition-all">
+                                        <X size={12} />
+                                    </button>
+                                </div>
 
-                                <button onClick={() => setPerformanceMode(!performanceMode)} className={`flex items-center gap-3 text-sm transition-colors text-left ${performanceMode ? 'text-yellow-400' : 'text-white/80 hover:text-white'}`}>
-                                    <Zap size={16} strokeWidth={2} />
-                                    <span className="flex-1 shrink-0 whitespace-nowrap overflow-hidden text-ellipsis w-10">Performance Mode</span>
-                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${performanceMode ? 'bg-yellow-400/20 text-yellow-500' : 'bg-white/10 text-white/50'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
-                                </button>
+                                {/* Language */}
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Language</span>
+                                    <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group">
+                                        <Globe size={15} strokeWidth={1.75} className="text-white/40 group-hover:text-white/70 transition-colors" />
+                                        <span className="flex-1 text-xs font-bold text-white/70">Display Language</span>
+                                        <span className="text-[10px] uppercase font-black bg-white/10 px-2.5 py-1 rounded-lg text-white/60">{language === 'en' ? 'EN' : 'ES'}</span>
+                                    </button>
+                                </div>
 
-                                <button onClick={handleRefresh} className="flex items-center gap-3 text-sm text-white/80 hover:text-white transition-colors text-left w-full">
-                                    <RefreshCw size={16} strokeWidth={2} />
-                                    <span className="flex-1">Refresh Sync</span>
-                                </button>
-                            </div>
+                                {/* Appearance — Theme + Performance */}
+                                <div className="flex flex-col gap-3">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Appearance</span>
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {themes.map(th => (
+                                            <button key={th.name} onClick={() => setTheme(th.name)}
+                                                className={`w-8 h-8 rounded-xl cursor-pointer transition-all hover:scale-110 border ${theme === th.name ? 'border-[#6BCEBB] ring-2 ring-[#6BCEBB]/30 scale-110 shadow-lg' : 'border-white/10 hover:border-white/20'}`}
+                                                style={{ background: th.gradient }} title={th.name} />
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setPerformanceMode(!performanceMode)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group mt-1">
+                                        <Zap size={15} strokeWidth={1.75} className={`transition-colors ${performanceMode ? 'text-yellow-400' : 'text-white/40 group-hover:text-white/70'}`} />
+                                        <span className="flex-1 text-xs font-bold text-white/70">Performance Mode</span>
+                                        <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-lg transition-colors ${performanceMode ? 'bg-yellow-400/20 text-yellow-400' : 'bg-white/10 text-white/40'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
+                                    </button>
+                                </div>
 
-                            <div className="border-t border-white/10 pt-3">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2 block">Theme</span>
-                                <div className="grid grid-cols-6 gap-2">
-                                    {themes.map(th => (
-                                        <button key={th.name} onClick={() => setTheme(th.name)}
-                                            className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 border border-white/10 ${theme === th.name ? 'ring-2 ring-white ring-offset-2 ring-offset-[#111]' : ''}`}
-                                            style={{ background: th.gradient }} title={th.name} />
-                                    ))}
+                                {/* Actions */}
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Actions</span>
+                                    <button onClick={handleRefresh} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group">
+                                        <RefreshCw size={15} strokeWidth={1.75} className="text-white/40 group-hover:text-white/70 transition-colors" />
+                                        <span className="flex-1 text-xs font-bold text-white/70 text-left">Refresh Sync</span>
+                                    </button>
+                                    <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group">
+                                        <LogOut size={15} strokeWidth={1.75} className="text-red-400/60 group-hover:text-red-400 transition-colors" />
+                                        <span className="flex-1 text-xs font-bold text-red-400/70 group-hover:text-red-400 text-left transition-colors">Logout Session</span>
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="border-t border-white/10 pt-3">
-                                <button onClick={logout} className="flex items-center gap-3 text-sm text-red-400 hover:text-red-300 transition-colors w-full text-left">
-                                    <LogOut size={16} strokeWidth={2} />
-                                    <span className="flex-1">Logout Session</span>
-                                </button>
-                            </div>
-                        </div>
+                        </>
                     )}
                 </div>
             </div>
