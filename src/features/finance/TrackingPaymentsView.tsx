@@ -12,7 +12,7 @@ import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, pay
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg } from '../../lib/utils';
+import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -857,9 +857,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
                                 <span className="text-[10px] uppercase font-black tracking-widest text-(--text-color-secondary)">Rates</span>
                                 <div className="h-4 w-px bg-white/10" />
-                                <span className="text-xs font-mono font-bold text-[#FACC15]" title="Book Rate">Bk {exchangeRate.toFixed(2)}</span>
+                                <span className="text-xs font-mono font-bold text-[#FACC15]" title="Book Rate">Workbook {exchangeRate.toFixed(2)}</span>
                                 <div className="h-4 w-px bg-white/10" />
-                                <span className="text-xs font-mono font-bold text-[#6BCEBB]" title="Live Rate">Lv {liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                                <span className="text-xs font-mono font-bold text-[#6BCEBB]" title="Live Rate">Internet {liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1141,8 +1141,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
                                                                     {relatedIds.map((id: string, i: number) => {
                                                                         const invItem = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
-                                                                        const itemNum = (invItem?.data as any)?.item_number || invItem?.data?.itemNumber;
-                                                                        const displayTag = itemNum ? `#${itemNum}` : typeof id === 'string' && id.length > 10 ? id.slice(0, 8) + '...' : id;
+                                                                        let displayTag = id;
+                                                                        if (invItem) {
+                                                                            const norm = normalizeInventoryData(invItem.data);
+                                                                            const calculated = calculateCodesAndPrices(norm, liveExchangeRate || exchangeRate, '326');
+                                                                            displayTag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : (norm.itemNumber ? `#${norm.itemNumber}` : id);
+                                                                        } else if (typeof id === 'string' && id.length > 10) {
+                                                                            displayTag = id.slice(0, 8) + '...';
+                                                                        }
                                                                         return (
                                                                             <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
                                                                                 {displayTag}
