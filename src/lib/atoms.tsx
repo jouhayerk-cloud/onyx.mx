@@ -227,6 +227,8 @@ export const dashboardStatusFilterAtom = atom<TrafficLightStatus>('ALL');
 export const paymentDestinationFilterAtom = atom<'All' | PaymentDestination>('All');
 export const paymentBankFilterAtom = atom<'All' | 'Ramses BBVA' | 'Martha BBVA' | 'BOA' | 'Direct Client Wire'>('All');
 export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
+export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
+export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('extended');
 
 // Experimental Dashboard State
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});
