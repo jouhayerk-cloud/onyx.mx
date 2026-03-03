@@ -832,6 +832,18 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         return m;
     }, [docs]);
 
+    const activeDestPendingRecords = useMemo(() => {
+        return destinationFilter !== 'All'
+            ? docs.filter(d => d.destination === destinationFilter && (d.status === 'Requested' || !d.status))
+            : [];
+    }, [docs, destinationFilter]);
+
+    const activeDestReqNetMXN = useMemo(() => {
+        return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+    }, [activeDestPendingRecords]);
+
+    const activeDestReqNetUSD = activeDestReqNetMXN / (liveExchangeRate || exchangeRate);
+
     if (isLoading) return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
 
     return (
@@ -994,6 +1006,24 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 </button>
                             ))}
                         </div>
+
+                        {/* Dynamic Pending Net Total for Active Destination */}
+                        {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
+                            <div className="flex items-center gap-3 px-4 py-1.5 bg-(--main-color)/10 border border-(--main-color)/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner">
+                                <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">
+                                    PENDING REQ
+                                </span>
+                                <div className="h-4 w-px bg-(--main-color)/20" />
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-[13px] font-mono font-black text-(--text-color)">
+                                        {fmtMXN(activeDestReqNetMXN)}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold text-(--main-color)/70">
+                                        ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1006,8 +1036,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const spread = isActive ? -8 : Math.pow(offset, 2) * 2;
                                 const rotation = isActive ? 0 : offset * 6;
 
-                                const reqTotal = docs.filter(d => d.destination === key && (d.status === 'Requested' || !d.status)).reduce((acc, d) => acc + (d.amount || 0), 0);
-
                                 return (
                                     <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
                                         className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer outline-none relative ${isActive ? 'scale-150 z-20 mx-4 brightness-125 drop-shadow-2xl' : 'opacity-70 hover:opacity-100 -mx-2.5 hover:scale-125 hover:-translate-y-2 hover:z-30'}`}
@@ -1016,12 +1044,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             zIndex: isActive ? 40 : 10 - Math.abs(offset),
                                         }}
                                         title={cfg.name}>
-
-                                        {isActive && reqTotal > 0 && (
-                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[6px] font-mono font-black tracking-widest bg-(--main-color) text-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap animate-fade-in z-50 leading-none">
-                                                {fmtMXN(reqTotal)}
-                                            </div>
-                                        )}
 
                                         <img src={cfg.icon} alt={cfg.name} className={`h-9 w-auto object-contain transition-all drop-shadow-lg`} />
                                     </button>
