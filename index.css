@@ -2651,55 +2651,160 @@ html.theme-tekis {
     color: var(--text-color-secondary);
   }
 
-  /* ── Inventory List View Fixes ── */
-  /* List item row backgrounds */
-  .inventory-item-card,
-  .flex.items-center.gap-4.bg-black\/20 {
-    background-color: rgba(0, 0, 0, 0.03) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
+  /* ── Remove all text drop shadows ── */
+  .drop-shadow-md,
+  .drop-shadow-lg,
+  .drop-shadow-sm,
+  .drop-shadow {
+    filter: none !important;
   }
 
-  .flex.items-center.gap-4.bg-black\/20:hover {
-    background-color: rgba(0, 0, 0, 0.06) !important;
+  /* ── Inventory List View ── */
+  .inventory-item-card {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+    border-color: rgba(0, 0, 0, 0.06) !important;
   }
 
-  /* Expanded detail panel in list view */
-  .bg-black\/40.backdrop-blur-md {
-    background-color: rgba(0, 0, 0, 0.05) !important;
+  /* ── Grid View: card overlay gradient ── */
+  .bg-linear-to-t.from-black {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.25), transparent) !important;
   }
 
-  /* Label classes used in inventory */
+  /* Label classes */
   .text-white\/15,
-  .text-white\/20 {
+  .text-white\/20,
+  .text-white\/25 {
     color: var(--text-color-secondary) !important;
-    opacity: 0.6;
-  }
-
-  /* ── Inventory Grid View Fixes ── */
-  /* Grid card backgrounds */
-  .inventory-item-card.bg-black\/40 {
-    background-color: rgba(0, 0, 0, 0.04) !important;
+    opacity: 0.7;
   }
 
   /* ── Edit Form & Detail Panels ── */
-  /* Input labels and helper text */
   label,
   .block.ml-1 {
     color: var(--text-color-secondary) !important;
   }
 
-  /* Edit form panel backgrounds */
-  .bg-black\/10,
-  .bg-black\/20 {
-    background-color: rgba(0, 0, 0, 0.04) !important;
-  }
-
-  /* ── Header bar text fixes ── */
-  .text-white\/35 {
+  /* ── Dashboard & all white text overrides ── */
+  .text-white\/30,
+  .text-white\/35,
+  .text-white\/40,
+  .text-white\/50,
+  .text-white\/60 {
     color: var(--text-color-secondary) !important;
   }
 
-  /* Make sure main-color text stays vibrant on light */
+  .text-white\/70,
+  .text-white\/80,
+  .text-white\/90,
+  .text-white {
+    color: var(--text-color) !important;
+  }
+
+  /* ── Black backgrounds → very light ── */
+  .bg-black\/5 {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+  }
+
+  .bg-black\/10 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .bg-black\/30 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .bg-black\/40 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .bg-black\/50 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  /* ── Semi-transparent white backgrounds → subtle dark ── */
+  .bg-white\/2 {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+  }
+
+  .bg-white\/5 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .bg-white\/8 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .bg-white\/10 {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .bg-white\/15 {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* Border visibility */
+  .border-white\/5,
+  .border-white\/10 {
+    border-color: rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* ── Upload form: tag/label readability ── */
+  .placeholder-white\/15::placeholder {
+    color: var(--text-color-secondary) !important;
+    opacity: 0.3;
+  }
+
+  /* Ensure mono/numeric text is readable */
+  .font-mono {
+    color: var(--text-color);
+  }
+
+  /* Status badges stay colored */
+  .text-\[\#6BCEBB\] {
+    color: #059669 !important;
+  }
+
+  .text-\[\#FACC15\] {
+    color: #b45309 !important;
+  }
+
+  .text-\[\#F87171\] {
+    color: #dc2626 !important;
+  }
+
+  .text-\[\#8DC63F\] {
+    color: #16a34a !important;
+  }
+
+  .text-\[\#00AEEF\] {
+    color: #0284c7 !important;
+  }
+
+  .text-\[\#A78BFA\] {
+    color: #7c3aed !important;
+  }
+
+  /* Exchange rate text */
+  .text-\[\#6BCEBB\]\/50,
+  .text-\[\#6BCEBB\]\/40,
+  .text-\[\#6BCEBB\]\/60 {
+    color: rgba(5, 150, 105, 0.6) !important;
+  }
+
+  .text-\[\#FACC15\]\/50,
+  .text-\[\#FACC15\]\/40 {
+    color: rgba(180, 83, 9, 0.6) !important;
+  }
+
+  .text-\[\#F87171\]\/50 {
+    color: rgba(220, 38, 38, 0.6) !important;
+  }
+
+  /* Make sure main-color text stays vibrant */
   .text-green-400 {
     color: #16a34a !important;
   }
@@ -2722,11 +2827,6 @@ html.theme-tekis {
 
   .text-red-500 {
     color: #b91c1c !important;
-  }
-
-  /* ── Filters bar ── */
-  .bg-black\/5 {
-    background-color: rgba(0, 0, 0, 0.03) !important;
   }
 }
 
