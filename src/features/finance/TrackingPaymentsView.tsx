@@ -983,11 +983,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 {/* Header/Controls below general overview */}
                 <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
                     <div className="flex items-center gap-4">
-                        {overviewMode === 'collapsed' && (
-                            <button onClick={() => setOverviewMode('extended')} className="p-2 bg-white/5 hover:bg-white/10 border border-(--border-color) rounded-xl text-(--text-color-secondary) transition-all text-[10px] font-black uppercase tracking-widest mr-2 group/ov">
-                                <span className="group-hover:text-(--text-color)">Show Overview</span>
-                            </button>
-                        )}
 
                         {/* Filters embedded here */}
                         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">

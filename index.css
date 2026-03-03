@@ -2525,6 +2525,85 @@ html.theme-tekis {
   .project-box:hover {
     background-color: rgba(0, 0, 0, 0.06);
   }
+
+  /* ── Header bar for light themes ── */
+  .h-16 {
+    --tw-border-opacity: 0.08;
+  }
+
+  /* ── Inventory & Payments: table text readability ── */
+  table th {
+    color: var(--text-color-secondary) !important;
+    background: rgba(0,0,0,0.03) !important;
+  }
+
+  table td {
+    color: var(--text-color) !important;
+  }
+
+  table tr:hover {
+    background: rgba(0,0,0,0.04) !important;
+  }
+
+  /* Overview panel backgrounds */
+  .bg-black\/20 {
+    background-color: rgba(0,0,0,0.04) !important;
+  }
+
+  .bg-black\/5 {
+    background-color: rgba(0,0,0,0.03) !important;
+  }
+
+  /* White text overrides for content areas */
+  .text-white\/30,
+  .text-white\/40,
+  .text-white\/50,
+  .text-white\/60 {
+    color: var(--text-color-secondary) !important;
+  }
+
+  .text-white\/70,
+  .text-white\/80,
+  .text-white {
+    color: var(--text-color) !important;
+  }
+
+  /* Ensure mono/numeric text is readable */
+  .font-mono {
+    color: var(--text-color);
+  }
+
+  /* Status badges stay colored */
+  .text-\[\#6BCEBB\] { color: #059669 !important; }
+  .text-\[\#FACC15\] { color: #b45309 !important; }
+  .text-\[\#F87171\] { color: #dc2626 !important; }
+  .text-\[\#8DC63F\] { color: #16a34a !important; }
+
+  /* Exchange rate text in overview */
+  .text-\[\#6BCEBB\]\/50,
+  .text-\[\#6BCEBB\]\/40 { color: rgba(5, 150, 105, 0.6) !important; }
+  .text-\[\#FACC15\]\/50,
+  .text-\[\#FACC15\]\/40 { color: rgba(180, 83, 9, 0.6) !important; }
+  .text-\[\#F87171\]\/50 { color: rgba(220, 38, 38, 0.6) !important; }
+
+  /* Semi-transparent backgrounds adapt for light */
+  .bg-white\/5 {
+    background-color: rgba(0,0,0,0.04) !important;
+  }
+  .bg-white\/10 {
+    background-color: rgba(0,0,0,0.06) !important;
+  }
+
+  /* Border visibility on light backgrounds */
+  .border-white\/5,
+  .border-white\/10 {
+    border-color: rgba(0,0,0,0.08) !important;
+  }
+
+  /* Filter buttons readability */
+  button .tracking-widest {
+    color: var(--text-color-secondary);
+  }
 }
 
 /* Light theme: fix dark mode Tailwind hardcoded colors in wizard/upload */
