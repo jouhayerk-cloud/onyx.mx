@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.10.68
+- **Light Theme Overhaul:** Comprehensive fixes for all light themes (Nacar, Tehu, Tekis) across Dashboard, Inventory, Payments, Upload, and Wizard views
+- **Drop Shadows Removed:** Removed all text drop-shadows from grid cards, catalog images, and item thumbnails for cleaner rendering
+- **Dashboard Theme-Aware:** Stat cards, section titles (Acquisition by Vendor, By Shape · Type, By Material), bar chart labels, and panel backgrounds now use CSS variables
+- **Inventory Top Bar:** Types, Count, view toggle, and Filters buttons use theme-aware glass backgrounds and borders
+- **Inventory Grid Cards:** Card gradient overlay now adapts properly for light backgrounds
+- **Filters Panel:** Filter bars use glass-bg and border-color variables instead of hardcoded black
+- **Upload Entry Form:** Labels, inputs, and auto-generated suggestion tags are now readable on light themes
+- **Wizard Renamed:** "Start Wizard" → "New Item" with smaller, more compact launcher button
+- **Payment Card Icons:** Destination picker icons are now free-floating, borderless, and larger with stacked spread animation
+- **Sidebar Version Tag:** Logo and version number use theme-aware text colors, visible on both light and dark themes
+- **Background Containers:** Increased transparency across the app for a lighter, more modern feel
+
 ## v1.10.67
 - **Top Bar Refactor:** Removed Onyx logo, version count, inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
 - **Search Bar:** Enhanced to full-width liquid glass style with responsive animations
