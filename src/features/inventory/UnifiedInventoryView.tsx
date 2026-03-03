@@ -232,7 +232,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <OnyxMiniLogo className="w-full h-full object-contain" />
                         </div>
                     )}
-                    <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
 
                     {/* Top bar: vendor tag left, toggle button right */}
                     <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start z-10">
@@ -253,7 +253,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     {!isExpanded && (
                         <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
                             <div className="flex items-end justify-between mb-1 gap-2">
-                                <p className="font-black text-(--main-color) text-base leading-none truncate drop-shadow-md">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
+                                <p className="font-black text-(--main-color) text-base leading-none truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
                                 <div className="flex flex-col items-end shrink-0">
                                     <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
                                     <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
@@ -539,13 +539,13 @@ export const UnifiedInventoryView = () => {
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
 
             {/* Top row with Types, Count, toggle Display, and Filter expander */}
-            <div className="flex justify-between items-center px-5 py-3 mt-4 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.3)] mx-2 shrink-0 z-30 relative">
+            <div className="flex justify-between items-center px-5 py-3 mt-4 bg-(--glass-bg) backdrop-blur-xl rounded-2xl border border-(--border-color) mx-2 shrink-0 z-30 relative">
                 <div className="flex gap-8 items-center">
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-0.5">Types</span>
-                        <span className="text-sm font-mono font-black text-white leading-none">{filteredItems.length.toLocaleString('en-US')}</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-0.5">Types</span>
+                        <span className="text-sm font-mono font-black text-(--text-color) leading-none">{filteredItems.length.toLocaleString('en-US')}</span>
                     </div>
-                    <div className="w-px h-8 bg-white/10" />
+                    <div className="w-px h-8 bg-(--border-color)" />
                     <div className="flex flex-col">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
                         <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalCount.toLocaleString('en-US')}</span>
@@ -554,14 +554,14 @@ export const UnifiedInventoryView = () => {
 
                 <div className="flex items-center gap-3">
                     <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white transition-all shadow-sm"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-(--glass-bg) border border-(--border-color) hover:bg-(--main-color)/10 text-(--text-color-secondary) hover:text-(--text-color) transition-all"
                         title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}>
                         <span className="text-lg! leading-none font-black opacity-80">{viewMode === 'grid' ? '☰' : '⊞'}</span>
                     </button>
 
                     <button
                         onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                        className={`px-4 h-10 flex items-center gap-2.5 rounded-xl transition-all border shadow-sm ${isFiltersOpen ? 'bg-[#6BCEBB]/15 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'}`}>
+                        className={`px-4 h-10 flex items-center gap-2.5 rounded-xl transition-all border ${isFiltersOpen ? 'bg-[#6BCEBB]/15 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-(--glass-bg) border-(--border-color) text-(--text-color-secondary) hover:text-(--text-color) hover:bg-(--main-color)/10'}`}>
                         <svg className={`w-4 h-4 transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`}><use href="#filter" /></svg>
                         <span className="text-[10px] uppercase font-black tracking-[0.1em] hidden sm:block mt-0.5">Filters</span>
                     </button>
@@ -571,12 +571,12 @@ export const UnifiedInventoryView = () => {
             {/* Collapsible Filters Panel */}
             <div className={`transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shrink-0 overflow-hidden relative z-20 ${isFiltersOpen ? 'max-h-64 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4 -mt-4'}`}>
                 <div className="flex flex-col md:flex-row items-center gap-4 px-2 py-2 mx-2">
-                    <div className="flex bg-black/30 p-1.5 rounded-xl border border-white/5 shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar no-scrollbar shadow-inner">
+                    <div className="flex bg-(--glass-bg) p-1.5 rounded-xl border border-(--border-color) shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar no-scrollbar">
                         {['All', 'Available', 'Production', 'Acquisition'].map(s => (
                             <button key={s} onClick={() => setStatusFilter(s as any)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all whitespace-nowrap ${statusFilter === s ? 'bg-[#6BCEBB] text-black shadow-lg translate-y-[-1px]' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}>{s}</button>
                         ))}
                     </div>
-                    <div className="flex bg-black/30 p-1.5 rounded-xl border border-white/5 overflow-x-auto grow custom-scrollbar no-scrollbar w-full shadow-inner">
+                    <div className="flex bg-(--glass-bg) p-1.5 rounded-xl border border-(--border-color) overflow-x-auto grow custom-scrollbar no-scrollbar w-full">
                         <button onClick={() => setVendorFilter('All')} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40 rounded-lg transition-all shrink-0 ${vendorFilter === 'All' ? 'bg-white/15 text-white shadow-sm' : 'hover:text-white hover:bg-white/5'}`}>ALL</button>
                         <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
                         {activeVendors.map(v => {
@@ -595,7 +595,7 @@ export const UnifiedInventoryView = () => {
                                 <LoadingIndicator />
                             </div>
                         ) : filteredItems.length === 0 ? (
-                            <div className="col-span-full h-64 flex items-center justify-center text-[10px] font-black uppercase tracking-[0.3em] text-white/10">
+                            <div className="col-span-full h-64 flex items-center justify-center text-[10px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) opacity-40">
                                 No items found
                             </div>
                         ) : (

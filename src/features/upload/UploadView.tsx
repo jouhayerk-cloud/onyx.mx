@@ -32,15 +32,15 @@ export function UploadView() {
 
                     <button
                         onClick={() => setIsWizardOpen(true)}
-                        className="group relative w-full overflow-hidden rounded-[32px] bg-white/5 border border-white/10 p-1 transition-all hover:border-(--main-color)/50 hover:bg-white/8 active:scale-[0.98]"
+                        className="group relative w-full overflow-hidden rounded-[24px] bg-(--glass-bg) border border-(--border-color) p-1 transition-all hover:border-(--main-color)/50 hover:bg-(--main-color)/5 active:scale-[0.98]"
                     >
-                        <div className="flex items-center justify-between px-8 py-10 bg-linear-to-br from-(--glass-bg) to-transparent rounded-[28px]">
+                        <div className="flex items-center justify-between px-6 py-6 bg-linear-to-br from-(--glass-bg) to-transparent rounded-[20px]">
                             <div className="text-left">
-                                <h3 className="text-4xl font-black text-(--text-color) uppercase tracking-tighter mb-2 group-hover:text-(--main-color) transition-colors">ADD ENTRY</h3>
-                                <p className="text-[10px] text-(--text-color-secondary) font-bold uppercase tracking-[0.3em]">Step-by-step guided entry process for maximum speed</p>
+                                <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter mb-1 group-hover:text-(--main-color) transition-colors">NEW ITEM</h3>
+                                <p className="text-[9px] text-(--text-color-secondary) font-bold uppercase tracking-[0.3em]">Step-by-step guided entry</p>
                             </div>
-                            <div className="w-16 h-16 rounded-full bg-(--glass-bg) flex items-center justify-center border border-(--border-color) group-hover:bg-(--main-color) group-hover:text-black transition-all">
-                                <svg className="w-8 h-8 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
+                            <div className="w-12 h-12 rounded-full bg-(--glass-bg) flex items-center justify-center border border-(--border-color) group-hover:bg-(--main-color) group-hover:text-black transition-all">
+                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
                             </div>
                         </div>
                     </button>

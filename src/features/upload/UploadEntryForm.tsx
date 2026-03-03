@@ -15,9 +15,9 @@ import { GoogleGenAI, Type } from '@google/genai';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-const lbl = "text-[10px] font-black uppercase tracking-widest text-white/50 block mb-2";
-const inp = "w-full bg-white/[0.04] border border-white/[0.1] rounded-xl px-4 py-3 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
-const inpNum = inp + " font-mono text-center text-white/90";
+const lbl = "text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) block mb-2";
+const inp = "w-full bg-(--glass-bg) border border-(--border-color) rounded-xl px-4 py-3 text-sm text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:outline-none focus:border-(--main-color)/50 transition-all";
+const inpNum = inp + " font-mono text-center";
 
 const MEDIA_TYPES = [
     { id: 'none', label: 'None', icon: 'x' },
@@ -40,7 +40,7 @@ const SuggestChips: React.FC<{
                 <button key={v} type="button" onClick={() => onSelect(v)}
                     className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all
                         ${v === current ? 'border-(--main-color) text-(--main-color) bg-(--main-color)/10'
-                            : 'border-white/10 text-white/25 hover:border-white/30 hover:text-white/60'}`}>
+                            : 'border-(--border-color) text-(--text-color-secondary) hover:border-(--main-color)/30 hover:text-(--text-color)'}`}>
                     {v}
                 </button>
             ))}

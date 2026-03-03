@@ -16,7 +16,7 @@ export const ItemThumbnail = ({ imageUrl, color, shape, material }: { imageUrl: 
 
         let isActive = true;
         setIsLoading(true);
-        
+
         const fileId = (imageUrl.match(/id=([\w-]+)/) || [])[1];
         if (!fileId) {
             setIsLoading(false);
@@ -39,32 +39,32 @@ export const ItemThumbnail = ({ imageUrl, color, shape, material }: { imageUrl: 
             })
             .catch(e => console.error("Failed to load thumbnail", e))
             .finally(() => {
-                if(isActive) setIsLoading(false);
+                if (isActive) setIsLoading(false);
             });
 
         return () => { isActive = false; };
     }, [imageUrl]);
 
     return (
-        <div 
-            className="w-full h-full rounded-lg flex items-center justify-center overflow-hidden shrink-0 relative p-1" 
-            style={{ 
+        <div
+            className="w-full h-full rounded-lg flex items-center justify-center overflow-hidden shrink-0 relative p-1"
+            style={{
                 backgroundColor: 'rgba(0,0,0,0.2)',
                 boxShadow: 'inset 0px 8px 15px -8px rgba(0,0,0,0.5)'
             }}
         >
             <div className="absolute inset-0 opacity-70" style={{ background: color || 'transparent' }} />
-            {isLoading ? 
+            {isLoading ?
                 <div className="relative scale-50 mt-2"><LoadingIndicator /></div> :
-                dataUrl ? 
-                <img src={dataUrl} alt="Item thumbnail" className="relative w-full h-full object-contain" /> : 
-                <div className="w-1/2 h-1/2 opacity-30 text-[var(--secondary-color)]">
-                    <OnyxMiniLogo />
-                </div>
+                dataUrl ?
+                    <img src={dataUrl} alt="Item thumbnail" className="relative w-full h-full object-contain" /> :
+                    <div className="w-1/2 h-1/2 opacity-30 text-[var(--secondary-color)]">
+                        <OnyxMiniLogo />
+                    </div>
             }
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-2 text-white text-left z-10">
-                <p className="font-bold text-xs truncate drop-shadow-md">{shape}</p>
-                <p className="text-[10px] opacity-80 truncate -mt-0.5 drop-shadow-md">{material}</p>
+                <p className="font-bold text-xs truncate">{shape}</p>
+                <p className="text-[10px] opacity-80 truncate -mt-0.5">{material}</p>
             </div>
         </div>
     );

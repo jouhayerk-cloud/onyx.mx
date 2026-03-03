@@ -997,21 +997,21 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                     <div className="flex items-center gap-2">
                         {/* Destination Picker — stacked card animation */}
-                        <div className="flex items-center relative h-10">
+                        <div className="flex items-center relative h-12">
                             {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
                                 const isActive = destinationFilter === key;
                                 const total = arr.length;
-                                const spread = isActive ? 0 : (idx - total / 2) * 4;
-                                const rotation = isActive ? 0 : (idx - total / 2) * 3;
+                                const spread = isActive ? 0 : (idx - total / 2) * 6;
+                                const rotation = isActive ? 0 : (idx - total / 2) * 4;
                                 return (
                                     <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
-                                        className={`p-2 rounded-xl transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isActive ? 'bg-white/15 shadow-lg border border-white/20 scale-125 z-20 mx-1' : 'bg-white/5 hover:bg-white/10 border border-transparent opacity-60 hover:opacity-100 -mx-0.5 hover:scale-110'}`}
+                                        className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer ${isActive ? 'scale-150 z-20 mx-2 brightness-125' : 'opacity-50 hover:opacity-90 -mx-0.5 hover:scale-125'}`}
                                         style={{
-                                            transform: `translateY(${spread}px) rotate(${rotation}deg) ${isActive ? 'scale(1.25)' : ''}`,
+                                            transform: `translateY(${spread}px) rotate(${rotation}deg) ${isActive ? 'scale(1.5)' : ''}`,
                                             zIndex: isActive ? 20 : 10 - Math.abs(idx - total / 2),
                                         }}
                                         title={cfg.name}>
-                                        <img src={cfg.icon} alt={cfg.name} className={`h-5 w-auto object-contain transition-all ${isActive ? 'brightness-125' : ''}`} />
+                                        <img src={cfg.icon} alt={cfg.name} className={`h-8 w-auto object-contain transition-all drop-shadow-lg`} />
                                     </button>
                                 );
                             })}

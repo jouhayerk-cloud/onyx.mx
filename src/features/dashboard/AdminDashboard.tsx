@@ -32,7 +32,7 @@ interface CategorySummary {
 const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-color)', trend }: {
     icon: React.FC<any>; label: string; value: string; subtitle?: string; color?: string; trend?: 'up' | 'down' | 'flat';
 }) => (
-    <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 flex flex-col gap-3 hover:border-white/10 transition-all group">
+    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5 flex flex-col gap-3 hover:border-(--border-color) transition-all group">
         <div className="flex items-center justify-between">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10" style={{ background: `${color}15` }}>
                 <Icon size={17} strokeWidth={1.75} style={{ color }} />
@@ -45,9 +45,9 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-colo
             )}
         </div>
         <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 mb-1">{label}</p>
-            <p className="text-xl font-black font-mono text-white leading-none tracking-tight">{value}</p>
-            {subtitle && <p className="text-[10px] font-mono text-white/30 mt-1">{subtitle}</p>}
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-1">{label}</p>
+            <p className="text-xl font-black font-mono text-(--text-color) leading-none tracking-tight">{value}</p>
+            {subtitle && <p className="text-[10px] font-mono text-(--text-color-secondary) mt-1">{subtitle}</p>}
         </div>
     </div>
 );
@@ -57,16 +57,16 @@ const BarRow = ({ label, value, max, color, count, showValue }: {
     label: string; value: number; max: number; color: string; count: number; showValue: boolean;
 }) => (
     <div className="flex items-center gap-3 group/bar">
-        <span className="text-[10px] font-black uppercase tracking-widest text-white/40 w-10 shrink-0 text-right">{label}</span>
-        <div className="flex-1 h-7 bg-white/[0.03] rounded-lg overflow-hidden relative border border-white/5">
+        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) w-10 shrink-0 text-right">{label}</span>
+        <div className="flex-1 h-7 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
             <div
                 className="h-full rounded-lg transition-all duration-700 ease-out flex items-center px-3 gap-2"
                 style={{ width: `${max > 0 ? Math.max((value / max) * 100, 2) : 0}%`, backgroundColor: `${color}40` }}
             >
-                <span className="text-[10px] font-black text-white/60 whitespace-nowrap">{count} items</span>
+                <span className="text-[10px] font-black text-(--text-color-secondary) whitespace-nowrap">{count} items</span>
             </div>
             {showValue && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-black text-white/30">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-black text-(--text-color-secondary)">
                     ${Math.ceil(value).toLocaleString()}
                 </span>
             )}
@@ -232,7 +232,7 @@ export function AdminDashboard() {
                         <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />
                         <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">Live</span>
                     </div>
-                    <span className="text-[9px] font-mono text-white/15 hidden sm:block">{items.length} records</span>
+                    <span className="text-[9px] font-mono text-(--text-color-secondary) hidden sm:block">{items.length} records</span>
                 </div>
             </div>
 
@@ -247,10 +247,10 @@ export function AdminDashboard() {
                 </div>
 
                 {/* ── Vendor Acquisition Breakdown ──────────────────────── */}
-                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
                     <div className="flex items-center gap-2 mb-4">
-                        <PieChart size={14} strokeWidth={1.75} className="text-white/30" />
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Acquisition by Vendor</h2>
+                        <PieChart size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
+                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">Acquisition by Vendor</h2>
                     </div>
                     <div className="space-y-2">
                         {vendorSummaries.map(v => (
@@ -270,22 +270,22 @@ export function AdminDashboard() {
                 {/* Two-column grid for Shape/Type and Material */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* ── Shape × Type ─────────────────────────────────── */}
-                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
-                            <Shapes size={14} strokeWidth={1.75} className="text-white/30" />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">By Shape · Type</h2>
+                            <Shapes size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">By Shape · Type</h2>
                         </div>
                         <div className="space-y-1.5">
                             {shapeTypeSummaries.map(s => (
                                 <div key={s.label} className="flex items-center gap-3">
-                                    <div className="flex-1 h-6 bg-white/[0.03] rounded-lg overflow-hidden relative border border-white/5">
+                                    <div className="flex-1 h-6 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
                                         <div
                                             className="h-full rounded-lg bg-(--main-color)/20 flex items-center px-3"
                                             style={{ width: `${Math.max((s.count / maxShapeCount) * 100, 5)}%` }}
                                         >
-                                            <span className="text-[9px] font-black text-white/50 truncate">{s.label}</span>
+                                            <span className="text-[9px] font-black text-(--text-color-secondary) truncate">{s.label}</span>
                                         </div>
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-black text-white/20">{s.count}</span>
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-black text-(--text-color-secondary)">{s.count}</span>
                                     </div>
                                 </div>
                             ))}
@@ -293,20 +293,20 @@ export function AdminDashboard() {
                     </div>
 
                     {/* ── Material ──────────────────────────────────────── */}
-                    <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
-                            <Layers size={14} strokeWidth={1.75} className="text-white/30" />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">By Material</h2>
+                            <Layers size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">By Material</h2>
                         </div>
                         <div className="space-y-1.5">
                             {materialSummaries.map(m => (
                                 <div key={m.label} className="flex items-center gap-3">
-                                    <div className="flex-1 h-6 bg-white/[0.03] rounded-lg overflow-hidden relative border border-white/5">
+                                    <div className="flex-1 h-6 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
                                         <div
                                             className="h-full rounded-lg bg-blue-500/20 flex items-center px-3"
                                             style={{ width: `${Math.max((m.count / maxMatCount) * 100, 5)}%` }}
                                         >
-                                            <span className="text-[9px] font-black text-white/50 truncate">{m.label}</span>
+                                            <span className="text-[9px] font-black text-(--text-color-secondary) truncate">{m.label}</span>
                                         </div>
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-black text-white/20">{m.count}</span>
                                     </div>
