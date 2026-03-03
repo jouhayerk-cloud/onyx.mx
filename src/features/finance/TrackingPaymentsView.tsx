@@ -1140,8 +1140,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
                                                                 <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
                                                                     {relatedIds.map((id: string, i: number) => {
-                                                                        const invItem = inventory.find(inv => inv.data.itemId === id || String(inv.row) === id);
-                                                                        const displayTag = invItem?.data?.itemNumber ? `#${invItem.data.itemNumber}` : typeof id === 'string' && id.length > 10 ? id.slice(0, 8) + '...' : id;
+                                                                        const invItem = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
+                                                                        const itemNum = (invItem?.data as any)?.item_number || invItem?.data?.itemNumber;
+                                                                        const displayTag = itemNum ? `#${itemNum}` : typeof id === 'string' && id.length > 10 ? id.slice(0, 8) + '...' : id;
                                                                         return (
                                                                             <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
                                                                                 {displayTag}
