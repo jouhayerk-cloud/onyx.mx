@@ -1144,7 +1144,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                         let displayTag = id;
                                                                         if (invItem) {
                                                                             const norm = normalizeInventoryData(invItem.data);
-                                                                            const calculated = calculateCodesAndPrices(norm, liveExchangeRate || exchangeRate, '326');
+                                                                            const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                                                                             displayTag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : (norm.itemNumber ? `#${norm.itemNumber}` : id);
                                                                         } else if (typeof id === 'string' && id.length > 10) {
                                                                             displayTag = id.slice(0, 8) + '...';
