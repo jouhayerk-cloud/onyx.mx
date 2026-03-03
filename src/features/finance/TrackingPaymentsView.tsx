@@ -1069,11 +1069,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             </td>
                                             <td className="px-3 py-3 text-center">
                                                 {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                                    <div className="w-6 h-6 mx-auto bg-white rounded-md flex items-center justify-center border border-black/10 shadow-sm">
-                                                        <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                                            alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                                            className="h-3 w-auto object-contain" />
-                                                    </div>
+                                                    <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                                        alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                                        className="h-5 mx-auto w-auto object-contain drop-shadow-sm" />
                                                 ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
                                             </td>
                                             <td className="px-3 py-3 text-center">
@@ -1141,9 +1139,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                             <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
                                                                 <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
                                                                 <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
-                                                                    {relatedIds.map((id: string, i: number) => (
-                                                                        <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] text-(--text-color-secondary)">{id}</span>
-                                                                    ))}
+                                                                    {relatedIds.map((id: string, i: number) => {
+                                                                        const invItem = inventory.find(inv => inv.data.itemId === id || String(inv.row) === id);
+                                                                        const displayTag = invItem?.data?.itemNumber ? `#${invItem.data.itemNumber}` : typeof id === 'string' && id.length > 10 ? id.slice(0, 8) + '...' : id;
+                                                                        return (
+                                                                            <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
+                                                                                {displayTag}
+                                                                            </span>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </div>
                                                         )}
