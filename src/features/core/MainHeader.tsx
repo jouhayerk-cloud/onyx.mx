@@ -265,28 +265,6 @@ const FinanceBar: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            <div className="hidden md:flex items-center gap-6 ml-2 h-8">
-                <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none mb-1">Total</span>
-                    <span className="text-xs font-mono font-black text-white leading-none">{fmt(grandTotal)}</span>
-                </div>
-                <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-green-400/30 uppercase tracking-[0.2em] leading-none mb-1">Paid</span>
-                    <span className="text-xs font-mono font-black text-green-400 leading-none">{fmt(paid)}</span>
-                </div>
-                <div className="flex flex-col justify-center">
-                    <span className="text-[8px] font-black text-yellow-400/30 uppercase tracking-[0.2em] leading-none mb-1">Pend</span>
-                    <span className="text-xs font-mono font-black text-yellow-500 leading-none">{fmt(pending)}</span>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-4 ml-auto">
-                <div className="hidden lg:flex flex-col items-end mr-2">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Pending USD</span>
-                    <span className="text-xs font-mono font-black text-[#A78BFA] leading-none">${(pending / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-                </div>
-            </div>
         </div>
     );
 };

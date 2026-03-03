@@ -903,17 +903,20 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {/* ─── EXTENDED VIEW ─── */}
                     {overviewMode === 'extended' && (
                         <div className="flex gap-4 items-stretch">
-                            {/* Payment Summary panel — Paid & Requested only, MXN + USD side by side */}
+                            {/* Payment Summary panel — Total, Paid, Pending, and USD */}
                             <div className="flex flex-col justify-center gap-2.5 p-4 bg-white/5 border border-white/10 rounded-2xl shrink-0">
                                 <div className="flex items-baseline gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#6BCEBB]/60 w-10">Paid</span>
-                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
-                                    <span className="text-sm font-mono font-black text-[#6BCEBB]/40">≈ ${((statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 w-12">Total</span>
+                                    <span className="text-sm font-mono font-black text-white">{fmtMXN(statusTotals.Paid + statusTotals.Requested + statusTotals.Pending || 0)}</span>
                                 </div>
                                 <div className="flex items-baseline gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-[#FACC15]/60 w-10">Req</span>
-                                    <span className="text-sm font-mono font-black text-[#FACC15]">{fmtMXN(statusTotals.Requested || 0)}</span>
-                                    <span className="text-sm font-mono font-black text-[#FACC15]/40">≈ ${((statusTotals.Requested || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 w-12">Paid</span>
+                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
+                                </div>
+                                <div className="flex items-baseline gap-3">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FACC15]/60 w-12">Pend</span>
+                                    <span className="text-sm font-mono font-black text-[#FACC15]">{fmtMXN(statusTotals.Requested + statusTotals.Pending || 0)}</span>
+                                    <span className="text-[10px] font-mono font-black text-[#A78BFA] ml-2 shrink-0">≈ ${((statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
                                 </div>
                             </div>
 
