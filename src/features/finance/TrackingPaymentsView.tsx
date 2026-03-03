@@ -873,6 +873,24 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <div className="h-4 w-px bg-white/10" />
                                 <span className="text-xs font-mono font-bold text-[#6BCEBB]" title="Live Rate">Internet {liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
                             </div>
+
+                            {/* Dynamic Pending Net Total for Active Destination */}
+                            {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
+                                <div className="flex items-center gap-3 px-4 py-1.5 bg-(--main-color)/10 border border-(--main-color)/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner">
+                                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">
+                                        PENDING REQ
+                                    </span>
+                                    <div className="h-4 w-px bg-(--main-color)/20" />
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-[13px] font-mono font-black text-(--text-color)">
+                                            {fmtMXN(activeDestReqNetMXN)}
+                                        </span>
+                                        <span className="text-[10px] font-mono font-bold text-(--main-color)/70">
+                                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setOverviewMode('extended')} className={`p-1.5 py-1 rounded-lg border transition-all text-[9px] font-black uppercase tracking-widest ${overviewMode === 'extended' ? 'bg-(--main-color)/20 border-(--main-color) text-(--main-color)' : 'border-white/10 text-white/30 hover:text-white/60'}`}>Full</button>
@@ -1007,23 +1025,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             ))}
                         </div>
 
-                        {/* Dynamic Pending Net Total for Active Destination */}
-                        {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                            <div className="flex items-center gap-3 px-4 py-1.5 bg-(--main-color)/10 border border-(--main-color)/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner">
-                                <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">
-                                    PENDING REQ
-                                </span>
-                                <div className="h-4 w-px bg-(--main-color)/20" />
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-[13px] font-mono font-black text-(--text-color)">
-                                        {fmtMXN(activeDestReqNetMXN)}
-                                    </span>
-                                    <span className="text-[10px] font-mono font-bold text-(--main-color)/70">
-                                        ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
