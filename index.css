@@ -2405,13 +2405,29 @@ body {
 
 /* --- Sidebar logo animation tokens --- */
 @keyframes logoSlideIn {
-  from { opacity: 0; transform: scaleX(0.8) translateX(-8px); filter: blur(4px); }
-  to   { opacity: 1; transform: scaleX(1) translateX(0); filter: blur(0); }
+  from {
+    opacity: 0;
+    transform: scaleX(0.8) translateX(-8px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1) translateX(0);
+    filter: blur(0);
+  }
 }
 
 @keyframes logoSlideOut {
-  from { opacity: 1; transform: scaleX(1); }
-  to   { opacity: 0; transform: scaleX(0.8); }
+  from {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scaleX(0.8);
+  }
 }
 
 .sidebar-logo-text {
@@ -2442,19 +2458,26 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
   transition: transform 0.25s var(--ease-spring), box-shadow 0.2s ease;
   animation: fabAppear 0.35s var(--ease-spring) forwards;
 }
 
 .sidebar-fab:hover {
   transform: scale(1.08);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--main-color);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--main-color);
 }
 
 @keyframes fabAppear {
-  from { opacity: 0; transform: scale(0.7) rotate(-10deg); }
-  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  from {
+    opacity: 0;
+    transform: scale(0.7) rotate(-10deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 /* Compact sidebar: icons only, no text */
@@ -2485,6 +2508,7 @@ body {
 html.theme-nacar,
 html.theme-tehu,
 html.theme-tekis {
+
   /* Sidebar active item: readable on main-color backgrounds */
   .sidebar-list-item.active {
     color: #1a1a1a !important;
@@ -2498,21 +2522,23 @@ html.theme-tekis {
   /* Tab buttons with colored backgrounds */
   .tab-button.active {
     color: #fff !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
 
   /* Scrollbar on light themes */
   ::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.15);
+    background: rgba(0, 0, 0, 0.15);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,0.25);
+    background: rgba(0, 0, 0, 0.25);
   }
 
   /* Input fields on light theme */
-  input, select, textarea {
-    background: rgba(255,255,255,0.8) !important;
+  input,
+  select,
+  textarea {
+    background: rgba(255, 255, 255, 0.8) !important;
     color: var(--text-color) !important;
   }
 
@@ -2534,7 +2560,7 @@ html.theme-tekis {
   /* ── Inventory & Payments: table text readability ── */
   table th {
     color: var(--text-color-secondary) !important;
-    background: rgba(0,0,0,0.03) !important;
+    background: rgba(0, 0, 0, 0.03) !important;
   }
 
   table td {
@@ -2542,16 +2568,16 @@ html.theme-tekis {
   }
 
   table tr:hover {
-    background: rgba(0,0,0,0.04) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
   }
 
   /* Overview panel backgrounds */
   .bg-black\/20 {
-    background-color: rgba(0,0,0,0.04) !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
   }
 
   .bg-black\/5 {
-    background-color: rgba(0,0,0,0.03) !important;
+    background-color: rgba(0, 0, 0, 0.03) !important;
   }
 
   /* White text overrides for content areas */
@@ -2574,35 +2600,133 @@ html.theme-tekis {
   }
 
   /* Status badges stay colored */
-  .text-\[\#6BCEBB\] { color: #059669 !important; }
-  .text-\[\#FACC15\] { color: #b45309 !important; }
-  .text-\[\#F87171\] { color: #dc2626 !important; }
-  .text-\[\#8DC63F\] { color: #16a34a !important; }
+  .text-\[\#6BCEBB\] {
+    color: #059669 !important;
+  }
+
+  .text-\[\#FACC15\] {
+    color: #b45309 !important;
+  }
+
+  .text-\[\#F87171\] {
+    color: #dc2626 !important;
+  }
+
+  .text-\[\#8DC63F\] {
+    color: #16a34a !important;
+  }
 
   /* Exchange rate text in overview */
   .text-\[\#6BCEBB\]\/50,
-  .text-\[\#6BCEBB\]\/40 { color: rgba(5, 150, 105, 0.6) !important; }
+  .text-\[\#6BCEBB\]\/40 {
+    color: rgba(5, 150, 105, 0.6) !important;
+  }
+
   .text-\[\#FACC15\]\/50,
-  .text-\[\#FACC15\]\/40 { color: rgba(180, 83, 9, 0.6) !important; }
-  .text-\[\#F87171\]\/50 { color: rgba(220, 38, 38, 0.6) !important; }
+  .text-\[\#FACC15\]\/40 {
+    color: rgba(180, 83, 9, 0.6) !important;
+  }
+
+  .text-\[\#F87171\]\/50 {
+    color: rgba(220, 38, 38, 0.6) !important;
+  }
 
   /* Semi-transparent backgrounds adapt for light */
   .bg-white\/5 {
-    background-color: rgba(0,0,0,0.04) !important;
+    background-color: rgba(0, 0, 0, 0.04) !important;
   }
+
   .bg-white\/10 {
-    background-color: rgba(0,0,0,0.06) !important;
+    background-color: rgba(0, 0, 0, 0.06) !important;
   }
 
   /* Border visibility on light backgrounds */
   .border-white\/5,
   .border-white\/10 {
-    border-color: rgba(0,0,0,0.08) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
   }
 
   /* Filter buttons readability */
   button .tracking-widest {
     color: var(--text-color-secondary);
+  }
+
+  /* ── Inventory List View Fixes ── */
+  /* List item row backgrounds */
+  .inventory-item-card,
+  .flex.items-center.gap-4.bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .flex.items-center.gap-4.bg-black\/20:hover {
+    background-color: rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* Expanded detail panel in list view */
+  .bg-black\/40.backdrop-blur-md {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Label classes used in inventory */
+  .text-white\/15,
+  .text-white\/20 {
+    color: var(--text-color-secondary) !important;
+    opacity: 0.6;
+  }
+
+  /* ── Inventory Grid View Fixes ── */
+  /* Grid card backgrounds */
+  .inventory-item-card.bg-black\/40 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  /* ── Edit Form & Detail Panels ── */
+  /* Input labels and helper text */
+  label,
+  .block.ml-1 {
+    color: var(--text-color-secondary) !important;
+  }
+
+  /* Edit form panel backgrounds */
+  .bg-black\/10,
+  .bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  /* ── Header bar text fixes ── */
+  .text-white\/35 {
+    color: var(--text-color-secondary) !important;
+  }
+
+  /* Make sure main-color text stays vibrant on light */
+  .text-green-400 {
+    color: #16a34a !important;
+  }
+
+  .text-yellow-300 {
+    color: #ca8a04 !important;
+  }
+
+  .text-yellow-500 {
+    color: #a16207 !important;
+  }
+
+  .text-green-500 {
+    color: #15803d !important;
+  }
+
+  .text-red-400 {
+    color: #dc2626 !important;
+  }
+
+  .text-red-500 {
+    color: #b91c1c !important;
+  }
+
+  /* ── Filters bar ── */
+  .bg-black\/5 {
+    background-color: rgba(0, 0, 0, 0.03) !important;
   }
 }
 
@@ -2611,6 +2735,50 @@ html.theme-nacar .wizardstate-indicator,
 html.theme-tehu .wizardstate-indicator,
 html.theme-tekis .wizardstate-indicator {
   color: var(--text-color);
+}
+
+/* ── Wizard Modal: always uses dark styling regardless of theme ── */
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] {
+  color: white;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white {
+  color: white !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/30,
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/20,
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/40,
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .text-white\/50 {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] input,
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] select,
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] textarea {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .bg-white\/2 {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .border-white\/5 {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.fixed.inset-0.z-50 .bg-\[\#0d0d1a\] .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* --- Improved scrollbar globally --- */
@@ -2667,7 +2835,9 @@ html.theme-tekis .wizardstate-indicator {
   }
 
   /* Better mobile touch targets for all buttons */
-  button, .button, [role="button"] {
+  button,
+  .button,
+  [role="button"] {
     min-height: 44px;
   }
 
@@ -2691,8 +2861,15 @@ html.theme-tekis .wizardstate-indicator {
 
 /* --- Page transition animations --- */
 @keyframes viewEnter {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .view-enter {
@@ -2729,7 +2906,8 @@ html.theme-tekis .wizardstate-indicator {
 html.theme-obsidian .sidebar-list-item.active,
 html.theme-fluorite .sidebar-list-item.active,
 html.theme-malaquite .sidebar-list-item.active {
-  color: #000; /* dark text on bright main-color backgrounds */
+  color: #000;
+  /* dark text on bright main-color backgrounds */
 }
 
 /* --- Sidebar logo in hidden state: show mini FAB --- */
@@ -2743,18 +2921,31 @@ html.theme-malaquite .sidebar-list-item.active {
 }
 
 /* --- Smooth submenu animation --- */
-.sidebar-list-item.open + .sidebar-submenu {
+.sidebar-list-item.open+.sidebar-submenu {
   animation: submenuOpen 0.25s var(--ease-out-quart) forwards;
 }
 
 @keyframes submenuOpen {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- DM Sans optical sizing --- */
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
@@ -2764,16 +2955,28 @@ html.theme-malaquite .sidebar-list-item.active {
     line-height: 1.65;
   }
 
-  small, .text-xs, .text-\[9px\], .text-\[10px\], .text-\[11px\] {
+  small,
+  .text-xs,
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\] {
     letter-spacing: 0.01em;
   }
 }
 
 /* --- Micro-animations for interactive elements --- */
 @keyframes pulse-ring {
-  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--main-color) 40%, transparent); }
-  70%  { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--main-color) 40%, transparent);
+  }
+
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .pulse-on-active:active {
@@ -2794,8 +2997,15 @@ html.theme-malaquite .sidebar-list-item.active {
 
 /* --- Modal: improved animation --- */
 @keyframes modalEnter {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-content {
@@ -2822,7 +3032,7 @@ html.theme-malaquite .sidebar-list-item.active {
   transition: opacity 0.15s ease;
   z-index: 200;
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .app-container.sidebar-compact .sidebar-list-item:hover .sidebar-compact-tooltip {
