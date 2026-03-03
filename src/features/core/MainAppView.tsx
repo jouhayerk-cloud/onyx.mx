@@ -344,7 +344,7 @@ export function MainAppView() {
                     <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-white/5 opacity-40 mix-blend-screen shrink-0 relative overflow-hidden">
                         {sidebarState === 'expanded' && (
                             <>
-                                <OnyxLogo className="w-8 h-8 mb-2" />
+                                <OnyxMiniLogo className="w-7 h-7 mb-2" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-white">v{__APP_VERSION__}</span>
                             </>
                         )}
