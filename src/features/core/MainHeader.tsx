@@ -38,7 +38,9 @@ import {
     languageAtom,
     themeAtom,
     performanceModeAtom,
-    paymentsOverviewModeAtom
+    paymentsOverviewModeAtom,
+    paymentDestinationFilterAtom,
+    liveExchangeRateAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -212,17 +214,31 @@ const InventoryBar: React.FC = () => {
 
 const FinanceBar: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const docs = useAtomValue(financeDataAtom);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
+    const destinationFilter = useAtomValue(paymentDestinationFilterAtom);
 
     const grandTotal = useMemo(() => docs.reduce((a, b) => a + (b.amount || 0), 0), [docs]);
     const paid = useMemo(() => docs.filter((d: any) => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0), [docs]);
     const pending = grandTotal - paid;
 
+    const activeDestPendingRecords = useMemo(() => {
+        return destinationFilter !== 'All'
+            ? docs.filter(d => d.destination === destinationFilter && (d.status === 'Requested' || !d.status))
+            : [];
+    }, [docs, destinationFilter]);
+
+    const activeDestReqNetMXN = useMemo(() => {
+        return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+    }, [activeDestPendingRecords]);
+
+    const activeDestReqNetUSD = activeDestReqNetMXN / (liveExchangeRate || exchangeRate);
+
     const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
     return (
-        <div className="flex flex-1 items-center gap-4 ml-2">
+        <div className="flex flex-1 items-center gap-4 ml-2 relative">
             <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
 
             {overviewMode === 'collapsed' && (
@@ -230,6 +246,24 @@ const FinanceBar: React.FC = () => {
                     className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#A78BFA]/10 border border-[#A78BFA]/30 text-[#A78BFA] hover:bg-[#A78BFA]/20 transition-all text-[10px] font-black uppercase tracking-widest">
                     Show Overview
                 </button>
+            )}
+
+            {/* Dynamic Pending Net Total for Active Destination (Centered) */}
+            {overviewMode === 'collapsed' && destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-1.5 bg-(--main-color)/10 border border-(--main-color)/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner z-10 pointer-events-auto">
+                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">
+                        PENDING REQ
+                    </span>
+                    <div className="h-4 w-px bg-(--main-color)/20" />
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-[13px] font-mono font-black text-(--text-color)">
+                            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-(--main-color)/70">
+                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+                        </span>
+                    </div>
+                </div>
             )}
 
             <div className="hidden md:flex items-center gap-6 ml-2 h-8">

@@ -229,6 +229,7 @@ export const paymentBankFilterAtom = atom<'All' | 'Ramses BBVA' | 'Martha BBVA' 
 export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
 export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
 export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('extended');
+export const liveExchangeRateAtom = atom<number | null>(null);
 
 // Experimental Dashboard State
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});
