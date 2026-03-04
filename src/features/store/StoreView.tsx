@@ -9,6 +9,73 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Search, X, ChevronLeft, ChevronRight, Play, ShoppingBag } from 'lucide-react';
 
+const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
+
+    const handleWheel = (e: React.WheelEvent) => {
+        e.preventDefault();
+        setScale(s => Math.min(5, Math.max(0.5, s - e.deltaY * 0.002)));
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    };
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging) return;
+        setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    };
+    const handleMouseUp = () => setIsDragging(false);
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            if (lastTouchDist !== null) {
+                const delta = dist / lastTouchDist;
+                setScale(s => Math.min(5, Math.max(0.5, s * delta)));
+            }
+            setLastTouchDist(dist);
+        } else if (e.touches.length === 1 && scale > 1) {
+            const touch = e.touches[0];
+            setPosition(p => ({ x: p.x + touch.clientX - (dragStart.x || touch.clientX), y: p.y + touch.clientY - (dragStart.y || touch.clientY) }));
+            setDragStart({ x: touch.clientX, y: touch.clientY });
+        }
+    };
+
+    const handleTouchEnd = () => setLastTouchDist(null);
+    const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
+
+    return (
+        <div className="fixed inset-0 z-200 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+            onClick={onClose} onWheel={handleWheel}>
+            <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
+                <X className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">-</button>
+                <span className="text-[10px] font-mono text-white/40 w-12 text-center">{Math.round(scale * 100)}%</span>
+                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">+</button>
+            </div>
+            <img src={src} alt="" draggable={false}
+                className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform duration-100"
+                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                onClick={(e) => e.stopPropagation()}
+                onDoubleClick={handleDoubleClick}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            />
+        </div>
+    );
+};
+
 export function StoreView() {
     const [user] = useAtom(userAtom);
     const [shoppingBag, setShoppingBag] = useAtom(storeShoppingBagAtom);
@@ -20,6 +87,7 @@ export function StoreView() {
 
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [galleryIndex, setGalleryIndex] = useState(0);
+    const [showFullscreenViewer, setShowFullscreenViewer] = useState(false);
 
     const isClient = user?.role === 'Client';
     const isVendor = user?.role === 'Vendor';
@@ -316,7 +384,7 @@ export function StoreView() {
                         <span className="text-sm font-black text-white/50 tracking-widest uppercase text-center">No items matched your search</span>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 antialiased">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 antialiased">
                         {filteredItems.map(item => {
                             const hasMultipleMedia = ((item.data as any)._allMedia?.length || 0) > 1;
                             const isVideo = item.imageUrl?.match(/\.(mp4|webm|ogg|mov)$/i);
@@ -352,22 +420,41 @@ export function StoreView() {
                                         <div className="font-bold text-sm text-white truncate drop-shadow-sm">{item.data.shape} {item.data.material}</div>
                                         <div className="text-[10px] text-white/50 uppercase tracking-widest font-semibold">{item.data.color}</div>
 
-                                        <div className="mt-auto pt-3 flex items-center justify-between border-t border-white/5">
+                                        {(() => {
+                                            const normInfo = normalizeInventoryData(item.data);
+                                            const calcInfo = calculateCodesAndPrices({ ...normInfo, price: normInfo.price_mxn || normInfo.price }, exchangeRate, '326');
+                                            return (
+                                                <div className="pt-2 text-[9px] font-mono text-white/60 space-y-0.5">
+                                                    <div><span className="opacity-50">TAG ID:</span> <span className="text-white/90">{calcInfo.bookBardcode || normInfo.itemNumber || '-'}</span></div>
+                                                    {(!isVendor) && calcInfo.bookAqCode && (
+                                                        <>
+                                                            <div>
+                                                                <span className="opacity-50">ACQ:</span> <span className="text-white/90">{calcInfo.bookAqCode}</span> &nbsp;|&nbsp;
+                                                                <span className="opacity-50">LND:</span> <span className="text-white/90">{calcInfo.bookLandCode}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="opacity-50">RT USD:</span> <span className="text-white/90">${calcInfo.bookRetail}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+
+                                        <div className="mt-auto pt-3 flex items-center justify-between border-t border-white/5 relative">
                                             <span className="text-[13px] font-black tracking-wider text-(--main-color) drop-shadow-sm">
                                                 {getPriceLabel(item.data)}
                                                 {!isVendor && <span className="text-[9px] text-white/40 ml-1">(${getPriceUSD(item.data).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD)</span>}
                                             </span>
-                                        </div>
-                                    </div>
 
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center backdrop-blur-[2px] z-20">
-                                        <button
-                                            onClick={(e) => handleAddToCart(item, e)}
-                                            className="button text-xs font-black tracking-widest py-3! px-6! bg-(--main-color) text-black rounded-xl translate-y-4 group-hover:translate-y-0 transition-all duration-300 shadow-xl hover:scale-105"
-                                        >
-                                            QUICK ADD
-                                        </button>
-                                        <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest mt-4 translate-y-4 group-hover:translate-y-0 transition-all duration-300 delay-75">Click to view details</span>
+                                            {/* Edge Add to Cart Bubble */}
+                                            <button
+                                                onClick={(e) => handleAddToCart(item, e)}
+                                                className="absolute right-0 top-1.5 p-2 bg-(--main-color) text-black rounded-lg shadow-lg hover:scale-110 hover:bg-(--main-color) transition-all z-30 opacity-80 group-hover:opacity-100"
+                                            >
+                                                <ShoppingBag size={14} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -400,7 +487,7 @@ export function StoreView() {
 
                                     return (
                                         <>
-                                            <div className="w-full h-full animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-8">
+                                            <div className="w-full h-full animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-8 cursor-pointer" onClick={() => setShowFullscreenViewer(true)}>
                                                 {renderGalleryMedia(currentMediaUrl)}
                                             </div>
 
@@ -618,6 +705,12 @@ export function StoreView() {
                     </div>
                 </div>
             )}
+            {showFullscreenViewer && selectedItem && (() => {
+                const mediaFiles = (selectedItem.data as any)._allMedia || [];
+                const currentMediaUrl = mediaFiles[galleryIndex];
+                if (!currentMediaUrl || currentMediaUrl.match(/\.(mp4|webm|ogg|mov)$/i)) return null;
+                return <FullscreenImageViewer src={currentMediaUrl} onClose={() => setShowFullscreenViewer(false)} />;
+            })()}
         </div>
     );
 }
