@@ -357,7 +357,7 @@ export function StoreView() {
                     <div className="fixed inset-0 z-100 flex items-center justify-center animate-in fade-in duration-200"
                         onClick={closePanel}>
 
-                        {/* Blurred background image — fixed positioned so it fills viewport behind the panel */}
+                        {/* Layer 1: Raw background image — minimal blur so image is clearly readable */}
                         {currentMediaUrl && !isCurrentVideo && (
                             <img
                                 src={currentMediaUrl}
@@ -368,16 +368,16 @@ export function StoreView() {
                                     width: '100%',
                                     height: '100%',
                                     objectFit: 'cover',
-                                    transform: 'scale(1.12)',
-                                    filter: 'blur(18px) brightness(0.55) saturate(1.4)',
+                                    transform: 'scale(1.05)',
+                                    filter: 'blur(8px) brightness(0.65) saturate(1.3)',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                     zIndex: 0,
                                 }}
                             />
                         )}
-                        {/* Overlay scrim */}
-                        <div className="absolute inset-0 bg-black/40" style={{ zIndex: 1 }} />
+                        {/* Layer 2: Theme-aware color tint scrim — a thin frosted wash */}
+                        <div className="absolute inset-0 bg-(--background-color)/50" style={{ zIndex: 1, backdropFilter: 'blur(0px)' }} />
 
                         {/* Close button */}
                         <button onClick={closePanel}
@@ -390,8 +390,9 @@ export function StoreView() {
                             style={{ position: 'relative', zIndex: 2 }}
                             onClick={(e) => e.stopPropagation()}>
 
-                            {/* Media Side */}
-                            <div className="w-full md:w-3/5 h-56 md:h-full relative flex items-center justify-center group overflow-hidden bg-black/20">
+                            {/* Media Side — Layer 3: light frosted glass with theme tint */}
+                            <div className="w-full md:w-3/5 h-56 md:h-full relative flex items-center justify-center group overflow-hidden"
+                                style={{ background: 'color-mix(in srgb, var(--background-color) 25%, transparent)', backdropFilter: 'blur(6px)' }}>
                                 {mediaFiles.length === 0 ? (
                                     <div className="flex flex-col items-center gap-3 opacity-30">
                                         <PackageSearch size={40} />
@@ -437,8 +438,9 @@ export function StoreView() {
                                 )}
                             </div>
 
-                            {/* Details Side */}
-                            <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar bg-black/40 backdrop-blur-2xl border-l border-white/10">
+                            {/* Details Side — Layer 4: deep frosted glass with heavy backdrop blur + theme tint */}
+                            <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar border-l border-(--text-color)/10"
+                                style={{ background: 'color-mix(in srgb, var(--background-color) 75%, transparent)', backdropFilter: 'blur(32px) saturate(1.5)' }}>
                                 <div className="p-6 md:p-8 flex flex-col h-full">
                                     {/* Vendor color-coded TAG ID — large, prominent */}
                                     {(() => {
