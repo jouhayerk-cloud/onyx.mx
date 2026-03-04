@@ -40,7 +40,8 @@ import {
     performanceModeAtom,
     paymentsOverviewModeAtom,
     paymentDestinationFilterAtom,
-    liveExchangeRateAtom
+    liveExchangeRateAtom,
+    storeSearchTermAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
@@ -213,10 +214,31 @@ const InventoryBar: React.FC = () => {
 };
 
 const StoreBar: React.FC = () => {
+    const [search, setSearch] = useAtom(storeSearchTermAtom);
+
     return (
         <div className="flex flex-1 items-center gap-4 ml-2 relative">
             <Store size={22} strokeWidth={1.75} color="#F36F21" className="shrink-0 hidden sm:block" />
-            <ModuleBadge icon="store" label="Storefront" color="#F36F21" />
+
+            <div className="flex-1 w-full relative group/search max-w-3xl mx-auto">
+                {/* Large liquid glass search bar */}
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#F36F21] transition-colors" />
+                </div>
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search brand catalog by shape, color, or ID..."
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-lg backdrop-blur-md"
+                />
+                {search && (
+                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
+                        <X size={16} strokeWidth={2.5} />
+                    </button>
+                )}
+            </div>
+            {/* <ModuleBadge icon="store" label="Storefront" color="#F36F21" /> */}
         </div>
     );
 };
@@ -386,7 +408,7 @@ export function MainHeader() {
             {/* Mobile Sidebar toggle if needed, or simply let FAB handle it mostly, but good to have a simple button here */}
             {sidebarState !== 'expanded' && (
                 <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10 mr-2 sm:mr-3 shrink-0 lg:hidden" onClick={toggleSidebar}>
-                    <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <svg className="w-4 h-4 text-(--text-color)/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
             )}
 
@@ -402,20 +424,20 @@ export function MainHeader() {
                     <>
                         <ModuleBadge icon="layout-grid" label="Dashboard" color="#6BCEBB" />
                         <div className="ml-auto">
-                            <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Admin Overview</span>
+                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Admin Overview</span>
                         </div>
                     </>
                 )}
                 {(activeView === 'create' || !activeView) && (
-                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Onyx.mx</span>
+                    <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Onyx.mx</span>
                 )}
             </div>
 
             {/* User Info & Actions */}
-            <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
+            <div className="flex items-center gap-4 ml-4 pl-4 border-l border-(--text-color)/5 shrink-0">
                 <div className="hidden lg:flex flex-col items-end">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5">Welcome back,</span>
-                    <span className="text-[11px] font-black text-white leading-none capitalize">
+                    <span className="text-[8px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.2em] mb-0.5">Welcome back,</span>
+                    <span className="text-[11px] font-black text-(--text-color) leading-none capitalize">
                         {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                             ? user.name
                             : user?.email?.split('@')[0] || 'User'}
@@ -423,67 +445,67 @@ export function MainHeader() {
                 </div>
 
                 {UserIcon && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-white/5 border border-white/10 shrink-0">
-                        <UserIcon className="w-full h-full" />
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-(--text-color)/5 border border-(--text-color)/10 shrink-0">
+                        <UserIcon className="w-full h-full text-(--text-color)" />
                     </div>
                 )}
 
                 <div className="flex items-center gap-1 relative">
                     <Settings size={18} strokeWidth={1.75}
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`cursor-pointer text-white/40 hover:text-white/80 transition-all duration-300 ${isSettingsOpen ? 'rotate-90 text-[#6BCEBB]' : ''}`} />
+                        className={`cursor-pointer text-(--text-color) opacity-40 hover:opacity-80 transition-all duration-300 ${isSettingsOpen ? 'rotate-90 text-(--main-color)' : ''}`} />
                     {isSettingsOpen && (
                         <>
                             {/* Backdrop */}
                             <div className="fixed inset-0 z-[99]" onClick={() => setIsSettingsOpen(false)} />
                             {/* Panel */}
-                            <div className="absolute top-12 right-0 w-72 bg-[#0d0d1a]/98 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute top-12 right-0 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
 
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#6BCEBB]">Settings</span>
-                                    <button onClick={() => setIsSettingsOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/30 hover:text-white transition-all">
+                                    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-(--main-color)">Settings</span>
+                                    <button onClick={() => setIsSettingsOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full bg-(--text-color)/5 hover:bg-(--text-color)/10 text-(--text-color) opacity-30 hover:opacity-100 transition-all">
                                         <X size={12} />
                                     </button>
                                 </div>
 
                                 {/* Language */}
                                 <div className="flex flex-col gap-2">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Language</span>
-                                    <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group">
-                                        <Globe size={15} strokeWidth={1.75} className="text-white/40 group-hover:text-white/70 transition-colors" />
-                                        <span className="flex-1 text-xs font-bold text-white/70">Display Language</span>
-                                        <span className="text-[10px] uppercase font-black bg-white/10 px-2.5 py-1 rounded-lg text-white/60">{language === 'en' ? 'EN' : 'ES'}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Language</span>
+                                    <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group">
+                                        <Globe size={15} strokeWidth={1.75} className="text-(--text-color) opacity-40 group-hover:opacity-70 transition-opacity" />
+                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70">Display Language</span>
+                                        <span className="text-[10px] uppercase font-black bg-(--text-color)/10 px-2.5 py-1 rounded-lg text-(--text-color) opacity-60">{language === 'en' ? 'EN' : 'ES'}</span>
                                     </button>
                                 </div>
 
                                 {/* Appearance — Theme + Performance */}
                                 <div className="flex flex-col gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Appearance</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Appearance</span>
                                     <div className="grid grid-cols-6 gap-2">
                                         {themes.map(th => (
                                             <button key={th.name} onClick={() => setTheme(th.name)}
-                                                className={`w-8 h-8 rounded-xl cursor-pointer transition-all hover:scale-110 border ${theme === th.name ? 'border-[#6BCEBB] ring-2 ring-[#6BCEBB]/30 scale-110 shadow-lg' : 'border-white/10 hover:border-white/20'}`}
+                                                className={`w-8 h-8 rounded-xl cursor-pointer transition-all hover:scale-110 border ${theme === th.name ? 'border-(--main-color) ring-2 ring-(--main-color)/30 scale-110 shadow-lg' : 'border-(--text-color)/10 hover:border-(--text-color)/20'}`}
                                                 style={{ background: th.gradient }} title={th.name} />
                                         ))}
                                     </div>
-                                    <button onClick={() => setPerformanceMode(!performanceMode)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group mt-1">
-                                        <Zap size={15} strokeWidth={1.75} className={`transition-colors ${performanceMode ? 'text-yellow-400' : 'text-white/40 group-hover:text-white/70'}`} />
-                                        <span className="flex-1 text-xs font-bold text-white/70">Performance Mode</span>
-                                        <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-lg transition-colors ${performanceMode ? 'bg-yellow-400/20 text-yellow-400' : 'bg-white/10 text-white/40'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
+                                    <button onClick={() => setPerformanceMode(!performanceMode)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group mt-1">
+                                        <Zap size={15} strokeWidth={1.75} className={`transition-colors ${performanceMode ? 'text-yellow-400' : 'text-(--text-color) opacity-40 group-hover:opacity-70'}`} />
+                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70">Performance Mode</span>
+                                        <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-lg transition-colors ${performanceMode ? 'bg-yellow-400/20 text-yellow-400' : 'bg-(--text-color)/10 text-(--text-color) opacity-40'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
                                     </button>
                                 </div>
 
                                 {/* Actions */}
                                 <div className="flex flex-col gap-2">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/25">Actions</span>
-                                    <button onClick={handleRefresh} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all group">
-                                        <RefreshCw size={15} strokeWidth={1.75} className="text-white/40 group-hover:text-white/70 transition-colors" />
-                                        <span className="flex-1 text-xs font-bold text-white/70 text-left">Refresh Sync</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Actions</span>
+                                    <button onClick={handleRefresh} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group">
+                                        <RefreshCw size={15} strokeWidth={1.75} className="text-(--text-color) opacity-40 group-hover:opacity-70 transition-opacity" />
+                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70 text-left">Refresh Sync</span>
                                     </button>
                                     <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group">
-                                        <LogOut size={15} strokeWidth={1.75} className="text-red-400/60 group-hover:text-red-400 transition-colors" />
-                                        <span className="flex-1 text-xs font-bold text-red-400/70 group-hover:text-red-400 text-left transition-colors">Logout Session</span>
+                                        <LogOut size={15} strokeWidth={1.75} className="text-red-500/60 group-hover:text-red-500 transition-colors" />
+                                        <span className="flex-1 text-xs font-bold text-red-500/70 group-hover:text-red-500 text-left transition-colors">Logout Session</span>
                                     </button>
                                 </div>
                             </div>
