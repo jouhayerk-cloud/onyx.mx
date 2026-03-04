@@ -369,7 +369,7 @@ export function StoreView() {
                                     height: '100%',
                                     objectFit: 'cover',
                                     transform: 'scale(1.12)',
-                                    filter: 'blur(50px) brightness(0.45) saturate(1.6)',
+                                    filter: 'blur(18px) brightness(0.55) saturate(1.4)',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                     zIndex: 0,
