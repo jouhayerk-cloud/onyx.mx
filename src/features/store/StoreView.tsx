@@ -377,8 +377,8 @@ export function StoreView() {
                                 }}
                             />
                         )}
-                        {/* Layer 2: Theme-aware color tint scrim — a thin frosted wash */}
-                        <div className="absolute inset-0 bg-(--background-color)/50" style={{ zIndex: 1, backdropFilter: 'blur(0px)' }} />
+                        {/* Layer 2: Theme-aware color tint scrim */}
+                        <div className="absolute inset-0" style={{ zIndex: 1, background: 'var(--app-bg)', backdropFilter: 'blur(2px)' }} />
 
                         {/* Close button */}
                         <button onClick={closePanel}
@@ -391,9 +391,9 @@ export function StoreView() {
                             style={{ position: 'relative', zIndex: 2 }}
                             onClick={(e) => e.stopPropagation()}>
 
-                            {/* Media Side — Layer 3: light frosted glass with theme tint */}
+                            {/* Media Side — Layer 3: light frosted glass */}
                             <div className="w-full md:w-3/5 h-56 md:h-full relative flex items-center justify-center group overflow-hidden"
-                                style={{ background: 'color-mix(in srgb, var(--background-color) 25%, transparent)', backdropFilter: 'blur(6px)' }}>
+                                style={{ background: 'rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)' }}>
                                 {mediaFiles.length === 0 ? (
                                     <div className="flex flex-col items-center gap-3 opacity-30">
                                         <PackageSearch size={40} />
@@ -439,9 +439,9 @@ export function StoreView() {
                                 )}
                             </div>
 
-                            {/* Details Side — Layer 4: deep frosted glass with heavy backdrop blur + theme tint */}
+                            {/* Details Side — Layer 4: solid theme sidebar bg + frosted glass */}
                             <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar border-l border-(--text-color)/10"
-                                style={{ background: 'color-mix(in srgb, var(--background-color) 75%, transparent)', backdropFilter: 'blur(32px) saturate(1.5)' }}>
+                                style={{ background: 'var(--sidebar-bg)', backdropFilter: 'blur(20px)' }}>
                                 <div className="p-6 md:p-8 flex flex-col h-full">
                                     {/* Vendor color-coded TAG ID — large, prominent */}
                                     {(() => {
@@ -500,28 +500,28 @@ export function StoreView() {
                                         {/* Description */}
                                         {norm.shortDescription && (
                                             <div>
-                                                <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-1.5">About</h3>
+                                                <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-1.5">About</h3>
                                                 <p className="text-sm text-(--text-color)/80 leading-relaxed">{norm.shortDescription}</p>
                                             </div>
                                         )}
 
                                         {/* Specifications */}
                                         <div>
-                                            <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-2">Specifications</h3>
+                                            <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-2">Specifications</h3>
                                             <div className="grid grid-cols-2 gap-2">
-                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                    <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Dimensions</span>
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                    <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Dimensions</span>
                                                     <span className="block text-xs font-mono font-bold text-(--text-color)/90">
                                                         {norm.lengthCm || '-'}×{norm.widthCm || '-'}×{norm.heightCm || '-'} cm
                                                     </span>
-                                                    <span className="block text-[10px] font-mono text-(--text-color)/50 mt-0.5">
+                                                    <span className="block text-[10px] font-mono text-(--text-color)/55 mt-0.5">
                                                         {norm.lengthCm && !isNaN(Number(norm.lengthCm)) ? (Number(norm.lengthCm) / 2.54).toFixed(1) : '-'}×{norm.widthCm && !isNaN(Number(norm.widthCm)) ? (Number(norm.widthCm) / 2.54).toFixed(1) : '-'}×{norm.heightCm && !isNaN(Number(norm.heightCm)) ? (Number(norm.heightCm) / 2.54).toFixed(1) : '-'} in
                                                     </span>
                                                 </div>
-                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                    <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Weight</span>
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                    <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Weight</span>
                                                     <span className="block text-xs font-mono font-bold text-(--text-color)/90">{norm.weightKg || '-'} kg</span>
-                                                    <span className="block text-[10px] font-mono text-(--text-color)/50 mt-0.5">
+                                                    <span className="block text-[10px] font-mono text-(--text-color)/55 mt-0.5">
                                                         {norm.weightKg && !isNaN(Number(norm.weightKg)) ? (Number(norm.weightKg) * 2.20462).toFixed(1) : '-'} lbs
                                                     </span>
                                                 </div>
@@ -531,22 +531,22 @@ export function StoreView() {
                                         {/* Pricing codes — non-vendor only */}
                                         {!isVendor && calculated.bookAqCode && (
                                             <div>
-                                                <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-2">Internal Codes</h3>
+                                                <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-2">Internal Codes</h3>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">AQC Code</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">AQC Code</span>
                                                         <span className="text-sm font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
                                                     </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">LND Code</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">LND Code</span>
                                                         <span className="text-sm font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
                                                     </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Landed USD</span>
-                                                        <span className="text-sm font-mono font-black text-(--text-color)/70">${parseFloat(calculated.bookLanded).toFixed(2)}</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Landed USD</span>
+                                                        <span className="text-sm font-mono font-black text-(--text-color)/75">${parseFloat(calculated.bookLanded).toFixed(2)}</span>
                                                     </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
-                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Retail USD</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
+                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Retail USD</span>
                                                         <span className="text-sm font-mono font-black text-emerald-500">${parseFloat(calculated.bookRetail).toFixed(2)}</span>
                                                     </div>
                                                 </div>
