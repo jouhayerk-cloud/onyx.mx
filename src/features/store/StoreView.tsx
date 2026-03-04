@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { userAtom, storeShoppingBagAtom, storeSearchTermAtom, exchangeRateAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { extractFileId, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
 import { InventoryItemData, InventoryItem } from '../../lib/Types';
 import jsPDF from 'jspdf';
@@ -350,21 +351,17 @@ export function StoreView() {
                     <div className="fixed inset-0 z-100 flex items-center justify-center animate-in fade-in duration-200"
                         onClick={closePanel}>
 
-                        {/* Blurred background image */}
+                        {/* Blurred background image — uses <img> to handle cross-origin sources */}
                         {currentMediaUrl && !isCurrentVideo && (
-                            <div
-                                className="absolute inset-0 transition-all duration-700"
-                                style={{
-                                    backgroundImage: `url(${currentMediaUrl})`,
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
-                                    filter: 'blur(40px) brightness(0.3) saturate(1.6)',
-                                    transform: 'scale(1.1)',
-                                }}
+                            <img
+                                src={currentMediaUrl}
+                                aria-hidden="true"
+                                className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none select-none"
+                                style={{ filter: 'blur(48px) brightness(0.25) saturate(1.8)' }}
                             />
                         )}
                         {/* Overlay scrim */}
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                        <div className="absolute inset-0 bg-black/50" />
 
                         {/* Close button */}
                         <button onClick={closePanel}
@@ -426,18 +423,50 @@ export function StoreView() {
                             {/* Details Side */}
                             <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar bg-black/40 backdrop-blur-2xl border-l border-white/10">
                                 <div className="p-6 md:p-8 flex flex-col h-full">
-                                    {/* TAG ID badge */}
-                                    <div className="flex items-center gap-2 mb-5">
-                                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.25em] text-(--main-color) bg-(--main-color)/10 px-3 py-1.5 rounded-full border border-(--main-color)/20">
-                                            <Tag size={10} />
-                                            {calculated.bookBardcode || norm.itemNumber || 'ITEM'}
-                                        </span>
-                                        {norm.status && (
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30 bg-white/5 px-2 py-1 rounded-full border border-white/5">
-                                                {norm.status}
-                                            </span>
-                                        )}
-                                    </div>
+                                    {/* Vendor color-coded TAG ID — large, prominent */}
+                                    {(() => {
+                                        const tagId = calculated.bookBardcode || norm.itemNumber || '';
+                                        const vendorPrefix = String(norm.itemId || '').split('-')[0] || '';
+                                        const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
+                                        return (
+                                            <div className="mb-5 flex flex-col gap-2">
+                                                {/* Large TAG ID */}
+                                                <div
+                                                    className="flex items-center gap-2 px-4 py-3 rounded-2xl border"
+                                                    style={{
+                                                        background: `${vendorColor}18`,
+                                                        borderColor: `${vendorColor}40`,
+                                                    }}
+                                                >
+                                                    <div
+                                                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                                                        style={{ background: vendorColor, boxShadow: `0 0 8px ${vendorColor}` }}
+                                                    />
+                                                    <Tag size={13} style={{ color: vendorColor }} />
+                                                    <span
+                                                        className="text-sm font-black tracking-[0.2em] uppercase font-mono"
+                                                        style={{ color: vendorColor }}
+                                                    >
+                                                        {tagId || 'ITEM'}
+                                                    </span>
+                                                    {vendorPrefix && (
+                                                        <span
+                                                            className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
+                                                            style={{ background: `${vendorColor}30`, color: vendorColor }}
+                                                        >
+                                                            {vendorPrefix}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {/* Status pill */}
+                                                {norm.status && (
+                                                    <span className="self-start text-[9px] font-black uppercase tracking-widest text-white/30 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                                                        {norm.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* Title */}
                                     <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-1">
