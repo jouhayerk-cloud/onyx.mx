@@ -1,21 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
@@ -40,8 +22,7 @@ import React, { useEffect } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard
-} from 'lucide-react';
-// import { ThreeDViewer, ThreeDWorkspace } from '../threed/ThreeDView';
+} from 'lucide-react';
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
@@ -57,9 +38,7 @@ import { FinanceView } from '../finance/FinanceView';
 import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
 import { ClientOverview } from '../dashboard/ClientOverview';
-import { StoreView } from '../store/StoreView';
-
-// Injected at build time from package.json via vite.config.ts
+import { StoreView } from '../store/StoreView';
 declare const __APP_VERSION__: string;
 
 interface NavItemWithSubmenuProps {
@@ -81,9 +60,7 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
     const sidebarState = useAtomValue(sidebarStateAtom);
 
     const isOpen = activeSubMenu === viewId;
-    const isParentActive = activeView === viewId;
-
-    // Map icon string to Lucide component
+    const isParentActive = activeView === viewId;
     const IconMap: Record<string, React.FC<any>> = { truck: Truck, package: Package, 'map-pin': MapPin };
     const NavIcon = IconMap[icon] || Truck;
 
@@ -158,8 +135,7 @@ export function MainAppView() {
 
 
     useEffect(() => {
-        const handleResize = () => {
-            // If window becomes mobile size and sidebar is not already hidden, hide it.
+        const handleResize = () => {
             if (window.innerWidth <= 768) {
                 setSidebarState(current => {
                     if (current !== 'hidden') {
@@ -169,8 +145,7 @@ export function MainAppView() {
                 });
             }
         };
-        window.addEventListener('resize', handleResize);
-        // Initial check is removed to prevent auto-hiding on load.
+        window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [setSidebarState]);
 

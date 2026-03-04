@@ -21,9 +21,7 @@ export const WorkbookPayLogView: React.FC = () => {
     const [filter, setFilter] = useState<string>('ALL');
 
     const payLogInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return [];
-
-        // 1. Find Data Header
+        if (!rawData || rawData.length === 0) return [];
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';

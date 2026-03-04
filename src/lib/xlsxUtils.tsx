@@ -1,28 +1,7 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// FIX: Reverted jszip import to a namespace import to resolve type inference issues.
-// Using `import * as JSZip` is safer when module resolution settings are unknown and prevents global type pollution.
 import * as JSZip from 'jszip';
 
-
-// Simple XML escaping
 const escapeXml = (str: string) => {
     return String(str ?? '').replace(/[<>&'"]/g, (c) => {
         switch (c) {
@@ -71,7 +50,6 @@ const createSheetXml = (data: any[][], styleMap: Map<string, number>): string =>
   <sheetData>${rowsXml}</sheetData>
 </worksheet>`;
 };
-
 
 const createWorkbookXml = (sheetName: string): string => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -125,8 +103,7 @@ const createStylesXml = (styles: { [key: string]: {bgColor?: string, bold?: bool
             fills.push(`<fill><patternFill patternType="solid"><fgColor rgb="${argb}"/></patternFill></fill>`);
             fillId = fills.length - 1;
         }
-        
-        // This is a simplified implementation. A full implementation would check if an identical font/fill already exists.
+
         if (style.textColor) {
             const colorXml = `<color rgb="FF${style.textColor.slice(1)}"/>`;
             fonts.push(`<font>${style.bold ? '<b/>' : ''}<sz val="11"/><name val="Calibri"/>${colorXml}</font>`);
@@ -160,8 +137,7 @@ export const exportToXLSX = async (
     styles: { [key: string]: {bgColor?: string, bold?: boolean, textColor?: string} } = {}
 ): Promise<void> => {
     const zip = new JSZip();
-    
-    // For simplicity, we only support one sheet for now
+
     const sheet = sheets[0];
     if (!sheet) return;
 

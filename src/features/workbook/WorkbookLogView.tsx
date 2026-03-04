@@ -49,23 +49,18 @@ export const WorkbookLogView: React.FC = () => {
     const logInfo = useMemo(() => {
         if (!data || data.length === 0) return null;
 
-        if (version === '326') {
-            // Updated v326 Mapping based on screenshot
+        if (version === '326') {
             const bookNum = data[0]?.[0] || '---';
             const ver = data[0]?.[1] || '---';
             const exchangeRate = data[1]?.[1] || 18.0;
 
             const vendorsRaw = [];
             const accounts = [];
-            const tracking = [];
-
-            // 1. Tracking indices (F2-F5) -> Rows 2-5, index 1-4
+            const tracking = [];
             for (let i = 1; i <= 4; i++) {
                 const trk = data[i]?.[5];
                 if (trk) tracking.push(String(trk));
-            }
-
-            // 2. Vendors (A4 onwards) -> Rows 4+, index 3+
+            }
             for (let i = 3; i < data.length; i++) {
                 const vendorLine = data[i]?.[0];
                 const acq = data[i]?.[1];
@@ -75,29 +70,21 @@ export const WorkbookLogView: React.FC = () => {
                     const name = match ? match[2] : String(vendorLine);
                     vendorsRaw.push({ code, name, acq: acq === '-' ? 0 : Number(acq) });
                 }
-            }
-
-            // 3. Grouped Expenses (Rows 2-9, index 1-8)
+            }
             const expenseGroups = [
                 { id: 'boa', name: 'BOA', color: '#0070c0', icon: 'boa', items: [] as any[], total: Number(data[9]?.[4] || 0) },
                 { id: 'bbva_ramses', name: 'BBVA RAMSES', color: '#ffda65', icon: 'ramses', items: [] as any[], total: Number(data[10]?.[4] || 0) },
                 { id: 'bbva_martha', name: 'BBVA MARTHA', color: '#c5eff7', icon: 'martha', items: [] as any[], total: Number(data[11]?.[4] || 0) }
-            ];
-
-            // BOA items: index 1-2
+            ];
             for (let i = 1; i <= 2; i++) {
                 if (data[i]?.[3]) expenseGroups[0].items.push({ name: String(data[i][3]), amount: Number(data[i][4] || 0) });
-            }
-            // BBVA Ramses items: index 3-7
+            }
             for (let i = 3; i <= 7; i++) {
                 if (data[i]?.[3]) expenseGroups[1].items.push({ name: String(data[i][3]), amount: Number(data[i][4] || 0) });
-            }
-            // BBVA Martha items: index 8
+            }
             for (let i = 8; i <= 8; i++) {
                 if (data[i]?.[3]) expenseGroups[2].items.push({ name: String(data[i][3]), amount: Number(data[i][4] || 0) });
-            }
-
-            // 4. Accounts (Using the same groups for summary)
+            }
             expenseGroups.forEach(group => {
                 accounts.push({ name: group.name, amount: group.total, icon: group.icon, color: group.color });
             });
@@ -105,8 +92,7 @@ export const WorkbookLogView: React.FC = () => {
             const monthlyTotal = data[12]?.[4] || 0;
 
             return { bookNum, version: ver, monthlyTotal, exchangeRate, expenseGroups, accounts, tracking, vendors: vendorsRaw };
-        } else {
-            // Original v825 Logic
+        } else {
             const bookNum = data[0]?.[0] || '---';
             const ver = data[0]?.[1] || '---';
             const monthlyTotal = data[0]?.[4] || 0;

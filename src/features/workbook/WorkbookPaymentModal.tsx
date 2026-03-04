@@ -13,9 +13,7 @@ interface WorkbookPaymentModalProps {
     selectedItems: { id: string; price: number; description: string }[];
 }
 
-const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
-
-// Reusing the DestinationCard style from Dashboard (can be refactored to shared later if needed)
+const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
 const DestinationCard: React.FC<{
     destination: PaymentDestination;
     config: typeof destinationsConfig[keyof typeof destinationsConfig];
@@ -60,12 +58,8 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
         try {
             const config = destinationsConfig[selectedDestination];
             const commission = config.calculateCommission(totalAmount);
-            const finalTotal = totalAmount + commission;
-
-            // Format IDs for storage: WB:[ID]
-            const inventoryItemRows = selectedItems.map(item => `WB:${item.id}`).join(',');
-
-            // Description summary
+            const finalTotal = totalAmount + commission;
+            const inventoryItemRows = selectedItems.map(item => `WB:${item.id}`).join(',');
             const description = `Workbook Payment: ${selectedItems.length} items (${selectedItems[0].id}...)`;
 
             const response = await fetch(SCRIPT_URL, {

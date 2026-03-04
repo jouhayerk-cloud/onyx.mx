@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-// Auto-correct if only project ID is provided
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabaseUrl = rawUrl.includes('://')
     ? rawUrl
     : rawUrl.length > 0

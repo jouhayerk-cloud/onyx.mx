@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 
@@ -43,9 +39,7 @@ export function UserRegistryPanel() {
     const [submitting, setSubmitting] = useState(false);
     const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
 
-    const toggleUser = (id: string) => setExpandedUsers(prev => ({ ...prev, [id]: !prev[id] }));
-
-    // New user form state
+    const toggleUser = (id: string) => setExpandedUsers(prev => ({ ...prev, [id]: !prev[id] }));
     const [newEmail, setNewEmail] = useState('');
     const [newRole, setNewRole] = useState<UserRole>('Vendor');
     const [newName, setNewName] = useState('');

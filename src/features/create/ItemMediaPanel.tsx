@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import {useSetAtom, useAtomValue} from 'jotai/react';
 import React, {useEffect, useState} from 'react';
@@ -118,7 +101,6 @@ export function ItemMediaPanel() {
     setImageSrc(dataUrl);
     setIsUploadedImage(false); // When clicking existing media, it's not a new upload.
 
-    // If the selected item has masks, launch the editor.
     if (selectedItemData?.spatialMasks) {
       try {
         const parsedMasks = JSON.parse(selectedItemData.spatialMasks);
@@ -126,7 +108,6 @@ export function ItemMediaPanel() {
           const parsedBoxes = selectedItemData.spatialBoxes2d ? JSON.parse(selectedItemData.spatialBoxes2d) : [];
           const parsedPoints = selectedItemData.spatialPoints ? JSON.parse(selectedItemData.spatialPoints) : [];
 
-          // Re-create the full mask objects with SVG paths for the editor
           const fullMasks: BoundingBoxMaskType[] = parsedMasks.map((mask: any) => ({
             ...mask,
             path: mask.points ? createCurvePath(mask.points) : '',

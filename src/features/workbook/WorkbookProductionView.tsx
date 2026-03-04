@@ -7,9 +7,7 @@ export const WorkbookProductionView: React.FC = () => {
     const rawData = useAtomValue(workbookProductionDataAtom);
 
     const productionItems = useMemo(() => {
-        if (!rawData || rawData.length === 0) return [];
-
-        // Find header row (usually contains 'Description' or 'Total')
+        if (!rawData || rawData.length === 0) return [];
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';

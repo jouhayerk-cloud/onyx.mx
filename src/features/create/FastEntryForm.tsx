@@ -10,8 +10,8 @@ import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, re
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { CheckCircle2, XCircle, Search } from 'lucide-react';
 
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const initialFormState = {
     itemId: '', itemNumber: '', shape: '', material: '', description: '',
@@ -126,7 +126,6 @@ export function FastEntryForm() {
         }
     }, [activeInput]);
 
-
     useEffect(() => {
         if (imageSrc && formState.itemId && !draftCreated && db) {
             setDraftCreated(true);
@@ -136,7 +135,7 @@ export function FastEntryForm() {
                     notify.loading('Creating draft...', { id: toastId });
 
                     const newId = crypto.randomUUID();
-                    // Get highest item number for this vendor (simplified)
+
                     const existingItems = await db.inventory.find({
                         selector: { itemId: formState.itemId }
                     }).exec();
@@ -165,7 +164,6 @@ export function FastEntryForm() {
             createDraft();
         }
     }, [imageSrc, formState.itemId, draftCreated, user, setSelectedItemRow, setSelectedItemData, notify, db]);
-
 
     const handleTranscription = (text: string, isFinal: boolean) => {
         if (activeInput === 'media' || activeInput === 'dimensions' || activeInput === 'submit') return;
@@ -263,10 +261,10 @@ export function FastEntryForm() {
         const toastId = notify.loading('Saving item...');
 
         try {
-            // 1. Upload images to Google Drive using unified utility
+
             let publicMediaUrl = '';
             if (imageSrc) {
-                // Convert dataUrl (blob URL or base64) to a File for handleFileUpload
+
                 const res = await fetch(imageSrc);
                 const blob = await res.blob();
                 const file = new File([blob], 'main_item.jpg', { type: 'image/jpeg' });
@@ -319,25 +317,35 @@ export function FastEntryForm() {
                 console.warn('AI Translation failed:', aiErr);
             }
 
-            // 2. Prepare payload
             const masksForSaving = generatedData?.masks?.map(({ path, ...rest }) => rest) || [];
+
             const payload = {
-                ...formState,
+                id: selectedItemRow,
+                item_id: formState.itemId,
+                item_number: Number(formState.itemNumber) || null,
                 shape: finalShape,
                 material: finalMaterial,
                 description: finalDesc,
-                id: selectedItemRow,
+                weight_kg: Number(formState.weightKg) || null,
+                height_cm: Number(formState.heightCm) || null,
+                width_cm: Number(formState.widthCm) || null,
+                length_cm: Number(formState.lengthCm) || null,
+                price_mxn: Number(formState.price) || 0,
+                quantity: Number(formState.quantity) || 1,
+                color: formState.color,
                 status: 'Catalog',
                 workbook: '326',
-                mediaUrls: publicMediaUrl,
-                generatedPngUrl: pngPublicUrl,
-                spatialBoxes2d: JSON.stringify(generatedData?.boxes || []),
-                spatialPoints: JSON.stringify(generatedData?.points || []),
-                spatialMasks: JSON.stringify(masksForSaving),
-                updatedAt: new Date().toISOString()
+                short_description: formState.shortDescription,
+                generated_description: formState.generatedDescription,
+                detailed_description: formState.detailedDescription,
+                media_urls: publicMediaUrl,
+                generated_png_url: pngPublicUrl,
+                spatial_boxes_2d: JSON.stringify(generatedData?.boxes || []),
+                spatial_points: JSON.stringify(generatedData?.points || []),
+                spatial_masks: JSON.stringify(masksForSaving),
+                updated_at: new Date().toISOString()
             };
 
-            // 3. Save to RxDB (will sync to Supabase)
             await db.inventory.upsert(payload);
 
             notify.success('Item saved!', { id: toastId });

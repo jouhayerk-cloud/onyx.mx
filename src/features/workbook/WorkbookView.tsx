@@ -5,9 +5,7 @@ import { workbookActiveTabAtom, workbookViewModeAtom, workbookDensityAtom, excha
 import { WORKBOOK_TABS, vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg } from '../../lib/utils';
-
-// ─── UI COMPONENTS ────────────────────────────────────────────────────────────
+import { getTextColorForBg } from '../../lib/utils';
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
@@ -20,11 +18,7 @@ const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = 
 
 const fmtMXN = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(v || 0);
 const fmtUSD = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(v || 0);
-const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
-
-// ─── PANELS ───────────────────────────────────────────────────────────────────
-
-// 1. INVENTORY & ARCHIVE (Shared Logic)
+const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: boolean; onRefresh: () => void }> = ({ docs, exchangeRate, isArchive, onRefresh }) => {
     const user = useAtomValue(userAtom);
     const viewMode = useAtomValue(workbookViewModeAtom);
@@ -277,9 +271,7 @@ const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: 
             </div>
         </div>
     );
-};
-
-// 2. PRODUCTION
+};
 const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     const user = useAtomValue(userAtom);
     const filtered = useMemo(() => {
@@ -320,9 +312,7 @@ const ProductionPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
             </div>
         </div>
     );
-};
-
-// 3. LOGISTICS (CRATES)
+};
 const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
     const user = useAtomValue(userAtom);
     const filtered = useMemo(() => {
@@ -352,9 +342,7 @@ const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
             </div>
         </div>
     );
-};
-
-// 4. DATABASE MANAGER (Developer Only)
+};
 const DatabasePanel: React.FC = () => {
     const db = useDatabase();
     const [collectionName, setCollectionName] = useState<'inventory' | 'finance' | 'logistics' | 'production'>('inventory');
@@ -559,9 +547,7 @@ const DatabasePanel: React.FC = () => {
             )}
         </div>
     );
-};
-
-// 5. FINANCE PANEL (Supabase-backed)
+};
 const SUBCATEGORIES = ['All', 'Acquisition', 'Monthly Expense', 'Supplies', 'Labor', 'Crate/Pallet', 'Operating'] as const;
 
 const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
@@ -667,9 +653,7 @@ const FinancePanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, 
             )}
         </div>
     );
-};
-
-// 6. LOGISTICS PANEL (Supabase-backed)
+};
 const LOGISTICS_STATUSES = ['All', 'Warehouse', 'In Transit', 'Delivered'] as const;
 
 const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
@@ -728,9 +712,7 @@ const LogisticsPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs
             </div>
         </div>
     );
-};
-
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+};
 
 export const WorkbookView: React.FC = () => {
     const user = useAtomValue(userAtom);
@@ -784,9 +766,7 @@ export const WorkbookView: React.FC = () => {
             subs.forEach(s => s.unsubscribe());
             [invTimer, prodTimer, logTimer, finTimer, timeoutTimer].forEach(clearTimeout);
         };
-    }, [db, ver]);
-
-    // Role-Based Data Filtering
+    }, [db, ver]);
     const docs = useMemo(() => {
         if (user?.role === 'Vendor') {
             return data.inv.filter(d => d.item_id === user.id);
@@ -795,14 +775,10 @@ export const WorkbookView: React.FC = () => {
     }, [data.inv, user]);
 
     const docs326 = useMemo(() => docs.filter(d => d.workbook === '326' || !d.workbook), [docs]);
-    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
-
-    // Role-Based Tab Visibility — driven by single source of truth in consts.tsx
+    const docs825 = useMemo(() => docs.filter(d => d.workbook === '825'), [docs]);
     const visibleTabs = useMemo(() => {
         return WORKBOOK_TABS.filter(t => t.roles.includes(user?.role || 'Vendor'));
-    }, [user?.role]);
-
-    // Redirect if current tab is hidden
+    }, [user?.role]);
     useEffect(() => {
         if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
             setActiveTab(visibleTabs[0].id as any);

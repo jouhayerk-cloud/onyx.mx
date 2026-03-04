@@ -25,8 +25,6 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
     const heightIn = parseFloat(item['H Inches']) || (heightCm / 2.54);
     const depthIn = parseFloat(item['D Incbes']) || (depthCm / 2.54);
 
-    // Dynamic grid template columns for the main project-box
-    // Adding more columns for #ID, Date, Q, and better description display
     const gridTemplateColumns = '128px 1.5fr 2fr 1.5fr'; 
 
     return (

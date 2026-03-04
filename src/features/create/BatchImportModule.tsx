@@ -6,12 +6,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { useNotify } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
 import { handleFileUpload, createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask } from '../../lib/utils';
-import { LoadingIndicator } from '../../components/LoadingIndicator';
-// import { v4 as uuidv4 } from 'uuid'; // Removed to avoid dependency
+import { LoadingIndicator } from '../../components/LoadingIndicator';
 
 const uuidv4 = () => self.crypto.randomUUID();
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 
 type BatchItemStatus = 'idle' | 'processing' | 'success' | 'error';
 
@@ -38,9 +37,7 @@ export function BatchImportModule() {
     const user = useAtomValue(userAtom);
     const notify = useNotify();
     const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
-    const [isBatchProcessing, setIsBatchProcessing] = useState(false);
-
-    // We define a default vendor ID based on user or fallback
+    const [isBatchProcessing, setIsBatchProcessing] = useState(false);
     const defaultVendorId = user?.role === 'Vendor' ? user.id : Object.keys(vendors)[0] || '';
 
     const addBatchItem = () => {
@@ -82,9 +79,7 @@ export function BatchImportModule() {
 
     const handleFileSelect = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
-        const newFiles = Array.from(e.target.files);
-
-        // Generate instant native previews for UI (supports 4K/HDR without bloat)
+        const newFiles = Array.from(e.target.files);
         const newPreviews = newFiles.map(f => URL.createObjectURL(f));
 
         setBatchItems(prev => {
@@ -108,8 +103,7 @@ export function BatchImportModule() {
             });
         };
 
-        try {
-            // 1. Create Draft
+        try {
             log('Creating draft item...');
             const createResponse = await fetch(SCRIPT_URL, {
                 method: 'POST', body: JSON.stringify({ action: 'createInitialItem', vendorId: item.data.vendorId, user }),
@@ -123,24 +117,15 @@ export function BatchImportModule() {
 
             let generatedData: any = {};
             let details: any = {};
-            let gradientColor = '';
-
-            // 2. AI Processing (Only if images exist)
-            const masterFile = item.files[0];
-            // Generate AI-optimized base64 for Gemini (resized/jpeg)
-            const mainImageSrc = await readFileAsDataURL(masterFile, 'image', true);
-
-            // A. Detect & Segment (Only Image 1)
-            log('Running AI on Image 1...');
-
-            // Detection
+            let gradientColor = '';
+            const masterFile = item.files[0];
+            const mainImageSrc = await readFileAsDataURL(masterFile, 'image', true);
+            log('Running AI on Image 1...');
             const prompt1 = `Detect and tag ${item.data.shape || 'object'}. Output a single JSON object with "boxes" and "points".`;
             let result1 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt1 }] }, config: { responseMimeType: 'application/json' } });
             const data1 = JSON.parse(result1.text);
             const boxes = (data1.boxes || []).map((b: any) => ({ x: b.box_2d[1] / 1000, y: b.box_2d[0] / 1000, width: (b.box_2d[3] - b.box_2d[1]) / 1000, height: (b.box_2d[2] - b.box_2d[0]) / 1000, label: b.label }));
-            const points = (data1.points || []).map((p: any) => ({ point: { x: p.point[1] / 1000, y: p.point[0] / 1000 }, label: p.label }));
-
-            // Segmentation
+            const points = (data1.points || []).map((p: any) => ({ point: { x: p.point[1] / 1000, y: p.point[0] / 1000 }, label: p.label }));
             const prompt2 = `Give segmentation masks for ${item.data.shape || 'object'}. Output JSON list with "mask" (base64).`;
             let result2 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt2 }] }, config: { responseMimeType: 'application/json' } });
             const rawMasks = JSON.parse(result2.text);
@@ -163,17 +148,13 @@ export function BatchImportModule() {
 
             if (masks.length > 0) {
                 gradientColor = await extractGradientFromMask(mainImageSrc, masks[0], { width: image.width, height: image.height });
-            }
-
-            // Details (Dimensions etc)
+            }
             const prompt3 = `Analyze the product. Estimate dimensions (widthCm, heightCm, lengthCm), weightKg, and descriptions. Return single JSON.`;
             const schema3 = { type: Type.OBJECT, properties: { widthCm: { type: Type.STRING }, heightCm: { type: Type.STRING }, lengthCm: { type: Type.STRING }, weightKg: { type: Type.STRING }, shortDescription: { type: Type.STRING }, generatedDescription: { type: Type.STRING }, detailedDescription: { type: Type.STRING } } };
             let result3 = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: { parts: [{ inlineData: { data: mainImageSrc.split(',')[1], mimeType: 'image/jpeg' } }, { text: prompt3 }] }, config: { responseMimeType: 'application/json', responseSchema: schema3 } });
             details = JSON.parse(result3.text);
 
-            log('AI Processing complete.');
-
-            // 3. Prepare Upload Payload
+            log('AI Processing complete.');
             const photosPayload = await Promise.all(item.files.map(async (file) => {
                 const result = await handleFileUpload(file, user);
                 return result ? result.thumbnailUrl : null;
@@ -188,9 +169,7 @@ export function BatchImportModule() {
                 spatialPoints: JSON.stringify(generatedData.points || []),
                 spatialMasks: JSON.stringify(generatedData.masks?.map(({ path, ...rest }: any) => rest) || []),
                 photos: validPhotos,
-            };
-
-            // 4. Update Backend
+            };
             log('Uploading data & images...');
             const updateResponse = await fetch(SCRIPT_URL, {
                 method: 'POST',
@@ -235,8 +214,7 @@ export function BatchImportModule() {
     };
 
     const processBatch = async () => {
-        setIsBatchProcessing(true);
-        // Process sequentially to avoid overwhelming browser/api
+        setIsBatchProcessing(true);
         for (let i = 0; i < batchItems.length; i++) {
             const item = batchItems[i];
             if (item.status === 'success') continue; // Skip already done

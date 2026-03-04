@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { userAtom, storeShoppingBagAtom, storeSearchTermAtom, exchangeRateAtom, liveExchangeRateAtom } from '../../lib/atoms';
-import { extractFileId } from '../../lib/utils';
+import { extractFileId, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { supabase } from '../../lib/supabase';
 import { InventoryItemData, InventoryItem } from '../../lib/Types';
 import jsPDF from 'jspdf';
@@ -18,7 +18,6 @@ export function StoreView() {
     const [storeLogo, setStoreLogo] = useState('');
     const searchTerm = useAtomValue(storeSearchTermAtom);
 
-    // Floating Panel State
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [galleryIndex, setGalleryIndex] = useState(0);
 
@@ -37,7 +36,7 @@ export function StoreView() {
             const { data, error } = await query.order('timestamp', { ascending: false });
             if (!error && data) {
                 let mappedItems: InventoryItem[] = data.map(d => {
-                    // Parse multiple images and videos
+
                     let mediaList: string[] = [];
                     if (Array.isArray(d.image_urls)) {
                         mediaList.push(...d.image_urls);
@@ -58,12 +57,11 @@ export function StoreView() {
                         mediaList.push(d.generatedPngUrl);
                     }
 
-                    // Handle Google Drive links for direct image rendering
                     mediaList = mediaList.map(url => {
                         const clean = url.trim();
                         const fileId = extractFileId(clean);
                         if (fileId && clean.toLowerCase().includes('drive.google.com')) {
-                            // Video files might not work via lh3, but standard images do
+
                             if (!clean.match(/\.(mp4|webm|ogg|mov)$/i)) {
                                 return `https://lh3.googleusercontent.com/d/${fileId}`;
                             }
@@ -79,7 +77,6 @@ export function StoreView() {
                     };
                 });
 
-                // Client-side filtering for Vendors based on their name prefix (e.g. 'JM', 'EM')
                 if (isVendor && user?.name) {
                     mappedItems = mappedItems.filter((m) =>
                         m.data.itemId && m.data.itemId.toUpperCase().startsWith(user.name.toUpperCase())
@@ -251,7 +248,6 @@ export function StoreView() {
         return `${cmL}x${cmW}x${cmH}cm (${inL}x${inW}x${inH}") - ${kg}kg (${lbs}lbs)`;
     };
 
-    // Filter Items
     const filteredItems = items.filter(item => {
         if (!searchTerm) return true;
         const s = searchTerm.toLowerCase();
@@ -381,156 +377,168 @@ export function StoreView() {
             </div>
 
             {/* Dynamic Fullscreen Item Viewer Panel */}
-            {selectedItem && (
-                <div className="fixed inset-0 z-100 flex items-center justify-center bg-(--background-color)/90 backdrop-blur-xl animate-in fade-in duration-300 p-4 sm:p-8">
-                    <button onClick={closePanel} className="absolute top-6 right-6 p-3 bg-(--text-color)/10 hover:bg-(--text-color)/20 text-(--text-color) rounded-full transition-all z-50 shadow-xl border border-(--text-color)/10 hover:scale-110">
-                        <X size={24} strokeWidth={2} />
-                    </button>
+            {selectedItem && (() => {
+                const norm = normalizeInventoryData(selectedItem.data);
+                const calculated = calculateCodesAndPrices({ ...norm, price: norm.price_mxn || norm.price }, exchangeRate, '326');
+                return (
+                    <div className="fixed inset-0 z-100 flex items-center justify-center bg-(--background-color)/90 backdrop-blur-xl animate-in fade-in duration-300 p-4 sm:p-8">
+                        <button onClick={closePanel} className="absolute top-6 right-6 p-3 bg-(--text-color)/10 hover:bg-(--text-color)/20 text-(--text-color) rounded-full transition-all z-50 shadow-xl border border-(--text-color)/10 hover:scale-110">
+                            <X size={24} strokeWidth={2} />
+                        </button>
 
-                    <div className="w-full max-w-6xl h-full max-h-[90vh] bg-(--background-color) rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row border border-(--text-color)/10 relative">
+                        <div className="w-full max-w-6xl h-full max-h-[90vh] bg-(--background-color) rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row border border-(--text-color)/10 relative">
 
-                        {/* Media Gallery Section */}
-                        <div className="w-full md:w-3/5 lg:w-2/3 h-64 md:h-full bg-black/5 relative flex items-center justify-center group overflow-hidden border-b md:border-b-0 md:border-r border-(--text-color)/5">
-                            {(() => {
-                                const mediaFiles = (selectedItem.data as any)._allMedia || [];
-                                if (mediaFiles.length === 0) {
-                                    return <span className="text-(--text-color) opacity-30 font-bold uppercase tracking-widest">No Media Available</span>;
-                                }
+                            {/* Media Gallery Section */}
+                            <div className="w-full md:w-3/5 lg:w-2/3 h-64 md:h-full bg-black/5 relative flex items-center justify-center group overflow-hidden border-b md:border-b-0 md:border-r border-(--text-color)/5">
+                                {(() => {
+                                    const mediaFiles = (selectedItem.data as any)._allMedia || [];
+                                    if (mediaFiles.length === 0) {
+                                        return <span className="text-(--text-color) opacity-30 font-bold uppercase tracking-widest">No Media Available</span>;
+                                    }
 
-                                const currentMediaUrl = mediaFiles[galleryIndex];
+                                    const currentMediaUrl = mediaFiles[galleryIndex];
 
-                                return (
-                                    <>
-                                        <div className="w-full h-full animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-8">
-                                            {renderGalleryMedia(currentMediaUrl)}
-                                        </div>
-
-                                        {mediaFiles.length > 1 && (
-                                            <>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === 0 ? mediaFiles.length - 1 : prev - 1); }}
-                                                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-(--background-color)/50 hover:bg-(--background-color)/80 text-(--text-color) rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-(--text-color)/10"
-                                                >
-                                                    <ChevronLeft size={24} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === mediaFiles.length - 1 ? 0 : prev + 1); }}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-(--background-color)/50 hover:bg-(--background-color)/80 text-(--text-color) rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-(--text-color)/10"
-                                                >
-                                                    <ChevronRight size={24} />
-                                                </button>
-
-                                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-(--background-color)/50 backdrop-blur-md rounded-2xl border border-(--text-color)/10">
-                                                    {mediaFiles.map((_: any, idx: number) => (
-                                                        <button
-                                                            key={idx}
-                                                            onClick={() => setGalleryIndex(idx)}
-                                                            className={`w-2 h-2 rounded-full transition-all ${idx === galleryIndex ? 'bg-(--main-color) w-6' : 'bg-(--text-color) opacity-30 hover:opacity-60'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        {/* Details Section */}
-                        <div className="w-full md:w-2/5 lg:w-1/3 h-full overflow-y-auto p-6 md:p-10 flex flex-col custom-scrollbar bg-linear-to-br from-(--text-color)/5 to-transparent">
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color) bg-(--main-color)/10 inline-block w-fit px-3 py-1 rounded-full mb-4 border border-(--main-color)/20">
-                                {selectedItem.data.itemNumber ? `ID: ${selectedItem.data.itemNumber}` : 'Item Info'}
-                            </span>
-
-                            <h2 className="text-3xl font-black text-(--text-color) mb-2 leading-tight">
-                                {selectedItem.data.shape} <span className="opacity-50">{selectedItem.data.material}</span>
-                            </h2>
-                            <p className="text-sm font-bold text-(--text-color) opacity-60 uppercase tracking-widest mb-6 pb-6 border-b border-(--text-color)/10">
-                                {selectedItem.data.color}
-                            </p>
-
-                            <div className="flex-1 space-y-6">
-                                {(selectedItem.data as any).short_description && (
-                                    <div>
-                                        <h3 className="text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-2">About</h3>
-                                        <p className="text-sm text-(--text-color) opacity-80 leading-relaxed font-medium">
-                                            {(selectedItem.data as any).short_description}
-                                        </p>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <h3 className="text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-3">Specifications</h3>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
-                                            <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Dimensions</span>
-                                            <span className="block text-xs font-mono font-bold text-(--text-color) opacity-90">
-                                                {selectedItem.data.lengthCm}x{selectedItem.data.widthCm}x{selectedItem.data.heightCm} cm
-                                            </span>
-                                            <span className="block text-[10px] font-mono text-(--text-color) opacity-50 mt-1">
-                                                {selectedItem.data.lengthCm && !isNaN(Number(selectedItem.data.lengthCm)) ? (Number(selectedItem.data.lengthCm) / 2.54).toFixed(1) : '-'}x{selectedItem.data.widthCm && !isNaN(Number(selectedItem.data.widthCm)) ? (Number(selectedItem.data.widthCm) / 2.54).toFixed(1) : '-'}x{selectedItem.data.heightCm && !isNaN(Number(selectedItem.data.heightCm)) ? (Number(selectedItem.data.heightCm) / 2.54).toFixed(1) : '-'} in
-                                            </span>
-                                        </div>
-                                        <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
-                                            <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Weight</span>
-                                            <span className="block text-xs font-mono font-bold text-(--text-color) opacity-90">
-                                                {selectedItem.data.weightKg || '-'} kg
-                                            </span>
-                                            <span className="block text-[10px] font-mono text-(--text-color) opacity-50 mt-1">
-                                                {selectedItem.data.weightKg && !isNaN(Number(selectedItem.data.weightKg)) ? (Number(selectedItem.data.weightKg) * 2.20462).toFixed(1) : '-'} lbs
-                                            </span>
-                                        </div>
-                                        {!isVendor && selectedItem.data.bookAqCode && (
-                                            <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
-                                                <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">AQC Code</span>
-                                                <span className="text-xs font-mono font-bold text-(--main-color)">
-                                                    {selectedItem.data.bookAqCode}
-                                                </span>
+                                    return (
+                                        <>
+                                            <div className="w-full h-full animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-8">
+                                                {renderGalleryMedia(currentMediaUrl)}
                                             </div>
-                                        )}
-                                        {!isVendor && selectedItem.data.bookLanded && (
-                                            <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
-                                                <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Landed</span>
-                                                <span className="text-xs font-mono font-bold text-(--main-color)">
-                                                    {selectedItem.data.bookLanded}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {!isVendor && selectedItem.data.bookRetail && (
-                                            <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
-                                                <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Retail</span>
-                                                <span className="text-xs font-mono font-bold text-green-500">
-                                                    {selectedItem.data.bookRetail}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+
+                                            {mediaFiles.length > 1 && (
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === 0 ? mediaFiles.length - 1 : prev - 1); }}
+                                                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-(--background-color)/50 hover:bg-(--background-color)/80 text-(--text-color) rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-(--text-color)/10"
+                                                    >
+                                                        <ChevronLeft size={24} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === mediaFiles.length - 1 ? 0 : prev + 1); }}
+                                                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-(--background-color)/50 hover:bg-(--background-color)/80 text-(--text-color) rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-(--text-color)/10"
+                                                    >
+                                                        <ChevronRight size={24} />
+                                                    </button>
+
+                                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-(--background-color)/50 backdrop-blur-md rounded-2xl border border-(--text-color)/10">
+                                                        {mediaFiles.map((_: any, idx: number) => (
+                                                            <button
+                                                                key={idx}
+                                                                onClick={() => setGalleryIndex(idx)}
+                                                                className={`w-2 h-2 rounded-full transition-all ${idx === galleryIndex ? 'bg-(--main-color) w-6' : 'bg-(--text-color) opacity-30 hover:opacity-60'}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
 
-                            <div className="mt-8 pt-8 border-t border-(--text-color)/10 flex items-end justify-between gap-4">
-                                <div>
-                                    <span className="block text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-1">Acquisition Price</span>
-                                    <span className="text-2xl font-black text-(--text-color)">
-                                        {getPriceLabel(selectedItem.data)}
-                                    </span>
-                                    {!isVendor && (
-                                        <span className="text-sm font-bold text-(--text-color) opacity-40 ml-2">
-                                            ≈ ${getPriceUSD(selectedItem.data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-                                        </span>
+                            {/* Details Section */}
+                            <div className="w-full md:w-2/5 lg:w-1/3 h-full overflow-y-auto p-6 md:p-10 flex flex-col custom-scrollbar bg-linear-to-br from-(--text-color)/5 to-transparent">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color) bg-(--main-color)/10 inline-block w-fit px-3 py-1 rounded-full mb-4 border border-(--main-color)/20">
+                                    {calculated.bookBardcode ? `TAG ID: ${calculated.bookBardcode}` : (norm.itemNumber ? `ID: ${norm.itemNumber}` : 'Item Info')}
+                                </span>
+
+                                <h2 className="text-3xl font-black text-(--text-color) mb-2 leading-tight">
+                                    {norm.shape} <span className="opacity-50">{norm.material}</span>
+                                </h2>
+                                <p className="text-sm font-bold text-(--text-color) opacity-60 uppercase tracking-widest mb-6 pb-6 border-b border-(--text-color)/10">
+                                    {norm.color}
+                                </p>
+
+                                <div className="flex-1 space-y-6">
+                                    {norm.shortDescription && (
+                                        <div>
+                                            <h3 className="text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-2">About</h3>
+                                            <p className="text-sm text-(--text-color) opacity-80 leading-relaxed font-medium">
+                                                {norm.shortDescription}
+                                            </p>
+                                        </div>
                                     )}
+
+                                    <div>
+                                        <h3 className="text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-3">Specifications</h3>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Dimensions</span>
+                                                <span className="block text-xs font-mono font-bold text-(--text-color) opacity-90">
+                                                    {norm.lengthCm || '-'}x{norm.widthCm || '-'}x{norm.heightCm || '-'} cm
+                                                </span>
+                                                <span className="block text-[10px] font-mono text-(--text-color) opacity-50 mt-1">
+                                                    {norm.lengthCm && !isNaN(Number(norm.lengthCm)) ? (Number(norm.lengthCm) / 2.54).toFixed(1) : '-'}x{norm.widthCm && !isNaN(Number(norm.widthCm)) ? (Number(norm.widthCm) / 2.54).toFixed(1) : '-'}x{norm.heightCm && !isNaN(Number(norm.heightCm)) ? (Number(norm.heightCm) / 2.54).toFixed(1) : '-'} in
+                                                </span>
+                                            </div>
+                                            <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Weight</span>
+                                                <span className="block text-xs font-mono font-bold text-(--text-color) opacity-90">
+                                                    {norm.weightKg || '-'} kg
+                                                </span>
+                                                <span className="block text-[10px] font-mono text-(--text-color) opacity-50 mt-1">
+                                                    {norm.weightKg && !isNaN(Number(norm.weightKg)) ? (Number(norm.weightKg) * 2.20462).toFixed(1) : '-'} lbs
+                                                </span>
+                                            </div>
+                                            {!isVendor && calculated.bookAqCode && (
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                    <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">AQC Code</span>
+                                                    <span className="text-xs font-mono font-bold text-(--main-color)">
+                                                        {calculated.bookAqCode}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {!isVendor && calculated.bookLandCode && (
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                    <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">LND Code</span>
+                                                    <span className="text-xs font-mono font-bold text-yellow-500">
+                                                        {calculated.bookLandCode}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {!isVendor && calculated.bookLanded && (
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                    <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Landed</span>
+                                                    <span className="text-xs font-mono font-bold text-(--main-color)">
+                                                        ${parseFloat(calculated.bookLanded).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {!isVendor && calculated.bookRetail && (
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/5">
+                                                    <span className="block text-[9px] text-(--text-color) opacity-40 uppercase tracking-wider mb-1">Retail</span>
+                                                    <span className="text-xs font-mono font-bold text-green-500">
+                                                        ${parseFloat(calculated.bookRetail).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => handleAddToCart(selectedItem)}
-                                    className="button py-4! px-8! bg-(--main-color) text-black rounded-2xl font-black tracking-widest text-sm shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--main-color-rgb),0.5)] transition-all hover:-translate-y-1 whitespace-nowrap"
-                                >
-                                    ADD TO BAG
-                                </button>
+
+                                <div className="mt-8 pt-8 border-t border-(--text-color)/10 flex items-end justify-between gap-4">
+                                    <div>
+                                        <span className="block text-[10px] text-(--text-color) opacity-40 uppercase tracking-widest font-black mb-1">Acquisition Price</span>
+                                        <span className="text-2xl font-black text-(--text-color)">
+                                            {getPriceLabel(selectedItem.data)}
+                                        </span>
+                                        {!isVendor && (
+                                            <span className="text-sm font-bold text-(--text-color) opacity-40 ml-2">
+                                                ≈ ${getPriceUSD(selectedItem.data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleAddToCart(selectedItem)}
+                                        className="button py-4! px-8! bg-(--main-color) text-black rounded-2xl font-black tracking-widest text-sm shadow-[0_0_30px_rgba(var(--main-color-rgb),0.3)] hover:shadow-[0_0_40px_rgba(var(--main-color-rgb),0.5)] transition-all hover:-translate-y-1 whitespace-nowrap"
+                                    >
+                                        ADD TO BAG
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Shopping Bag Drawer / Overlay */}
             {isBagOpen && (

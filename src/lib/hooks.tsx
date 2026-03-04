@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import { useSetAtom, useAtomValue } from 'jotai/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -87,33 +70,28 @@ export function useResetState() {
 
   return useCallback(() => {
     console.log('[State] Resetting application state to default.');
-    // Core workflow
+
     setWorkflowStep('idle');
     setImageSrc(null);
     setIsUploadedImage(false);
     setAllAnnotationData({ boxes: [], masks: [], points: [] });
 
-    // Item selection
     setSelectedItemRow(null);
     setSelectedItemData(null);
 
-    // Panel visibility
     setSidebarState('expanded');
     setIsInventoryPanelOpen(true);
     setIsDetailsPanelOpen(false);
 
-    // View states
     setActiveView('inventory');
     setCreateViewActiveTab('new');
     setDashboardActiveTab('acquisitions');
     setCatalogMarketViewMode('catalog');
     setMarketActiveTab('images');
 
-    // Item creation
     setCreationGalleryFiles([]);
     setNewItemGeneratedFiles({ pngData: null, svgData: null });
 
-    // 3D states
     setIs3DWorkspaceOpen(false);
     setIs3DWorkspaceInventoryOpen(true);
     setIs3DWorkspaceDetailsOpen(false);
@@ -133,7 +111,7 @@ export function useLogout() {
   return useCallback(() => {
     setUser(null);
     resetState();
-    // Also clear any other sensitive data from storage if necessary
+
     localStorage.removeItem('userSession');
   }, [setUser, resetState]);
 }

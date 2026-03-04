@@ -1,28 +1,10 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-// FIX: Changed jszip import to a namespace import to fix widespread TypeScript type inference issues.
+
 import * as JSZip from 'jszip';
 
-// === Types ===
 interface AnalysisResult {
   timestamp: number;
   itemName: string;
@@ -34,7 +16,6 @@ interface GeminiAnalysisResponse {
   itemName: string;
 }
 
-// === Icons ===
 const UploadIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -66,7 +47,6 @@ const RestartIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 const model = 'gemini-2.5-flash';
 
 const analysisSchema = {
@@ -131,8 +111,6 @@ const analyzeFrame = async (
   }
 };
 
-
-// === Utilities ===
 const extractFrame = (
   videoElement: HTMLVideoElement,
   canvasElement: HTMLCanvasElement,

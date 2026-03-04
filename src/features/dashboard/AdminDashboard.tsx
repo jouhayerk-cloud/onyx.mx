@@ -8,9 +8,7 @@ import { useState, useEffect } from 'react';
 import {
     Package, DollarSign, Users, TrendingUp, Layers, Shapes,
     BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Minus
-} from 'lucide-react';
-
-// ─── Helper types ─────────────────────────────────────────────────────────────
+} from 'lucide-react';
 interface VendorSummary {
     vendorId: string;
     color: string;
@@ -26,9 +24,7 @@ interface CategorySummary {
     count: number;
     totalMxn: number;
     totalUsd: number;
-}
-
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+}
 const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-color)', trend }: {
     icon: React.FC<any>; label: string; value: string; subtitle?: string; color?: string; trend?: 'up' | 'down' | 'flat';
 }) => (
@@ -50,9 +46,7 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-colo
             {subtitle && <p className="text-[10px] font-mono text-(--text-color-secondary) mt-1">{subtitle}</p>}
         </div>
     </div>
-);
-
-// ─── Bar row (horizontal bar chart) ──────────────────────────────────────────
+);
 const BarRow = ({ label, value, max, color, count, showValue }: {
     label: string; value: number; max: number; color: string; count: number; showValue: boolean;
 }) => (
@@ -72,18 +66,14 @@ const BarRow = ({ label, value, max, color, count, showValue }: {
             )}
         </div>
     </div>
-);
-
-// ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
+);
 export function AdminDashboard() {
     const db = useDatabase();
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const [items, setItems] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Load all inventory + production items
+    const [isLoading, setIsLoading] = useState(true);
     useEffect(() => {
         if (!db) return;
         setIsLoading(true);
@@ -99,9 +89,7 @@ export function AdminDashboard() {
         ];
         setTimeout(() => setIsLoading(false), 600);
         return () => subs.forEach(s => s.unsubscribe());
-    }, [db]);
-
-    // ── Vendor summaries ──────────────────────────────────────────────────────
+    }, [db]);
     const vendorSummaries = useMemo<VendorSummary[]>(() => {
         const map: Record<string, VendorSummary> = {};
         for (const item of items) {
@@ -129,9 +117,7 @@ export function AdminDashboard() {
             map[vid].totalRetailUsd += usd * 1.4 * 12;
         }
         return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
-    }, [items, exchangeRate]);
-
-    // ── Shape × Type summaries ────────────────────────────────────────────────
+    }, [items, exchangeRate]);
     const shapeTypeSummaries = useMemo<CategorySummary[]>(() => {
         const map: Record<string, CategorySummary> = {};
         for (const item of items) {
@@ -147,9 +133,7 @@ export function AdminDashboard() {
             map[key].totalUsd += price / exchangeRate;
         }
         return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 15);
-    }, [items, exchangeRate]);
-
-    // ── Material summaries ────────────────────────────────────────────────────
+    }, [items, exchangeRate]);
     const materialSummaries = useMemo<CategorySummary[]>(() => {
         const map: Record<string, CategorySummary> = {};
         for (const item of items) {
@@ -163,9 +147,7 @@ export function AdminDashboard() {
             map[mat].totalUsd += price / exchangeRate;
         }
         return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 10);
-    }, [items, exchangeRate]);
-
-    // ── Expense category summaries (from payments data) ───────────────────────
+    }, [items, exchangeRate]);
     const expenseCategories = useMemo(() => {
         const map: Record<string, { label: string; total: number; count: number }> = {};
         for (const doc of financeData) {
@@ -176,9 +158,7 @@ export function AdminDashboard() {
             map[displayCat].count += 1;
         }
         return Object.values(map).sort((a, b) => b.total - a.total);
-    }, [financeData]);
-
-    // ── Totals ────────────────────────────────────────────────────────────────
+    }, [financeData]);
     const totals = useMemo(() => {
         const totalItems = vendorSummaries.reduce((a, v) => a + v.itemCount, 0);
         const totalAcqMxn = vendorSummaries.reduce((a, v) => a + v.totalAcqMxn, 0);

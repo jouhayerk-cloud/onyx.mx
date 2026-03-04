@@ -8,9 +8,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { getTextColorForBg } from '../../lib/utils';
 
-const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
-
-// --- API Call Abstraction ---
+const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
 const apiCall = async (action: string, payload: object) => {
     const response = await fetch(SCRIPT_URL, {
         method: 'POST',
@@ -45,9 +43,7 @@ export function WorkbookPaymentsView() {
 
     useEffect(() => {
         fetchData();
-    }, [paymentsVersion, fetchData]);
-
-    // Filter to only show workbook-related expenses (those with WB: prefix in inventoryItemRows)
+    }, [paymentsVersion, fetchData]);
     const workbookExpenses = useMemo(() => {
         return expenses.filter(expense => {
             const itemRows = expense.inventoryItemRows || '';

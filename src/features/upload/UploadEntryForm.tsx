@@ -12,9 +12,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
 import { GoogleGenAI, Type } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// ── Styles ────────────────────────────────────────────────────────────────────
+
 const lbl = "text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) block mb-2";
 const inp = "w-full bg-(--glass-bg) border border-(--border-color) rounded-xl px-4 py-3 text-sm text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:outline-none focus:border-(--main-color)/50 transition-all";
 const inpNum = inp + " font-mono text-center";
@@ -25,9 +23,7 @@ const MEDIA_TYPES = [
     { id: 'sample', label: 'Smp', icon: 'search' },
     { id: 'lot', label: 'Lot', icon: 'package' },
     { id: 'video', label: 'Vid', icon: 'video' },
-];
-
-// ── Helper: suggestion chips ──────────────────────────────────────────────────
+];
 const SuggestChips: React.FC<{
     values: string[];
     onSelect: (v: string) => void;
@@ -46,9 +42,7 @@ const SuggestChips: React.FC<{
             ))}
         </div>
     );
-};
-
-// ── Main form ─────────────────────────────────────────────────────────────────
+};
 export function UploadEntryForm() {
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
     const [mediaFiles, setMediaFiles] = useAtom(uploadMediaFilesAtom);
@@ -64,9 +58,7 @@ export function UploadEntryForm() {
     const canSelectVendor = user?.role === 'Developer' || user?.role === 'Admin';
     const defaultVendorId = canSelectVendor
         ? (Object.keys(vendors)[0] || '')
-        : (user?.id || user?.email || '');
-
-    // Init form
+        : (user?.id || user?.email || '');
     useEffect(() => {
         if (!itemData.itemId) {
             setItemData({
@@ -76,9 +68,7 @@ export function UploadEntryForm() {
                 workbook: 'v326',
             });
         }
-    }, [defaultVendorId, itemData.itemId, setItemData]);
-
-    // Fetch vendor-specific inventory docs for autocomplete
+    }, [defaultVendorId, itemData.itemId, setItemData]);
     useEffect(() => {
         if (!db || !itemData.vendorId) return;
         let timer: any;
@@ -98,9 +88,7 @@ export function UploadEntryForm() {
             }, 300);
         });
         return () => { sub.unsubscribe(); clearTimeout(timer); };
-    }, [db, itemData.vendorId, setItemData]);
-
-    // Build unique suggestion lists from vendor docs
+    }, [db, itemData.vendorId, setItemData]);
     const suggestions = useMemo(() => {
         const u = (keys: string[]): string[] => {
             const vals = new Set<string>();
@@ -195,9 +183,7 @@ export function UploadEntryForm() {
                 { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v326', itemNumber: itemData.itemNumber || '1' },
                 exchangeRate,
                 'v326'
-            );
-
-            // AI Autocorrect & Translation for text fields
+            );
             let translatedShape = itemData.shape;
             let translatedMaterial = itemData.material;
             let translatedColor = itemData.color;
@@ -239,8 +225,7 @@ export function UploadEntryForm() {
                     translatedType = parsed.itemType || translatedType;
                 }
             } catch (aiErr) {
-                console.warn('AI Translation skipped/failed:', aiErr);
-                // Non-fatal, proceed with existing values
+                console.warn('AI Translation skipped/failed:', aiErr);
             }
 
             const dbRow = {
@@ -278,9 +263,7 @@ export function UploadEntryForm() {
                 } catch (rxErr) {
                     console.error('Local db sync error:', rxErr);
                 }
-            }
-
-            // Increment user's total_submits in the app_users table
+            }
             if (user?.email) {
                 const { data: userData } = await supabase.from('app_users').select('total_submits').eq('email', user.email).single();
                 if (userData) {

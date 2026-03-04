@@ -103,19 +103,13 @@ export const ClientOverview: React.FC = () => {
         const toastId = toast.loading(`Marking ${fmtMXN(destReqMXN)} as Paid...`);
         try {
             const docIds = destDocs.map(d => d.id);
-            if (docIds.length === 0) return;
-
-            // 1. Update remote finance
+            if (docIds.length === 0) return;
             const { error: finErr } = await supabase.from('finance').update({ status: 'Paid' }).in('id', docIds);
-            if (finErr) throw finErr;
-
-            // 2. Update local finance
+            if (finErr) throw finErr;
             for (const id of docIds) {
                 const localDoc = await db?.finance.findOne({ selector: { id } }).exec();
                 if (localDoc) await localDoc.patch({ status: 'Paid' });
-            }
-
-            // 3. Update related inventory (using logic from tracking payments view)
+            }
             for (const req of destDocs) {
                 const ids = req.related_ids || req.related_inventory_ids?.split(',') || [];
                 if (ids.length > 0) {

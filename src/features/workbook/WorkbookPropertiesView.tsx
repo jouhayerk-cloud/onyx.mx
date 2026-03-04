@@ -5,9 +5,7 @@ import { WorkbookPaymentTrackingView } from './WorkbookPaymentTrackingView';
 import { findHeaderRowIndex } from './workbookUtils';
 
 export const WorkbookPropertiesView: React.FC = () => {
-    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
-
-    // Sort sheets so -vPayment is always first
+    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
     const sortedData = useMemo(() => {
         return [...propertiesData].sort((a, b) => {
             if (a.sheetName === '-vPayment') return -1;
@@ -31,9 +29,7 @@ export const WorkbookPropertiesView: React.FC = () => {
                                     <WorkbookPaymentTrackingView />
                                 </div>
                             );
-                        }
-
-                        // Generic Sheet Handling
+                        }
                         const headerIdx = findHeaderRowIndex(sheet.data);
                         const headers = sheet.data[headerIdx] || [];
                         const rows = sheet.data.slice(headerIdx + 1);

@@ -70,11 +70,7 @@ export const LogisticsView: React.FC = () => {
             </div>
         </div>
     );
-};
-
-
-
-// Shipment Tracking Panel — All shipments with status workflow
+};
 const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const [filter, setFilter] = useState('All');
     const [expandedId, setExpandedId] = useState<string | null>(null);

@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { uploadItemDataAtom, userAtom } from '../../lib/atoms';
