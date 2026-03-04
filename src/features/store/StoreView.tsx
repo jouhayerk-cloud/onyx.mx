@@ -22,7 +22,7 @@ export function StoreView() {
     useEffect(() => {
         async function fetchStoreItems() {
             setLoading(true);
-            let query = supabase.from('inventory').select('*').eq('status', 'Available');
+            let query = supabase.from('inventory').select('*').in('status', ['Available', 'Avaiable', 'Catalog']);
 
             if (isVendor) {
                 // Vendors only see their own items
@@ -73,14 +73,7 @@ export function StoreView() {
         if (shoppingBag.length === 0) return;
         const itemIds = shoppingBag.map(i => i.data.itemId || i.row);
 
-        if (isClient) {
-            // Clients acquire items, pending admin review
-            await supabase.from('inventory')
-                .update({ status: 'Acquisition', acquired_by: user?.id })
-                .in('item_id', itemIds);
-
-            alert('Items acquired! Pending Admin / Developer review.');
-        } else if (isVendor) {
+        if (isVendor) {
             // Vendors register sale -> Delete Requested and Export Excel/PDF
             await supabase.from('inventory')
                 .update({ status: 'Delete Requested' })
@@ -89,11 +82,13 @@ export function StoreView() {
             exportPDF();
             exportXLSX();
             alert('Sale recorded and items requested for deletion. PDF and XLSX files generated.');
-        } else if (isDevAdmin) {
-            // Just test export for Developer
-            exportPDF();
-            exportXLSX();
-            alert('Test checkout. Files generated. Database not mutated for Admin test.');
+        } else {
+            // Clients, Admins, Developers -> Acquired
+            await supabase.from('inventory')
+                .update({ status: 'Acquisition', acquired_by: user?.id })
+                .in('item_id', itemIds);
+
+            alert('Items acquired! (Acquisition recorded)');
         }
 
         setShoppingBag([]);
