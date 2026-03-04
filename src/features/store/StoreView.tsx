@@ -441,7 +441,7 @@ export function StoreView() {
 
                             {/* Details Side — Layer 4: solid theme sidebar bg + frosted glass */}
                             <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar border-l border-(--text-color)/10"
-                                style={{ background: 'var(--sidebar-bg)', backdropFilter: 'blur(20px)' }}>
+                                style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)', backdropFilter: 'blur(20px)' }}>
                                 <div className="p-6 md:p-8 flex flex-col h-full">
                                     {/* Vendor color-coded TAG ID — large, prominent */}
                                     {(() => {
