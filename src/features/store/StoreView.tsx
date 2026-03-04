@@ -297,13 +297,19 @@ export function StoreView() {
                                             {normCard.color && <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5 truncate">{normCard.color}</div>}
                                         </div>
 
-                                        {/* Internal codes */}
+                                        {/* Internal codes — vendor color-coded TAG ID */}
                                         <div className="text-[9px] font-mono space-y-0.5 border-t border-white/5 pt-2">
-                                            <div className="flex items-center gap-1">
-                                                <Tag size={8} className="opacity-40 shrink-0" />
-                                                <span className="text-white/40">TAG:</span>
-                                                <span className="text-white/80 font-bold">{calcCard.bookBardcode || normCard.itemNumber || '—'}</span>
-                                            </div>
+                                            {(() => {
+                                                const vcPrefix = String(normCard.itemId || '').split('-')[0] || '';
+                                                const vcColor = vendors[vcPrefix as keyof typeof vendors]?.color || '#ffffff';
+                                                return (
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: vcColor, boxShadow: `0 0 4px ${vcColor}` }} />
+                                                        <Tag size={8} style={{ color: vcColor }} className="shrink-0" />
+                                                        <span style={{ color: vcColor }} className="font-bold opacity-90">{calcCard.bookBardcode || normCard.itemNumber || '—'}</span>
+                                                    </div>
+                                                );
+                                            })()}
                                             {!isVendor && calcCard.bookAqCode && (
                                                 <>
                                                     <div className="flex items-center gap-2 text-white/50">
@@ -351,17 +357,27 @@ export function StoreView() {
                     <div className="fixed inset-0 z-100 flex items-center justify-center animate-in fade-in duration-200"
                         onClick={closePanel}>
 
-                        {/* Blurred background image — uses <img> to handle cross-origin sources */}
+                        {/* Blurred background image — fixed positioned so it fills viewport behind the panel */}
                         {currentMediaUrl && !isCurrentVideo && (
                             <img
                                 src={currentMediaUrl}
                                 aria-hidden="true"
-                                className="absolute inset-0 w-full h-full object-cover scale-110 pointer-events-none select-none"
-                                style={{ filter: 'blur(48px) brightness(0.25) saturate(1.8)' }}
+                                style={{
+                                    position: 'fixed',
+                                    inset: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    transform: 'scale(1.12)',
+                                    filter: 'blur(50px) brightness(0.45) saturate(1.6)',
+                                    pointerEvents: 'none',
+                                    userSelect: 'none',
+                                    zIndex: 0,
+                                }}
                             />
                         )}
                         {/* Overlay scrim */}
-                        <div className="absolute inset-0 bg-black/50" />
+                        <div className="absolute inset-0 bg-black/40" style={{ zIndex: 1 }} />
 
                         {/* Close button */}
                         <button onClick={closePanel}
@@ -370,7 +386,8 @@ export function StoreView() {
                         </button>
 
                         {/* Panel */}
-                        <div className="relative z-10 w-full max-w-6xl h-full max-h-[92vh] flex flex-col md:flex-row rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300 m-4"
+                        <div className="w-full max-w-6xl h-full max-h-[92vh] flex flex-col md:flex-row rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300 m-4"
+                            style={{ position: 'relative', zIndex: 2 }}
                             onClick={(e) => e.stopPropagation()}>
 
                             {/* Media Side */}
