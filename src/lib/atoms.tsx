@@ -255,6 +255,9 @@ export const storeActiveUserAtom = atom<string | null>(null); // To view someone
 // Workbook State
 export const workbookVersionAtom = atom<'825' | '326'>('825');
 export const workbookSearchTermAtom = atom('');
+export const storeSearchTermAtom = atom('');
+
+export const filtersPanelOpenAtom = atom<boolean>(false);
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
 export const workbookActiveTabAtom = atom<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('inventory');
 export const workbookViewModeAtom = atomWithStorage<'table' | 'gallery' | 'kanban'>('workbookViewMode', 'table');
