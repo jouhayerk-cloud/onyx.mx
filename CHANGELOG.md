@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.71
+- **Settings Popup:** Updated Settings menu UI to be theme-color aware (light/dark adaptative).
+- **Unit Conversions:** Added imperial unit conversions (inches, pounds) alongside metric measurements for item details.
+- **Icon System:** Full transition from emojis and embedded SVGs to free-floating `lucide-react` icons across UploadAIPanel, FastEntryForm, PackingModule, and UnifiedInventoryView.
+- **App Consistency:** Improved theme logic, removing remaining hardcoded colors and fixing lint warnings in the build process.
+
 ## v1.11.70
 - **Store Module:** Created new global responsive Store/Catalog layout with session-based shopping bag.
 - **Store Data Exports:** Generated comprehensive checkout XLS/PDF receipts.
