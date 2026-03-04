@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.11.72 — 2026-03-04
+- **Store Grid:** Widened item cards (reduced column density) for better legibility at all breakpoints.
+- **Store Cards:** Removed the QUICK ADD hover overlay; replaced with a small ShoppingBag icon bubble on the bottom-right edge of the price row.
+- **Store Cards:** Inline secondary info row now displays TAG ID, ACQ Code, LND Code, and Retail USD for non-Vendor roles directly on each catalog card.
+- **Store Detail Panel:** Gallery images are now clickable, launching a fullscreen zoomable/pannable image viewer with mousewheel zoom, drag, and pinch-to-zoom on touch devices.
+- **Store Detail Panel:** Normalized all item specifications and pricing codes (TAG ID, AQC, LND, Landed, Retail) using `normalizeInventoryData` + `calculateCodesAndPrices` — now correctly resolved from both camelCase and snake_case DB schemas.
+- **FastEntryForm:** Fixed item payload serialization to use proper snake_case keys matching the RxDB/Supabase schema (weight_kg, height_cm, width_cm, length_cm, price_mxn, etc.).
+- **FastEntryForm:** Restored `GoogleGenAI` initialization that was inadvertently dropped, fixing AI analysis chain errors.
+
 ## v1.11.71
 - **Settings Popup:** Updated Settings menu UI to be theme-color aware (light/dark adaptative).
 - **Unit Conversions:** Added imperial unit conversions (inches, pounds) alongside metric measurements for item details.
