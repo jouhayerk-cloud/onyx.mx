@@ -13,7 +13,7 @@ import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
 
 // --- Types ---
-type EntryStatus = 'Catalog' | 'Production' | 'Acquisition';
+type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
 
 interface WizardState {
@@ -37,7 +37,7 @@ interface WizardState {
 }
 
 const INITIAL_STATE: WizardState = {
-    status: 'Catalog',
+    status: 'Available',
     vendorId: '',
     itemNumber: '',
     quantity: '1',
@@ -77,7 +77,7 @@ export const UploadWizard: React.FC = () => {
             setStep(isAdmin ? 1 : 3);
             setState({
                 ...INITIAL_STATE,
-                status: 'Catalog',
+                status: 'Available',
                 vendorId: user?.role === 'Vendor' ? user.id : '',
             });
         }
@@ -243,12 +243,12 @@ export const UploadWizard: React.FC = () => {
                             <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-10 uppercase tracking-[0.3em] font-bold">Initial destination classification</p>
 
                             <div className="grid grid-cols-1 gap-4">
-                                {(['Catalog', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
+                                {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
                                     <button key={status} onClick={() => { set('status', status); setStep(2); }}
                                         className="flex items-center justify-between p-7 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color)/50 hover:bg-(--main-color)/10 transition-all group">
                                         <div className="flex items-center gap-6">
                                             <div className="w-12 h-12 rounded-2xl border-2 border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform bg-(--glass-bg)">
-                                                {status === 'Catalog' ? (
+                                                {status === 'Available' ? (
                                                     <svg className="w-6 h-6 text-(--text-color-secondary) group-hover:text-(--main-color)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                                                 ) : status === 'Production' ? (
                                                     <svg className="w-6 h-6 text-(--text-color-secondary) group-hover:text-(--main-color)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
@@ -259,7 +259,7 @@ export const UploadWizard: React.FC = () => {
                                             <div className="text-left">
                                                 <span className="text-sm font-black text-(--text-color) uppercase tracking-widest block">{status}</span>
                                                 <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase tracking-tight">
-                                                    {status === 'Catalog' ? 'Standard inventory listing' : status === 'Production' ? 'Custom manufacturing line' : 'Global bulk acquisition'}
+                                                    {status === 'Available' ? 'Standard inventory listing' : status === 'Production' ? 'Custom manufacturing line' : 'Global bulk acquisition'}
                                                 </span>
                                             </div>
                                         </div>
@@ -281,7 +281,7 @@ export const UploadWizard: React.FC = () => {
                                     .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
                                     .map(([id, cfg]) => (
                                         <button key={id} onClick={() => { set('vendorId', id); setStep(3); }}
-                                            className="flex-shrink-0 flex flex-col items-center gap-4 group">
+                                            className="shrink-0 flex flex-col items-center gap-4 group">
                                             <div className="w-20 h-20 rounded-[32px] flex items-center justify-center font-black text-xl shadow-xl border-4 border-black/10 group-hover:border-black/20 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 group-active:scale-95"
                                                 style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
                                                 {id}

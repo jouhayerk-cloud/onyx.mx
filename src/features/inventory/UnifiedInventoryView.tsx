@@ -378,7 +378,7 @@ export const UnifiedInventoryView = () => {
                 lengthCm: itemData.lengthCm || '',
                 price: itemData.price || '',
                 quantity: itemData.quantity || '1',
-                status: itemData.status || 'Catalog',
+                status: itemData.status || 'Available',
                 workbook: itemData.workbook || '326',
             });
             setNewFiles([]);
@@ -486,7 +486,7 @@ export const UnifiedInventoryView = () => {
     const filteredItems = useMemo(() => {
         return items.filter(item => {
             if (statusFilter === 'Available') {
-                if (item.data.status !== 'Available') return false;
+                if (item.data.status && !['Available', 'Catalog'].includes(item.data.status)) return false;
             } else if (statusFilter === 'Acquisition') {
                 if (!['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status)) return false;
             } else if (statusFilter === 'Production') {
