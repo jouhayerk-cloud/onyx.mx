@@ -480,7 +480,7 @@ export function StoreView() {
                                                 </div>
                                                 {/* Status pill */}
                                                 {norm.status && (
-                                                    <span className="self-start text-[9px] font-black uppercase tracking-widest text-white/30 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                                                    <span className="self-start text-[9px] font-black uppercase tracking-widest text-(--text-color)/40 bg-(--text-color)/5 px-2 py-1 rounded-full border border-(--text-color)/10">
                                                         {norm.status}
                                                     </span>
                                                 )}
@@ -489,39 +489,39 @@ export function StoreView() {
                                     })()}
 
                                     {/* Title */}
-                                    <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-1">
+                                    <h2 className="text-2xl md:text-3xl font-black text-(--text-color) leading-tight mb-0.5">
                                         {norm.shape}
                                     </h2>
-                                    <p className="text-sm font-semibold text-white/50 mb-1">{norm.material}</p>
-                                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest pb-5 mb-5 border-b border-white/10">{norm.color}</p>
+                                    <p className="text-sm font-semibold text-(--text-color)/60 mb-0.5">{norm.material}</p>
+                                    <p className="text-xs font-bold text-(--text-color)/40 uppercase tracking-widest pb-4 mb-4 border-b border-(--text-color)/10">{norm.color}</p>
 
                                     {/* Body */}
-                                    <div className="flex-1 space-y-5 overflow-y-auto custom-scrollbar">
+                                    <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar">
                                         {/* Description */}
                                         {norm.shortDescription && (
                                             <div>
-                                                <h3 className="text-[9px] text-white/30 uppercase tracking-[0.25em] font-black mb-2">About</h3>
-                                                <p className="text-sm text-white/70 leading-relaxed">{norm.shortDescription}</p>
+                                                <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-1.5">About</h3>
+                                                <p className="text-sm text-(--text-color)/80 leading-relaxed">{norm.shortDescription}</p>
                                             </div>
                                         )}
 
                                         {/* Specifications */}
                                         <div>
-                                            <h3 className="text-[9px] text-white/30 uppercase tracking-[0.25em] font-black mb-3">Specifications</h3>
+                                            <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-2">Specifications</h3>
                                             <div className="grid grid-cols-2 gap-2">
-                                                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                    <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">Dimensions</span>
-                                                    <span className="block text-xs font-mono font-bold text-white/90">
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                    <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Dimensions</span>
+                                                    <span className="block text-xs font-mono font-bold text-(--text-color)/90">
                                                         {norm.lengthCm || '-'}×{norm.widthCm || '-'}×{norm.heightCm || '-'} cm
                                                     </span>
-                                                    <span className="block text-[10px] font-mono text-white/40 mt-0.5">
+                                                    <span className="block text-[10px] font-mono text-(--text-color)/50 mt-0.5">
                                                         {norm.lengthCm && !isNaN(Number(norm.lengthCm)) ? (Number(norm.lengthCm) / 2.54).toFixed(1) : '-'}×{norm.widthCm && !isNaN(Number(norm.widthCm)) ? (Number(norm.widthCm) / 2.54).toFixed(1) : '-'}×{norm.heightCm && !isNaN(Number(norm.heightCm)) ? (Number(norm.heightCm) / 2.54).toFixed(1) : '-'} in
                                                     </span>
                                                 </div>
-                                                <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                    <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">Weight</span>
-                                                    <span className="block text-xs font-mono font-bold text-white/90">{norm.weightKg || '-'} kg</span>
-                                                    <span className="block text-[10px] font-mono text-white/40 mt-0.5">
+                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                    <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Weight</span>
+                                                    <span className="block text-xs font-mono font-bold text-(--text-color)/90">{norm.weightKg || '-'} kg</span>
+                                                    <span className="block text-[10px] font-mono text-(--text-color)/50 mt-0.5">
                                                         {norm.weightKg && !isNaN(Number(norm.weightKg)) ? (Number(norm.weightKg) * 2.20462).toFixed(1) : '-'} lbs
                                                     </span>
                                                 </div>
@@ -531,23 +531,23 @@ export function StoreView() {
                                         {/* Pricing codes — non-vendor only */}
                                         {!isVendor && calculated.bookAqCode && (
                                             <div>
-                                                <h3 className="text-[9px] text-white/30 uppercase tracking-[0.25em] font-black mb-3">Internal Codes</h3>
+                                                <h3 className="text-[9px] text-(--text-color)/40 uppercase tracking-[0.25em] font-black mb-2">Internal Codes</h3>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                        <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">AQC Code</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">AQC Code</span>
                                                         <span className="text-sm font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
                                                     </div>
-                                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                        <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">LND Code</span>
-                                                        <span className="text-sm font-mono font-black text-yellow-400">{calculated.bookLandCode}</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">LND Code</span>
+                                                        <span className="text-sm font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
                                                     </div>
-                                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                        <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">Landed USD</span>
-                                                        <span className="text-sm font-mono font-black text-white/80">${parseFloat(calculated.bookLanded).toFixed(2)}</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Landed USD</span>
+                                                        <span className="text-sm font-mono font-black text-(--text-color)/70">${parseFloat(calculated.bookLanded).toFixed(2)}</span>
                                                     </div>
-                                                    <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                                        <span className="block text-[9px] text-white/30 uppercase tracking-wider mb-1">Retail USD</span>
-                                                        <span className="text-sm font-mono font-black text-emerald-400">${parseFloat(calculated.bookRetail).toFixed(2)}</span>
+                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/8">
+                                                        <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-wider mb-1">Retail USD</span>
+                                                        <span className="text-sm font-mono font-black text-emerald-500">${parseFloat(calculated.bookRetail).toFixed(2)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -555,12 +555,14 @@ export function StoreView() {
                                     </div>
 
                                     {/* Footer CTA */}
-                                    <div className="mt-6 pt-6 border-t border-white/10 flex items-end justify-between gap-4">
+                                    <div className="mt-5 pt-5 border-t border-(--text-color)/10 flex items-end justify-between gap-4">
                                         <div>
-                                            <span className="block text-[9px] text-white/30 uppercase tracking-widest font-black mb-1">Acquisition Price</span>
-                                            <span className="text-2xl font-black text-white">{getPriceLabel(selectedItem.data)}</span>
+                                            <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-widest font-black mb-1">Acquisition Price</span>
+                                            <span className="text-2xl font-black text-(--text-color)">{getPriceLabel(selectedItem.data)}</span>
                                             {!isVendor && (
-                                                <span className="block text-xs font-bold text-white/30 mt-0.5">≈ ${getPriceUSD(selectedItem.data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+                                                <span className="block text-base font-bold text-(--text-color)/60 mt-0.5">
+                                                    ≈ ${getPriceUSD(selectedItem.data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                                </span>
                                             )}
                                         </div>
                                         <button
