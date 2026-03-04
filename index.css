@@ -1076,6 +1076,15 @@ button.secondary {
   }
 }
 
+/* Ken Burns — slow zoom + subtle drift for store panel background */
+@keyframes ken-burns {
+  0%   { transform: scale(1.05) translate(0%, 0%);     }
+  25%  { transform: scale(1.10) translate(-1.5%, 1%);  }
+  50%  { transform: scale(1.08) translate(1%, -1.5%);  }
+  75%  { transform: scale(1.12) translate(-1%, 0.5%);  }
+  100% { transform: scale(1.05) translate(0%, 0%);     }
+}
+
 /* Carousel styles for file uploads */
 .image-carousel {
   display: flex;
