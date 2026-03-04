@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.11.70
+- **Store Module:** Created new global responsive Store/Catalog layout with session-based shopping bag.
+- **Role-Based Pricing & Display:** Implemented specific UI features showing 5% MXN markup + 15% IVA tax for Premium Vendors, and custom code generation views with Landed/Retail breakdowns for Clients.
+- **Store Data Exports:** Generated comprehensive checkout XLS/PDF receipts.
+- **Control Center Access:** Added active Store toggles and Custom Logos to the Developer dashboard settings panel.
+
 ## v1.10.69
 - **Payments UX Overhaul:** Refactored the payments list into a responsive, modern expandable table. Each row is now a dynamic two-line panel that can be clicked to reveal deep financial data (Total Net MXN, USD equivalent at live rate, Requested/Paid dates, and a deployable tag IDs list for Acquisition records).
 - **Payment Destination UX:** Tweaked the stacked card icons filter to be perfectly symmetrical, tighter packed, and dynamically highlight the total requested value on top of the selected active icon.
