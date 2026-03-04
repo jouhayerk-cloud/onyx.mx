@@ -35,7 +35,8 @@ const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '
 
 const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block mb-1.5";
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
-const inpNum = inp + " font-mono text-center";
+const inpNum = inp + " font-mono text-center";
+
 const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -138,7 +139,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         setSelectedItemData(item.data);
         setImageSrc(imageUrl);
         setDetailsPanelMode('edit');
-    };
+    };
+
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-1">
@@ -213,9 +215,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 )}
             </div>
         );
-    }
+    }
+
     return (
-        <div className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-500 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/10 shadow-lg ${isExpanded ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] ring-1 ring-white/10' : 'col-span-1'}`}>
+        <div
+            className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-300 group rounded-2xl border shadow-lg
+                ${isExpanded
+                    ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] border-(--text-color)/15'
+                    : 'col-span-1 border-(--text-color)/8 hover:border-(--text-color)/25 hover:-translate-y-0.5'}`}
+            style={{ background: isExpanded ? 'transparent' : 'rgba(0,0,0,0.36)' }}
+            onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.4), 0 0 20px ${vendorColor}25`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
+        >
             {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
             <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/5 flex-col'} relative`}>
                 <div className={`${isExpanded ? 'relative h-64 md:h-full md:w-2/5' : 'absolute inset-0'} overflow-hidden flex items-center justify-center bg-black/50`}>
@@ -274,7 +285,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     )}
                 </div>
                 {isExpanded && (
-                    <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden bg-(--glass-bg) backdrop-blur-md">
+                    <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)', backdropFilter: 'blur(24px)' }}>
                         {/* Top-right: Close + Edit */}
                         <div className="absolute right-4 top-4 z-50 flex flex-col gap-2">
                             <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 border border-white/10 rounded-xl text-(--text-color) hover:opacity-100 opacity-60 transition-all text-[10px] font-black uppercase tracking-widest">
@@ -301,13 +312,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-8 bg-black/5 dark:bg-black/20 p-5 rounded-2xl border border-(--border-color)">
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6 p-4 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--text-color) 5%, transparent)' }}>
                                 <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Material</p><p className="text-lg font-bold text-(--text-color)">{norm.material || '—'}</p></div>
                                 <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Dimensions</p><p className="text-lg font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
                                 <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Weight</p><p className="text-lg font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
                                 <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Quantity</p><p className="text-lg font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
                             </div>
-                            <div className="p-6 bg-(--glass-bg) rounded-2xl border border-(--border-color) shadow-inner">
+                            <div className="p-5 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 50%, transparent)', backdropFilter: 'blur(12px)' }}>
                                 <h4 className="text-[11px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Financial Analysis</h4>
                                 <div className="grid grid-cols-3 gap-6">
                                     <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Acq</span><span className="text-2xl font-black text-[#6BCEBB] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
@@ -316,7 +327,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 </div>
                             </div>
                             {norm.description && (
-                                <div className="mt-8 bg-black/5 dark:bg-black/10 p-5 rounded-2xl border border-(--border-color)">
+                                <div className="mt-5 p-4 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--text-color) 4%, transparent)' }}>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Notes</p>
                                     <p className="text-sm text-(--text-color) leading-relaxed font-medium">{norm.description}</p>
                                 </div>
@@ -357,6 +368,22 @@ export const UnifiedInventoryView = () => {
     const [editData, setEditData] = useState<any>(null);
     const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
     const imageUrl = itemData?.generatedPngUrl || (itemData?.mediaUrls ? itemData.mediaUrls.split(',')[0].trim() : null);
+
+    // Auto-cycling media gallery for bg of edit panel
+    const bgMediaUrls = useMemo(() => {
+        const urls: string[] = [];
+        items.forEach(item => {
+            const media: string[] = (item.data as any)._allMedia || [];
+            media.filter((u: string) => !u.match(/\.(mp4|webm|ogg|mov)$/i)).forEach((u: string) => urls.push(u));
+        });
+        return urls.filter(Boolean).slice(0, 25);
+    }, [items]);
+    const [bgIdx, setBgIdx] = useState(0);
+    useEffect(() => {
+        if (bgMediaUrls.length < 2) return;
+        const t = setInterval(() => setBgIdx(i => (i + 1) % bgMediaUrls.length), 6000);
+        return () => clearInterval(t);
+    }, [bgMediaUrls.length]);
 
     useEffect(() => {
         if (mode === 'edit' && itemData) {
@@ -611,14 +638,25 @@ export const UnifiedInventoryView = () => {
             </div>
 
             {mode === 'edit' && editData && (
-                <div className="fixed inset-0 z-100 bg-black/98 backdrop-blur-2xl flex flex-col p-8 items-center justify-center animate-in fade-in zoom-in duration-500">
-                    <div className="max-w-2xl w-full flex flex-col h-full overflow-hidden">
+                <div className="fixed inset-0 z-100 flex flex-col p-8 items-center justify-center animate-in fade-in zoom-in duration-300">
+                    {/* Ken Burns bg gallery */}
+                    {bgMediaUrls.length > 0 && (
+                        <img
+                            key={bgIdx}
+                            src={bgMediaUrls[bgIdx]}
+                            aria-hidden="true"
+                            className="glass-bg-img"
+                        />
+                    )}
+                    {/* Scrim */}
+                    <div className="glass-scrim" />
+                    <div className="max-w-2xl w-full flex flex-col h-full overflow-hidden relative rounded-3xl p-1" style={{ zIndex: 2, background: 'color-mix(in srgb, var(--sidebar-bg) 80%, transparent)', backdropFilter: 'blur(24px)', border: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}>
                         <div className="flex justify-between items-center mb-10 shrink-0">
                             <div className="flex items-center gap-5">
-                                <div className="p-4 bg-white/5 rounded-3xl border border-(--main-color)/20 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.15)]"><Edit2 className="w-10 h-10 text-(--main-color)" /></div>
-                                <div><h2 className="text-3xl font-black text-white leading-none tracking-tighter">EDITING ITEM</h2><p className="text-[10px] font-mono font-black text-white/30 mt-1.5 uppercase tracking-[0.4em]">{itemData?.itemId}</p></div>
+                                <div className="p-4 rounded-3xl border border-(--main-color)/20 shadow-lg" style={{ background: 'color-mix(in srgb, var(--main-color) 10%, transparent)' }}><Edit2 className="w-10 h-10 text-(--main-color)" /></div>
+                                <div><h2 className="text-3xl font-black text-(--text-color) leading-none tracking-tighter">EDITING ITEM</h2><p className="text-[10px] font-mono font-black text-(--text-color)/30 mt-1.5 uppercase tracking-[0.4em]">{itemData?.itemId}</p></div>
                             </div>
-                            <button onClick={() => setMode('view')} className="text-4xl text-white/20 hover:text-white transition-all hover:rotate-90">&times;</button>
+                            <button onClick={() => setMode('view')} className="text-4xl text-(--text-color)/20 hover:text-(--text-color) transition-all hover:rotate-90">&times;</button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="overflow-y-auto grow pr-6 custom-scrollbar space-y-10 pb-12">
                             {/* â”€â”€ Attach Media Section (Moved to Top) â”€â”€ */}
