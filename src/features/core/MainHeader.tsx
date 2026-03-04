@@ -212,6 +212,15 @@ const InventoryBar: React.FC = () => {
     );
 };
 
+const StoreBar: React.FC = () => {
+    return (
+        <div className="flex flex-1 items-center gap-4 ml-2 relative">
+            <Store size={22} strokeWidth={1.75} color="#F36F21" className="shrink-0 hidden sm:block" />
+            <ModuleBadge icon="store" label="Storefront" color="#F36F21" />
+        </div>
+    );
+};
+
 const FinanceBar: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
@@ -384,6 +393,7 @@ export function MainHeader() {
             {/* Dynamic module bar — grows to fill available space */}
             <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">
                 {activeView === 'inventory' && <InventoryBar />}
+                {activeView === 'store' && <StoreBar />}
                 {activeView === 'finance' && <FinanceBar />}
                 {activeView === 'logistics' && <LogisticsBar />}
                 {activeView === 'upload' && <UploadBar />}
