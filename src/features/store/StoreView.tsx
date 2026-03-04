@@ -357,7 +357,7 @@ export function StoreView() {
                     <div className="fixed inset-0 z-100 flex items-center justify-center animate-in fade-in duration-200"
                         onClick={closePanel}>
 
-                        {/* Layer 1: Raw background image — minimal blur so image is clearly readable */}
+                        {/* Layer 1: Raw background image — minimal blur + Ken Burns slow zoom/drift */}
                         {currentMediaUrl && !isCurrentVideo && (
                             <img
                                 src={currentMediaUrl}
@@ -368,11 +368,12 @@ export function StoreView() {
                                     width: '100%',
                                     height: '100%',
                                     objectFit: 'cover',
-                                    transform: 'scale(1.05)',
                                     filter: 'blur(8px) brightness(0.65) saturate(1.3)',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                     zIndex: 0,
+                                    animation: 'ken-burns 22s ease-in-out infinite',
+                                    transformOrigin: 'center center',
                                 }}
                             />
                         )}
