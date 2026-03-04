@@ -9,9 +9,14 @@
 
   All-time deployment count (LEGACY Onyx.mx/app + git/app): ~100 versions
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
-  git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.72)
+  git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
+
+## v1.11.73 — 2026-03-04 (Bugfix)
+- **Store Panel BG [fix]:** Blurred background image in item detail panel was rendering as a black screen. Root cause: CSS `background-image` and `position: absolute` inside a `fixed` parent are blocked by cross-origin policy for Google Drive URLs. Fixed by using a `<img>` element with `position: fixed` and explicit `zIndex: 0`, ensuring correct rendering for all image sources.
+- **Store Panel BG [fix]:** Background image brightness increased from `0.25` (near-invisible) to `0.45` for visible cinematic effect.
+- **Store Cards [fix]:** TAG ID in compact catalog cards now correctly renders in vendor brand color (glowing dot + icon + text), consistent with the expanded panel view.
 
 ## v1.11.72 — 2026-03-04
 - **Store Grid:** Widened item cards (reduced column density) for better legibility at all breakpoints.
