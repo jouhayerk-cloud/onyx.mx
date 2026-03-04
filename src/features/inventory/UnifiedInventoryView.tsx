@@ -24,6 +24,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video } from 'lucide-react';
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
@@ -81,7 +82,7 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
             onClick={onClose} onWheel={handleWheel}>
             <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                <X className="w-5 h-5" />
             </button>
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
                 <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">âˆ’</button>
@@ -195,11 +196,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
                         <div className="flex gap-2">
                             <button onClick={handleEdit} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-(--main-color)/10 border border-white/10 rounded-xl text-white/30 hover:text-(--main-color) transition-all group/edit" title="Edit Item">
-                                <svg className="w-3.5 h-3.5 transition-transform group-hover/edit:scale-110"><use href="#edit" /></svg>
+                                <Edit2 className="w-3.5 h-3.5 transition-transform group-hover/edit:scale-110" />
                                 <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Edit</span>
                             </button>
                             <button onClick={onToggleExpand} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
-                                <svg className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`}><use href="#chevron-down" /></svg>
+                                <ChevronDown className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`} />
                                 <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'Close' : 'Details'}</span>
                             </button>
                         </div>
@@ -245,7 +246,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         )}
                         {!isExpanded && (
                             <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="pointer-events-auto p-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg border border-white/10 text-white/40 hover:text-white transition-all">
-                                <svg className="w-3.5 h-3.5"><use href="#menu" /></svg>
+                                <Menu className="w-3.5 h-3.5" />
                             </button>
                         )}
                     </div>
@@ -271,7 +272,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
                                     {/* Edit button at bottom-right */}
                                     <button onClick={(e) => { e.stopPropagation(); handleEdit(e); }} className="pointer-events-auto p-1.5 px-2.5 bg-white/5 hover:bg-(--main-color)/20 rounded-lg border border-white/10 text-white/30 hover:text-(--main-color) transition-all" title="Edit">
-                                        <svg className="w-3 h-3"><use href="#edit" /></svg>
+                                        <Edit2 className="w-3 h-3" />
                                     </button>
                                 </div>
                             </div>
@@ -283,10 +284,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {/* Top-right: Close + Edit */}
                         <div className="absolute right-4 top-4 z-50 flex flex-col gap-2">
                             <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 border border-white/10 rounded-xl text-(--text-color) hover:opacity-100 opacity-60 transition-all text-[10px] font-black uppercase tracking-widest">
-                                <svg className="w-3 h-3"><use href="#x" /></svg>Close
+                                <X className="w-3 h-3" />Close
                             </button>
                             <button onClick={handleEdit} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-[10px] font-black uppercase tracking-widest">
-                                <svg className="w-3 h-3"><use href="#edit" /></svg>Edit
+                                <Edit2 className="w-3 h-3" />Edit
                             </button>
                         </div>
                         <div className="overflow-y-auto grow pr-2 custom-scrollbar">
@@ -562,7 +563,7 @@ export const UnifiedInventoryView = () => {
                     <button
                         onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                         className={`px-4 h-10 flex items-center gap-2.5 rounded-xl transition-all border ${isFiltersOpen ? 'bg-[#6BCEBB]/15 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-(--glass-bg) border-(--border-color) text-(--text-color-secondary) hover:text-(--text-color) hover:bg-(--main-color)/10'}`}>
-                        <svg className={`w-4 h-4 transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`}><use href="#filter" /></svg>
+                        <Filter className={`w-4 h-4 transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`} />
                         <span className="text-[10px] uppercase font-black tracking-[0.1em] hidden sm:block mt-0.5">Filters</span>
                     </button>
                 </div>
@@ -620,7 +621,7 @@ export const UnifiedInventoryView = () => {
                     <div className="max-w-2xl w-full flex flex-col h-full overflow-hidden">
                         <div className="flex justify-between items-center mb-10 shrink-0">
                             <div className="flex items-center gap-5">
-                                <div className="p-4 bg-white/5 rounded-3xl border border-(--main-color)/20 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.15)]"><svg className="w-10 h-10 text-(--main-color)"><use href="#edit" /></svg></div>
+                                <div className="p-4 bg-white/5 rounded-3xl border border-(--main-color)/20 shadow-[0_0_40px_rgba(var(--main-color-rgb),0.15)]"><Edit2 className="w-10 h-10 text-(--main-color)" /></div>
                                 <div><h2 className="text-3xl font-black text-white leading-none tracking-tighter">EDITING ITEM</h2><p className="text-[10px] font-mono font-black text-white/30 mt-1.5 uppercase tracking-[0.4em]">{itemData?.itemId}</p></div>
                             </div>
                             <button onClick={() => setMode('view')} className="text-4xl text-white/20 hover:text-white transition-all hover:rotate-90">&times;</button>
@@ -636,7 +637,7 @@ export const UnifiedInventoryView = () => {
                                 <label className="flex items-center justify-center gap-3 border-2 border-dashed border-white/10 rounded-2xl py-10 cursor-pointer hover:border-(--main-color)/40 hover:bg-white/2 transition-all group">
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <svg className="w-6 h-6 text-white/20 group-hover:text-(--main-color)"><use href="#upload" /></svg>
+                                            <Upload className="w-6 h-6 text-white/20 group-hover:text-(--main-color)" />
                                         </div>
                                         <div className="text-center">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-white/30 group-hover:text-white/60">Import New Media</p>
@@ -653,7 +654,7 @@ export const UnifiedInventoryView = () => {
                                                 <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-black/40">
                                                     {f.type === 'video' ? (
                                                         <div className="w-full h-full flex items-center justify-center">
-                                                            <svg className="w-8 h-8 text-white/20"><use href="#video" /></svg>
+                                                            <Video className="w-8 h-8 text-white/20" />
                                                         </div>
                                                     ) : (
                                                         <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
@@ -663,7 +664,7 @@ export const UnifiedInventoryView = () => {
                                                     <div className="flex items-start justify-between">
                                                         <p className="text-[9px] font-bold text-white/20 truncate pr-2">{f.originalFile?.name}</p>
                                                         <button type="button" onClick={() => removeNewFile(i)} className="text-white/10 hover:text-red-400 transition-colors shrink-0">
-                                                            <svg className="w-4 h-4"><use href="#x" /></svg>
+                                                            <X className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                     <div className="flex gap-1.5 mt-2">

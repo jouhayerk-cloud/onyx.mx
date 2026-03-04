@@ -8,6 +8,7 @@ import { useResetState, useNotify, useDatabase } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, readFileAsDataURL, simplifyContour, extractGradientFromMask, handleFileUpload } from '../../lib/utils';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { CheckCircle2, XCircle, Search } from 'lucide-react';
 
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -39,8 +40,8 @@ const AIStatusIndicator: React.FC<{ status: AIStatus; label: string }> = ({ stat
     return (
         <div className={`ai-status-indicator ${status}`}>
             {status === 'loading' && <div className="progress-bar"></div>}
-            {status === 'success' && '✅'}
-            {status === 'error' && '❌'}
+            {status === 'success' && <CheckCircle2 size={16} className="text-[#8DC63F]" />}
+            {status === 'error' && <XCircle size={16} className="text-red-500" />}
             <span className="label">{label}</span>
         </div>
     );

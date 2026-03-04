@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { Search } from 'lucide-react';
 
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -127,16 +128,17 @@ export const PackingModule: React.FC = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
             {/* ── Top Bar: Titles and Search ── */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-6 py-4 border-b border-white/5 shrink-0 bg-white/[0.01]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-6 py-4 border-b border-white/5 shrink-0 bg-white/1">
                 <div className="flex flex-col">
-                    <span className="text-sm font-black text-[var(--text-color-primary)]">Select Items for Processing</span>
+                    <span className="text-sm font-black text-(--text-color-primary)">Select Items for Processing</span>
                     <span className="text-[10px] uppercase tracking-widest text-[#8DC63F]">Generate Stickers & Packing Lists</span>
                 </div>
-                <div className="flex gap-2 w-full sm:w-80">
+                <div className="flex gap-2 w-full sm:w-80 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="🔍 Search items..."
-                        className="bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-xs text-[var(--text-color-primary)] focus:outline-none focus:border-[#8DC63F]/50 w-full transition-colors"
+                        placeholder="Search items..."
+                        className="bg-white/5 border border-white/10 rounded-full pl-9 pr-4 py-1.5 text-xs text-(--text-color-primary) focus:outline-none focus:border-[#8DC63F]/50 w-full transition-colors"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -151,7 +153,7 @@ export const PackingModule: React.FC = () => {
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
                         <table className="w-full text-left border-collapse">
                             <thead className="sticky top-0 bg-black z-10">
-                                <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/[0.02]">
+                                <tr className="text-[9px] uppercase tracking-widest text-white/30 border-b border-white/5 bg-white/2">
                                     <th className="px-4 py-3 cursor-pointer hover:text-white" onClick={handleSelectAll}>
                                         <div className="flex items-center gap-2">
                                             <input
@@ -169,14 +171,14 @@ export const PackingModule: React.FC = () => {
                                     <th className="px-4 py-3 text-right">Price</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/[0.03]">
+                            <tbody className="divide-y divide-white/3">
                                 {filteredDocs.map(doc => {
                                     const isSelected = selectedIds.has(doc.id);
                                     return (
                                         <tr
                                             key={doc.id}
                                             onClick={() => toggleSelect(doc.id)}
-                                            className={`hover:bg-white/[0.04] transition-all cursor-pointer ${isSelected ? 'bg-[#8DC63F]/10' : ''}`}
+                                            className={`hover:bg-white/4 transition-all cursor-pointer ${isSelected ? 'bg-[#8DC63F]/10' : ''}`}
                                         >
                                             <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                                                 <input
@@ -208,7 +210,7 @@ export const PackingModule: React.FC = () => {
                 </div>
 
                 {/* ── Right side: Output/Generation Settings ── */}
-                <div className="w-full md:w-80 flex flex-col h-full bg-white/[0.01] shrink-0 overflow-y-auto">
+                <div className="w-full md:w-80 flex flex-col h-full bg-white/1 shrink-0 overflow-y-auto">
                     <div className="p-4 border-b border-white/5">
                         <h3 className="text-xs font-black uppercase tracking-widest text-[#00AEEF] mb-1">Export Actions</h3>
                         <p className="text-[10px] text-white/40 leading-tight">Generate documents for {selectedIds.size} selected items.</p>

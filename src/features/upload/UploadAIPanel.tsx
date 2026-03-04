@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { userAtom, notificationsAtom } from '../../lib/atoms';
 import { readFileAsDataURL, loadImage } from '../../lib/utils';
+import { Sparkles, PackageSearch, Palette, Scissors, Lightbulb, Hourglass } from 'lucide-react';
 // Replaced @google/genai with direct fetch to avoid Vite build/browser parser crashes
 const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
@@ -25,11 +26,11 @@ const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 p
 
 type AITab = 'describe' | 'detect' | 'colors' | 'masks';
 
-const AI_TABS: { id: AITab; label: string; emoji: string }[] = [
-    { id: 'describe', label: 'AI Describe', emoji: '✨' },
-    { id: 'detect', label: 'Detect & Tag', emoji: '📦' },
-    { id: 'colors', label: 'Color Codes', emoji: '🎨' },
-    { id: 'masks', label: 'Masks / BG', emoji: '✂️' },
+const AI_TABS: { id: AITab; label: string; icon: React.ReactNode }[] = [
+    { id: 'describe', label: 'AI Describe', icon: <Sparkles size={14} /> },
+    { id: 'detect', label: 'Detect & Tag', icon: <PackageSearch size={14} /> },
+    { id: 'colors', label: 'Color Codes', icon: <Palette size={14} /> },
+    { id: 'masks', label: 'Masks / BG', icon: <Scissors size={14} /> },
 ];
 
 // ─── Color Swatch ─────────────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             <p className="text-[10px] text-white/30">Gemini analyzes the image and fills form fields automatically.</p>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-(--main-color) text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? '⏳ Analyzing…' : '✨ Generate Description'}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> Analyzing…</> : <><Sparkles size={12} /> Generate Description</>}
             </button>
             {result && !result.error && (
                 <div className="flex flex-col gap-2">
@@ -144,7 +145,7 @@ const DetectPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             </div>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#00AEEF] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? '⏳ Detecting…' : '📦 Run Detection'}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> Detecting…</> : <><PackageSearch size={12} /> Run Detection</>}
             </button>
             {result && <ResultPanel content={result} onCopy={() => navigator.clipboard.writeText(result)} />}
         </div>
@@ -174,7 +175,7 @@ const ColorPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             <p className="text-[10px] text-white/30">Extract dominant colors with HEX codes. Click any swatch to copy.</p>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#F7941D] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? '⏳ Extracting…' : '🎨 Extract Colors'}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> Extracting…</> : <><Palette size={12} /> Extract Colors</>}
             </button>
             {swatches.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
@@ -212,15 +213,15 @@ const MaskPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             <div className="flex gap-2">
                 {(['segment', 'describe'] as const).map(t => (
                     <button key={t} type="button" onClick={() => setTask(t)}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all
                             ${task === t ? 'bg-[#8DC63F]/15 border-[#8DC63F]/50 text-[#8DC63F]' : 'border-white/10 text-white/30 hover:text-white/60'}`}>
-                        {t === 'segment' ? '✂️ Segment' : '💡 BG Analysis'}
+                        {t === 'segment' ? <><Scissors size={10} /> Segment</> : <><Lightbulb size={10} /> BG Analysis</>}
                     </button>
                 ))}
             </div>
             <button onClick={run} disabled={!imageSrc || loading}
                 className="flex items-center justify-center gap-2 py-2.5 px-5 bg-[#8DC63F] text-black text-[10px] font-black tracking-widest rounded-xl hover:opacity-90 disabled:opacity-40 transition-all">
-                {loading ? '⏳ Processing…' : '✂️ Run Analysis'}
+                {loading ? <><Hourglass size={12} className="animate-spin" /> Processing…</> : <><Scissors size={12} /> Run Analysis</>}
             </button>
             {result && <ResultPanel content={result} onCopy={() => navigator.clipboard.writeText(result)} />}
         </div>
@@ -287,7 +288,7 @@ export function UploadAIPanel() {
                             ${activeTab === t.id
                                 ? 'bg-(--main-color)/15 border-(--main-color)/60 text-(--main-color)'
                                 : 'bg-white/3 border-white/8 text-white/30 hover:text-white/60 hover:border-white/20'}`}>
-                        {t.emoji} {t.label}
+                        {t.icon} {t.label}
                     </button>
                 ))}
             </div>
