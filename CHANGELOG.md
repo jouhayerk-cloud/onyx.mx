@@ -1,5 +1,18 @@
 # Changelog
 
+<!--
+  Version Scheme: v[General].[Feature_Count].[Build]
+  ─────────────────────────────────────────────────
+  General      (v1)  — Stable production generation. Bump on full architectural rewrite.
+  Feature_Count(.11) — Increments per new module / major feature shipped.
+  Build        (.72) — Increments on every production deployment, hotfix, or patch.
+
+  All-time deployment count (LEGACY Onyx.mx/app + git/app): ~100 versions
+  LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
+  git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.72)
+  git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+-->
+
 ## v1.11.72 — 2026-03-04
 - **Store Grid:** Widened item cards (reduced column density) for better legibility at all breakpoints.
 - **Store Cards:** Removed the QUICK ADD hover overlay; replaced with a small ShoppingBag icon bubble on the bottom-right edge of the price row.
