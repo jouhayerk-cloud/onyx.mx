@@ -2,7 +2,6 @@
 
 ## v1.11.70
 - **Store Module:** Created new global responsive Store/Catalog layout with session-based shopping bag.
-- **Role-Based Pricing & Display:** Implemented specific UI features showing 5% MXN markup + 15% IVA tax for Premium Vendors, and custom code generation views with Landed/Retail breakdowns for Clients.
 - **Store Data Exports:** Generated comprehensive checkout XLS/PDF receipts.
 - **Control Center Access:** Added active Store toggles and Custom Logos to the Developer dashboard settings panel.
 
