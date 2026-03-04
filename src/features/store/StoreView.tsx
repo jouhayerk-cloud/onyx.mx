@@ -25,20 +25,29 @@ export function StoreView() {
             let query = supabase.from('inventory').select('*').in('status', ['Available', 'Avaiable', 'Catalog']);
 
             if (isVendor) {
-                // Vendors only see their own items
-                query = query.eq('vendor_id', user?.id || '');
-            } else if (isClient) {
+                // Wait until we fetch all to filter them correctly by user.name prefix or let them see all,
+                // but for now let's just use empty string to avoid crashes, the error was: "column inventory.vendor_id does not exist"
+                // we'll filter them on client side right below
+
                 // Clients see all available, perhaps restricted by active store logic
             }
 
-            const { data, error } = await query.order('created_at', { ascending: false });
+            const { data, error } = await query.order('timestamp', { ascending: false });
             if (!error && data) {
-                const mappedItems: InventoryItem[] = data.map(d => ({
+                let mappedItems: InventoryItem[] = data.map(d => ({
                     row: d.id,
                     label: d.name || d.item_id || 'Item',
                     imageUrl: d.image_urls?.[0] || d.generatedPngUrl || null,
                     data: { ...d, itemId: d.item_id, itemNumber: d.item_number } as InventoryItemData
                 }));
+
+                // Client-side filtering for Vendors based on their name prefix (e.g. 'JM', 'EM')
+                if (isVendor && user?.name) {
+                    mappedItems = mappedItems.filter((m) =>
+                        m.data.itemId && m.data.itemId.toUpperCase().startsWith(user.name.toUpperCase())
+                    );
+                }
+
                 setItems(mappedItems);
             }
             setLoading(false);
@@ -46,7 +55,7 @@ export function StoreView() {
 
         async function fetchUserStoreSettings() {
             if (user?.id) {
-                const { data } = await supabase.from('app_users').select('store_logo, store_enabled').eq('id', user.id).single();
+                const { data } = await supabase.from('app_users').select('*').eq('id', user.id).single();
                 if (data) {
                     setStoreLogo(data.store_logo || '');
                 }
