@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import React, { useState } from 'react';
 import { UserRegistryPanel } from './UserRegistryPanel';
 import { DatabaseStatsPanel } from './DatabaseStatsPanel';

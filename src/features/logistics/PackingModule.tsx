@@ -16,9 +16,7 @@ export const PackingModule: React.FC = () => {
     const [inventoryDocs, setInventoryDocs] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isGenerating, setIsGenerating] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-
-    // Label Settings
+    const [searchTerm, setSearchTerm] = useState('');
     const [labelFormat, setLabelFormat] = useState('50x30'); // 50mm x 30mm
     const [barcodeType, setBarcodeType] = useState('QR'); // QR or Barcode
 
@@ -311,8 +309,7 @@ export const PackingModule: React.FC = () => {
                             ) : (
                                 <div style={{ transform: 'scale(1.2)', transformOrigin: 'top center' }}>
                                     <Barcode
-                                        value={item.item_id || item.id.substring(0, 8)}
-                                        // 1.5 width and 20 height 
+                                        value={item.item_id || item.id.substring(0, 8)}
                                         width={1.5}
                                         height={20}
                                         fontSize={10}

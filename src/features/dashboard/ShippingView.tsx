@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -66,7 +49,6 @@ const themeColors: { [key: string]: { bg: number, fog: number } } = {
     calcite: { bg: 0x415e8e, fog: 0x415e8e },
     fluorite: { bg: 0x4c5069, fog: 0x4c5069 },
 };
-
 
 export function ShippingView({ mode = 'live' }: { mode?: 'live' | 'archive' }) {
     const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -255,13 +237,11 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
         mount.addEventListener('click', onCanvasClick);
         window.addEventListener('resize', handleResize);
 
-        // Subscribe to state changes to update the scene reactively
         const unsub = store.sub(shippingCratesAtom, () => {
             const crates = store.get(shippingCratesAtom);
             const allCrateIdsInState = new Set(crates.map(c => c.id));
             const allCrateMeshesInScene = new Set(crateMeshes.keys());
 
-            // Remove meshes that are no longer in state
             for (const crateId of allCrateMeshesInScene) {
                 if (!allCrateIdsInState.has(crateId)) {
                     scene.remove(crateMeshes.get(crateId)!);
@@ -271,7 +251,6 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
                 }
             }
 
-            // Add or update meshes
             crates.forEach(crate => {
                 if (!crateMeshes.has(crate.id)) {
                     createCrateMesh(crate);
@@ -363,7 +342,6 @@ const ThreeScene = ({ setCrates, cratesVersion, user, store }: { setCrates: any,
             gsap.to(scene.fog!.color, { r: newFogColor.r, g: newFogColor.g, b: newFogColor.b, duration: 0.5 });
         });
 
-        // Initial camera position
         updateCamera();
 
         const unsub1 = store.sub(shippingCratesAtom, updateVisuals);

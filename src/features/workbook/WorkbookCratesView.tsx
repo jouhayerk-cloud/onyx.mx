@@ -7,15 +7,10 @@ export const WorkbookCratesView: React.FC = () => {
     const rawData = useAtomValue(workbookCratesFileDataAtom);
 
     const cratesInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return null;
-
-        // 1. Balance Info
-        // From observation: Row 0 has "OWED TO SIMONA" area
+        if (!rawData || rawData.length === 0) return null;
         const owedToSimona = rawData[1]?.[9] || 0; // TBP total
         const paidSimona = rawData[2]?.[9] || 0;
-        const balanceSimona = parseFloat(owedToSimona) - parseFloat(paidSimona);
-
-        // 2. Find Data Header
+        const balanceSimona = parseFloat(owedToSimona) - parseFloat(paidSimona);
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';

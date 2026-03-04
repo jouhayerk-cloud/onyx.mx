@@ -44,21 +44,14 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
     if (!existsSync(filePath)) return;
     console.log(`\n📦 Migrating ${filename} [${defaultWorkbook}]...`);
     const fileBuffer = readFileSync(filePath);
-    const workbook = read(fileBuffer);
-
-    // 1. Migrate Inventory Sheets (JM, EM, AN, etc.)
+    const workbook = read(fileBuffer);
     const inventorySheets = workbook.SheetNames.filter(name => !name.startsWith('-') && name !== 'bookV');
     for (const sheetName of inventorySheets) {
         const sheet = workbook.Sheets[sheetName];
         const data = utils.sheet_to_json(sheet, { header: 1 }) as any[][];
         if (data.length < 2) continue;
-        const headers = (data[1] || []).map(h => String(h || '').toUpperCase());
-
-        // Find Tag column index
-        const tagIdx = headers.findIndex(h => h && (h.includes('TAG') || h.includes('ID')));
-
-        // STRICTOR FILTER: skips rows where the TAG-ID is 0, empty, or whitespace
-        // If no tag column found, fall back to first column
+        const headers = (data[1] || []).map(h => String(h || '').toUpperCase());
+        const tagIdx = headers.findIndex(h => h && (h.includes('TAG') || h.includes('ID')));
         const rows = data.slice(2).filter(r => r && isValid(r[tagIdx !== -1 ? tagIdx : 0]));
 
         const batch = rows.map(row => {
@@ -94,9 +87,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
             await supabase.from('inventory').insert(batch);
             console.log(`  ✅ Inventory [${sheetName}]: ${batch.length} items`);
         }
-    }
-
-    // 2. Migrate -Log (Finance)
+    }
     const logSheet = workbook.Sheets['-Log'] || workbook.Sheets['-vPayment'];
     if (logSheet) {
         const data = utils.sheet_to_json(logSheet, { header: 1 }) as any[][];
@@ -115,9 +106,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
             await supabase.from('finance').insert(batch);
             console.log(`  ✅ Log: ${batch.length} entries`);
         }
-    }
-
-    // 3. Migrate -Supplies (Finance)
+    }
     const suppliesSheet = workbook.Sheets['-Supplies'] || workbook.Sheets['-vSupplies'];
     if (suppliesSheet) {
         const data = utils.sheet_to_json(suppliesSheet, { header: 1 }) as any[][];
@@ -134,9 +123,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
             await supabase.from('finance').insert(batch);
             console.log(`  ✅ Supplies: ${batch.length} entries`);
         }
-    }
-
-    // 4. Migrate -Production
+    }
     const prodSheet = workbook.Sheets['-Production'];
     if (prodSheet) {
         const data = utils.sheet_to_json(prodSheet, { header: 1 }) as any[][];
@@ -156,9 +143,7 @@ async function migrateAll(filename: string, defaultWorkbook: '825' | '326') {
             await supabase.from('production').insert(batch);
             console.log(`  ✅ Production: ${batch.length} orders`);
         }
-    }
-
-    // 5. Migrate -Crates (Logistics)
+    }
     const cratesSheet = workbook.Sheets['-Crates'] || workbook.Sheets['-vCrates'];
     if (cratesSheet) {
         const data = utils.sheet_to_json(cratesSheet, { header: 1 }) as any[][];

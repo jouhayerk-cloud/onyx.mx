@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useMemo } from 'react';
 import {
@@ -53,9 +49,7 @@ import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe
-} from 'lucide-react';
-
-// Injected at build time from package.json via vite.config.ts
+} from 'lucide-react';
 declare const __APP_VERSION__: string;
 
 const themes = [
@@ -65,18 +59,14 @@ const themes = [
     { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
     { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
     { name: 'tekis', gradient: 'linear-gradient(135deg, #fffff0, #fdfbf0, #fefce8)' },
-];
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+];
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
 const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> = {
     ALL: { icon: '○', title: 'All items' },
     RED: { icon: '●', title: 'Approved, pending payment' },
     YELLOW: { icon: '●', title: 'Payment requested, unpaid' },
     GREEN: { icon: '●', title: 'Paid / shipped' },
-};
-
-// Map icon string keys to Lucide components for consistent single-color icons
+};
 const iconToLucide: Record<string, React.FC<any>> = {
     'store': Store,
     'finance': CreditCard,
@@ -98,11 +88,7 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'bank': Landmark,
     'wallet': Wallet,
     'truck': Truck,
-};
-
-// Search component is inline in InventoryBar
-
-// ─── Sub-tab pill strip (shared) ─────────────────────────────────────────────
+};
 const SubTabPills: React.FC<{
     tabs: { id: string; label: string; icon?: string }[];
     active: string;
@@ -123,9 +109,7 @@ const SubTabPills: React.FC<{
             );
         })}
     </div>
-);
-
-// ─── Module badge ─────────────────────────────────────────────────────────────
+);
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
@@ -134,9 +118,7 @@ const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({
             <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
         </div>
     );
-};
-
-// ─── Shipping Stats chip ──────────────────────────────────────────────────────
+};
 const ShippingStats: React.FC = () => {
     const crates = useAtomValue(shippingCratesAtom);
     const truckDims = useAtomValue(shippingTruckDimsAtom);
@@ -165,9 +147,7 @@ const ShippingStats: React.FC = () => {
             </div>
         </div>
     );
-};
-
-// ─── MODULE BARS ──────────────────────────────────────────────────────────────
+};
 
 const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
@@ -376,9 +356,7 @@ const ControlBar: React.FC = () => (
             <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
         </div>
     </>
-);
-
-// ─── MAIN HEADER ─────────────────────────────────────────────────────────────
+);
 
 export function MainHeader() {
     const [activeView] = useAtom(activeViewAtom);

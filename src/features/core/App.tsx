@@ -1,21 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import React, { useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
@@ -36,18 +18,12 @@ export default function App() {
     import('../../lib/supabase').then(({ supabase }) => {
 
       const resolveAuthorizedUser = async (session: any) => {
-        const email = session.user.email || '';
-
-        // Try to look up this email in app_users
+        const email = session.user.email || '';
         const { data: appUser, error } = await supabase
           .from('app_users')
           .select('role, display_name, is_active')
           .eq('email', email.toLowerCase())
-          .single();
-
-        // If the table doesn't exist yet (or any unexpected DB error), 
-        // fail OPEN — fall back to the hardcoded resolver so existing users 
-        // are never locked out during setup.
+          .single();
         if (error && error.code !== 'PGRST116') {
           console.warn('app_users table unavailable, falling back to resolveUserRole.', error.message);
           setUser({
@@ -57,9 +33,7 @@ export default function App() {
             role: resolveUserRole(email),
           });
           return;
-        }
-
-        // Table exists but this email has no registered row, or the row is inactive → deny
+        }
         if (!appUser || !appUser.is_active) {
           console.warn('Access denied: email not registered in app_users or is inactive.', email);
           await supabase.auth.signOut();
@@ -71,20 +45,14 @@ export default function App() {
             __denied: true
           } as any);
           return;
-        }
-
-        // Registered and active — grant access with the role from the DB
+        }
         setUser({
           id: session.user.id,
           email,
           name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
           role: appUser.role,
-        });
-
-        // Language constraint
-        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
-
-        // Track last active (repurposing last_submit_at)
+        });
+        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
         supabase.from('app_users')
           .update({ last_submit_at: new Date().toISOString() })
           .eq('email', email.toLowerCase())
@@ -108,8 +76,7 @@ export default function App() {
   }, [setUser]);
 
 
-  useEffect(() => {
-    // Robust theme switching: remove old themes before adding the new one.
+  useEffect(() => {
     const themeClasses = ['theme-obsidian', 'theme-fluorite', 'theme-malaquite', 'theme-nacar', 'theme-tehu', 'theme-tekis'];
     document.documentElement.classList.remove(...themeClasses);
     document.documentElement.classList.add(`theme-${theme}`);
@@ -121,9 +88,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('performance-mode-active');
     }
-  }, [performanceMode]);
-
-  // Define a simple heartbeat to keep the script warm on the free tier if needed
+  }, [performanceMode]);
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetch(SCRIPT_URL, {

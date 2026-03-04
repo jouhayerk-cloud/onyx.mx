@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
@@ -10,9 +6,7 @@ import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom } fro
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
-
-// --- Types ---
+import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
 
@@ -69,9 +63,7 @@ export const UploadWizard: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isOpenRef = useRef(isOpen);
 
-    const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
-
-    // Reset state ONLY when opening (transition from closed to open)
+    const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
     useEffect(() => {
         if (isOpen && !isOpenRef.current) {
             setStep(isAdmin ? 1 : 3);
@@ -82,9 +74,7 @@ export const UploadWizard: React.FC = () => {
             });
         }
         isOpenRef.current = isOpen;
-    }, [isOpen, isAdmin, user]);
-
-    // Fetch suggestions for tags
+    }, [isOpen, isAdmin, user]);
     useEffect(() => {
         if (!db || !isOpen) return;
         const fetchTags = async () => {
@@ -109,9 +99,7 @@ export const UploadWizard: React.FC = () => {
             } catch (e) { console.error(e); }
         };
         fetchTags();
-    }, [db, isOpen]);
-
-    // Auto-fetch next item number when vendor is selected
+    }, [db, isOpen]);
     useEffect(() => {
         if (!db || !state.vendorId || !isOpen) return;
         const fetchNextNum = async () => {

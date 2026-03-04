@@ -1,23 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-import { GoogleGenAI } from '@google/genai';
+import { ai } from '@/lib/ai';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useState, useCallback } from 'react';
 import {
@@ -33,7 +16,7 @@ import { BoundingBox2DType, BoundingBoxMaskType, InventoryItem, PointingType } f
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, simplifyContour, extractGradientFromMask } from '../../lib/utils';
 import { useTranslation, useNotify } from '../../lib/hooks';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 
 type ActionType = 'boxes' | 'masks' | 'shortDesc' | 'normalDesc' | 'detailedDesc' | 'delete';
 

@@ -26,19 +26,17 @@ const DashboardEXP: React.FC<DashboardEXPProps> = () => {
     }
   }, [allSheetsRawData, activeSheet]);
 
-  // Fetch inventory data from Supabase via RxDB
   useEffect(() => {
     if (!db) return;
     const sub = db.inventory.find().$.subscribe((docs: any) => {
       try {
-        // Group items by vendor (itemId)
+
         const sheetsData: { [key: string]: any[] } = {};
         docs.forEach((doc: any) => {
           const data = doc.toJSON();
           const vendorId = data.itemId || data.item_id || 'Unknown';
           if (!sheetsData[vendorId]) sheetsData[vendorId] = [];
 
-          // Convert to row-based format matching the old Excel structure
           const row: any = {};
           Object.entries(data).forEach(([key, value]) => {
             if (typeof key === 'string' && key.trim() !== '') {

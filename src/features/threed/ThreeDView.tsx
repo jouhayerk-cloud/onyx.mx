@@ -1,38 +1,19 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-// FIX: Added .js extension for Vite compatibility with Three.js examples.
+
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// FIX: Added .js extension for Vite compatibility with Three.js examples.
+
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
-// FIX: Added .js extension for Vite compatibility with Three.js examples.
+
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { is3DViewerOpenAtom, is3DWorkspaceDetailsOpenAtom, is3DWorkspaceInventoryOpenAtom, is3DWorkspaceOpenAtom, SelectedItemDataAtom } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { InventoryItem, InventoryItemData, Crate, CameraView } from '../../lib/Types';
 import { MarketInventoryView } from '../catalog/MarketInventoryView';
 import { fetchImageBatch, imageCache } from '../../lib/utils';
-
-// ============ HELPER FUNCTIONS (from ThreeDCanvas.tsx & ThreeDWorkspace.tsx) ============
 
 const loadTextureAsync = (url: string): Promise<THREE.Texture> => {
   return new Promise((resolve, reject) => {
@@ -196,13 +177,11 @@ const createCanoeMesh = (itemData: InventoryItemData): THREE.Mesh => {
         const base_scale = 0.50 + (0.50 * width_curve);
         const scale = base_scale * (0.85 + 0.15 * taper_factor);
 
-        // Outer loop
         outlinePoints.forEach((p, j) => {
             const scaledP = p.clone().multiplyScalar(scale);
             vertices.push(scaledP.x, scaledP.y, z);
         });
 
-        // Inner loop
         outlinePoints.forEach((p, j) => {
             const normal = outlineNormals[j];
             const outerP = p.clone().multiplyScalar(scale);
@@ -213,7 +192,6 @@ const createCanoeMesh = (itemData: InventoryItemData): THREE.Mesh => {
         });
     }
 
-    // After all vertices are generated, calculate UVs based on a top-down projection.
     const uvBounds = new THREE.Box2();
     for (let i = 0; i < vertices.length; i+=3) {
         uvBounds.expandByPoint(new THREE.Vector2(vertices[i], vertices[i+1]));
@@ -315,8 +293,6 @@ const createFallbackMesh = (itemData: InventoryItemData): THREE.Mesh => {
     return new THREE.Mesh(geometry, material);
 }
 
-// ============ HELPER COMPONENTS (from ThreeDWorkspace.tsx) ============
-
 const ItemImage = ({ imageUrl }: { imageUrl: string | null }) => {
     const [dataUrl, setDataUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -352,7 +328,6 @@ const ItemImage = ({ imageUrl }: { imageUrl: string | null }) => {
 
     return <img src={dataUrl} alt="Item" className="w-full h-auto rounded-lg object-contain bg-black/20" />;
 };
-
 
 const DetailRow = ({ label, value }: { label: string, value: any }) => {
     if (!value) return null;
@@ -400,8 +375,6 @@ const ItemDetailsDisplay = () => {
         </div>
     );
 };
-
-// ============ 3D CANVAS COMPONENT (from ThreeDCanvas.tsx) ============
 
 export const ThreeDCanvas: React.FC<{ cameraYOffset?: number }> = ({ cameraYOffset = 0 }) => {
   const itemData = useAtomValue(SelectedItemDataAtom);
@@ -599,7 +572,6 @@ export const ThreeDCanvas: React.FC<{ cameraYOffset?: number }> = ({ cameraYOffs
   return <div ref={mountRef} className="w-full h-full relative" />;
 }
 
-// ============ EXPORTED VIEWER COMPONENT (from ThreeDViewer.tsx) ============
 export function ThreeDViewer() {
   const [isOpen, setIsOpen] = useAtom(is3DViewerOpenAtom);
   const [cameraYOffset, setCameraYOffset] = useState(0);
@@ -634,8 +606,6 @@ export function ThreeDViewer() {
   );
 }
 
-
-// ============ EXPORTED WORKSPACE COMPONENT (from ThreeDWorkspace.tsx) ============
 export function ThreeDWorkspace() {
     const setIsOpen = useSetAtom(is3DWorkspaceOpenAtom);
     const [isInventoryOpen, setIsInventoryOpen] = useAtom(is3DWorkspaceInventoryOpenAtom);

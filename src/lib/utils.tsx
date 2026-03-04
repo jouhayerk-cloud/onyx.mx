@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import { segmentationColors, SCRIPT_URL } from './consts';
 import type { BoundingBoxMaskType } from './Types';
@@ -59,8 +42,7 @@ import { uploadMedia } from './storage';
 export async function handleFileUpload(file: File, user: any): Promise<{ fileId: string; thumbnailUrl: string; originalFile: File } | null> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    // We use readAsDataURL to send base64 to the Apps Script. 
-    // This maintains the original bytes but allows transmission via JSON.
+
     reader.readAsDataURL(file);
     reader.onload = async () => {
       try {
@@ -102,13 +84,10 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
   });
 }
 
-/**
- * Extracts the file ID from a Google Drive URL in various formats.
- */
 export function extractFileId(url: string | null | undefined): string | null {
   if (!url) return null;
   const sForm = String(url);
-  // Pattern to find the Google Drive ID
+
   const patterns = [
     /\/d\/([a-zA-Z0-9_-]{25,})/,
     /[?&]id=([a-zA-Z0-9_-]{25,})/,
@@ -125,13 +104,12 @@ export function extractFileId(url: string | null | undefined): string | null {
 export function getCleanImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const sForm = String(url);
-  // Strip proprietary tags if present (used for internal metadata)
+
   let clean = sForm.split('&tag=')[0].trim();
 
-  // Normalize Drive URLs to the higher-reliability Direct-View format (lh3)
   const fileId = extractFileId(clean);
   if (fileId && clean.toLowerCase().includes('drive.google.com')) {
-    // lh3 is generally more reliable than uc?export=view for direct embedding in <img> tags
+
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
 
@@ -177,7 +155,7 @@ async function processImageBatch() {
       }
     });
   } catch (error) {
-    // If the whole batch fails, reject all promises in that batch.
+
     fileIds.forEach(fileId => {
       const resolvers = promiseResolvers.get(fileId);
       if (resolvers) {
@@ -203,7 +181,6 @@ export function fetchImageBatch(fileId: string): Promise<{ base64: string, mimeT
     batchTimeout = window.setTimeout(processImageBatch, BATCH_DELAY);
   });
 }
-
 
 export function getSvgPathFromStroke(stroke: number[][]) {
   if (!stroke.length) return '';
@@ -268,7 +245,7 @@ export function resizeImage(
         return reject(new Error('Could not get 2D context for image resize.'));
       }
       ctx.drawImage(img, 0, 0, width, height);
-      // Use JPEG for smaller file size for photos
+
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
     img.onerror = () => {
@@ -292,7 +269,6 @@ export function hash(): Record<string, string> {
   return params;
 }
 
-// Helper function to trace the contour of a mask from pixel data.
 export function findContour(imageData: ImageData): { x: number; y: number }[] {
   const { data, width, height } = imageData;
   let start: { x: number; y: number } | null = null;
@@ -356,7 +332,6 @@ export function findContour(imageData: ImageData): { x: number; y: number }[] {
   return contour;
 }
 
-// Ramer-Douglas-Peucker algorithm for path simplification.
 export function simplifyContour(
   points: { x: number; y: number }[],
   tolerance: number,
@@ -404,7 +379,6 @@ export function simplifyContour(
   }
 }
 
-// Creates a closed, curved SVG path string from a series of points.
 export function createCurvePath(points: { x: number; y: number }[]): string {
   if (points.length < 2) {
     return '';
@@ -423,11 +397,6 @@ export function createCurvePath(points: { x: number; y: number }[]): string {
   return d;
 }
 
-/**
- * Efficiently reads a file for preview or AI analysis.
- * For previews, useNativePreview (blob URL) is preferred for 4K/HDR.
- * For AI (Gemini), we use base64 with resizing to stay under token limits.
- */
 export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = false) =>
   new Promise<string>((resolve, reject) => {
     if (forAI && type === 'image') {
@@ -449,15 +418,13 @@ export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = f
       };
       reader.onerror = () => reject(new Error('File reading failed'));
     } else {
-      // For standard previews, especially 4K/HDR, use Native Blob URLs
-      // These are instantaneous and handle HDR/Log/Raw formats natively in supporting browsers
+
       resolve(URL.createObjectURL(file));
     }
   });
 
 export const useNativePreview = (file: File) => URL.createObjectURL(file);
 
-// Color Utility Functions
 export const getTextColorForBg = (hexColor: string | undefined): string => {
   if (!hexColor) return '#000000';
   try {
@@ -603,10 +570,8 @@ export async function extractGradientFromMask(
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return '';
 
-    // Draw the image first
     ctx.drawImage(image, 0, 0, imageDimensions.width, imageDimensions.height);
 
-    // Create a path for the mask
     const path = new Path2D(mask.path);
     const matrix = new DOMMatrix();
     const finalW = mask.width * imageDimensions.width;
@@ -618,7 +583,6 @@ export async function extractGradientFromMask(
     const transformedPath = new Path2D();
     transformedPath.addPath(path, matrix);
 
-    // Get the bounding box of the mask to sample within it
     const bounds = {
       minX: Infinity,
       minY: Infinity,
@@ -649,7 +613,6 @@ export async function extractGradientFromMask(
       const x = Math.round(bounds.minX + (sampleWidth / numSamples) * (i + 0.5));
       const y = Math.round(centerY);
 
-      // Only sample pixels that are inside the vector path
       if (ctx.isPointInPath(transformedPath, x, y)) {
         const pixel = ctx.getImageData(x, y, 1, 1).data;
         const [r, g, b, a] = pixel;
@@ -676,8 +639,7 @@ export async function extractGradientFromMask(
 }
 
 export const numberToCypher = (num: number): string => {
-  // Mapping logic used for price encoding.
-  // Key should be a 10-character string corresponding to digits 0-9.
+
   const key = import.meta.env.VITE_CYPHER_KEY as string || 'DOXHELFANM';
   if (!key || key.length < 10) return '—';
 
@@ -729,7 +691,6 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     };
   }
 
-  // The user defined exchange rate passed to this function will be 18 as default
   const costUsd = costMxn / exchangeRate;
   const landedCost = costUsd * 1.4;
   const retailPrice = landedCost * 12;
@@ -737,12 +698,9 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const costUsdRounded = Math.floor(costUsd);
   const landedCostRounded = Math.floor(landedCost);
 
-  // Example Target parsing: SU3271XO
-  // SU=Vendor, 327=book, 1=vendorItemCount, XO=cypherLandedCode
   const vendorPrefix = String(norm.vendorId || norm.itemId || '').substring(0, 2).toUpperCase();
   const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
 
-  // Try parsing to vendorItemCount if available - fallback to "1" or padding logic string.
   const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
   const itemCountStr = itemCountNumber.toString();
 
@@ -771,8 +729,6 @@ export async function generatePngAndSvgFromMasks(
   const image = await loadImage(imageSrc);
   const { width, height } = imageDimensions;
 
-  // --- PNG Generation (Cropped) ---
-  // 1. Calculate the combined bounding box of all masks in pixel coordinates
   let minX = Infinity,
     minY = Infinity,
     maxX = -Infinity,
@@ -796,14 +752,12 @@ export async function generatePngAndSvgFromMasks(
     return { pngData: null, svgData: null }; // No valid area to crop
   }
 
-  // 2. Create a new canvas with the size of the bounding box
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = cropWidth;
   exportCanvas.height = cropHeight;
   const ctx = exportCanvas.getContext('2d');
   if (!ctx) throw new Error('Could not get 2D context');
 
-  // 3. Create a composite clipping path, translated to the new canvas's coordinate system
   const clippingPath = new Path2D();
   for (const mask of masksToExport) {
     const finalW = mask.width * width;
@@ -813,15 +767,13 @@ export async function generatePngAndSvgFromMasks(
 
     const path = new Path2D(mask.path);
     const matrix = new DOMMatrix();
-    // Translate the mask path so its top-left corner on the original image
-    // aligns with the top-left of our new cropped canvas
+
     matrix.translateSelf(finalX - minX, finalY - minY);
     matrix.scaleSelf(finalW / mask.maskWidth, finalH / mask.maskHeight);
     clippingPath.addPath(path, matrix);
   }
   ctx.clip(clippingPath);
 
-  // 4. Draw the corresponding part of the original image onto the new canvas
   ctx.drawImage(
     image,
     minX, // source x
@@ -836,7 +788,6 @@ export async function generatePngAndSvgFromMasks(
 
   const pngData = exportCanvas.toDataURL('image/png');
 
-  // --- SVG Generation (remains the same, full size) ---
   let finalImageSrc = imageSrc;
   if (!imageSrc.startsWith('data:')) {
     const imgCanvas = document.createElement('canvas');

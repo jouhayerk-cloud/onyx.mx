@@ -1,23 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-import { GoogleGenAI } from '@google/genai';
+import { ai } from '@/lib/ai';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -49,7 +32,7 @@ import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndP
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
 
 type DescriptionType = 'short' | 'normal' | 'detailed';
 
@@ -76,7 +59,6 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
   const setEditingMaskIndex = useSetAtom(editingMaskIndexAtom);
   const setImageSrc = useSetAtom(ImageSrcAtom);
-
 
   const handleEditMasks = async () => {
     if (!data.spatialMasks) {
@@ -122,7 +104,6 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       const parsedBoxes = data.spatialBoxes2d ? JSON.parse(data.spatialBoxes2d) : [];
       const parsedPoints = data.spatialPoints ? JSON.parse(data.spatialPoints) : [];
 
-      // Re-create the full mask objects with SVG paths
       const fullMasks: BoundingBoxMaskType[] = parsedMasks.map((mask: any) => ({
         ...mask,
         path: mask.points ? createCurvePath(mask.points) : '',
@@ -142,7 +123,6 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       toast.error(`Failed to load editor: ${e.message}`, { id: toastId });
     }
   };
-
 
   return (
     <div className="space-y-4">
@@ -189,8 +169,6 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   );
 };
 
-
-// MAIN COMPONENT
 export function DetailsPanel() {
   const t = useTranslation();
   const [isOpen, setIsOpen] = useAtom(isDetailsPanelOpenAtom);

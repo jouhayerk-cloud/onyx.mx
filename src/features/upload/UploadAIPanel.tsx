@@ -2,8 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { userAtom, notificationsAtom } from '../../lib/atoms';
 import { readFileAsDataURL, loadImage } from '../../lib/utils';
-import { Sparkles, PackageSearch, Palette, Scissors, Lightbulb, Hourglass } from 'lucide-react';
-// Replaced @google/genai with direct fetch to avoid Vite build/browser parser crashes
+import { Sparkles, PackageSearch, Palette, Scissors, Lightbulb, Hourglass } from 'lucide-react';
 const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
 
 async function generateContent(model: string, parts: any[], config?: any) {
@@ -31,9 +30,7 @@ const AI_TABS: { id: AITab; label: string; icon: React.ReactNode }[] = [
     { id: 'detect', label: 'Detect & Tag', icon: <PackageSearch size={14} /> },
     { id: 'colors', label: 'Color Codes', icon: <Palette size={14} /> },
     { id: 'masks', label: 'Masks / BG', icon: <Scissors size={14} /> },
-];
-
-// ─── Color Swatch ─────────────────────────────────────────────────────────────
+];
 const ColorSwatch: React.FC<{ hex: string; name: string }> = ({ hex, name }) => {
     const [copied, setCopied] = useState(false);
     const copy = () => { navigator.clipboard.writeText(hex); setCopied(true); setTimeout(() => setCopied(false), 1500); };
@@ -49,9 +46,7 @@ const ColorSwatch: React.FC<{ hex: string; name: string }> = ({ hex, name }) => 
             </span>
         </div>
     );
-};
-
-// ─── Result panel ─────────────────────────────────────────────────────────────
+};
 const ResultPanel: React.FC<{ content: string; onCopy?: () => void }> = ({ content, onCopy }) => (
     <div className="relative bg-black/20 border border-white/6 rounded-xl p-4">
         <pre className="text-xs text-white/70 whitespace-pre-wrap leading-relaxed font-mono overflow-auto max-h-60">{content}</pre>
@@ -59,9 +54,7 @@ const ResultPanel: React.FC<{ content: string; onCopy?: () => void }> = ({ conte
             <button onClick={onCopy} className="absolute top-2 right-2 text-[8px] font-black text-white/20 hover:text-white/60 tracking-widest uppercase transition-colors">COPY</button>
         )}
     </div>
-);
-
-// ─── Sub-panels per AI tab ────────────────────────────────────────────────────
+);
 
 const DescribePanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
     const [result, setResult] = useState<any>(null);
@@ -226,16 +219,12 @@ const MaskPanel: React.FC<{ imageSrc: string | null }> = ({ imageSrc }) => {
             {result && <ResultPanel content={result} onCopy={() => navigator.clipboard.writeText(result)} />}
         </div>
     );
-};
-
-// ─── Main AI Panel ─────────────────────────────────────────────────────────────
+};
 export function UploadAIPanel() {
     const user = useAtomValue(userAtom);
     const [activeTab, setActiveTab] = useState<AITab>('describe');
     const [imageSrc, setImageSrc] = useState<string | null>(null);
-    const fileRef = useRef<HTMLInputElement>(null);
-
-    // Guard — Admin / Developer only
+    const fileRef = useRef<HTMLInputElement>(null);
     if (user?.role !== 'Developer' && user?.role !== 'Admin') {
         return (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">

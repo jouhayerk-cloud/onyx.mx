@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 export type DetectTypes =
   | '2D bounding boxes'
@@ -181,8 +164,6 @@ export interface RecurringExpense {
   destination: PaymentDestination;
 }
 
-// ─── Finance & Logistics (Supabase-backed) ──────────────────────────
-
 export type FinanceSubcategory = 'Acquisition' | 'Monthly Expense' | 'Supplies' | 'Labor' | 'Crate/Pallet' | 'Operating';
 
 export interface FinanceRecord {
@@ -266,10 +247,9 @@ export interface Invoice {
   status: 'Paid' | 'Pending' | 'Overdue';
   payments: Payment[];
 }
-// FIX: Moved CameraView and Crate types from atoms.tsx to resolve circular dependency issues.
+
 export type CameraView = 'perspective' | 'top' | 'side' | 'front';
 
-// New type for simplified item info stored in crates to reduce payload size
 export interface PackedItem {
   row: number | string;
   itemId: string;
@@ -299,7 +279,7 @@ export interface Crate {
   vendorId?: string;
   rotationY?: number; // Add rotation property
 }
-// Workbook Specific Types
+
 export interface WorkbookPropertiesSheet {
   sheetName: string;
   data: any[];

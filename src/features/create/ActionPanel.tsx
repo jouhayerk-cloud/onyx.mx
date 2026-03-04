@@ -1,23 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
 
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-import { GoogleGenAI } from '@google/genai';
+import { ai } from '@/lib/ai';
 import { useAtom, useSetAtom } from 'jotai/react';
 import React, { useState } from 'react';
 
@@ -43,9 +26,8 @@ import {
 } from '../../lib/Types';
 import { createCurvePath, findContour, loadImage, simplifyContour } from '../../lib/utils';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// The main component for the AI interaction workflow.
+
 export function ActionPanel() {
   const t = useTranslation();
   const notify = useNotify();
@@ -121,7 +103,6 @@ export function ActionPanel() {
     
     console.log('[AI Workflow] Full prompt being sent:', fullPromptText);
 
-
     try {
       const image = await loadImage(imageSrc);
       const canvas = document.createElement('canvas');
@@ -134,7 +115,6 @@ export function ActionPanel() {
       const dataUrl = canvas.toDataURL('image/png');
       
       console.log(`[AI Workflow] Image prepared for API. Size: ${Math.round(dataUrl.length / 1024)} KB`);
-
 
       const imagePart = {
         inlineData: {

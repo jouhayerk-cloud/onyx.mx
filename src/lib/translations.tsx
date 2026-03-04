@@ -1,25 +1,8 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 export const translations = {
   en: {
-    // Sidebar
+
     create: 'Create',
     catalog: 'Catalog',
     workbook: 'Workbook',
@@ -38,34 +21,28 @@ export const translations = {
     truck: 'Truck',
     maxWeight: 'Max Weight',
 
-    // Header
     searchInventory: 'Search inventory...',
     searchAcquisitions: 'Search acquisitions...',
     search: 'Search...',
     all: 'All',
 
-    // Language
     language: 'Language',
 
-    // Performance Mode
     perfModeOn: 'Performance Mode: On',
     perfModeOff: 'Performance Mode: Off',
 
-    // TopBar (Legacy) & Common
     toggleInventory: 'Toggle Inventory Panel',
     addItemManually: 'Add Item Manually',
     addNewItemAI: 'Add New Item with AI',
     cancel: 'Cancel',
     logout: 'Logout',
 
-    // ImageInputPanel (Legacy)
     createWithAI: 'Create with AI',
     uploadPhoto: 'Upload / Photo',
     imageBatch: 'Image Batch',
     clearAll: 'Clear All',
     selectVendor: 'Vendor',
 
-    // ActionPanel
     step1Title: 'Step 1: Detect & Tag',
     step2Title: 'Step 2: Generate Masks',
     step3Title: 'Step 3: Review',
@@ -82,7 +59,6 @@ export const translations = {
     finishAndReview: 'Finish & Review',
     ignoreFollowing: 'Ignore the following',
 
-    // AI Prompts
     detectAndTagPromptPrefix: 'Detect and tag',
     detectAndTagPromptSuffix:
       '. Output a single JSON object with two keys: "boxes" and "points". The "boxes" key should be a list where each entry has "box_2d" and "label". The "points" key should be a list where each entry has "point" (in [y,x] format normalized to 1000) and "label".',
@@ -90,7 +66,6 @@ export const translations = {
     generateMaskPromptSuffix:
       '. Output a JSON list of segmentation masks where each entry contains "box_2d", "mask" (as a base64 string), and "label".',
 
-    // ExtraModeControls
     exportPNG: 'Export PNG',
     exporting: 'Exporting...',
     exportSVG: 'Export SVG',
@@ -101,7 +76,6 @@ export const translations = {
     maskLabel: 'Mask',
     maskSavedSuccess: 'Mask saved. Analyzing item details with AI...',
 
-    // DetailsPanel
     createNewItem: 'Create New Item',
     reviewDetails: 'Review Details',
     itemDetails: 'Item Details',
@@ -119,7 +93,6 @@ export const translations = {
     deleteSuccess: 'Item deleted.',
     deleteError: 'Failed to delete item:',
 
-    // InventoryForm
     aiSuggestions: 'AI Suggestions',
     details: 'Details',
     formID: 'ID',
@@ -142,7 +115,6 @@ export const translations = {
     temperature: 'Temperature',
     saturation: 'Saturation',
 
-    // InventoryImages / Panel
     searchPlaceholder: 'Search...',
     loadingInventory: 'Loading inventory...',
     noInventoryFound: 'No inventory items found.',
@@ -150,19 +122,16 @@ export const translations = {
     clear: 'Clear',
     batchActions: 'Batch Actions',
 
-    // Login
     welcome: 'Welcome Back',
     signInPrompt: 'Sign in to continue to Onyx.mx.',
     selectProfilePrompt: 'Select your profile',
     enterPinPrompt: 'Enter your 5-digit PIN',
     incorrectPin: 'Incorrect PIN',
 
-    // Admin
     deleteDatabaseContents: 'DELETE DATABASE CONTENTS',
     resetDatabaseConfirm:
       'Are you sure you want to permanently delete ALL inventory data? This cannot be undone.',
 
-    // Toasts
     pngExportSuccess: 'PNG downloaded!',
     pngExportError: 'PNG Export failed:',
     svgExportSuccess: 'SVG downloaded!',
@@ -171,14 +140,13 @@ export const translations = {
     gradientExtracted: 'Gradient extracted!',
     gradientError: 'Could not auto-extract color.',
 
-    // Batch Actions Modal
     batchActionsTitle: (count: number) => `Batch Actions for ${count} Item${count > 1 ? 's' : ''}`,
     batchActionsPrompt: 'Select one or more actions to apply to all selected items.',
     start: 'Start',
     deleteItems: 'Delete Items',
   },
   es: {
-    // Sidebar
+
     create: 'Crear',
     catalog: 'Catálogo',
     workbook: 'Workbook',
@@ -197,34 +165,28 @@ export const translations = {
     truck: 'Camión',
     maxWeight: 'Peso Máx.',
 
-    // Header
     searchInventory: 'Buscar en inventario...',
     searchAcquisitions: 'Buscar en adquisiciones...',
     search: 'Buscar...',
     all: 'Todos',
 
-    // Language
     language: 'Idioma',
 
-    // Performance Mode
     perfModeOn: 'Modo Rendimiento: Activado',
     perfModeOff: 'Modo Rendimiento: Desactivado',
 
-    // TopBar (Legacy) & Common
     toggleInventory: 'Alternar Inventario',
     addItemManually: 'Agregar Artículo Manualmente',
     addNewItemAI: 'Agregar Nuevo Artículo con IA',
     cancel: 'Cancelar',
     logout: 'Cerrar sesión',
 
-    // ImageInputPanel (Legacy)
     createWithAI: 'Crear con IA',
     uploadPhoto: 'Subir / Foto',
     imageBatch: 'Lote de Imágenes',
     clearAll: 'Limpiar Todo',
     selectVendor: 'Vendedor',
 
-    // ActionPanel
     step1Title: 'Paso 1: Detectar y Etiquetar',
     step2Title: 'Paso 2: Generar Máscaras',
     step3Title: 'Paso 3: Revisar',
@@ -241,7 +203,6 @@ export const translations = {
     finishAndReview: 'Finalizar y Revisar',
     ignoreFollowing: 'Ignora lo siguiente',
 
-    // AI Prompts
     detectAndTagPromptPrefix: 'Detecta y etiqueta',
     detectAndTagPromptSuffix:
       '. Emite un único objeto JSON con dos claves: "boxes" y "points". La clave "boxes" debe ser una lista donde cada entrada tiene "box_2d" y "label". La clave "points" debe ser una lista donde cada entrada tiene "point" (en formato [y,x] normalizado a 1000) y "label".',
@@ -249,7 +210,6 @@ export const translations = {
     generateMaskPromptSuffix:
       '. Emite una lista JSON de máscaras de segmentación donde cada entrada contiene "box_2d", "mask" (como cadena base64) y "label".',
 
-    // ExtraModeControls
     exportPNG: 'Exportar PNG',
     exporting: 'Exportando...',
     exportSVG: 'Exportar SVG',
@@ -261,7 +221,6 @@ export const translations = {
     maskSavedSuccess:
       'Máscara guardada. Analizando detalles del artículo con IA...',
 
-    // DetailsPanel
     createNewItem: 'Crear Nuevo Artículo',
     reviewDetails: 'Revisar Detalles',
     itemDetails: 'Detalles del Artículo',
@@ -279,7 +238,6 @@ export const translations = {
     deleteSuccess: 'Artículo eliminado.',
     deleteError: 'Error al eliminar el artículo:',
 
-    // InventoryForm
     aiSuggestions: 'Sugerencias de la IA',
     details: 'Detalles',
     formID: 'ID',
@@ -303,7 +261,6 @@ export const translations = {
     temperature: 'Temperatura',
     saturation: 'Saturación',
 
-    // InventoryImages / Panel
     searchPlaceholder: 'Buscar...',
     loadingInventory: 'Cargando inventario...',
     noInventoryFound: 'No se encontraron artículos en el inventario.',
@@ -311,19 +268,16 @@ export const translations = {
     clear: 'Limpiar',
     batchActions: 'Acciones en Lote',
 
-    // Login
     welcome: 'Bienvenido de Nuevo',
     signInPrompt: 'Inicia sesión para continuar a Onyx.mx.',
     selectProfilePrompt: 'Selecciona tu perfil',
     enterPinPrompt: 'Ingresa tu PIN de 5 dígitos',
     incorrectPin: 'PIN Incorrecto',
 
-    // Admin
     deleteDatabaseContents: 'BORRAR CONTENIDO DE LA BASE DE DATOS',
     resetDatabaseConfirm:
       '¿Estás seguro de que quieres eliminar permanentemente TODOS los datos del inventario? Esta acción no se puede deshacer.',
 
-    // Toasts
     pngExportSuccess: '¡PNG descargado!',
     pngExportError: 'La exportación de PNG falló:',
     svgExportSuccess: '¡SVG descargado!',
@@ -332,7 +286,6 @@ export const translations = {
     gradientExtracted: '¡Gradiente extraído!',
     gradientError: 'No se pudo auto-extraer el color.',
 
-    // Batch Actions Modal
     batchActionsTitle: (count: number) => `Acciones en Lote para ${count} Artículo${count > 1 ? 's' : ''}`,
     batchActionsPrompt: 'Selecciona una o más acciones para aplicar a todos los artículos seleccionados.',
     start: 'Iniciar',

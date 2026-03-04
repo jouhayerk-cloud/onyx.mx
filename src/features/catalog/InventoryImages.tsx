@@ -1,21 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
-*/
-/* tslint:disable */
-// Copyright 2024 Google LLC
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     https://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -111,7 +94,6 @@ export const StatusMarkers = ({
     );
   }
 
-  // Default 'dots' style
   return (
     <div className="flex flex-row gap-1">
       {markers.map(({ key, label, title }) => {
@@ -190,9 +172,6 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       return;
     }
 
-    // Optimized: Direct URL loading for thumbnails/grid view is much faster
-    // than proxying large images through base64 via Apps Script.
-    // Modern browsers handle these direct links very well in <img> tags.
     setImageDataUrl(firstUrl);
     setIsLoading(false);
   }, [isVisible, item.imageUrl, item.data.generatedPngUrl]);
@@ -304,7 +283,6 @@ export function InventoryImages({ mode = 'catalog', onItemSelect }: { mode?: 'ca
 
   const searchTerm = useAtomValue(inventorySearchTermAtom);
   const activeFilter = useAtomValue(inventoryActiveFilterAtom);
-
 
   const setIsDetailsPanelOpen = useSetAtom(isDetailsPanelOpenAtom);
   const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);

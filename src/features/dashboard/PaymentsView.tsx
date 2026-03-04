@@ -9,19 +9,14 @@ import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
 
-
 type VendorGroup = {
     vendorId: string;
     items: InventoryItem[];
     total: number;
 };
 
-// --- Config ---
 import { destinationsConfig } from '../../lib/paymentConfig';
 
-
-
-// --- Helper Functions ---
 const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
 
 const getVendorIdFromDescription = (description: string): string | null => {
@@ -29,7 +24,6 @@ const getVendorIdFromDescription = (description: string): string | null => {
     return match ? match[1] : null;
 };
 
-// --- API Call Abstraction (Refactored to Supabase) ---
 const apiCall = async (action: string, payload: any, db: any) => {
     if (action === 'appendExpense') {
         const { error, data } = await supabase.from('finance').insert({
@@ -66,7 +60,7 @@ const apiCall = async (action: string, payload: any, db: any) => {
     }
 
     if (action === 'batchUpdateItems') {
-        // Handle batch items update (e.g. marking as paid/shipped)
+
         for (const update of payload.updates) {
             await supabase.from('inventory').update({
                 pay_req: !!update.itemData.payReq,
@@ -80,7 +74,6 @@ const apiCall = async (action: string, payload: any, db: any) => {
     return { status: 'error', message: 'Action not implemented' };
 };
 
-// --- DestinationCard Component ---
 const DestinationCard: React.FC<{
     destination: PaymentDestination;
     config: typeof destinationsConfig[keyof typeof destinationsConfig];
@@ -121,8 +114,6 @@ const DestinationCard: React.FC<{
     );
 };
 
-
-// --- Modals ---
 const AddExpenseModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
     const db = useDatabase();
     const setPaymentsVersion = useSetAtom(paymentsVersionAtom);
@@ -240,7 +231,6 @@ const RequestPaymentModal: React.FC<{
     );
 }
 
-// --- Main View Component ---
 interface PaymentsViewProps {
     mode?: 'live' | 'archive';
 }
@@ -260,7 +250,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
 
     const fetchData = useCallback(async () => {
         if (!db) {
-            // If DB is null, we can't fetch, but we shouldn't hang forever
+
             setIsLoading(false);
             return;
         }
@@ -374,7 +364,6 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [expenses, destinationFilter, vendorFilter]);
-
 
     if (isLoading) {
         return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;

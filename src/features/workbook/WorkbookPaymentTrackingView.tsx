@@ -3,9 +3,7 @@ import React, { useMemo } from 'react';
 import { useAtomValue } from 'jotai/react';
 import { workbookPropertiesDataAtom } from '../../lib/atoms';
 import { getTextColorForBg } from '../../lib/utils';
-import { vendors } from '../../lib/consts';
-
-// Define structure for parsed data
+import { vendors } from '../../lib/consts';
 interface PaymentSummary {
     rate: string;
     totalAq: string;
@@ -19,9 +17,7 @@ interface TrackingRow {
 }
 
 export const WorkbookPaymentTrackingView: React.FC = () => {
-    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
-
-    // Find -vPayment sheet
+    const propertiesData = useAtomValue(workbookPropertiesDataAtom);
     const paymentSheet = useMemo(() => {
         return propertiesData.find(s => s.sheetName === '-vPayment');
     }, [propertiesData]);
@@ -31,19 +27,14 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             return { summary: null, trackingData: [], vendorColumns: [] };
         }
 
-        const data = paymentSheet.data;
-
-        // --- 1. Parse Summary (Cols A-B) ---
+        const data = paymentSheet.data;
         const rate = parseFloat(data[2]?.[0] || '0').toFixed(2);
         const totalAq = parseFloat(data[2]?.[1] || '0').toLocaleString('en-US', { style: 'currency', currency: 'MXN' });
 
-        const shipping: { label: string; amount: string }[] = [];
-        // Shipping records start at row 4 (index 4) usually, until "IN WAREHOUSE"
+        const shipping: { label: string; amount: string }[] = [];
         for (let i = 4; i < data.length; i++) {
             const label = data[i]?.[0];
-            const amount = data[i]?.[1];
-
-            // Stop if we hit empty or irrelevant rows in Col A
+            const amount = data[i]?.[1];
             if (!label) continue;
 
             shipping.push({
@@ -52,9 +43,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             });
 
             if (String(label) === 'IN WAREHOUSE') break;
-        }
-
-        // --- 2. Parse Vendor Headers (Row 0, 1, 2) from Col E (Index 4) ---
+        }
         const vendorCols: { id: string; name: string; index: number }[] = [];
         let colIdx = 4;
         while (colIdx < data[0].length) {
@@ -67,17 +56,12 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                 });
             }
             colIdx += 2; // Pairs of columns
-        }
-
-        // --- 3. Parse Tracking Rows (Starting Row 4) ---
+        }
         const rows: TrackingRow[] = [];
         for (let i = 4; i < data.length; i++) {
             const rowData = data[i];
             const notes = rowData[2]; // Col C
-            const date = rowData[3];  // Col D
-
-            // Skip if no notes/date (unless it's a valid row with data?) 
-            // Usually these rows drive the table.
+            const date = rowData[3];  // Col D
             if (!notes && !date) continue;
 
             const vendorValues: { [key: string]: { payment: string; balance: string } } = {};
@@ -103,9 +87,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
             trackingData: rows,
             vendorColumns: vendorCols
         };
-    }, [paymentSheet]);
-
-    // State for Collapsible Sidebar
+    }, [paymentSheet]);
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
     if (!paymentSheet) return <div>No -vPayment sheet found.</div>;
@@ -149,20 +131,15 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                         <div className="overflow-y-auto p-2">
                             <table className="w-full text-sm">
                                 <tbody>
-                                    {summary?.shipping.map((item, i) => {
-                                        // Style logic for TRK vs Totals
-                                        const isTotal = item.label.includes('TOTAL') || item.label.includes('SHIPPED') || item.label.includes('WAREHOUSE');
-
-                                        // Specific TRK Colors from reference image
+                                    {summary?.shipping.map((item, i) => {
+                                        const isTotal = item.label.includes('TOTAL') || item.label.includes('SHIPPED') || item.label.includes('WAREHOUSE');
                                         const trkColors: Record<string, string> = {
                                             'TRK1': '#ff0099', // Pink/Magenta
                                             'TRK2': '#ffff00', // Yellow
                                             'TRK3': '#00b0f0', // Cyan
                                             'TRK4': '#99ff99', // Light Green
                                             'T SHIPPED': '#ffffff' // White
-                                        };
-
-                                        // Check if label contains TRK key
+                                        };
                                         const trkKey = Object.keys(trkColors).find(k => item.label.includes(k));
                                         const bgColor = trkKey ? trkColors[trkKey] : undefined;
 
@@ -232,25 +209,18 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="font-mono">
-                            {trackingData.map((row, idx) => {
-                                // Find which vendor has a payment in this row
+                            {trackingData.map((row, idx) => {
                                 let activeVendorId: string | null = null;
                                 for (const vid in row.vendorData) {
-                                    const payment = row.vendorData[vid].payment;
-                                    // Check if payment exists and is not just '-' or '0.00' or '0'
+                                    const payment = row.vendorData[vid].payment;
                                     if (payment && payment !== '-' && payment !== '0.00' && payment !== '0') {
                                         activeVendorId = vid;
                                         break; // Assuming one vendor payment per row for the main color coding
                                     }
-                                }
-
-                                // Get vendor color
+                                }
                                 const vendorColor = activeVendorId && vendors[activeVendorId as keyof typeof vendors]?.color
                                     ? vendors[activeVendorId as keyof typeof vendors].color
-                                    : null;
-
-                                // Text color based on background (Simplified: mostly black for these pastels, white for darks)
-                                // Only apply if we have a color.
+                                    : null;
                                 const textColor = vendorColor ? '#000000' : 'var(--text-color)';
                                 const secondaryTextColor = vendorColor ? '#000000' : 'var(--text-color-secondary)';
 

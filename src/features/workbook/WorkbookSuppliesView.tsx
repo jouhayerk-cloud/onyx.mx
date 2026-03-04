@@ -6,15 +6,10 @@ export const WorkbookSuppliesView: React.FC = () => {
     const rawData = useAtomValue(workbookSuppliesDataAtom);
 
     const suppliesInfo = useMemo(() => {
-        if (!rawData || rawData.length === 0) return null;
-
-        // 1. Balance Info (usually at the top)
-        // From observation: row 1-2 contains totals
+        if (!rawData || rawData.length === 0) return null;
         const totalOut = rawData[2]?.[7] || 0;
         const totalIn = rawData[2]?.[9] || 0;
-        const remaining = parseFloat(totalIn) - parseFloat(totalOut);
-
-        // 2. Find Data Header
+        const remaining = parseFloat(totalIn) - parseFloat(totalOut);
         let headerIdx = -1;
         for (let i = 0; i < rawData.length; i++) {
             const rowStr = rawData[i]?.join(' ').toUpperCase() || '';

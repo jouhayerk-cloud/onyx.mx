@@ -1,8 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-/* tslint:disable */
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
@@ -13,9 +9,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
-import { destinationsConfig } from '../../lib/paymentConfig';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+import { destinationsConfig } from '../../lib/paymentConfig';
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
@@ -35,9 +29,7 @@ const normalizeSubcat = (s: string | null | undefined): string => {
 const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
-type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
-
-// ─── API helpers ─────────────────────────────────────────────────────────────
+type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
 const appendExpense = async (payload: any, db: any) => {
     const idsToLink = payload.inventoryItemRows || payload.linkedRows;
     const { error, data } = await supabase.from('finance').insert({
@@ -67,9 +59,7 @@ const appendExpense = async (payload: any, db: any) => {
         if (db) await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { payReq: 'true' } });
     }
     return data;
-};
-
-// ─── Unified Add / Expense Modal ─────────────────────────────────────────────
+};
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -131,9 +121,7 @@ const AddPaymentModal: React.FC<{
             const isProd = form.subcategory === 'Prod';
             const group = (form.subcategory === 'Acq' || isProd) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
-            const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
-
-            // If it's a manual entry for an existing group, handle tagging
+            const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
             if (ids.length > 0) {
                 const isPartial = group && amt < (group.total - group.paidTotal);
                 const perc = group ? Math.round(((group.paidTotal + amt) / group.total) * 100) : 100;
@@ -459,9 +447,7 @@ const AddPaymentModal: React.FC<{
             </div>
         </div>
     );
-};
-
-// ─── Request Payment modal (for vendor groups) ────────────────────────────────
+};
 const RequestPaymentModal: React.FC<{
     group: VendorGroup | null;
     onClose: () => void;
@@ -571,9 +557,7 @@ const RequestPaymentModal: React.FC<{
             </div>
         </div>
     );
-};
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+};
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
@@ -595,9 +579,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .then(r => r.json())
             .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
             .catch(() => { });
-    }, [liveExchangeRate, setLiveExchangeRate]);
-
-    // Load inventory for pending payment requests
+    }, [liveExchangeRate, setLiveExchangeRate]);
     const fetchInventory = useCallback(async () => {
         if (!db) { setIsLoading(false); return; }
         setIsLoading(true);
@@ -608,12 +590,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         setIsLoading(false);
     }, [db, setInventory]);
 
-    useEffect(() => { fetchInventory(); }, [inventoryVersion, paymentsVersion, fetchInventory]);
-
-    // Vendor groups pending payment
-    const pendingGroups = useMemo<VendorGroup[]>(() => {
-        // We include items that are marked as Acquired or Requested, but NOT yet sent to payReq
-        // Also including 'Catalog' and 'Avaiable' to transition existing data
+    useEffect(() => { fetchInventory(); }, [inventoryVersion, paymentsVersion, fetchInventory]);
+    const pendingGroups = useMemo<VendorGroup[]>(() => {
         const targetStatuses = ['acquired', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
 
         const pendingItems = inventory.filter(i => {
@@ -622,11 +600,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         });
 
         const groups: Record<string, VendorGroup> = {};
-        for (const item of pendingItems) {
-            // Priority for grouping:
-            // 1. vendor_id or vendorId field
-            // 2. Prefix from item_id (e.g. "V01-001" -> "V01")
-            // 3. Fallback to Unknown
+        for (const item of pendingItems) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
@@ -644,9 +618,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             groups[vid].items.push(item);
             groups[vid].total += (price * qty);
             groups[vid].totalQty += qty;
-        }
-
-        // Aggregate existing partial payments from finance records
+        }
         const groupList = Object.values(groups);
         for (const group of groupList) {
             const itemIds = new Set(group.items.map(i => String(i.row)));
@@ -655,15 +627,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 ['Requested', 'Paid', 'Sent', 'Dispersed'].includes(d.status) &&
                 (d.related_ids?.some((id: any) => itemIds.has(String(id))) ||
                     d.related_inventory_ids?.split(',').some((id: any) => itemIds.has(String(id))))
-            );
-            // Sum only successful amounts linked to these items
+            );
             group.paidTotal = relatedExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
         }
 
         return groupList;
-    }, [inventory, docs]);
-
-    // Pending vendor totals for tab chips
+    }, [inventory, docs]);
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
         docs.filter(e => e.status === 'Requested').forEach(e => {
@@ -671,9 +640,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             if (vid) totals[vid] = (totals[vid] || 0) + (e.amount || 0) + (e.commission || 0);
         });
         return totals;
-    }, [docs]);
-
-    // Filtered + sorted records
+    }, [docs]);
     const filtered = useMemo(() => {
         return [...docs]
             .filter(r => {
@@ -711,9 +678,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 : `Liquidation Payment for ${group.items.length} items from ${group.vendorId}`;
 
             const itemIdsStr = group.items.map(i => String(i.row)).join(',');
-            const ids = itemIdsStr.split(',');
-
-            // PRODUCTION Progress Tracking
+            const ids = itemIdsStr.split(',');
             if (isProduction) {
                 if (isPartial) {
                     await supabase.from('inventory').update({ pay_req: `requested ${percentage}%` }).in('id', ids);
@@ -796,9 +761,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 if (localDoc) await localDoc.patch(updatePayload);
             } catch (e) {
                 console.error('Error patching local doc', e);
-            }
-
-            // PRODUCTION / ACQ Tagging Persistence
+            }
             if (next === 'Paid') {
                 const ids = r.related_ids || r.related_inventory_ids?.split(',');
                 if (ids?.length > 0) {
@@ -813,9 +776,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             setPaymentsVersion(v => v + 1);
             onRefresh();
         }
-    };
-
-    // Summary by subcategory
+    };
     const subcatTotals = useMemo(() => {
         const m: Record<string, number> = {};
         docs.forEach(d => { const k = normalizeSubcat(d.subcategory || d.category); m[k] = (m[k] || 0) + (d.amount || 0); });
@@ -1082,8 +1043,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 return (
                                     <React.Fragment key={r.id}>
                                         <tr
-                                            onClick={(e) => {
-                                                // Prevent toggling if a button inside the row was clicked
+                                            onClick={(e) => {
                                                 if ((e.target as HTMLElement).closest('button')) return;
                                                 setExpandedRow(isExpanded ? null : r.id);
                                             }}
