@@ -6,8 +6,9 @@
 import React, { useState } from 'react';
 import { UserRegistryPanel } from './UserRegistryPanel';
 import { DatabaseStatsPanel } from './DatabaseStatsPanel';
+import { StoreSettingsPanel } from './StoreSettingsPanel';
 
-type ControlTab = 'users' | 'database';
+type ControlTab = 'users' | 'database' | 'store';
 
 export function ControlView() {
     const [activeTab, setActiveTab] = useState<ControlTab>('users');
@@ -15,6 +16,7 @@ export function ControlView() {
     const tabs: { id: ControlTab; label: string; icon: string }[] = [
         { id: 'users', label: 'Users', icon: 'users' },
         { id: 'database', label: 'DB', icon: 'database' },
+        { id: 'store', label: 'Store', icon: 'store' },
     ];
 
     return (
@@ -59,6 +61,7 @@ export function ControlView() {
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {activeTab === 'users' && <UserRegistryPanel />}
                 {activeTab === 'database' && <DatabaseStatsPanel />}
+                {activeTab === 'store' && <StoreSettingsPanel />}
             </div>
         </div>
     );

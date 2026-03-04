@@ -172,7 +172,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 
 // Main Views
-export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview'>('inventory');
+export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store'>('inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventoryStatusFilterAtom = atom<'All' | 'Available' | 'Production' | 'Acquisition'>('All');
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list'>('inventoryViewMode', 'list');
@@ -247,6 +247,10 @@ export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
+
+// Store State
+export const storeShoppingBagAtom = atom<any[]>([]);
+export const storeActiveUserAtom = atom<string | null>(null); // To view someone's store
 
 // Workbook State
 export const workbookVersionAtom = atom<'825' | '326'>('825');

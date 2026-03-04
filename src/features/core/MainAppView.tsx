@@ -57,6 +57,7 @@ import { FinanceView } from '../finance/FinanceView';
 import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
 import { ClientOverview } from '../dashboard/ClientOverview';
+import { StoreView } from '../store/StoreView';
 
 // Injected at build time from package.json via vite.config.ts
 declare const __APP_VERSION__: string;
@@ -193,6 +194,7 @@ export function MainAppView() {
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
             case 'finance': return <FinanceView />;
+            case 'store': return <StoreView />;
             default:
                 return <InventoryView />;
         }
@@ -342,6 +344,15 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Payments</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Payments</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Store size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Store</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Store</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
