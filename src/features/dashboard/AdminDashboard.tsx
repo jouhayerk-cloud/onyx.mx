@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
-import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom, topBarRightSlotAtom } from '../../lib/atoms';
+import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
@@ -41,20 +41,10 @@ export function AdminDashboard() {
     const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
-    const setTopBarRightSlot = useSetAtom(topBarRightSlotAtom as any);
 
     const [items, setItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        setTopBarRightSlot(
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#6BCEBB]/10 border border-[#6BCEBB]/20 rounded-full">
-                <LayoutGrid size={14} className="text-[#6BCEBB]" />
-                <span className="text-[10px] font-black text-[#6BCEBB] uppercase tracking-[0.2em]">Analytics</span>
-            </div>
-        );
-        return () => { setTopBarRightSlot(null); };
-    }, [setTopBarRightSlot]);
 
     useEffect(() => {
         if (!db) return;

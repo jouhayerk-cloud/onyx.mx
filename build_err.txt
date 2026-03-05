@@ -1,0 +1,29 @@
+
+> onyx.mx-git@1.11.96 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 3845 modules transformed.
+[31m✗[39m Build failed in 7.57s
+[31merror during build:
+[31msrc/features/dashboard/AdminDashboard.tsx (3:90): "topBarRightSlotAtom" is not exported by "src/lib/atoms.tsx", imported by "src/features/dashboard/AdminDashboard.tsx".[31m
+file: [36mC:/Jouhayerk/git/app/src/features/dashboard/AdminDashboard.tsx:3:90[31m
+[33m
+1: import React, { useMemo, useState, useEffect } from 'react';
+2: import { useAtomValue, useAtom, useSetAtom } from 'jotai';
+3: import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom, topBarRightSlotAtom } from ...
+                                                                                             ^
+4: import { useDatabase } from '../../lib/hooks';
+5: import { normalizeInventoryData } from '../../lib/utils';
+[31m
+    at getRollupError (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/parseAst.js:400:41)
+    at error (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/parseAst.js:396:42)
+    at Module.error (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:17036:16)
+    at Module.traceVariable (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:17448:29)
+    at ModuleScope.findVariable (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:15066:39)
+    at FunctionScope.findVariable (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at Identifier.bind (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+    at CallExpression.bind (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:2825:28)
+    at CallExpression.bind (file:///C:/Jouhayerk/git/app/node_modules/rollup/dist/es/shared/node-entry.js:12179:15)[39m
