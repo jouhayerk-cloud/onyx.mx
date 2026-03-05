@@ -3174,12 +3174,12 @@ html.theme-malaquite .sidebar-list-item.active {
   z-index: 0;
 }
 
-/* Scrim layer: theme-aware overlay */
+/* Scrim layer: theme-aware overlay — plain color only, no backdrop-filter */
 .glass-scrim {
   position: absolute;
   inset: 0;
   background: var(--app-bg);
-  backdrop-filter: blur(2px);
+  pointer-events: none;
   z-index: 1;
 }
 
