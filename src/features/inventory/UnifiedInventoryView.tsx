@@ -81,7 +81,7 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
     const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
 
     return (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+        <div className="fixed inset-0 z-200 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
             onClick={onClose} onWheel={handleWheel}>
             <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X className="w-5 h-5" />
@@ -195,25 +195,36 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/15 uppercase tracking-widest mb-0.5">ACQ COST</span>
                             <span className="text-base font-mono font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={handleEdit} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-(--main-color)/10 border border-white/10 rounded-xl text-white/30 hover:text-(--main-color) transition-all group/edit" title="Edit Item">
-                                <Edit2 className="w-3.5 h-3.5 transition-transform group-hover/edit:scale-110" />
-                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Edit</span>
+                        {/* Free-floating icon actions — no bg box */}
+                        <div className="flex gap-1 shrink-0">
+                            <button
+                                onClick={handleEdit}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/25 hover:text-(--main-color) hover:bg-(--main-color)/10 transition-all"
+                                title="Edit Item"
+                            >
+                                <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={onToggleExpand} className="h-9 px-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/30 hover:text-white transition-all group/expand" title="Item Details">
-                                <ChevronDown className={`w-3.5 h-3.5 transition-all group-hover/expand:scale-110 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`} />
-                                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{isExpanded ? 'Close' : 'Details'}</span>
+                            <button
+                                onClick={onToggleExpand}
+                                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/25 hover:text-white hover:bg-white/10 transition-all"
+                                title="Item Details"
+                            >
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`} />
                             </button>
                         </div>
                     </div>
                 </div>
                 {isExpanded && (
-                    <div className="ml-16 mr-4 p-5 bg-black/40 backdrop-blur-md border-x border-b border-white/5 rounded-b-2xl grid grid-cols-2 md:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500 ease-out z-0 relative">
-                        <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || 'â€”'}</p></div>
-                        <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
-                        <div><p className={lbl}>Quantity</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.quantity || 1}</p></div>
-                        <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono tracking-tight">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
-                        <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono tracking-tight">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
+                    <div className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
+                            <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
+                            <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono font-bold text-white/70">{dimensionsStr || '—'}</p></div>
+                            <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono font-bold text-white/70">{weightStr || '—'}</p></div>
+                            <div><p className={lbl}>Quantity</p><p className="text-[11px] font-bold text-white/70">{norm.quantity || 1}</p></div>
+                            <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
+                            <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
+                            <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -294,14 +305,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 </div>
             </div>
 
-            {/* Right Slide Drawer Overlay */}
+            {/* Center Modal Overlay for Grid Card Detail */}
             {isExpanded && createPortal(
-                <div className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
-                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[500px] z-[100] flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
-                        style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)', borderLeft: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}
+                <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md animate-in fade-in duration-300 flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+                    <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 cursor-default"
+                        style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 97%, transparent)', backdropFilter: 'blur(40px)', border: '1px solid color-mix(in srgb, var(--text-color) 12%, transparent)' }}
                         onClick={e => e.stopPropagation()}>
 
-                        <div className="absolute right-4 top-4 z-[101] flex gap-2">
+                        {/* Modal action bar */}
+                        <div className="absolute right-4 top-4 z-101 flex gap-2">
                             <button onClick={handleEdit} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-xs font-black uppercase tracking-widest">
                                 <Edit2 className="w-3.5 h-3.5" /> Edit
                             </button>
@@ -310,8 +322,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             </button>
                         </div>
 
-                        {/* Drawer Image Header */}
-                        <div className="h-[40vh] relative shrink-0">
+                        {/* Modal Image Header — landscape strip */}
+                        <div className="h-[35vh] relative shrink-0">
                             {imageUrl ? (
                                 <img src={imageUrl} onClick={() => setShowViewer(true)} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
                             ) : (
@@ -319,7 +331,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     <OnyxMiniLogo className="w-32 h-32 opacity-20" />
                                 </div>
                             )}
-                            <div className="absolute top-4 left-4 z-[101]">
+                            <div className="absolute top-4 left-4 z-101">
                                 {calculated.bookBardcode && (
                                     <div className="px-3 py-1.5 rounded-lg border border-black text-black font-black text-xs shadow-lg" style={{ backgroundColor: vendorColor }}>
                                         {calculated.bookBardcode}
@@ -329,13 +341,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                         </div>
 
-                        {/* Drawer Content */}
-                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-6" style={{ background: 'color-mix(in srgb, var(--background-color) 50%, transparent)' }}>
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-5" style={{ background: 'color-mix(in srgb, var(--background-color) 50%, transparent)' }}>
                             <div>
                                 <h3 className="text-2xl font-black text-(--text-color) truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                 <p className="text-sm font-bold uppercase text-(--text-color-secondary) tracking-widest mt-1">{(norm.color || '') + ' ' + (norm.material || '')}</p>
                             </div>
 
+                            {/* Codes row */}
                             <div className="flex gap-6">
                                 <div className="flex flex-col">
                                     <span className="text-[11px] font-black text-(--text-color-secondary) uppercase tracking-widest">AQ Code</span>
@@ -348,13 +361,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--text-color) 3%, transparent)' }}>
-                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Material</p><p className="text-[15px] font-bold text-(--text-color)">{norm.material || '—'}</p></div>
-                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Dimensions</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
-                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Weight</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
-                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Quantity</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
+                            {/* Details grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--text-color) 3%, transparent)' }}>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Material</p><p className="text-[14px] font-bold text-(--text-color)">{norm.material || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Dimensions</p><p className="text-[14px] font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Weight</p><p className="text-[14px] font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Quantity</p><p className="text-[14px] font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
                             </div>
 
+                            {/* Financial analysis */}
                             <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
                                 <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Financial Analysis</h4>
                                 <div className="grid grid-cols-3 gap-4">
@@ -547,8 +562,8 @@ export const UnifiedInventoryView = () => {
 
     const filteredItems = useMemo(() => {
         return items.filter(item => {
-            // Unconditionally hide Available / Catalog items as per new requirements
-            if (!item.data.status || ['Available', 'Catalog', 'available'].includes(item.data.status)) return false;
+            // Hide Available / Catalog items — they belong to the Store view
+            if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
             if (statusFilter === 'Acquisition') {
                 if (!['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status)) return false;
@@ -735,7 +750,16 @@ export const UnifiedInventoryView = () => {
                             </div>
                             {imageUrl && <div className="h-56 w-full rounded-[2.5rem] overflow-hidden border border-white/5 relative shrink-0 shadow-2xl"><img src={imageUrl} className="w-full h-full object-cover opacity-60" /><div className="absolute inset-0 bg-linear-to-t from-black via-transparent" /><div className="absolute bottom-6 left-8"><p className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.4em] mb-2">Live Preview</p><h3 className="text-2xl font-black text-white tracking-tight">{editData.shape}</h3></div></div>}
                             <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Status</label><select name="status" value={editData.status} onChange={handleEditChange} className={inp}><option value="Avaiable">Avaiable</option><option value="Production">Production</option><option value="Acquired">Acquired</option><option value="Requested">Requested</option><option value="Payed">Payed</option><option value="Packed">Packed</option><option value="Shipped">Shipped</option></select></div>
+                                <div><label className={lbl}>Status</label><select name="status" value={editData.status} onChange={handleEditChange} className={inp}>
+                                    <option value="Available">Available</option>
+                                    <option value="Acquisition">Acquisition</option>
+                                    <option value="Production">Production</option>
+                                    <option value="Acquired">Acquired</option>
+                                    <option value="Requested">Requested</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Packed">Packed</option>
+                                    <option value="Shipped">Shipped</option>
+                                </select></div>
                                 <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-8">

@@ -89,6 +89,7 @@ export function StoreView() {
     useEffect(() => {
         async function fetchStoreItems() {
             setLoading(true);
+            // Include legacy 'Avaiable' typo for backward compat with existing DB records
             const { data, error } = await supabase.from('inventory').select('*').in('status', ['Available', 'Avaiable', 'Catalog']).order('timestamp', { ascending: false });
             if (!error && data) {
                 let mappedItems: InventoryItem[] = data.map(d => {

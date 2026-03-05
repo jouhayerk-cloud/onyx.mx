@@ -205,6 +205,10 @@ export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
 export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('extended');
 export const liveExchangeRateAtom = atom<number | null>(null);
 export const financeSearchTermAtom = atom('');
+export type PaymentCategory = 'All' | 'ACQ' | 'PROD' | 'MONTHLY' | 'SPPL' | 'LABR' | 'PACK' | 'OPRT';
+export const paymentCategoryFilterAtom = atom<PaymentCategory>('All');
+export const isPaymentCategoryFilterOpenAtom = atom<boolean>(false);
+
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});
 
