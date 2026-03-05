@@ -72,7 +72,7 @@ export function UploadEntryForm() {
             setItemData({
                 itemId: generateUniqueId(),
                 vendorId: defaultVendorId,
-                status: 'Avaiable',
+                status: 'Available',
                 workbook: 'v326',
             });
         }
@@ -254,7 +254,7 @@ export function UploadEntryForm() {
                 length_cm: itemData.lengthCm ? Number(itemData.lengthCm) : null,
                 price_mxn: itemData.price ? Number(itemData.price) : null,
                 quantity: itemData.quantity ? Number(itemData.quantity) : 1,
-                status: itemData.status || 'Catalog',
+                status: itemData.status || 'Available',
                 workbook: itemData.workbook || 'v326',
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
@@ -316,9 +316,9 @@ export function UploadEntryForm() {
                 <label className={lbl}>Entry Status</label>
                 <div className="flex gap-2 pt-1 overflow-x-auto no-scrollbar">
                     {[
-                        { id: 'Catalog', icon: 'layout-grid', label: 'Catalog' },
+                        { id: 'Available', icon: 'layout-grid', label: 'Available' },
                         { id: 'Production', icon: 'tool', label: 'Production' },
-                        { id: 'Acquisitions', icon: 'shopping-bag', label: 'Acquisitions' }
+                        { id: 'Acquisition', icon: 'shopping-bag', label: 'Acquisition' }
                     ].map(s => (
                         <button
                             key={s.id} type="button"
