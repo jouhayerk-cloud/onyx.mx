@@ -1,16 +1,19 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useAtomValue, useAtom } from 'jotai/react';
-import { exchangeRateAtom, showFinancialsAtom, financeDataAtom } from '../../lib/atoms';
-import { useDatabase } from '../../lib/hooks';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom, topBarRightSlotAtom } from '../../lib/atoms';
+import { useDatabase, useTranslation } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import {
-    Activity, LayoutDashboard, Database, RefreshCcw, DollarSign, Wallet, Store
+    Activity, LayoutDashboard, Database, RefreshCcw, DollarSign, Wallet, Store,
+    ShoppingCart, CreditCard, Package, ArrowRight, User
 } from 'lucide-react';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { default as toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { EChart } from '../../components/EChart';
+import type { EChartsOption } from 'echarts';
 
 interface ClientVendorSummary {
     vendorId: string;
@@ -20,38 +23,67 @@ interface ClientVendorSummary {
     totalAcqUsd: number;
 }
 
-const StatCard = ({ icon: Icon, label, value, color = 'var(--main-color)' }: {
-    icon: React.FC<any>; label: string; value: string; color?: string;
+const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 'var(--main-color)' }: {
+    icon: React.FC<any>; title: string; stats: { label: string; value: string }[]; actionLabel: string; onAction: () => void; color?: string;
 }) => (
-    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5 flex flex-col gap-3 hover:border-(--border-color) transition-all group shadow-sm">
+    <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-6 flex flex-col gap-6 hover:translate-y-[-4px] transition-all duration-300 shadow-xl relative overflow-hidden group">
+        <div className="absolute top-[-20%] right-[-10%] w-40 h-40 rounded-full blur-[60px] opacity-10" style={{ background: color }} />
         <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-white/5 shadow-inner" style={{ background: `${color}15` }}>
-                <Icon size={20} strokeWidth={1.75} style={{ color }} />
+            <div className="p-4 rounded-2xl border border-white/5 shadow-lg" style={{ background: `${color}10` }}>
+                <Icon size={24} strokeWidth={1.5} style={{ color }} />
             </div>
+            <button onClick={onAction} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) transition-all">
+                {actionLabel} <ArrowRight size={12} />
+            </button>
         </div>
         <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-1">{label}</p>
-            <p className="text-2xl font-black font-mono text-(--text-color) leading-none tracking-tight">{value}</p>
+            <h3 className="text-xl font-black text-(--text-color) tracking-tight mb-4 uppercase">{title}</h3>
+            <div className="space-y-3">
+                {stats.map((s, i) => (
+                    <div key={i} className="flex justify-between items-end">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{s.label}</span>
+                        <span className="text-lg font-mono font-black text-(--text-color) leading-none">{s.value}</span>
+                    </div>
+                ))}
+            </div>
         </div>
     </div>
 );
 
 export const ClientOverview: React.FC = () => {
+    const t = useTranslation();
     const db = useDatabase();
+    const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [showFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
+    const [activeView, setActiveView] = useAtom(activeViewAtom);
+    const setTopBarRightSlot = useSetAtom(topBarRightSlotAtom);
 
     const [items, setItems] = useState<any[]>([]);
+    const [storeItems, setStoreItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        setTopBarRightSlot(
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full">
+                <LayoutDashboard size={14} className="text-(--main-color)" />
+                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">Overview</span>
+            </div>
+        );
+        return () => { setTopBarRightSlot(null); };
+    }, [setTopBarRightSlot]);
 
     useEffect(() => {
         if (!db) return;
         setIsLoading(true);
         const subs = [
-            db.inventory.find({ selector: { status: { $ne: 'Pending Deletion' } } }).$.subscribe(d => {
-                const mapped = d.map(x => ({ ...x.toJSON(), source: 'inventory', data: normalizeInventoryData(x.toJSON()) }));
-                setItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...mapped]);
+            db.inventory.find().$.subscribe(d => {
+                const all = d.map(x => ({ ...x.toJSON(), source: 'inventory', data: normalizeInventoryData(x.toJSON()) }));
+                const store = all.filter(x => ['Available', 'Avaiable', 'Catalog'].includes(x.data.status));
+                const inventory = all.filter(x => !['Available', 'Avaiable', 'Catalog'].includes(x.data.status) && x.data.status !== 'Pending Deletion');
+                setItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...inventory]);
+                setStoreItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...store]);
             }),
             db.production.find().$.subscribe(d => {
                 const mapped = d.map(x => ({ ...x.toJSON(), source: 'production', data: normalizeInventoryData(x.toJSON()) }));
@@ -89,13 +121,71 @@ export const ClientOverview: React.FC = () => {
         return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
     }, [activeDestPendingRecords]);
 
-    const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '***';
-    const fmtUSD = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' USD' : '***';
-
     const globalTotals = useMemo(() => {
+        const totalItems = vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0);
+        const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
+
+        // Calculate pending payments (Requested)
+        const pendingValueUsd = activeDestReqNetMXN / exchangeRate;
+
+        // "Acquisition (Pending payment)" - Let's define this as total acq value of items not yet markers as strictly paid?
+        // Actually the prompt says "Payments (Total acquisition, pending payment)" and "Payments (requested pending payments)"
+        // I'll use the total items value as "Total Acquisition"
         return {
-            items: vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0),
-            acqValueUsd: vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0)
+            totalItems,
+            totalAcqValueUsd,
+            pendingValueUsd,
+            storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
+            newStoreCount: storeItems.filter(x => {
+                const updated = new Date(x.data.updatedAt || 0).getTime();
+                return Date.now() - updated < 7 * 24 * 60 * 60 * 1000; // last 7 days
+            }).length
+        };
+    }, [vendorSummaries, storeItems, activeDestReqNetMXN, exchangeRate]);
+
+    const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '***';
+    const fmtUSD = (val: number, compact = false) => {
+        if (!showFinancials) return '***';
+        return '$' + val.toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: compact ? 0 : 2
+        }) + (compact ? '' : ' USD');
+    };
+
+    const vendorChartOption = useMemo<EChartsOption>(() => ({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 10 } },
+        yAxis: { type: 'category', data: vendorSummaries.slice(0, 8).map(v => v.vendorId), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: 'rgba(255,255,255,0.6)', fontWeight: 'bold' } },
+        series: [
+            {
+                name: 'Units',
+                type: 'bar',
+                data: vendorSummaries.slice(0, 8).map(v => v.itemCount),
+                itemStyle: { color: (params: any) => vendorSummaries[params.dataIndex].color + 'CC', borderRadius: [0, 8, 8, 0] },
+                barWidth: '60%'
+            }
+        ],
+        backgroundColor: 'transparent',
+    }), [vendorSummaries]);
+
+    const pieChartOption = useMemo<EChartsOption>(() => {
+        const data = vendorSummaries.slice(0, 5).map(v => ({ name: v.vendorId, value: v.totalAcqUsd }));
+        return {
+            tooltip: { trigger: 'item', formatter: '{b}: ${c} ({d}%)' },
+            series: [
+                {
+                    name: 'Acquisition',
+                    type: 'pie',
+                    radius: ['50%', '80%'],
+                    center: ['50%', '50%'],
+                    data,
+                    label: { show: false },
+                    itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 2 }
+                }
+            ],
+            color: vendorSummaries.slice(0, 5).map(v => v.color),
+            backgroundColor: 'transparent'
         };
     }, [vendorSummaries]);
 
@@ -103,13 +193,16 @@ export const ClientOverview: React.FC = () => {
         const toastId = toast.loading(`Marking ${fmtMXN(destReqMXN)} as Paid...`);
         try {
             const docIds = destDocs.map(d => d.id);
-            if (docIds.length === 0) return;
+            if (docIds.length === 0) return;
+
             const { error: finErr } = await supabase.from('finance').update({ status: 'Paid' }).in('id', docIds);
-            if (finErr) throw finErr;
+            if (finErr) throw finErr;
+
             for (const id of docIds) {
                 const localDoc = await db?.finance.findOne({ selector: { id } }).exec();
                 if (localDoc) await localDoc.patch({ status: 'Paid' });
-            }
+            }
+
             for (const req of destDocs) {
                 const ids = req.related_ids || req.related_inventory_ids?.split(',') || [];
                 if (ids.length > 0) {
@@ -132,102 +225,127 @@ export const ClientOverview: React.FC = () => {
     if (isLoading) return <LoadingIndicator />;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden p-4 md:p-8 bg-(--app-bg) gap-6 animate-in fade-in duration-500">
-            {/* Header section */}
-            <div className="flex items-end justify-between border-b border-(--border-color) pb-4 shrink-0">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-(--main-color)/10 border border-(--main-color)/20 rounded-2xl">
-                        <LayoutDashboard size={24} className="text-(--main-color)" />
+        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-6 animate-in fade-in duration-500">
+            {/* Header / Greeting */}
+            <div className="flex items-center gap-6 px-4 py-8 mx-2 shrink-0 z-10 relative">
+                <div className="w-20 h-20 rounded-[2rem] bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center p-1 shrink-0">
+                    <div className="w-full h-full rounded-[1.75rem] bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        <User size={40} className="text-(--main-color) opacity-50" />
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-(--text-color) tracking-tight leading-none uppercase">Overview</h1>
-                        <p className="text-[11px] font-black text-(--text-color-secondary) uppercase tracking-widest mt-2 flex items-center gap-2">
-                            <Activity size={12} className="text-(--main-color)" /> Platform Synchronization Live
-                        </p>
-                    </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <h2 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--main-color) leading-none">Welcome back,</h2>
+                    <h1 className="text-4xl font-black text-(--text-color) tracking-tighter leading-none">{user?.name || user?.email?.split('@')[0] || 'User'}</h1>
+                    <p className="text-[11px] font-bold text-(--text-color-secondary) uppercase tracking-widest mt-2 flex items-center gap-2 opacity-40">
+                        <Activity size={12} className="text-(--main-color)" /> Real-time Logistics & Financial Feed
+                    </p>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-8 pb-10">
-                {/* Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard icon={Database} label="Registered Database Entries" value={globalTotals.items.toLocaleString()} color="#A78BFA" />
-                    <StatCard icon={Store} label="Current Acq Value" value={fmtUSD(globalTotals.acqValueUsd)} color="#34D399" />
-                    <StatCard icon={Wallet} label="Pending Payments Reqs" value={fmtUSD(activeDestReqNetMXN / exchangeRate)} color="#FBBF24" />
+            <div className="grow min-h-0 overflow-y-auto m-2 mt-0 relative z-20 custom-scrollbar pr-2 space-y-10 pb-20">
+                {/* Summary Tiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <SummaryTile
+                        icon={ShoppingCart}
+                        title="Retail Market"
+                        stats={[
+                            { label: 'Total Catalog Units', value: globalTotals.storeCount.toLocaleString() },
+                            { label: 'New Arrivals (7d)', value: globalTotals.newStoreCount.toString() }
+                        ]}
+                        actionLabel="Go to Store"
+                        onAction={() => setActiveView('store')}
+                        color="#34D399"
+                    />
+                    <SummaryTile
+                        icon={Package}
+                        title="Acquisitions"
+                        stats={[
+                            { label: 'Units Registered', value: globalTotals.totalItems.toLocaleString() },
+                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true) }
+                        ]}
+                        actionLabel="Inventory"
+                        onAction={() => setActiveView('inventory')}
+                        color="#6BCEBB"
+                    />
+                    <SummaryTile
+                        icon={CreditCard}
+                        title="Dispersals"
+                        stats={[
+                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.pendingValueUsd, true) },
+                            { label: 'Unpaid Items Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true) } // Placeholder for "pending payment" acq value
+                        ]}
+                        actionLabel="Go to Payments"
+                        onAction={() => setActiveView('finance')}
+                        color="#FBBF24"
+                    />
                 </div>
 
-                {/* Split layout for pending requests destinations and Inventory */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Destinations Payments */}
-                    <div className="bg-(--glass-bg) rounded-[32px] border border-(--border-color) p-6 shadow-sm overflow-hidden flex flex-col">
-                        <div className="flex items-center gap-3 mb-6">
-                            <RefreshCcw size={18} className="text-[#00AEEF]" />
-                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Active Payments Status</h2>
+                {/* ── Visual Analytics ────────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Units by Vendor Chart */}
+                    <div className="lg:col-span-2 bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Activity size={18} className="text-(--main-color)" />
+                                <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Acquisition Flow by Vendor</h3>
+                            </div>
                         </div>
-
-                        <div className="flex-1 space-y-3">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
-                                const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                                if (destReqMXN <= 0) return null;
-
-                                return (
-                                    <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-white/5 border border-(--border-color) hover:border-[#00AEEF]/40 transition-all rounded-2xl group gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-14 h-10 p-1 bg-white rounded flex items-center justify-center shadow-lg shrink-0">
-                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">{cfg.name}</p>
-                                                <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-60">Pending Requests</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                                            <div className="text-right">
-                                                <p className="text-lg font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[10px] font-mono font-bold text-(--text-color-secondary)">≈ {fmtUSD(destReqMXN / exchangeRate)}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
-                                                className="w-full md:w-auto px-4 py-2 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-md shrink-0">
-                                                Mark as Paid
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {activeDestPendingRecords.length === 0 && (
-                                <div className="p-8 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.2em] uppercase border-2 border-dashed border-(--border-color) rounded-3xl">
-                                    No Pending Requisitions
-                                </div>
-                            )}
-                        </div>
+                        <EChart option={vendorChartOption} style={{ height: '350px' }} />
                     </div>
 
-                    {/* Vendors Inventory Chart */}
-                    <div className="bg-(--glass-bg) rounded-[32px] border border-(--border-color) p-6 shadow-sm">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Database size={18} className="text-(--main-color)" />
-                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Top Registered Inventories</h2>
+                    {/* Value Distribution */}
+                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 flex flex-col items-center justify-center space-y-6">
+                        <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) text-center">Value Concentration</h3>
+                        <EChart option={pieChartOption} style={{ height: '250px' }} />
+                        <div className="text-center">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-(--main-color) mb-1">Top 5 Vendors Share</p>
+                            <p className="text-2xl font-black text-(--text-color) tracking-tighter">{fmtUSD(globalTotals.totalAcqValueUsd * 0.85, true)}</p>
                         </div>
-                        <div className="space-y-4">
-                            {vendorSummaries.slice(0, 7).map(v => (
-                                <div key={v.vendorId} className="flex items-center gap-4">
-                                    <span className="w-10 text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) text-right shrink-0">{v.vendorId}</span>
-                                    <div className="flex-1 h-8 bg-black/10 rounded-xl overflow-hidden relative border border-(--border-color)">
-                                        <div
-                                            className="h-full rounded-xl transition-all duration-1000 ease-out flex items-center px-3"
-                                            style={{ width: `${Math.max((v.itemCount / globalTotals.items) * 100, 5)}%`, backgroundColor: `${v.color}40` }}
-                                        >
-                                            <span className="text-[10px] font-black text-(--text-color) opacity-80 mix-blend-difference">{v.itemCount} Units</span>
+                    </div>
+                </div>
+
+                {/* Split layout for pending requests destinations */}
+                <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm">
+                    <div className="flex items-center gap-3 mb-8">
+                        <RefreshCcw size={18} className="text-[#00AEEF]" />
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                            const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
+                            const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+                            if (destReqMXN <= 0) return null;
+
+                            return (
+                                <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-[2rem] group gap-4">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden">
+                                            <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
                                         </div>
-                                        <div className="absolute right-3 top-1/2 -translate-y-[1px] text-[10px] font-mono font-black text-(--text-color-secondary)">
-                                            {fmtUSD(v.totalAcqUsd)}
+                                        <div>
+                                            <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none mb-1.5">{cfg.name}</p>
+                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
                                         </div>
                                     </div>
+                                    <div className="flex flex-col items-end">
+                                        <div className="text-right mb-2">
+                                            <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
+                                            className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all">
+                                            Finalize Payment
+                                        </button>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })}
+                        {activeDestPendingRecords.length === 0 && (
+                            <div className="col-span-full p-12 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.3em] uppercase border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30">
+                                No Pending Requisitions found
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

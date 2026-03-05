@@ -61,7 +61,7 @@ import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
-    LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
+    LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
     OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList
 } from 'lucide-react';
@@ -95,6 +95,7 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'refresh': RefreshCw,
     'logout': LogOut,
     'layout-grid': LayoutGrid,
+    'layout-dashboard': LayoutDashboard,
     'list-bullet': List,
     'bookmark': Bookmark,
     'sun': Sun,
@@ -573,11 +574,19 @@ export function MainHeader() {
                 {activeView === 'logistics' && <LogisticsBar />}
                 {activeView === 'upload' && <UploadBar />}
                 {activeView === 'control' && <ControlBar />}
+                {activeView === 'overview' && (
+                    <>
+                        <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
+                        <div className="ml-auto">
+                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Platform Sync</span>
+                        </div>
+                    </>
+                )}
                 {activeView === 'dashboard' && (
                     <>
-                        <ModuleBadge icon="layout-grid" label="Dashboard" color="#6BCEBB" />
+                        <ModuleBadge icon="layout-grid" label="Analytics" color="#6BCEBB" />
                         <div className="ml-auto">
-                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Admin Overview</span>
+                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Admin Control</span>
                         </div>
                     </>
                 )}
