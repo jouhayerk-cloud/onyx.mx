@@ -739,6 +739,10 @@ export const UnifiedInventoryView = () => {
                                 <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-8">
+                                <div><label className={lbl}>Quantity</label><input type="number" min="1" step="1" name="quantity" value={editData.quantity} onChange={handleEditChange} className={inpNum} /></div>
+                                <div><label className={lbl}>Unit Cost (MXN)</label><input type="number" step="0.01" name="price" value={editData.price} onChange={handleEditChange} className={inpNum} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
                                 <div><label className={lbl}>Color Tone</label><input type="text" name="color" value={editData.color} onChange={handleEditChange} className={inp} /></div>
                                 <div><label className={lbl}>Composition</label><input type="text" name="material" value={editData.material} onChange={handleEditChange} className={inp} /></div>
                             </div>

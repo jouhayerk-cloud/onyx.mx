@@ -12,7 +12,8 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
 import { GoogleGenAI, Type } from '@google/genai';
 
-
+
+
 const lbl = "text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) block mb-2";
 const inp = "w-full bg-(--glass-bg) border border-(--border-color) rounded-xl px-4 py-3 text-sm text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:outline-none focus:border-(--main-color)/50 transition-all";
 const inpNum = inp + " font-mono text-center";
@@ -23,7 +24,8 @@ const MEDIA_TYPES = [
     { id: 'sample', label: 'Smp', icon: 'search' },
     { id: 'lot', label: 'Lot', icon: 'package' },
     { id: 'video', label: 'Vid', icon: 'video' },
-];
+];
+
 const SuggestChips: React.FC<{
     values: string[];
     onSelect: (v: string) => void;
@@ -42,7 +44,8 @@ const SuggestChips: React.FC<{
             ))}
         </div>
     );
-};
+};
+
 export function UploadEntryForm() {
     const [itemData, setItemData] = useAtom(uploadItemDataAtom);
     const [mediaFiles, setMediaFiles] = useAtom(uploadMediaFilesAtom);
@@ -58,7 +61,8 @@ export function UploadEntryForm() {
     const canSelectVendor = user?.role === 'Developer' || user?.role === 'Admin';
     const defaultVendorId = canSelectVendor
         ? (Object.keys(vendors)[0] || '')
-        : (user?.id || user?.email || '');
+        : (user?.id || user?.email || '');
+
     useEffect(() => {
         if (!itemData.itemId) {
             setItemData({
@@ -68,7 +72,8 @@ export function UploadEntryForm() {
                 workbook: 'v326',
             });
         }
-    }, [defaultVendorId, itemData.itemId, setItemData]);
+    }, [defaultVendorId, itemData.itemId, setItemData]);
+
     useEffect(() => {
         if (!db || !itemData.vendorId) return;
         let timer: any;
@@ -88,7 +93,8 @@ export function UploadEntryForm() {
             }, 300);
         });
         return () => { sub.unsubscribe(); clearTimeout(timer); };
-    }, [db, itemData.vendorId, setItemData]);
+    }, [db, itemData.vendorId, setItemData]);
+
     const suggestions = useMemo(() => {
         const u = (keys: string[]): string[] => {
             const vals = new Set<string>();
@@ -183,7 +189,8 @@ export function UploadEntryForm() {
                 { price: itemData.price, itemId: finalItemId, workbook: itemData.workbook || 'v326', itemNumber: itemData.itemNumber || '1' },
                 exchangeRate,
                 'v326'
-            );
+            );
+
             let translatedShape = itemData.shape;
             let translatedMaterial = itemData.material;
             let translatedColor = itemData.color;
@@ -225,7 +232,8 @@ export function UploadEntryForm() {
                     translatedType = parsed.itemType || translatedType;
                 }
             } catch (aiErr) {
-                console.warn('AI Translation skipped/failed:', aiErr);
+                console.warn('AI Translation skipped/failed:', aiErr);
+
             }
 
             const dbRow = {
@@ -263,7 +271,8 @@ export function UploadEntryForm() {
                 } catch (rxErr) {
                     console.error('Local db sync error:', rxErr);
                 }
-            }
+            }
+
             if (user?.email) {
                 const { data: userData } = await supabase.from('app_users').select('total_submits').eq('email', user.email).single();
                 if (userData) {
@@ -271,10 +280,19 @@ export function UploadEntryForm() {
                 }
             }
 
-            notify('success', '✓ Item saved to inventory!');
-            setItemData({ itemId: generateUniqueId(), vendorId: itemData.vendorId, quantity: '1', mediaType: 'none', status: 'Avaiable', workbook: itemData.workbook || 'v326' });
+            notify('success', '✓ Item saved! Ready for next entry.');
+            // Fast-entry: keep vendor, status, workbook — bump item number
+            const nextNum = String((parseInt(itemData.itemNumber || '0') || 0) + 1);
+            setItemData(prev => ({
+                itemId: generateUniqueId(),
+                vendorId: prev.vendorId,
+                status: prev.status,
+                workbook: prev.workbook || 'v326',
+                itemNumber: nextNum,
+                quantity: '1',
+                mediaType: 'none',
+            }));
             setMediaFiles([]);
-            setTimeout(() => setView('inventory'), 1200);
         } catch (err: any) {
             notify('error', `Failed: ${err.message}`);
         } finally {

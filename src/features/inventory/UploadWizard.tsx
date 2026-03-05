@@ -132,21 +132,17 @@ export const UploadWizard: React.FC = () => {
         }
     };
 
-    const handleSave = async () => {
-        if (!state.vendorId || !state.itemNumber) return toast.error('Missing Vendor or Item Number');
+    const doSave = async (): Promise<boolean> => {
+        if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Item Number'); return false; }
         setSaving(true);
         const tid = toast.loading('Uploading Entry...');
         try {
             let uploadedUrl = '';
             if (state.media) {
                 const res = await handleFileUpload(state.media, user);
-                if (res) {
-                    uploadedUrl = `${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`;
-                }
+                if (res) uploadedUrl = `${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`;
             }
-
             const finalItemId = `${state.vendorId}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
-
             const payload = {
                 id: crypto.randomUUID(),
                 item_id: finalItemId,
@@ -169,18 +165,39 @@ export const UploadWizard: React.FC = () => {
                 updated_at: new Date().toISOString(),
                 workbook: 'v326',
             };
-
             await supabase.from('inventory').insert(payload);
             if (db) await db.inventory.insert(payload);
-
-            toast.success('✓ Item saved to system!', { id: tid });
-            setIsOpen(false);
+            toast.success('✓ Item saved!', { id: tid });
+            return true;
         } catch (err: any) {
             console.error('Wizard save error:', err);
             toast.error(err.message || 'Upload Failed', { id: tid });
+            return false;
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleSaveExit = async () => {
+        const ok = await doSave();
+        if (ok) setIsOpen(false);
+    };
+
+    const handleSaveNext = async () => {
+        const currentVendorId = state.vendorId;
+        const currentStatus = state.status;
+        const currentItemNumber = parseInt(state.itemNumber || '1');
+        const ok = await doSave();
+        if (!ok) return;
+        // Reset to fresh item, same vendor, bumped number, back to Step 3
+        setState({
+            ...INITIAL_STATE,
+            status: currentStatus,
+            vendorId: currentVendorId,
+            itemNumber: String(currentItemNumber + 1),
+            existingCount: state.existingCount + (parseInt(state.quantity) || 1),
+        });
+        setStep(3);
     };
 
     if (!isOpen) return null;
@@ -450,14 +467,20 @@ export const UploadWizard: React.FC = () => {
                                         className="w-full h-20 px-6 py-4 bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) text-[11px] outline-none focus:border-(--main-color)/50 resize-none" placeholder="Special requirements, lot details..." />
                                 </div>
 
-                                <button onClick={handleSave} disabled={saving}
-                                    className="w-full py-5 mt-2 bg-(--main-color) text-black rounded-[24px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4 shrink-0">
-                                    {saving ? (
-                                        <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
-                                    ) : (
-                                        <>SAVE TO SYSTEM <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg></>
-                                    )}
-                                </button>
+                                <div className="flex flex-col gap-3">
+                                    <button onClick={handleSaveNext} disabled={saving}
+                                        className="w-full py-5 mt-2 bg-(--main-color) text-black rounded-[24px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4 shrink-0">
+                                        {saving ? (
+                                            <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
+                                        ) : (
+                                            <>SAVE & CONTINUE <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg></>
+                                        )}
+                                    </button>
+                                    <button onClick={handleSaveExit} disabled={saving}
+                                        className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-(--text-color-secondary) hover:text-(--text-color) rounded-[24px] text-[11px] font-black tracking-[0.3em] transition-all uppercase disabled:opacity-50 shrink-0">
+                                        SAVE &amp; EXIT
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
