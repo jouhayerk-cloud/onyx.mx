@@ -3235,7 +3235,8 @@ html.theme-malaquite .sidebar-list-item.active {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.25em;
-  color: color-mix(in srgb, var(--text-color) 80%, transparent);
+  color: var(--text-color);
+  opacity: 0.85;
   display: block;
   margin-bottom: 6px;
 }
@@ -3246,16 +3247,17 @@ html.theme-malaquite .sidebar-list-item.active {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: color-mix(in srgb, var(--text-color) 75%, transparent);
+  color: var(--text-color);
+  opacity: 0.80;
   display: block;
   margin-bottom: 3px;
 }
 
-/* Main value text */
+/* Main value text — fully opaque */
 .glass-value {
   font-size: 13px;
   font-weight: 900;
-  color: color-mix(in srgb, var(--text-color) 95%, transparent);
+  color: var(--text-color);
   font-family: ui-monospace, 'SF Mono', monospace;
 }
 
