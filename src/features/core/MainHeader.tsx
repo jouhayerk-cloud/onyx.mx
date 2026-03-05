@@ -283,8 +283,7 @@ const InventoryBar: React.FC = () => {
                                 onClick={() => setVendorFilter(v)}
                                 className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isActive ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
                                     }`}
-                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}
-                            >
+                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}>
                                 {v}
                             </button>
                         );
@@ -407,76 +406,93 @@ const FinanceBar: React.FC = () => {
 
             <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
 
-                {/* Destination filter — popup dropdown */}
+                {/* Single consolidated filter toggle */}
                 <div className="relative">
                     <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isDestOpen ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
-                        onClick={() => { const o = !isDestOpen; closeAll(); setIsDestOpen(o); }}
-                        title="Filter by Destination"
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${(isDestOpen || isVendorOpen || isCategoryOpen ||
+                            destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All')
+                            ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'
+                            }`}
+                        onClick={() => { const anyOpen = isDestOpen || isVendorOpen || isCategoryOpen; closeAll(); if (!anyOpen) setIsCategoryOpen(true); }}
+                        title="Filters"
                     >
-                        <MapPin size={17} strokeWidth={1.75} />
-                        {destinationFilter !== 'All' && <span className="text-[9px] font-black text-[#A78BFA] ml-0.5">{destinationFilter}</span>}
+                        {/* SlidersHorizontal inline SVG */}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
+                            <line x1="21" y1="4" x2="7" y2="4" /><line x1="3" y1="4" x2="3" y2="4" />
+                            <line x1="21" y1="12" x2="11" y2="12" /><line x1="7" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="20" x2="17" y2="20" /><line x1="13" y1="20" x2="3" y2="20" />
+                            <circle cx="7" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><circle cx="17" cy="20" r="2" />
+                        </svg>
+                        {/* Active filter indicators */}
+                        {(destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All') && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] ml-0.5" />
+                        )}
                     </button>
-                    {isDestOpen && (
-                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
-                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Destination</span>
-                            <button onClick={() => { setDestinationFilter('All'); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${destinationFilter === 'All' ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>All</button>
-                            {Object.entries(destinationsConfig).map(([key, config]) => (
-                                <button key={key} onClick={() => { setDestinationFilter(key as any); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${destinationFilter === key ? 'bg-[#A78BFA]/15 text-[#A78BFA]' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>
-                                    <img src={config.icon} alt={config.name} className="w-5 h-5 object-contain" />
-                                    {config.name}
+
+                    {/* Unified filter popup */}
+                    {(isDestOpen || isVendorOpen || isCategoryOpen) && (
+                        <div className="absolute top-full right-0 mt-1 z-50 w-[220px] rounded-2xl border border-white/10 shadow-2xl p-4 flex flex-col gap-4"
+                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 97%, transparent)', backdropFilter: 'blur(40px)' }}>
+
+                            {/* Destination section */}
+                            <div>
+                                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 flex items-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                    Destination
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                    <button onClick={() => setDestinationFilter('All')} className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${destinationFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>All</button>
+                                    {Object.entries(destinationsConfig).map(([key, config]) => (
+                                        <button key={key} onClick={() => setDestinationFilter(key as any)}
+                                            className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-1 ${destinationFilter === key ? 'bg-[#A78BFA]/20 border-[#A78BFA]/40 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
+                                            <img src={config.icon} alt="" className="w-3.5 h-3.5 object-contain" />{config.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-white/8" />
+
+                            {/* Vendor section */}
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Vendor</span>
+                                <div className="flex flex-wrap gap-1">
+                                    <button onClick={() => setVendorFilter('All')} className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>All</button>
+                                    {activeVendors.map(v => {
+                                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                                        return (
+                                            <button key={v} onClick={() => setVendorFilter(v)}
+                                                className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === v ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                                                style={vendorFilter === v ? { backgroundColor: color } : {}}>
+                                                {v}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="h-px bg-white/8" />
+
+                            {/* Payment Type section */}
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Payment Type</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {CATEGORIES.map(cat => (
+                                        <button key={cat} onClick={() => setCategoryFilter(cat)}
+                                            className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${categoryFilter === cat ? 'bg-[#A78BFA]/20 border-[#A78BFA]/40 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Clear all */}
+                            {(destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All') && (
+                                <button onClick={() => { setDestinationFilter('All'); setVendorFilter('All'); setCategoryFilter('All'); }}
+                                    className="w-full text-center text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-white py-1 border-t border-white/8 transition-colors">
+                                    Clear All Filters
                                 </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Vendor filter — popup dropdown */}
-                <div className="relative">
-                    <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isVendorOpen ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
-                        onClick={() => { const o = !isVendorOpen; closeAll(); setIsVendorOpen(o); }}
-                        title="Filter by Vendor"
-                    >
-                        <Tag size={17} strokeWidth={1.75} />
-                        {vendorFilter !== 'All' && <span className="text-[9px] font-black ml-0.5" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>}
-                    </button>
-                    {isVendorOpen && (
-                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[150px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
-                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Vendor</span>
-                            <button onClick={() => setVendorFilter('All')} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${vendorFilter === 'All' ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>All</button>
-                            {activeVendors.map(v => {
-                                const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                return (
-                                    <button key={v} onClick={() => setVendorFilter(v)} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${vendorFilter === v ? 'text-black' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
-                                        style={vendorFilter === v ? { background: color } : {}}>
-                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />{v}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* Category filter (Payment Type) — popup */}
-                <div className="relative">
-                    <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isCategoryOpen || categoryFilter !== 'All' ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
-                        onClick={() => { const o = !isCategoryOpen; closeAll(); setIsCategoryOpen(o); }}
-                        title="Filter by Payment Type"
-                    >
-                        <LayoutList size={17} strokeWidth={1.75} />
-                        {categoryFilter !== 'All' && <span className="text-[9px] font-black text-[#A78BFA] ml-0.5">{categoryFilter}</span>}
-                    </button>
-                    {isCategoryOpen && (
-                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[140px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
-                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Type</span>
-                            {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-left ${categoryFilter === cat ? 'bg-[#A78BFA]/20 text-[#A78BFA]' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>{cat}</button>
-                            ))}
+                            )}
                         </div>
                     )}
                 </div>
@@ -487,7 +503,7 @@ const FinanceBar: React.FC = () => {
                 <button
                     onClick={cycleOverviewMode}
                     className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
-                            overviewMode === 'minimal' ? 'text-[#A78BFA]/50 hover:text-[#A78BFA]' : 'text-[#A78BFA]'
+                        overviewMode === 'minimal' ? 'text-[#A78BFA]/50 hover:text-[#A78BFA]' : 'text-[#A78BFA]'
                         }`}
                     title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
                 >
