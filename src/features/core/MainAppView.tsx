@@ -22,7 +22,8 @@ import React, { useEffect } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard
-} from 'lucide-react';
+} from 'lucide-react';
+
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
 import { ExtraModeControls } from '../create/ExtraModeControls';
@@ -35,10 +36,12 @@ import userIcons from '../../components/userIcons';
 import { InventoryView } from '../inventory/InventoryView';
 import { LogisticsView } from '../logistics/LogisticsView';
 import { FinanceView } from '../finance/FinanceView';
+import { HeroBackground } from '../../components/HeroBackground';
 import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
 import { ClientOverview } from '../dashboard/ClientOverview';
-import { StoreView } from '../store/StoreView';
+import { StoreView } from '../store/StoreView';
+
 declare const __APP_VERSION__: string;
 
 interface NavItemWithSubmenuProps {
@@ -60,7 +63,8 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
     const sidebarState = useAtomValue(sidebarStateAtom);
 
     const isOpen = activeSubMenu === viewId;
-    const isParentActive = activeView === viewId;
+    const isParentActive = activeView === viewId;
+
     const IconMap: Record<string, React.FC<any>> = { truck: Truck, package: Package, 'map-pin': MapPin };
     const NavIcon = IconMap[icon] || Truck;
 
@@ -135,7 +139,8 @@ export function MainAppView() {
 
 
     useEffect(() => {
-        const handleResize = () => {
+        const handleResize = () => {
+
             if (window.innerWidth <= 768) {
                 setSidebarState(current => {
                     if (current !== 'hidden') {
@@ -145,7 +150,8 @@ export function MainAppView() {
                 });
             }
         };
-        window.addEventListener('resize', handleResize);
+        window.addEventListener('resize', handleResize);
+
         return () => window.removeEventListener('resize', handleResize);
     }, [setSidebarState]);
 
@@ -251,6 +257,8 @@ export function MainAppView() {
                     <OnyxMiniLogo className="w-6 h-6" />
                 </button>
             )}
+
+            <HeroBackground />
 
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar">
