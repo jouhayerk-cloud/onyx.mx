@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.99 — 2026-03-05 (Packing Intelligence Update)
+- **Packing Info [feat]:** Adapted the Packing module UI and label templates to display all essential packing metrics: Descriptions, Dimensions, Cypher Codes (ACQ/LC), TAG IDs, Vendor IDs, and USD Retail Prices.
+- **Label Architecture [feat]:** Redesigned the printable label template with a high-density, professional layout that incorporates dimensional data and financial codes for streamlined logistics.
+- **UI High-Fidelity [ui]:** Enhanced Grid and List views in the Packing module to provide immediate visibility of technical item data.
+
 ## v1.11.98 — 2026-03-05 (Crash Fix)
 - **Packing Crash [fix]:** Resolved a critical application crash occurring when selecting items in the Packing Module. The issue was caused by attempting to call string methods on numeric item numbers.
 - **Data Validation [fix]:** Added robust type checking and fallback values for label generation templates to prevent crashes on malformed or incomplete inventory data.
