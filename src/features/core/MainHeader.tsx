@@ -1,6 +1,7 @@
 
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
     activeViewAtom,
     inventoryAtom,
@@ -168,7 +169,6 @@ const ShippingStats: React.FC = () => {
 
 
 const InventoryBar: React.FC = () => {
-    const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
@@ -176,90 +176,110 @@ const InventoryBar: React.FC = () => {
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
 
     return (
-        <div className="flex flex-1 items-center gap-4 ml-2">
-            <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden lg:block" />
+        <>
+            <div className="flex flex-1 items-center gap-4 ml-2">
+                <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden lg:block" />
 
-            <div className="flex-1 min-w-[120px] max-w-sm relative group/search">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <Search size={16} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
-                </div>
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-md backdrop-blur-md"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
-                        <X size={14} strokeWidth={2.5} />
+                <div className="flex items-center gap-1 ml-auto relative">
+                    {/* Vendor Filter Toggle */}
+                    <button
+                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-[#6BCEBB]' : 'text-white/50 hover:text-white'}`}
+                        onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                        title="Filter by Vendor"
+                    >
+                        <Tag size={18} strokeWidth={1.75} />
+                        {vendorFilter !== 'All' && (
+                            <span className="ml-1 text-[10px] font-black" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>
+                        )}
                     </button>
-                )}
+
+                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                    {/* Status Filter Single Toggle */}
+                    <button
+                        className="p-2 text-white/50 hover:text-white hover:scale-110 transition-all flex items-center justify-center shrink-0"
+                        onClick={() => {
+                            const next: Record<string, 'All' | 'Acquisition' | 'Production' | 'Shipped'> = {
+                                'All': 'Acquisition',
+                                'Acquisition': 'Production',
+                                'Production': 'Shipped',
+                                'Shipped': 'All'
+                            };
+                            setStatusFilter(next[statusFilter] || 'All');
+                        }}
+                        title={`Status Filter: ${statusFilter}`}
+                    >
+                        {statusFilter === 'All' && <div className="w-5 h-5 rounded-full border-2 border-white/50" />}
+                        {statusFilter === 'Acquisition' && <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]" />}
+                        {statusFilter === 'Production' && <div className="w-5 h-5 rounded-full bg-yellow-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]" />}
+                        {statusFilter === 'Shipped' && <div className="w-5 h-5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]" />}
+                    </button>
+
+                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                    {/* Single View Mode Toggle */}
+                    <button
+                        className="p-2 transition-all hover:scale-110 hidden sm:flex text-white/60 hover:text-white"
+                        onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                        title={viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
+                    >
+                        {viewMode === 'grid'
+                            ? <List size={18} strokeWidth={1.75} />
+                            : <LayoutGrid size={18} strokeWidth={1.75} />}
+                    </button>
+                </div>
             </div>
 
-            <div className="flex items-center gap-1 ml-auto relative">
-                {/* Vendor Filter Toggle */}
-                <button className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-(--main-color)' : 'text-white/50 hover:text-white'}`} onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} title="Filter by Vendor">
-                    <Tag size={18} strokeWidth={1.75} />
-                </button>
-
-                {/* Vendor Filter Deployable Panel */}
-                {isVendorFilterOpen && (
-                    <div className="top-deploy-panel">
-                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-50 mb-3 block">Vendor Filter</span>
-                        <div className="flex flex-col gap-2 max-h-[300px] overflow-auto custom-scrollbar">
-                            <button onClick={() => setVendorFilter('All')} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === 'All' ? 'bg-white/15' : 'hover:bg-white/5'}`}>
-                                <div className="w-3 h-3 rounded-full border border-white/20" />
-                                <span className="text-xs font-bold text-white uppercase">All Vendors</span>
-                            </button>
-                            {activeVendors.map(v => {
-                                const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                return (
-                                    <button key={v} onClick={() => setVendorFilter(v)} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === v ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                        <div className="w-3 h-3 rounded-full shadow-md" style={{ backgroundColor: color }} />
-                                        <span className="text-xs font-bold text-white uppercase">{v}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                {/* Status Filter Single Toggle */}
-                <button
-                    className="p-2 text-white/50 hover:text-white hover:scale-110 transition-all flex items-center justify-center shrink-0"
-                    onClick={() => {
-                        const next: Record<string, 'All' | 'Acquisition' | 'Production' | 'Shipped'> = {
-                            'All': 'Acquisition',
-                            'Acquisition': 'Production',
-                            'Production': 'Shipped',
-                            'Shipped': 'All'
-                        };
-                        setStatusFilter(next[statusFilter] || 'All');
+            {/* Vendor Filter Bar — horizontal frame rendered outside header via portal */}
+            {isVendorFilterOpen && createPortal(
+                <div
+                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
+                    style={{
+                        top: '64px',
+                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
+                        backdropFilter: 'blur(24px)',
+                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
                     }}
-                    title={`Status Filter: ${statusFilter}`}
                 >
-                    {statusFilter === 'All' && <div className="w-5 h-5 rounded-full border-2 border-white/50" />}
-                    {statusFilter === 'Acquisition' && <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]" />}
-                    {statusFilter === 'Production' && <div className="w-5 h-5 rounded-full bg-yellow-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]" />}
-                    {statusFilter === 'Shipped' && <div className="w-5 h-5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]" />}
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                {/* View Mode Toggles (Borderless free-floating) */}
-                <button className={`p-2 transition-all hover:scale-110 hidden sm:flex ${viewMode === 'grid' ? 'text-white' : 'text-white/30'}`} onClick={() => setViewMode('grid')} title="Grid View">
-                    <LayoutGrid size={18} strokeWidth={1.75} />
-                </button>
-                <button className={`p-2 transition-all hover:scale-110 hidden sm:flex ${viewMode === 'list' ? 'text-white' : 'text-white/30'}`} onClick={() => setViewMode('list')} title="List View">
-                    <List size={18} strokeWidth={1.75} />
-                </button>
-            </div>
-        </div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Vendor</span>
+                    <button
+                        onClick={() => setVendorFilter('All')}
+                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All'
+                            ? 'bg-white/20 border-white/30 text-white'
+                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                            }`}
+                    >
+                        All
+                    </button>
+                    {activeVendors.map(v => {
+                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                        const isActive = vendorFilter === v;
+                        return (
+                            <button
+                                key={v}
+                                onClick={() => setVendorFilter(v)}
+                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isActive ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+                                    }`}
+                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}
+                            >
+                                {v}
+                            </button>
+                        );
+                    })}
+                    <button
+                        onClick={() => setIsVendorFilterOpen(false)}
+                        className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors"
+                        title="Close vendor filter"
+                    >
+                        <X size={12} strokeWidth={2.5} />
+                    </button>
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
+
 
 const StoreBar: React.FC = () => {
     const [search, setSearch] = useAtom(storeSearchTermAtom);
@@ -297,7 +317,6 @@ const FinanceBar: React.FC = () => {
     const docs = useAtomValue(financeDataAtom);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
-    const [search, setSearch] = useAtom(financeSearchTermAtom);
     const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
     const [isVendorOpen, setIsVendorOpen] = useAtom(isPaymentVendorFilterOpenAtom);
     const [isDestOpen, setIsDestOpen] = useAtom(isPaymentDestinationFilterOpenAtom);
@@ -316,115 +335,155 @@ const FinanceBar: React.FC = () => {
 
     const activeDestReqNetUSD = activeDestReqNetMXN / (liveExchangeRate || exchangeRate);
 
+    const cycleOverviewMode = () => {
+        const next: Record<string, 'extended' | 'minimal' | 'collapsed'> = {
+            'extended': 'minimal',
+            'minimal': 'collapsed',
+            'collapsed': 'extended',
+        };
+        setOverviewMode(next[overviewMode] || 'extended');
+    };
+
+    const modeLabel: Record<string, string> = { extended: 'Full', minimal: 'Min', collapsed: 'Off' };
+
     return (
-        <div className="flex flex-1 items-center gap-4 ml-2 relative">
-            <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
+        <>
+            <div className="flex flex-1 items-center gap-4 ml-2 relative">
+                <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
 
-            <div className="flex-1 w-full relative group/search max-w-3xl mx-auto hidden md:block">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#A78BFA] transition-colors" />
-                </div>
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search payments by description or vendor..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-lg backdrop-blur-md"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
-                        <X size={16} strokeWidth={2.5} />
-                    </button>
-                )}
-            </div>
-
-            <div className="flex items-center gap-1 ml-auto relative">
-                {/* Destination Filter Toggle */}
-                <button className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isDestOpen ? 'text-(--main-color)' : 'text-white/50 hover:text-white'}`} onClick={() => { setIsDestOpen(!isDestOpen); setIsVendorOpen(false); }} title="Filter by Destination">
-                    <MapPin size={18} strokeWidth={1.75} />
-                </button>
-
-                {isDestOpen && (
-                    <div className="top-deploy-panel z-50 absolute top-full right-16 mt-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-50 mb-3 block">Destination</span>
-                        <div className="flex flex-col gap-2 max-h-[300px] overflow-auto custom-scrollbar">
-                            <button onClick={() => setDestinationFilter('All')} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${destinationFilter === 'All' ? 'bg-white/15' : 'hover:bg-white/5'}`}>
-                                <div className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center" />
-                                <span className="text-xs font-bold text-white uppercase">All Destinations</span>
-                            </button>
-                            {Object.entries(destinationsConfig).map(([key, config]) => (
-                                <button key={key} onClick={() => setDestinationFilter(key as any)} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${destinationFilter === key ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                    <div className="w-6 h-6 flex items-center justify-center">
-                                        <img src={config.icon} alt={config.name} className="w-full h-full object-contain drop-shadow-md" />
-                                    </div>
-                                    <span className="text-xs font-bold text-white uppercase">{config.name}</span>
-                                </button>
-                            ))}
+                {/* Pending net total for active destination filter (centered) */}
+                {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
+                    <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-1.5 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl shrink-0 shadow-inner z-10 pointer-events-none">
+                        <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-[0.2em]">PENDING REQ</span>
+                        <div className="h-4 w-px bg-[#A78BFA]/20" />
+                        <div className="flex items-baseline gap-2 text-[#A78BFA]">
+                            <span className="text-[13px] font-mono font-black">
+                                {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold opacity-70">
+                                ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+                            </span>
                         </div>
                     </div>
                 )}
 
-                {/* Vendor Filter Toggle */}
-                <button className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorOpen ? 'text-(--main-color)' : 'text-white/50 hover:text-white'}`} onClick={() => { setIsVendorOpen(!isVendorOpen); setIsDestOpen(false); }} title="Filter by Vendor">
-                    <Tag size={18} strokeWidth={1.75} />
-                </button>
-
-                {isVendorOpen && (
-                    <div className="top-deploy-panel z-50 absolute top-full right-8 mt-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-50 mb-3 block">Vendor</span>
-                        <div className="flex flex-col gap-2 max-h-[300px] overflow-auto custom-scrollbar">
-                            <button onClick={() => setVendorFilter('All')} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === 'All' ? 'bg-white/15' : 'hover:bg-white/5'}`}>
-                                <div className="w-3 h-3 rounded-full border border-white/20" />
-                                <span className="text-xs font-bold text-white uppercase">All Vendors</span>
-                            </button>
-                            {activeVendors.map(v => {
-                                const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                return (
-                                    <button key={v} onClick={() => setVendorFilter(v)} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === v ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-                                        <div className="w-3 h-3 rounded-full shadow-md" style={{ backgroundColor: color }} />
-                                        <span className="text-xs font-bold text-white uppercase">{v}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                {overviewMode === 'collapsed' ? (
-                    <button onClick={() => setOverviewMode('extended')}
-                        className="p-2 transition-all hover:scale-110 flex text-white/50 hover:text-[#A78BFA]" title="Show Overview">
-                        <CreditCard size={18} strokeWidth={1.75} />
+                <div className="flex items-center gap-1 ml-auto">
+                    {/* Destination Filter Toggle */}
+                    <button
+                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isDestOpen ? 'text-[#A78BFA]' : 'text-white/50 hover:text-white'}`}
+                        onClick={() => { setIsDestOpen(!isDestOpen); setIsVendorOpen(false); }}
+                        title="Filter by Destination"
+                    >
+                        <MapPin size={18} strokeWidth={1.75} />
+                        {destinationFilter !== 'All' && (
+                            <span className="ml-1 text-[10px] font-black text-[#A78BFA]">{destinationFilter}</span>
+                        )}
                     </button>
-                ) : (
-                    <button onClick={() => setOverviewMode('collapsed')}
-                        className="p-2 transition-all hover:scale-110 flex text-[#A78BFA]" title="Hide Overview">
-                        <CreditCard size={18} strokeWidth={1.75} />
+
+                    {/* Vendor Filter Toggle */}
+                    <button
+                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorOpen ? 'text-[#A78BFA]' : 'text-white/50 hover:text-white'}`}
+                        onClick={() => { setIsVendorOpen(!isVendorOpen); setIsDestOpen(false); }}
+                        title="Filter by Vendor"
+                    >
+                        <Tag size={18} strokeWidth={1.75} />
+                        {vendorFilter !== 'All' && (
+                            <span className="ml-1 text-[10px] font-black" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>
+                        )}
                     </button>
-                )}
+
+                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                    {/* Single 3-state Overview Toggle */}
+                    <button
+                        onClick={cycleOverviewMode}
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/30 hover:text-white' :
+                                overviewMode === 'minimal' ? 'text-[#A78BFA]/60 hover:text-[#A78BFA]' :
+                                    'text-[#A78BFA]'
+                            }`}
+                        title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
+                    >
+                        <CreditCard size={18} strokeWidth={1.75} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Dynamic Pending Net Total for Active Destination (Centered) */}
-            {overviewMode === 'collapsed' && destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-1.5 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner z-10 pointer-events-none">
-                    <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-[0.2em]">
-                        PENDING REQ
-                    </span>
-                    <div className="h-4 w-px bg-[#A78BFA]/20" />
-                    <div className="flex items-baseline gap-2 text-[#A78BFA]">
-                        <span className="text-[13px] font-mono font-black shadow-none">
-                            {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}
-                        </span>
-                        <span className="text-[10px] font-mono font-bold opacity-70 shadow-none">
-                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                        </span>
-                    </div>
-                </div>
+            {/* Destination Filter Bar — horizontal portal frame */}
+            {isDestOpen && createPortal(
+                <div
+                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
+                    style={{
+                        top: '64px',
+                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
+                        backdropFilter: 'blur(24px)',
+                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
+                    }}
+                >
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Destination</span>
+                    <button
+                        onClick={() => setDestinationFilter('All')}
+                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${destinationFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                            }`}
+                    >All</button>
+                    {Object.entries(destinationsConfig).map(([key, config]) => (
+                        <button
+                            key={key}
+                            onClick={() => setDestinationFilter(key as any)}
+                            className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${destinationFilter === key ? 'bg-[#A78BFA]/20 border-[#A78BFA]/50 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                                }`}
+                        >
+                            <img src={config.icon} alt={config.name} className="w-4 h-4 object-contain" />
+                            {config.name}
+                        </button>
+                    ))}
+                    <button onClick={() => setIsDestOpen(false)} className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors">
+                        <X size={12} strokeWidth={2.5} />
+                    </button>
+                </div>,
+                document.body
             )}
-        </div>
+
+            {/* Vendor Filter Bar — horizontal portal frame */}
+            {isVendorOpen && createPortal(
+                <div
+                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
+                    style={{
+                        top: '64px',
+                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
+                        backdropFilter: 'blur(24px)',
+                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
+                    }}
+                >
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Vendor</span>
+                    <button
+                        onClick={() => setVendorFilter('All')}
+                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
+                            }`}
+                    >All</button>
+                    {activeVendors.map(v => {
+                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                        const isActive = vendorFilter === v;
+                        return (
+                            <button
+                                key={v}
+                                onClick={() => setVendorFilter(v)}
+                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isActive ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+                                    }`}
+                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}
+                            >{v}</button>
+                        );
+                    })}
+                    <button onClick={() => setIsVendorOpen(false)} className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors">
+                        <X size={12} strokeWidth={2.5} />
+                    </button>
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
+
 
 const LogisticsBar: React.FC = () => {
     const t = useTranslation();

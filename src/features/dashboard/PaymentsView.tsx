@@ -5,7 +5,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -251,6 +251,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const search = useAtomValue(financeSearchTermAtom);
     const user = useAtomValue(userAtom);
     const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
+    const overviewMode = useAtomValue(paymentsOverviewModeAtom);
 
     const fetchData = useCallback(async () => {
         if (!db) {
@@ -389,9 +390,9 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                 }}
             />
 
-            {itemsToRequest.length > 0 && (
+            {overviewMode !== 'collapsed' && itemsToRequest.length > 0 && (
                 <div className="glass-panel p-4">
-                    <div className="space-y-4 max-h-64 overflow-y-auto">
+                    <div className={`space-y-4 overflow-y-auto transition-all duration-300 ${overviewMode === 'minimal' ? 'max-h-32' : 'max-h-64'}`}>
                         {itemsToRequest.map(group => {
                             const vendorColor = vendors[group.vendorId as keyof typeof vendors]?.color || '#333';
                             const textColor = getTextColorForBg(vendorColor);
