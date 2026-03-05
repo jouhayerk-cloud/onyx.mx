@@ -74,7 +74,7 @@ const themes = [
     { name: 'earth', gradient: 'linear-gradient(135deg, #051a0e, #d97706, #0b2f20)' },
     { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
     { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
-    { name: 'cherry', gradient: 'linear-gradient(135deg, #fff5f8, #ff6b81, #fefcf3)' },
+    { name: 'cherry', gradient: 'linear-gradient(135deg, #fff0f3, #ffb3ba, #f0f7ff)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
