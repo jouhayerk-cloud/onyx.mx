@@ -3167,6 +3167,13 @@ html.theme-malaquite .sidebar-list-item.active {
   }
 }
 
+/* Performance mode background — theme-aware, static (no animation) */
+.perf-mode-bg {
+  background: radial-gradient(ellipse at 30% 20%,
+      color-mix(in srgb, var(--app-bg-solid, #0a0a0f) 80%, var(--main-color, #7fbbff)) 0%,
+      var(--app-bg-solid, #0a0a0f) 60%);
+}
+
 /* Base glass layer: background image */
 .glass-bg-img {
   position: fixed;
