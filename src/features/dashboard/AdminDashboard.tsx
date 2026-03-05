@@ -8,7 +8,8 @@ import { useState, useEffect } from 'react';
 import {
     Package, DollarSign, Users, TrendingUp, Layers, Shapes,
     BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Minus
-} from 'lucide-react';
+} from 'lucide-react';
+
 interface VendorSummary {
     vendorId: string;
     color: string;
@@ -24,7 +25,8 @@ interface CategorySummary {
     count: number;
     totalMxn: number;
     totalUsd: number;
-}
+}
+
 const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-color)', trend }: {
     icon: React.FC<any>; label: string; value: string; subtitle?: string; color?: string; trend?: 'up' | 'down' | 'flat';
 }) => (
@@ -46,7 +48,8 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-colo
             {subtitle && <p className="text-[10px] font-mono text-(--text-color-secondary) mt-1">{subtitle}</p>}
         </div>
     </div>
-);
+);
+
 const BarRow = ({ label, value, max, color, count, showValue }: {
     label: string; value: number; max: number; color: string; count: number; showValue: boolean;
 }) => (
@@ -66,14 +69,16 @@ const BarRow = ({ label, value, max, color, count, showValue }: {
             )}
         </div>
     </div>
-);
+);
+
 export function AdminDashboard() {
     const db = useDatabase();
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const [items, setItems] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
         if (!db) return;
         setIsLoading(true);
@@ -89,7 +94,8 @@ export function AdminDashboard() {
         ];
         setTimeout(() => setIsLoading(false), 600);
         return () => subs.forEach(s => s.unsubscribe());
-    }, [db]);
+    }, [db]);
+
     const vendorSummaries = useMemo<VendorSummary[]>(() => {
         const map: Record<string, VendorSummary> = {};
         for (const item of items) {
@@ -117,7 +123,8 @@ export function AdminDashboard() {
             map[vid].totalRetailUsd += usd * 1.4 * 12;
         }
         return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
-    }, [items, exchangeRate]);
+    }, [items, exchangeRate]);
+
     const shapeTypeSummaries = useMemo<CategorySummary[]>(() => {
         const map: Record<string, CategorySummary> = {};
         for (const item of items) {
@@ -133,7 +140,8 @@ export function AdminDashboard() {
             map[key].totalUsd += price / exchangeRate;
         }
         return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 15);
-    }, [items, exchangeRate]);
+    }, [items, exchangeRate]);
+
     const materialSummaries = useMemo<CategorySummary[]>(() => {
         const map: Record<string, CategorySummary> = {};
         for (const item of items) {
@@ -147,7 +155,8 @@ export function AdminDashboard() {
             map[mat].totalUsd += price / exchangeRate;
         }
         return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 10);
-    }, [items, exchangeRate]);
+    }, [items, exchangeRate]);
+
     const expenseCategories = useMemo(() => {
         const map: Record<string, { label: string; total: number; count: number }> = {};
         for (const doc of financeData) {
@@ -158,7 +167,8 @@ export function AdminDashboard() {
             map[displayCat].count += 1;
         }
         return Object.values(map).sort((a, b) => b.total - a.total);
-    }, [financeData]);
+    }, [financeData]);
+
     const totals = useMemo(() => {
         const totalItems = vendorSummaries.reduce((a, v) => a + v.itemCount, 0);
         const totalAcqMxn = vendorSummaries.reduce((a, v) => a + v.totalAcqMxn, 0);
@@ -189,31 +199,20 @@ export function AdminDashboard() {
 
     return (
         <div className="flex flex-col h-full overflow-hidden p-6 gap-6">
-            {/* Header */}
-            <div className="flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20">
-                        <BarChart3 size={18} strokeWidth={1.75} className="text-(--main-color)" />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-black text-white tracking-tight leading-none">Admin Dashboard</h1>
-                        <p className="text-[10px] font-bold text-white/25 uppercase tracking-[0.2em] mt-1">Inventory & Expense Summary</p>
-                    </div>
+            {/* Top Actions */}
+            <div className="flex items-center justify-end shrink-0 gap-2">
+                <button
+                    onClick={() => setShowFinancials(!showFinancials)}
+                    title="Toggle Financials Display"
+                    className={`flex items-center gap-1.5 border rounded-full px-3 py-1.5 hover:brightness-125 transition-all w-fit ${showFinancials ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}
+                >
+                    <span className="text-[9px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financial Info' : 'Unlock Financial Info'}</span>
+                </button>
+                <div className="flex items-center gap-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full px-3 py-1.5 w-fit">
+                    <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />
+                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest leading-none">Live</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => setShowFinancials(!showFinancials)}
-                        title="Toggle Financials Display"
-                        className={`flex items-center gap-1.5 border rounded-full px-2.5 py-1 hover:brightness-125 transition-all ${showFinancials ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}
-                    >
-                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financial Info' : 'Unlock Financial Info'}</span>
-                    </button>
-                    <div className="flex items-center gap-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full px-2.5 py-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />
-                        <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">Live</span>
-                    </div>
-                    <span className="text-[9px] font-mono text-(--text-color-secondary) hidden sm:block">{items.length} records</span>
-                </div>
+                <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) hidden sm:block px-2">{items.length} records</span>
             </div>
 
             {/* Scrollable content */}
@@ -297,14 +296,14 @@ export function AdminDashboard() {
                 </div>
 
                 {/* ── Expense Categories ─────────────────────────────────── */}
-                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                <div className="bg-white/2 border border-white/6 rounded-2xl p-5">
                     <div className="flex items-center gap-2 mb-4">
                         <DollarSign size={14} strokeWidth={1.75} className="text-white/30" />
                         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Expenses by Category</h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {expenseCategories.map(e => (
-                            <div key={e.label} className="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5 hover:border-white/10 transition-all">
+                            <div key={e.label} className="flex items-center gap-3 p-3 bg-white/2 rounded-xl border border-white/5 hover:border-white/10 transition-all">
                                 <div className="flex-1">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-white/50">{e.label}</p>
                                     <p className="text-sm font-mono font-black text-white mt-0.5">{showFinancials ? `$${e.total.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '***'}</p>

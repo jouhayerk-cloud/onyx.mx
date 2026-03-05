@@ -6,7 +6,8 @@ import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom } fro
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
+import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
+
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
 
@@ -28,6 +29,7 @@ interface WizardState {
     lengthCm: string;
     price: string;
     notes: string;
+    existingCount: number;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -48,6 +50,7 @@ const INITIAL_STATE: WizardState = {
     lengthCm: '',
     price: '',
     notes: '',
+    existingCount: 0,
 };
 
 export const UploadWizard: React.FC = () => {
@@ -63,7 +66,8 @@ export const UploadWizard: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isOpenRef = useRef(isOpen);
 
-    const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
+    const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
+
     useEffect(() => {
         if (isOpen && !isOpenRef.current) {
             setStep(isAdmin ? 1 : 3);
@@ -74,7 +78,8 @@ export const UploadWizard: React.FC = () => {
             });
         }
         isOpenRef.current = isOpen;
-    }, [isOpen, isAdmin, user]);
+    }, [isOpen, isAdmin, user]);
+
     useEffect(() => {
         if (!db || !isOpen) return;
         const fetchTags = async () => {
@@ -99,17 +104,20 @@ export const UploadWizard: React.FC = () => {
             } catch (e) { console.error(e); }
         };
         fetchTags();
-    }, [db, isOpen]);
+    }, [db, isOpen]);
+
     useEffect(() => {
         if (!db || !state.vendorId || !isOpen) return;
         const fetchNextNum = async () => {
             const items = await db.inventory.find({ selector: { item_id: { $regex: `^${state.vendorId}-` } } }).exec();
             let maxNum = 0;
+            let existingCount = 0;
             items.forEach((i: any) => {
                 const num = parseInt(i.item_number);
                 if (!isNaN(num) && num > maxNum) maxNum = num;
+                existingCount += parseInt(i.quantity) || 1;
             });
-            setState(prev => ({ ...prev, itemNumber: String(maxNum + 1) }));
+            setState(prev => ({ ...prev, itemNumber: String(maxNum + 1), existingCount }));
         };
         fetchNextNum();
     }, [db, state.vendorId, isOpen]);
@@ -290,6 +298,17 @@ export const UploadWizard: React.FC = () => {
                             {!isAdmin && <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-8 uppercase tracking-[0.3em] font-bold">Step 1: Units and visual evidence</p>}
 
                             <div className="flex flex-col gap-6">
+                                <div className="p-5 rounded-3xl border border-(--main-color)/20 bg-(--main-color)/5 shadow-inner">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[10px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em]">New Item Number</span>
+                                        <span className="text-xl font-mono font-black text-(--main-color)">{state.itemNumber}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em]">Vendor Existing Units</span>
+                                        <span className="text-sm font-mono font-black text-(--text-color-secondary)">{state.existingCount}</span>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-4">
                                     <label className="text-[10px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-[0.3em] block ml-1">UNITS TO ADD</label>
                                     <input type="number" value={state.quantity} onChange={e => set('quantity', e.target.value)}
