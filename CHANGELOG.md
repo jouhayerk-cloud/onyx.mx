@@ -13,6 +13,13 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.96 — 2026-03-05 (Packing Overhaul)
+- **Packing Module [feat]:** Relocated the Packing module to be a primary sidebar navigation item. Improved filtering logic to include ALL inventory items for labeling.
+- **Packing UI [ui]:** Overhauled the Packing interface with a modern, compact design. Replaced the side panel with a stackable horizontal configuration drawer at the top.
+- **Top Bar Integration [feat]:** Integrated Packing title and search functionality into the main global top bar using `TOP_BAR_SEARCH_ATOM`.
+- **Label Generation [feat]:** Restructured label action workflow with improved buttons for PNG generation, Phomemo Bulk XLSX, and Packing List XLSX.
+- **Background Decor [ui]:** Added free-floating background SVG icons (Package, Barcode, Printer) for a premium high-fidelity look.
+
 ## v1.11.80 — 2026-03-04 (UI Polish)
 - **Inventory List Icons [ui]:** Replaced Lucide `<Edit2>` and `<ChevronDown>` button wrappers with bare inline `<svg>` elements — truly free-floating, no background box, no border. Edit icon uses `--main-color` on hover, chevron rotates 180° when expanded. Correct color theme applied.
 - **Payments Filters [ui]:** Consolidated three separate filter buttons (MapPin/Destination, Tag/Vendor, LayoutList/Type) into a single `SlidersHorizontal` inline SVG toggle. Clicking it opens one unified popup panel containing all three filter sections (Destination, Vendor, Payment Type) plus a "Clear All" link. Filter indicator dot shows when any filter is active. Filters are no longer individually visible in the top bar.

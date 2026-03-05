@@ -55,7 +55,7 @@ import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
-import { topBarRightSlotAtom } from '../../lib/atoms';
+import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
@@ -469,44 +469,60 @@ const LogisticsBar: React.FC = () => {
         <>
             <ModuleBadge icon="truck" label="Logistics" color="#F7941D" />
 
-            {subTab === 'trucking' && (
-                <div className="hidden md:flex items-center gap-2 ml-2">
-                    {/* Warehouse organise */}
-                    <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors shrink-0">
-                        <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
-                    </button>
-                    {/* View mode */}
-                    <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
-                        {(['warehouse', 'truck'] as const).map(m => (
-                            <button key={m} onClick={() => setViewMode(m)}
-                                className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
-                                {m}
-                            </button>
-                        ))}
-                    </div>
-                    {/* Camera view */}
-                    <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
-                        {cameraViews.map(v => (
-                            <button key={v} onClick={() => setCameraView(v)}
-                                className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${cameraView === v ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
-                                {v.slice(0, 3)}
-                            </button>
-                        ))}
-                    </div>
-                    {/* Max weight */}
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-[8px] text-white/30 font-black uppercase tracking-widest whitespace-nowrap">Max kg</span>
-                        <input type="number" value={maxWeight} onChange={e => setMaxWeight(Number(e.target.value))}
-                            className="w-14 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-mono text-white/70 focus:outline-none focus:border-[#F7941D]/50" />
-                    </div>
+            <div className="hidden md:flex items-center gap-2 ml-2">
+                {/* Warehouse organise */}
+                <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors shrink-0">
+                    <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
+                </button>
+                {/* View mode */}
+                <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
+                    {(['warehouse', 'truck'] as const).map(m => (
+                        <button key={m} onClick={() => setViewMode(m)}
+                            className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                            {m}
+                        </button>
+                    ))}
                 </div>
-            )}
+            </div>
 
             <div className="ml-auto">
-                {subTab === 'trucking' && <ShippingStats />}
+                <ShippingStats />
             </div>
         </>
+    );
+};
+
+const PackingBar: React.FC = () => {
+    const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
+    return (
+        <div className="flex flex-1 items-center gap-4 ml-2">
+            <div className="flex items-center gap-3 pr-6 border-r border-white/5">
+                <div className="w-10 h-10 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center text-(--main-color) shadow-inner backdrop-blur-md">
+                    <svg className="w-5 h-5 opacity-90 transition-transform hover:scale-110 duration-500"><use href="#pkg" /></svg>
+                </div>
+                <div className="flex flex-col">
+                    <h2 className="text-[14px] font-black tracking-tight leading-none text-(--text-color)">PACKING</h2>
+                    <span className="text-[8px] font-black text-(--main-color) opacity-60 uppercase tracking-[0.2em] mt-1">MODULE active</span>
+                </div>
+            </div>
+
+            <div className="flex-1 max-w-2xl mx-auto relative group/search">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/search:text-(--main-color) transition-all" />
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="SEARCH INVENTORY PIPELINE..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-11 pr-10 text-[11px] font-bold text-white outline-none placeholder-white/20 focus:bg-white/10 focus:border-(--main-color)/30 transition-all uppercase tracking-widest"
+                />
+                {search && (
+                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white">
+                        <X size={14} />
+                    </button>
+                )}
+            </div>
+        </div>
     );
 };
 
@@ -572,6 +588,7 @@ export function MainHeader() {
                 {activeView === 'store' && <StoreBar />}
                 {activeView === 'finance' && <FinanceBar />}
                 {activeView === 'logistics' && <LogisticsBar />}
+                {activeView === 'packing' && <PackingBar />}
                 {activeView === 'upload' && <UploadBar />}
                 {activeView === 'control' && <ControlBar />}
                 {activeView === 'overview' && (
@@ -595,8 +612,6 @@ export function MainHeader() {
                 )}
             </div>
 
-            {/* Injected Right-Slot for active view tools */}
-            {useAtomValue(topBarRightSlotAtom)}
 
             {/* User Info & Actions */}
             <div className="flex items-center gap-4 ml-4 pl-4 border-l border-(--text-color)/5 shrink-0">

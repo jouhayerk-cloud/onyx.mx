@@ -41,6 +41,7 @@ import { UploadWizard } from '../inventory/UploadWizard';
 import { AdminDashboard } from '../dashboard/AdminDashboard';
 import { ClientOverview } from '../dashboard/ClientOverview';
 import { StoreView } from '../store/StoreView';
+import { PackingModule } from '../logistics/PackingModule';
 
 declare const __APP_VERSION__: string;
 
@@ -169,13 +170,14 @@ export function MainAppView() {
             );
         }
 
-        switch (activeView) {
+        switch (activeView as string) {
             case 'control': return <ControlView />;
             case 'dashboard': return <AdminDashboard />;
             case 'overview': return <ClientOverview />;
             case 'upload': return <UploadView />;
             case 'inventory': return <InventoryView />;
             case 'logistics': return <LogisticsView />;
+            case 'packing': return <PackingModule />;
             case 'finance': return <FinanceView />;
             case 'store': return <StoreView />;
             default:
@@ -194,13 +196,6 @@ export function MainAppView() {
 
 
     const logisticsSubItems = [
-        {
-            id: 'packing', label: 'Packing', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
-                setActiveView('logistics');
-                setLogisticsSubTab('packing');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
         {
             id: 'trucking', label: 'Trucking', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
                 setActiveView('logistics');
@@ -343,7 +338,22 @@ export function MainAppView() {
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <NavItemWithSubmenu viewId="logistics" label="Logistics" icon="truck" subItems={logisticsSubItems} />
+                            <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Truck size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Logistics</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Logistics</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Package size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Packing</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Packing</span>
+                            </li>
                         )}
                     </ul>
 

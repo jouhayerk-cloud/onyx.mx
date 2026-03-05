@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    userAtom, topBarRightSlotAtom, financeSubTabAtom
+    userAtom, financeSubTabAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
@@ -65,21 +65,11 @@ export const ClientOverview: React.FC = () => {
     const financeData = useAtomValue(financeDataAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
-    const setTopBarRightSlot = useSetAtom(topBarRightSlotAtom);
 
     const [items, setItems] = useState<any[]>([]);
     const [storeItems, setStoreItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        setTopBarRightSlot(
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full">
-                <LayoutDashboard size={14} className="text-(--main-color)" />
-                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">Overview</span>
-            </div>
-        );
-        return () => { setTopBarRightSlot(null); };
-    }, [setTopBarRightSlot]);
 
     useEffect(() => {
         if (!db) return;
