@@ -473,7 +473,7 @@ const RequestPaymentModal: React.FC<{
     const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
 
     const targetAmount = group.total * (percentage / 100);
-    const amountToRequest = Math.max(0, targetAmount - group.paidTotal);
+    const amountToRequest = Number(Math.max(0, targetAmount - group.paidTotal).toFixed(2));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
@@ -603,11 +603,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const pendingGroups = useMemo<VendorGroup[]>(() => {
 
 
-        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'available', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
+        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production'];
 
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
-            return targetStatuses.includes(status) && !i.data.payReq;
+            return targetStatuses.includes(status) && !i.data.payReq && !(i.data as any).pay_req && i.data.payReq !== 'true' && (i.data as any).pay_req !== 'true';
         });
 
         const groups: Record<string, VendorGroup> = {};
@@ -678,7 +678,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         const toastId = toast.loading(`Requesting payment for ${group.vendorId}…`);
         try {
             const targetAmount = group.total * (percentage / 100);
-            const amount = Math.max(0, targetAmount - group.paidTotal);
+            const amount = Number(Math.max(0, targetAmount - group.paidTotal).toFixed(2));
 
             if (amount <= 0 && percentage < 100) {
                 toast.error('No balanced remaining at this percentage.', { id: toastId });
@@ -689,6 +689,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             if (dest === PaymentDestination.BBVA_Ramses) {
                 commission += amount * 0.16;
             }
+            commission = Number(commission.toFixed(2));
 
             const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
             const isPartial = percentage < 100;

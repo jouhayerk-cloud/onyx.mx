@@ -286,15 +286,25 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     }, [inventoryVersion, paymentsVersion, fetchData, db]); // Added db to dependencies
 
     const itemsToRequest = useMemo<VendorGroup[]>(() => {
-        const approvedItems = inventory.filter(i => i.data.status === 'YES' && !i.data.payReq);
+        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production'];
+        const pendingItems = inventory.filter(i => {
+            const status = (i.data.status || '').toLowerCase();
+            return targetStatuses.includes(status) && !i.data.payReq && !(i.data as any).pay_req && i.data.payReq !== 'true' && (i.data as any).pay_req !== 'true';
+        });
+
         const groups: Record<string, VendorGroup> = {};
-        for (const item of approvedItems) {
-            const vendorId = item.data.itemId;
+        for (const item of pendingItems) {
+            const data = item.data;
+            const vendorIdStr = String(data.item_id || data.itemId || '');
+            const vendorId = vendorIdStr.split('-')[0] || vendorIdStr;
+
             if (!groups[vendorId]) {
                 groups[vendorId] = { vendorId, items: [], total: 0 };
             }
+            const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
+            const qty = parseFloat(data.quantity || '1') || 1;
             groups[vendorId].items.push(item);
-            groups[vendorId].total += parseFloat(item.data.price) || 0;
+            groups[vendorId].total += (price * qty);
         }
         return Object.values(groups);
     }, [inventory]);
@@ -316,13 +326,14 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const handleRequestAll = async (vendorGroup: VendorGroup, destination: PaymentDestination) => {
         const toastId = toast.loading(`Requesting payment for ${vendorGroup.vendorId}...`);
         try {
-            const commission = destinationsConfig[destination].calculateCommission(vendorGroup.total);
-            const totalAmount = vendorGroup.total + commission;
+            const rawCommission = destinationsConfig[destination].calculateCommission(vendorGroup.total);
+            const commission = Number(rawCommission.toFixed(2));
+            const amount = Number(vendorGroup.total.toFixed(2));
 
             await apiCall('appendExpense', {
                 expenseData: {
                     description: `Payment for ${vendorGroup.items.length} items from ${vendorGroup.vendorId}`,
-                    amount: vendorGroup.total,
+                    amount,
                     commission,
                     destination,
                     status: 'Requested',
