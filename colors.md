@@ -9,7 +9,7 @@
 | **EARTH** (Dark) | `#051a0e` → `#d97706` → `#0b2f20` | `#d97706` (Deep Earth Copper) | `#b45309` | `rgba(5, 20, 15, 0.4)` |
 | **NACAR** (Light) | `#fdfcf0` → `#f4fae8` → `#eef9e4` | `#bfaee3` (Light Lavender) | `#c9e4b5` (Pale Green) | `rgba(255, 255, 255, 0.3)` |
 | **TEHU** (Light) | `#fdfafa` → `#f6efe8` → `#eff6ec` | `#f97316` (Vibrant Orange) | `#ea580c` | `rgba(255, 255, 255, 0.3)` |
-| **CHERRY** (Light) | `#fff5f8` → `#ff6b81` → `#fefcf3` | `#ff6b81` (Cherry Pink) | `#ff8e9e` | `rgba(255, 255, 255, 0.3)` |
+| **CHERRY** (Light) | `#fff0f3` → `#ffb3ba` → `#f0f7ff` | `#ffb3ba` (Pale Pastel Pink) | `#ffcad1` | `rgba(255, 255, 255, 0.3)` |
 
 ## Vendor Colors
 
