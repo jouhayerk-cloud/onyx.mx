@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom, topBarRightSlotAtom } from '../../lib/atoms';
+import {
+    exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
+    userAtom, topBarRightSlotAtom, financeSubTabAtom
+} from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
@@ -26,22 +29,25 @@ interface ClientVendorSummary {
 const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 'var(--main-color)' }: {
     icon: React.FC<any>; title: string; stats: { label: string; value: string }[]; actionLabel: string; onAction: () => void; color?: string;
 }) => (
-    <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-6 flex flex-col gap-6 hover:translate-y-[-4px] transition-all duration-300 shadow-xl relative overflow-hidden group">
-        <div className="absolute top-[-20%] right-[-10%] w-40 h-40 rounded-full blur-[60px] opacity-10" style={{ background: color }} />
-        <div className="flex items-center justify-between">
+    <div
+        onClick={onAction}
+        className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-6 flex flex-col gap-6 hover:translate-y-[-4px] active:scale-[0.98] cursor-pointer transition-all duration-300 shadow-xl relative overflow-hidden group"
+    >
+        <div className="absolute top-[-20%] right-[-10%] w-40 h-40 rounded-full blur-[60px] opacity-10 z-0" style={{ background: color }} />
+        <div className="flex items-center justify-between relative z-10">
             <div className="p-4 rounded-2xl border border-white/5 shadow-lg" style={{ background: `${color}10` }}>
                 <Icon size={24} strokeWidth={1.5} style={{ color }} />
             </div>
-            <button onClick={onAction} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) transition-all">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 group-hover:bg-(--main-color)/20 text-[10px] font-black uppercase tracking-widest text-(--text-color) transition-all">
                 {actionLabel} <ArrowRight size={12} />
-            </button>
+            </div>
         </div>
-        <div>
+        <div className="relative z-10">
             <h3 className="text-xl font-black text-(--text-color) tracking-tight mb-4 uppercase">{title}</h3>
             <div className="space-y-3">
                 {stats.map((s, i) => (
                     <div key={i} className="flex justify-between items-end">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{s.label}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-60">{s.label}</span>
                         <span className="text-lg font-mono font-black text-(--text-color) leading-none">{s.value}</span>
                     </div>
                 ))}
@@ -58,6 +64,7 @@ export const ClientOverview: React.FC = () => {
     const [showFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
+    const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setTopBarRightSlot = useSetAtom(topBarRightSlotAtom);
 
     const [items, setItems] = useState<any[]>([]);
@@ -275,7 +282,7 @@ export const ClientOverview: React.FC = () => {
                             { label: 'Unpaid Items Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true) } // Placeholder for "pending payment" acq value
                         ]}
                         actionLabel="Go to Payments"
-                        onAction={() => setActiveView('finance')}
+                        onAction={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
                         color="#FBBF24"
                     />
                 </div>
