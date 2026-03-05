@@ -370,28 +370,56 @@ export const PackingModule: React.FC = () => {
 const ItemCard: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.MouseEvent) => void }> = ({ item, isSelected, onToggle }) => {
     const d = item.normData;
     const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
+    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
+
     return (
         <div onClick={onToggle} className={`group relative flex flex-col bg-white/5 border rounded-[24px] overflow-hidden transition-all duration-500 cursor-pointer backdrop-blur-md ${isSelected ? 'border-(--main-color) bg-(--main-color)/5 shadow-lg shadow-(--main-color)/10 ring-1 ring-(--main-color)/20' : 'border-white/5 hover:bg-white/10 hover:border-white/20'}`}>
             <div className="aspect-square w-full relative overflow-hidden bg-black/40">
                 {item.imageUrl ? <img src={item.imageUrl} alt={d.itemId} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={48} /></div>}
-                <div className="absolute top-3 right-3">
+
+                {/* Selection Indicator */}
+                <div className="absolute top-3 right-3 z-10">
                     <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color) scale-110' : 'bg-black/60 border-white/20 group-hover:border-white/40'}`}>
                         {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
                     </div>
                 </div>
-                <div className="absolute bottom-3 left-3 flex flex-col gap-1.5 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <span style={{ backgroundColor: vendorColor }} className="px-2.5 py-0.5 rounded-md text-[8px] font-black text-white uppercase tracking-widest shadow-lg">{d.vendorId}</span>
+
+                {/* Top Badge: TAG ID */}
+                <div className="absolute top-3 left-3 flex flex-col gap-1">
+                    <span className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-mono text-(--main-color) border border-(--main-color)/30 font-black tracking-widest">{item.codes.bookBardcode}</span>
+                    <span className="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-md text-[8px] font-black text-white/60 uppercase tracking-widest self-start">{d.itemId}</span>
                 </div>
-                <div className="absolute top-3 left-3">
-                    <span className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-mono text-(--main-color) border border-(--main-color)/30">{item.codes.bookBardcode}</span>
+
+                {/* Bottom Overlay: Codes & Dims */}
+                <div className="absolute inset-x-0 bottom-0 p-3 bg-linear-to-t from-black via-black/40 to-transparent translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                        <span style={{ backgroundColor: vendorColor }} className="px-2 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-[0.2em] shadow-lg">{d.vendorId}</span>
+                        <span className="text-[8px] font-bold text-white/70 uppercase tracking-widest bg-white/10 px-1.5 py-0.5 rounded">{dims}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex-1 bg-white/5 rounded p-1.5 border border-white/5">
+                            <p className="text-[7px] font-black text-white/30 uppercase tracking-tight mb-0.5">ACQ</p>
+                            <p className="text-[10px] font-black text-white font-mono">{item.codes.bookAqCode}</p>
+                        </div>
+                        <div className="flex-1 bg-white/5 rounded p-1.5 border border-white/5">
+                            <p className="text-[7px] font-black text-white/30 uppercase tracking-tight mb-0.5">LC</p>
+                            <p className="text-[10px] font-black text-[#6BCEBB] font-mono">{item.codes.bookLandCode}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
+
             <div className="p-4 flex-1 flex flex-col">
-                <p className="text-[11px] font-black text-white/30 uppercase tracking-widest mb-1">{d.itemId}</p>
-                <p className="text-[13px] font-black text-white leading-tight line-clamp-2 uppercase flex-1 mb-4">{d.description}</p>
+                <p className="text-[13px] font-black text-white leading-tight line-clamp-2 uppercase flex-1 mb-4 group-hover:text-(--main-color) transition-colors">{d.description}</p>
                 <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <span className="text-[12px] font-black text-(--main-color)">{fmtMXN(d.price)}</span>
-                    <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{d.status}</span>
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">RETAIL USD</span>
+                        <span className="text-[14px] font-black text-white font-mono">${item.codes.bookRetail}</span>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">WEIGHT</span>
+                        <span className="text-[12px] font-bold text-white/60">{d.weightKg || 0}kg</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -401,27 +429,55 @@ const ItemCard: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.M
 const ItemRow: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.MouseEvent) => void }> = ({ item, isSelected, onToggle }) => {
     const d = item.normData;
     const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
+    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
+
     return (
-        <div onClick={onToggle} className={`flex items-center gap-6 p-3 rounded-xl border transition-all cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
-            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10 group-hover:border-white/30'}`}>{isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}</div>
-            <div className="w-12 h-12 rounded-lg bg-black/40 shrink-0 overflow-hidden border border-white/10">
+        <div onClick={onToggle} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10'}`}>{isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}</div>
+
+            <div className="w-14 h-14 rounded-xl bg-black/40 shrink-0 overflow-hidden border border-white/10">
                 {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <Package className="w-full h-full p-3 opacity-10" />}
             </div>
-            <div className="flex-1 min-w-0 flex items-center gap-10">
-                <div className="w-32">
-                    <span className="text-[11px] font-black text-(--main-color) tracking-widest">{d.itemId}</span>
-                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{d.status}</p>
+
+            <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
+                <div className="col-span-1 flex flex-col">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">TAG ID</span>
+                    <span className="text-[11px] font-black text-(--main-color) font-mono tracking-widest truncate">{item.codes.bookBardcode}</span>
                 </div>
-                <div className="flex-1">
-                    <p className="text-[13px] text-white font-black truncate uppercase tracking-tight">{d.description}</p>
+
+                <div className="col-span-4 flex flex-col">
+                    <span className="text-[13px] text-white font-black truncate uppercase tracking-tight">{d.description}</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span style={{ backgroundColor: vendorColor }} className="text-[8px] font-black text-white uppercase tracking-widest px-1.5 py-0.5 rounded">{d.vendorId}</span>
+                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">{d.itemId}</span>
+                    </div>
                 </div>
-                <div className="w-24">
-                    <span style={{ backgroundColor: vendorColor }} className="text-[9px] font-black text-white uppercase tracking-widest px-2.5 py-0.5 rounded-md">{d.vendorId}</span>
+
+                <div className="col-span-2 flex flex-col">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">DIMENSIONS</span>
+                    <span className="text-[11px] font-bold text-white/60 truncate uppercase">{dims} • {d.weightKg || 0}kg</span>
                 </div>
-            </div>
-            <div className="text-right shrink-0 px-6">
-                <p className="text-[12px] font-mono font-black text-(--main-color) tracking-widest">{item.codes.bookBardcode}</p>
-                <p className="text-[10px] font-bold text-white/30">{fmtMXN(d.price)}</p>
+
+                <div className="col-span-2 flex items-center gap-3">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">ACQ</span>
+                        <span className="text-[12px] font-black text-white font-mono">{item.codes.bookAqCode}</span>
+                    </div>
+                    <div className="w-px h-6 bg-white/10" />
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">LC</span>
+                        <span className="text-[12px] font-black text-[#6BCEBB] font-mono">{item.codes.bookLandCode}</span>
+                    </div>
+                </div>
+
+                <div className="col-span-2 flex flex-col items-end px-4">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">RETAIL USD</span>
+                    <span className="text-[16px] font-black text-white font-mono tracking-tighter">${item.codes.bookRetail}</span>
+                </div>
+
+                <div className="col-span-1 text-right">
+                    <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.2em] rotate-90 inline-block origin-right">{d.status}</span>
+                </div>
             </div>
         </div>
     );
@@ -446,6 +502,7 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
     const itemNum = String(d.itemNumber || '00');
     const priceCents = Math.floor((parseFloat(String(d.price)) || 0) % 100).toString().padStart(2, '0');
     const topCode = `${workbookPrefix}${itemNum.padStart(2, '0')}${priceCents}0`;
+    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
 
     return (
         <div
@@ -453,38 +510,69 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
             style={{
                 width: '600px',
                 minHeight: '1000px',
-                backgroundColor: '#f5f5f7',
-                padding: '40px',
+                backgroundColor: '#ffffff',
+                padding: '0',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                fontFamily: 'sans-serif',
-                position: 'relative'
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                position: 'relative',
+                color: '#000'
             }}
         >
-            <div style={{ width: '520px', height: `${(heightMm / widthMm) * 520}px`, backgroundColor: '#fff', borderRadius: '24px', padding: '45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: '80px', marginTop: '100px', boxShadow: '0 4px 40px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                        <span style={{ fontSize: '90px', fontWeight: 900 }}>{vendorId}</span>
-                        <span style={{ fontSize: '40px', fontWeight: 600 }}>MMA</span>
+            {/* Main Label Body - Representative of the printed sticker */}
+            <div style={{ width: '520px', height: `${(heightMm / widthMm) * 520}px`, backgroundColor: '#fff', border: '2px solid #000', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: '40px', marginTop: '100px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            <span style={{ fontSize: '80px', fontWeight: 900, lineHeight: 1 }}>{vendorId}</span>
+                        </div>
+                        <span style={{ fontSize: '18px', fontWeight: 900, opacity: 0.5, letterSpacing: '2px', marginTop: '5px' }}>ONYX LOGISTICS</span>
                     </div>
-                    <div style={{ fontSize: '50px', fontWeight: 700 }}>{topCode}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                        <div style={{ fontSize: '48px', fontWeight: 900 }}>{topCode}</div>
+                        <div style={{ fontSize: '12px', fontWeight: 900, opacity: 0.3 }}>Ref: {d.itemId}</div>
+                    </div>
                 </div>
-                <div style={{ fontSize: '28px', fontWeight: 700, margin: '20px 0', textTransform: 'uppercase' }}>{d.description}</div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <Barcode value={tagId} width={4} height={120} displayValue={false} margin={0} />
-                    <div style={{ fontSize: '38px', fontWeight: 900, letterSpacing: '8px', marginTop: '20px' }}>{tagId}</div>
+
+                <div style={{ fontSize: '28px', fontWeight: 900, margin: '15px 0', textTransform: 'uppercase', lineHeight: 1.1, flex: 1 }}>
+                    {d.description}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '4px solid #000', paddingTop: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div style={{ display: 'flex', gap: '20px' }}>
+                            <div>
+                                <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>ACQ</div>
+                                <div style={{ fontSize: '24px', fontWeight: 900 }}>{item.codes.bookAqCode}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>LC</div>
+                                <div style={{ fontSize: '24px', fontWeight: 900 }}>{item.codes.bookLandCode}</div>
+                            </div>
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 900 }}>{dims} • {d.weightKg || 0}kg</div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>RETAIL USD</div>
+                        <div style={{ fontSize: '48px', fontWeight: 900 }}>${item.codes.bookRetail}</div>
+                    </div>
                 </div>
             </div>
-            <div style={{ width: '100%', padding: '0 20px', marginBottom: '40px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div style={{ fontSize: '16px' }}>Label: 40*30 xls</div>
-                    <div style={{ fontSize: '16px' }}>Model: M110</div>
-                </div>
+
+            {/* Barcode Section (Usually on same label or separate depending on config, but following current logic) */}
+            <div style={{ width: '520px', padding: '30px', backgroundColor: '#fff', border: '2px solid #000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginBottom: '40px' }}>
+                <Barcode value={tagId} width={4} height={100} displayValue={false} margin={0} />
+                <div style={{ fontSize: '48px', fontWeight: 900, letterSpacing: '12px' }}>{tagId}</div>
             </div>
-            <div style={{ width: '100%', padding: '0 20px', display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '18px', fontWeight: 900 }}>Save & Scan in Print Master</div>
-                <QRCodeSVG value={`https://onyx.mx/item/${tagId}`} size={120} />
+
+            <div style={{ width: '520px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 900, opacity: 0.4 }}>ONYX.MX CLOUD STORAGE</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900 }}>SCAN FOR TRACKING</div>
+                </div>
+                <QRCodeSVG value={`https://onyx.mx/item/${tagId}`} size={100} />
             </div>
         </div>
     );
