@@ -429,18 +429,39 @@ const ItemRow: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.Mo
 
 const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, size }) => {
     const d = item.normData;
-    const tagId = item.codes.bookBardcode;
-    const [wStr, hStr] = size.split('x');
-    const widthMm = parseInt(wStr);
-    const heightMm = parseInt(hStr);
+    const tagId = item.codes?.bookBardcode || '';
+
+    // Safety guard: if no tag ID or calculation failed, don't attempt to render the sheet
+    if (!tagId || tagId === '-' || tagId === 'N/A') {
+        return <div className="p-10 text-white/20 text-[10px] uppercase font-black">Data Missing for {item.row}</div>;
+    }
+
+    const [wStr, hStr] = (size || '40x30').split('x');
+    const widthMm = parseInt(wStr) || 40;
+    const heightMm = parseInt(hStr) || 30;
     const vendorId = d.vendorId || 'ONYX';
-    const workbookPrefix = tagId.substring(2, 5);
-    const itemNum = d.itemNumber || '00';
-    const priceCents = Math.floor((parseFloat(d.price) || 0) % 100).toString().padStart(2, '0');
+
+    // Ensure tagId is long enough before substring
+    const workbookPrefix = tagId.length > 5 ? tagId.substring(2, 5) : '000';
+    const itemNum = String(d.itemNumber || '00');
+    const priceCents = Math.floor((parseFloat(String(d.price)) || 0) % 100).toString().padStart(2, '0');
     const topCode = `${workbookPrefix}${itemNum.padStart(2, '0')}${priceCents}0`;
 
     return (
-        <div id={`phomemo-sheet-${item.row}`} style={{ width: '600px', minHeight: '1000px', backgroundColor: '#f5f5f7', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'sans-serif', position: 'relative' }}>
+        <div
+            id={`phomemo-sheet-${item.row}`}
+            style={{
+                width: '600px',
+                minHeight: '1000px',
+                backgroundColor: '#f5f5f7',
+                padding: '40px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                fontFamily: 'sans-serif',
+                position: 'relative'
+            }}
+        >
             <div style={{ width: '520px', height: `${(heightMm / widthMm) * 520}px`, backgroundColor: '#fff', borderRadius: '24px', padding: '45px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: '80px', marginTop: '100px', boxShadow: '0 4px 40px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
