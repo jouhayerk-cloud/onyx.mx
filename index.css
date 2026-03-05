@@ -578,31 +578,32 @@ html.theme-tehu {
   color-scheme: light;
 }
 
-/* CHERRY (Light) - Formerly Tekis */
+/* CHERRY BLOSSOM (Light) */
 html.theme-cherry {
   --c1: #ffffff;
-  --c2: #fff0f3;
-  /* Ultra pale pink */
-  --c3: #f0f7ff;
-  /* Ultra pale blue */
-  --c4: #fffdf5;
-  /* Pale cream */
-  --c5: #f8f0ff;
-  /* Pale lavender-blush */
+  --c2: #f0f7ff;
+  /* Pale Blue */
+  --c3: #fffafa;
+  /* Ultra Pale Pink */
+  --c4: #f5faff;
+  /* Pale Blue */
+  --c5: #fff5f8;
+  /* Pale Pink */
   --c6: #ffffff;
-  --app-bg: rgba(255, 255, 255, 0.3);
-  --app-bg-solid: #fffbfc;
-  --sidebar-bg: rgba(255, 252, 254, 0.96);
-  --main-color: #ffb3ba;
-  /* Pale Pastel Cherry Pink */
-  --secondary-color: #ffcad1;
-  --text-color: #5e4b4e;
-  --text-color-primary: #5e4b4e;
-  --secondary-text-color: #9a8c8e;
-  --text-color-secondary: #9a8c8e;
-  --border-color: rgba(255, 179, 186, 0.2);
-  --input-color: rgba(255, 255, 255, 0.8);
-  --glass-bg: rgba(255, 255, 255, 0.4);
+  --app-bg: rgba(255, 255, 255, 0.5);
+  --app-bg-solid: #ffffff;
+  --sidebar-bg: rgba(255, 255, 255, 0.85);
+  --main-color: #ffdce0;
+  /* Ultra Pale Cherry Pink */
+  --secondary-color: #dcf2ff;
+  /* Ultra Pale Blue */
+  --text-color: #5b4b4d;
+  --text-color-primary: #5b4b4d;
+  --secondary-text-color: #8c7c7e;
+  --text-color-secondary: #8c7c7e;
+  --border-color: rgba(0, 0, 0, 0.04);
+  --input-color: rgba(255, 255, 255, 0.9);
+  --glass-bg: rgba(255, 255, 255, 0.6);
   color-scheme: light;
 }
 
