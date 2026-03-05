@@ -550,8 +550,8 @@ export function MainHeader() {
     const t = useTranslation();
 
     const handleRefresh = () => {
-        setInventoryVersion(v => v + 1);
-        toast.success("Synchronizing Database...");
+        toast.loading("Synchronizing Database...", { duration: 1500 });
+        setTimeout(() => window.location.reload(), 500);
     };
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
