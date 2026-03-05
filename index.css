@@ -639,6 +639,89 @@ body {
   margin: -30px;
 }
 
+/* Unified Liquid Glass Overlays & Tooltips */
+.glass-overlay-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10, 10, 15, 0.4);
+  backdrop-filter: blur(25px) saturate(130%);
+  -webkit-backdrop-filter: blur(25px) saturate(130%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+}
+
+.toast-liquid-glass {
+  background: var(--sidebar-bg) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-color-primary) !important;
+  border-radius: var(--box-radius) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  padding: 14px 24px !important;
+  font-family: "DM Sans", sans-serif !important;
+  font-weight: 500 !important;
+  position: relative;
+  overflow: hidden;
+  transform-origin: top center;
+  animation: toastReveal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.toast-liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.15) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.toast-liquid-glass > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes toastReveal {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sidebar-compact-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.95);
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  color: var(--text-color-primary);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  white-space: nowrap;
+  z-index: 1000;
+}
+
+.app-container.sidebar-compact .sidebar-list-item:hover .sidebar-compact-tooltip {
+  opacity: 1;
+  visibility: visible;
+  left: calc(100% + 16px);
+  transform: translateY(-50%) scale(1);
+}
+
+
 
 /* Update inputs and general buttons */
 input,

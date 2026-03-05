@@ -319,9 +319,9 @@ export function BatchActionsModal() {
     const totalItems = batchActionItems.length;
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content !max-w-xl">
-                <div className="modal-header">
+        <div className="glass-overlay-fullscreen">
+            <div className="glass-panel p-6 shadow-2xl border border-white/20 w-[90vw] max-w-xl! mx-auto flex flex-col gap-4">
+                <div className="modal-header border-b border-white/10 pb-4 text-xl font-bold">
                     {t.batchActionsTitle(totalItems)}
                 </div>
                 <div className="modal-body">
@@ -336,7 +336,7 @@ export function BatchActionsModal() {
                             <p>{t.batchActionsPrompt}</p>
                             <div className="flex flex-col gap-2">
                                 {availableActions.map(action => (
-                                    <label key={action.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 cursor-pointer border border-transparent has-[:checked]:border-[var(--accent-color)] has-[:checked]:bg-blue-900/20">
+                                    <label key={action.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 cursor-pointer border border-transparent has-checked:border-(--accent-color) has-checked:bg-blue-900/20">
                                         <input type="checkbox" name="batchAction" value={action.id} checked={selectedActions.has(action.id)} onChange={() => handleActionToggle(action.id)} />
                                         <span>{action.label}</span>
                                     </label>

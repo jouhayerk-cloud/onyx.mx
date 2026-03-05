@@ -158,11 +158,13 @@ export function MainAppView() {
     const pageContent = (() => {
         if (isEditingMask || workflowStep === 'fullscreenEdit') {
             return (
-                <div className="flex flex-col grow overflow-hidden h-full">
-                    <div className="flex grow flex-col overflow-hidden relative">
-                        <Content />
+                <div className="glass-overlay-fullscreen flex flex-col p-4 md:p-12 z-100">
+                    <div className="w-full h-full glass-panel flex flex-col overflow-hidden relative shadow-2xl rounded-3xl border border-white/20 bg-black/40">
+                        <div className="flex grow flex-col overflow-hidden relative">
+                            <Content />
+                        </div>
+                        <ExtraModeControls />
                     </div>
-                    <ExtraModeControls />
                 </div>
             );
         }
