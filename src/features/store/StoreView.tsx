@@ -249,10 +249,10 @@ export function StoreView() {
                                 <div
                                     key={item.row}
                                     onClick={() => openPanel(item)}
-                                    className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/[0.03] border border-white/[0.06] hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
+                                    className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/3 border border-white/6 hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
                                 >
                                     {/* Image */}
-                                    <div className="aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-white/5 to-black/30">
+                                    <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30">
                                         {isVideo ? (
                                             <div className="w-full h-full relative">
                                                 <video src={item.imageUrl!} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" muted loop playsInline />
@@ -272,7 +272,7 @@ export function StoreView() {
                                         )}
 
                                         {/* Gradient overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                                         {/* Media count badge */}
                                         {hasMultipleMedia && (

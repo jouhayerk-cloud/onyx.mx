@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.76 — 2026-03-04 (Feature)
+- **Inventory [feat]:** Replaced in-grid expanded view with a new sliding glassmorphic right-side drawer detail panel for improved layout stability.
+- **Upload Wizard [feat]:** Added real-time "Vendor Existing Units" count display to Step 3, alongside the auto-generated new Item Number.
+- **Dashboards [ui]:** Removed large redundant headers/titles from Dashboard, Admin Dashboard, and Control Center in favor of the unified Main Top Bar system.
+- **Settings [feat]:** Persisted UI preferences locally across refreshes via `atomWithStorage` (Performance mode, sidebar state, financial visibility toggle).
+
 ## v1.11.75 — 2026-03-04 (Bugfix)
 - **HeroBackground [fix]:** Background elements now use negative z-indices (`-2` image, `-1` scrim) so they sit visually behind all app content without fighting stacking contexts. Previously the scrim at `z-index: 1` was covering the entire app-container, making all UI invisible/fogged.
 - **HeroBackground [fix]:** Scrim opacity reduced to `0.65` — hero images now show through as a subtle blurred texture rather than being fully obscured.
