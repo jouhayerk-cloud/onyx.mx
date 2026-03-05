@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     inventoryStatusFilterAtom,
@@ -221,72 +222,86 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     return (
         <div
-            className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-300 group rounded-2xl border shadow-lg col-span-1 border-(--text-color)/8 hover:border-(--text-color)/25 hover:-translate-y-0.5`}
-            style={{ background: 'rgba(0,0,0,0.36)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.4), 0 0 20px ${vendorColor}25`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
+            className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/5 border border-white/10 hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
+            onClick={onToggleExpand}
         >
             {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
 
-            <div className="w-full flex aspect-4/5 flex-col relative">
-                <div className="absolute inset-0 overflow-hidden flex items-center justify-center bg-black/50">
-                    {imageUrl ? (
-                        <img src={imageUrl} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />
-                    ) : (
-                        <div className="absolute inset-0 p-6 sm:p-10 opacity-10 flex items-center justify-center pointer-events-none">
-                            <OnyxMiniLogo className="w-full h-full object-contain" />
-                        </div>
-                    )}
-                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-
-                    <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start z-10">
-                        {calculated.bookBardcode ? (
-                            <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center pointer-events-none" style={{ backgroundColor: vendorColor }}>
-                                <span>{calculated.bookBardcode}</span>
-                            </div>
-                        ) : (
-                            <div className="h-6 px-2 rounded flex items-center justify-center font-bold text-black border border-black shadow-lg text-[10px] pointer-events-none" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</div>
-                        )}
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="pointer-events-auto p-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg border border-white/10 text-white/40 hover:text-white transition-all">
-                            <Menu className="w-3.5 h-3.5" />
-                        </button>
+            {/* Image section */}
+            <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30">
+                {imageUrl ? (
+                    <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <OnyxMiniLogo className="w-16 h-16 opacity-10 object-contain" />
                     </div>
+                )}
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                    <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
-                        <div className="flex items-end justify-between mb-1 gap-2">
-                            <p className="font-black text-(--main-color) text-base leading-none truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
-                            <div className="flex flex-col items-end shrink-0">
-                                <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
-                                <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
-                            </div>
+                {/* Vendor TAG ID / Status indicator top left */}
+                <div className="absolute top-2 left-2 z-10 flex gap-1">
+                    {calculated.bookBardcode ? (
+                        <div className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black shadow-lg" style={{ backgroundColor: vendorColor }}>
+                            {calculated.bookBardcode}
                         </div>
-                        <div className="flex flex-col gap-0.5">
-                            <p className="text-[9px] uppercase font-black tracking-widest text-(--secondary-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
-                            <div className="flex items-center justify-between gap-2 mt-1">
-                                <div className="flex flex-col">
-                                    <p className="text-[11px] font-black text-white/60 font-mono tracking-tight uppercase leading-none mb-1">{dimensionsStr || 'NO DIM'}</p>
-                                    <div className="flex gap-2">
-                                        <span className="text-[8px] font-bold text-(--main-color) font-mono">AQ: {calculated.bookAqCode}</span>
-                                        <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
-                                    </div>
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); handleEdit(e); }} className="pointer-events-auto p-1.5 px-2.5 bg-white/5 hover:bg-(--main-color)/20 rounded-lg border border-white/10 text-white/30 hover:text-(--main-color) transition-all" title="Edit">
-                                    <Edit2 className="w-3 h-3" />
-                                </button>
-                            </div>
+                    ) : (
+                        <div className="h-4 px-1.5 rounded flex items-center justify-center font-black text-black shadow-lg text-[9px]" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</div>
+                    )}
+                </div>
+            </div>
+
+            {/* Card Body */}
+            <div className="p-3.5 flex flex-col gap-2 flex-1 relative">
+                <div className="flex justify-between items-start">
+                    <div className="truncate pr-2">
+                        <div className="font-bold text-sm text-(--text-color) leading-tight truncate w-full flex items-center gap-1.5">
+                            {(norm.shape || 'OBJ')}
+                            <span className="opacity-60 font-medium truncate text-xs">{(norm.shortDescription || norm.material || '')}</span>
                         </div>
+                        {norm.color && <div className="text-[10px] text-(--text-color-secondary) uppercase tracking-widest font-semibold mt-0.5 truncate">{norm.color}</div>}
+                    </div>
+                </div>
+
+                {/* Dimensions and Codes */}
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-widest mb-0.5 leading-none">DIMENSIONS</span>
+                        <span className="text-[10px] font-bold text-white/80 font-mono truncate">{dimensionsStr || 'NO DIM'}</span>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-0.5 leading-none">AQ</span>
+                            <span className="text-[10px] font-mono font-black text-(--main-color)/90">{calculated.bookAqCode || 'Aâ€”'}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-0.5 leading-none">LD</span>
+                            <span className="text-[10px] font-mono font-black text-yellow-500/90">{calculated.bookLandCode || 'Lâ€”'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/10">
+                    <div className="flex flex-col">
+                        <span className="text-[13px] font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                        <span className="text-[9px] font-bold text-white/30 tracking-widest uppercase mt-0.5">COST</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-white/40 bg-white/5 px-2 py-1 rounded-md font-mono">x{norm.quantity || 1}</span>
+                        <button onClick={(e) => handleEdit(e)} className="p-1.5 bg-white/5 hover:bg-(--main-color)/20 border border-white/10 rounded-lg text-white/40 hover:text-(--main-color) transition-all" title="Edit Item">
+                            <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Right Slide Drawer Overlay */}
-            {isExpanded && (
+            {isExpanded && createPortal(
                 <div className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
-                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[500px] z-100 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
+                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[500px] z-[100] flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
                         style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)', borderLeft: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}
                         onClick={e => e.stopPropagation()}>
 
-                        <div className="absolute right-4 top-4 z-50 flex gap-2">
+                        <div className="absolute right-4 top-4 z-[101] flex gap-2">
                             <button onClick={handleEdit} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-xs font-black uppercase tracking-widest">
                                 <Edit2 className="w-3.5 h-3.5" /> Edit
                             </button>
@@ -304,7 +319,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     <OnyxMiniLogo className="w-32 h-32 opacity-20" />
                                 </div>
                             )}
-                            <div className="absolute top-4 left-4">
+                            <div className="absolute top-4 left-4 z-[101]">
                                 {calculated.bookBardcode && (
                                     <div className="px-3 py-1.5 rounded-lg border border-black text-black font-black text-xs shadow-lg" style={{ backgroundColor: vendorColor }}>
                                         {calculated.bookBardcode}
@@ -357,7 +372,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

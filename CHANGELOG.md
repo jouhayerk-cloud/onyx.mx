@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.77 — 2026-03-04 (Enhancement)
+- **Top Bar UI [feat]:** Redesigned FinanceBar to include search and deployable filter panels for Vendors and Destinations to match the InventoryBar. Fixed SVG borderless icons across all TopBars.
+- **Payments Timeline [feat]:** Replaced inline filters with global Top Bar filters. Added independent sliding detail drawer panel for individual payment timeline items.
+- **Inventory Grid [ui]:** Redesigned Unified Inventory Grid layout to align aesthetically with Store Viewer (improved background layers, clear spacing for images, modern translucent tags).
+
 ## v1.11.76 — 2026-03-04 (Feature)
 - **Inventory [feat]:** Replaced in-grid expanded view with a new sliding glassmorphic right-side drawer detail panel for improved layout stability.
 - **Upload Wizard [feat]:** Added real-time "Vendor Existing Units" count display to Step 3, alongside the auto-generated new Item Number.
