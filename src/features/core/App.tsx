@@ -18,12 +18,16 @@ export default function App() {
     import('../../lib/supabase').then(({ supabase }) => {
 
       const resolveAuthorizedUser = async (session: any) => {
-        const email = session.user.email || '';
+        const email = session.user.email || '';
+
         const { data: appUser, error } = await supabase
           .from('app_users')
           .select('role, display_name, is_active')
           .eq('email', email.toLowerCase())
-          .single();
+          .single();
+
+
+
         if (error && error.code !== 'PGRST116') {
           console.warn('app_users table unavailable, falling back to resolveUserRole.', error.message);
           setUser({
@@ -33,7 +37,8 @@ export default function App() {
             role: resolveUserRole(email),
           });
           return;
-        }
+        }
+
         if (!appUser || !appUser.is_active) {
           console.warn('Access denied: email not registered in app_users or is inactive.', email);
           await supabase.auth.signOut();
@@ -45,14 +50,17 @@ export default function App() {
             __denied: true
           } as any);
           return;
-        }
+        }
+
         setUser({
           id: session.user.id,
           email,
           name: appUser.display_name || session.user.user_metadata?.name || email.split('@')[0] || 'User',
           role: appUser.role,
-        });
-        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
+        });
+
+        setLanguage(appUser.role === 'Vendor' ? 'es' : 'en');
+
         supabase.from('app_users')
           .update({ last_submit_at: new Date().toISOString() })
           .eq('email', email.toLowerCase())
@@ -76,8 +84,9 @@ export default function App() {
   }, [setUser]);
 
 
-  useEffect(() => {
-    const themeClasses = ['theme-obsidian', 'theme-fluorite', 'theme-malaquite', 'theme-nacar', 'theme-tehu', 'theme-tekis'];
+  useEffect(() => {
+
+    const themeClasses = ['theme-obsidian', 'theme-fluorite', 'theme-earth', 'theme-nacar', 'theme-tehu', 'theme-cherry'];
     document.documentElement.classList.remove(...themeClasses);
     document.documentElement.classList.add(`theme-${theme}`);
   }, [theme]);
@@ -88,7 +97,8 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('performance-mode-active');
     }
-  }, [performanceMode]);
+  }, [performanceMode]);
+
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetch(SCRIPT_URL, {
