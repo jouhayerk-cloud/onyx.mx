@@ -107,7 +107,7 @@ export const editedMaskPointsAtom = atom(
   null as { x: number; y: number }[] | null,
 );
 export const imageDimensionsAtom = atom({ width: 1, height: 1 });
-export const activeSubMenuAtom = atom<string | null>('catalog');
+export const activeSubMenuAtom = atomWithStorage<string | null>('activeSubMenu', 'catalog');
 
 export const isEditingMaskAtom = atom(
   (get) => get(editingMaskIndexAtom) !== null,
@@ -147,16 +147,16 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atom<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store'>('inventory');
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store'>('activeView', 'inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atom<'All' | 'Available' | 'Production' | 'Acquisition'>('All');
+export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Available' | 'Production' | 'Acquisition'>('inventoryStatusFilter', 'All');
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list'>('inventoryViewMode', 'list');
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
-export const logisticsSubTabAtom = atom<'packing' | 'trucking' | 'shipping'>('packing');
-export const financeSubTabAtom = atom<'payments' | 'tracking' | 'expenses'>('payments');
+export const logisticsSubTabAtom = atomWithStorage<'packing' | 'trucking' | 'shipping'>('logisticsSubTab', 'packing');
+export const financeSubTabAtom = atomWithStorage<'payments' | 'tracking' | 'expenses'>('financeSubTab', 'payments');
 export const isDashboardOpenAtom = atom(false);
 export const isCatalogViewOpenAtom = atom(false);
-export const catalogMarketViewModeAtom = atom<'catalog' | 'market'>('catalog');
+export const catalogMarketViewModeAtom = atomWithStorage<'catalog' | 'market'>('catalogMarketViewMode', 'catalog');
 export const isShippingOpenAtom = atom(false);
 export const marketActiveTabAtom = atom<'description' | 'images'>('images');
 
@@ -184,7 +184,7 @@ export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
 
 export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
 
-export const dashboardActiveTabAtom = atom<'acquisitions' | 'payments' | 'shipping'>('acquisitions');
+export const dashboardActiveTabAtom = atomWithStorage<'acquisitions' | 'payments' | 'shipping'>('dashboardActiveTab', 'acquisitions');
 export const acquisitionsVersionAtom = atom(0);
 export const paymentsVersionAtom = atom(0);
 export const withdrawalsVersionAtom = atom(0);
@@ -223,7 +223,7 @@ export const storeSearchTermAtom = atom('');
 
 export const filtersPanelOpenAtom = atom<boolean>(false);
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
-export const workbookActiveTabAtom = atom<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('inventory');
+export const workbookActiveTabAtom = atomWithStorage<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('workbookActiveTab', 'inventory');
 export const workbookViewModeAtom = atomWithStorage<'table' | 'gallery' | 'kanban'>('workbookViewMode', 'table');
 export const workbookDensityAtom = atomWithStorage<'compact' | 'comfortable'>('workbookDensity', 'compact');
 export const workbookMetricScopeAtom = atom<'all' | 'filtered'>('all');
