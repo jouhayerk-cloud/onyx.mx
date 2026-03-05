@@ -45,7 +45,10 @@ import {
     financeSearchTermAtom,
     paymentVendorFilterAtom,
     isPaymentVendorFilterOpenAtom,
-    isPaymentDestinationFilterOpenAtom
+    isPaymentDestinationFilterOpenAtom,
+    paymentCategoryFilterAtom,
+    isPaymentCategoryFilterOpenAtom,
+    PaymentCategory
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -59,7 +62,7 @@ import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
-    OctagonX, Octagon, CheckCircle, Tag, MapPin
+    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList
 } from 'lucide-react';
 
 declare const __APP_VERSION__: string;
@@ -169,6 +172,7 @@ const ShippingStats: React.FC = () => {
 
 
 const InventoryBar: React.FC = () => {
+    const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
@@ -180,7 +184,26 @@ const InventoryBar: React.FC = () => {
             <div className="flex flex-1 items-center gap-4 ml-2">
                 <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden lg:block" />
 
-                <div className="flex items-center gap-1 ml-auto relative">
+                {/* Search bar — full width, centered */}
+                <div className="flex-1 relative group/search mx-auto max-w-2xl">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
+                    </div>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by tag ID, shape, color… (space = AND)"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-(--main-color)/40 transition-all"
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
+                            <X size={13} strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1 ml-2 relative">
                     {/* Vendor Filter Toggle */}
                     <button
                         className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-[#6BCEBB]' : 'text-white/50 hover:text-white'}`}
@@ -317,9 +340,12 @@ const FinanceBar: React.FC = () => {
     const docs = useAtomValue(financeDataAtom);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
+    const [search, setSearch] = useAtom(financeSearchTermAtom);
     const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
     const [isVendorOpen, setIsVendorOpen] = useAtom(isPaymentVendorFilterOpenAtom);
     const [isDestOpen, setIsDestOpen] = useAtom(isPaymentDestinationFilterOpenAtom);
+    const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
+    const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
 
     const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
 
@@ -337,150 +363,139 @@ const FinanceBar: React.FC = () => {
 
     const cycleOverviewMode = () => {
         const next: Record<string, 'extended' | 'minimal' | 'collapsed'> = {
-            'extended': 'minimal',
-            'minimal': 'collapsed',
-            'collapsed': 'extended',
+            'extended': 'minimal', 'minimal': 'collapsed', 'collapsed': 'extended',
         };
         setOverviewMode(next[overviewMode] || 'extended');
     };
-
     const modeLabel: Record<string, string> = { extended: 'Full', minimal: 'Min', collapsed: 'Off' };
 
+    const closeAll = () => { setIsVendorOpen(false); setIsDestOpen(false); setIsCategoryOpen(false); };
+
+    const CATEGORIES: PaymentCategory[] = ['All', 'ACQ', 'PROD', 'MONTHLY', 'SPPL', 'LABR', 'PACK', 'OPRT'];
+
     return (
-        <>
-            <div className="flex flex-1 items-center gap-4 ml-2 relative">
-                <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
+        <div className="flex flex-1 items-center gap-3 ml-2 relative">
+            <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
 
-                {/* Pending net total for active destination filter (centered) */}
-                {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                    <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-1.5 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl shrink-0 shadow-inner z-10 pointer-events-none">
-                        <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-[0.2em]">PENDING REQ</span>
-                        <div className="h-4 w-px bg-[#A78BFA]/20" />
-                        <div className="flex items-baseline gap-2 text-[#A78BFA]">
-                            <span className="text-[13px] font-mono font-black">
-                                {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}
-                            </span>
-                            <span className="text-[10px] font-mono font-bold opacity-70">
-                                ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex items-center gap-1 ml-auto">
-                    {/* Destination Filter Toggle */}
-                    <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isDestOpen ? 'text-[#A78BFA]' : 'text-white/50 hover:text-white'}`}
-                        onClick={() => { setIsDestOpen(!isDestOpen); setIsVendorOpen(false); }}
-                        title="Filter by Destination"
-                    >
-                        <MapPin size={18} strokeWidth={1.75} />
-                        {destinationFilter !== 'All' && (
-                            <span className="ml-1 text-[10px] font-black text-[#A78BFA]">{destinationFilter}</span>
-                        )}
-                    </button>
-
-                    {/* Vendor Filter Toggle */}
-                    <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorOpen ? 'text-[#A78BFA]' : 'text-white/50 hover:text-white'}`}
-                        onClick={() => { setIsVendorOpen(!isVendorOpen); setIsDestOpen(false); }}
-                        title="Filter by Vendor"
-                    >
-                        <Tag size={18} strokeWidth={1.75} />
-                        {vendorFilter !== 'All' && (
-                            <span className="ml-1 text-[10px] font-black" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>
-                        )}
-                    </button>
-
-                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                    {/* Single 3-state Overview Toggle */}
-                    <button
-                        onClick={cycleOverviewMode}
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/30 hover:text-white' :
-                                overviewMode === 'minimal' ? 'text-[#A78BFA]/60 hover:text-[#A78BFA]' :
-                                    'text-[#A78BFA]'
-                            }`}
-                        title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
-                    >
-                        <CreditCard size={18} strokeWidth={1.75} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
-                    </button>
+            {/* Smart search bar */}
+            <div className="flex-1 relative group/search mx-auto max-w-2xl">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                    <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#A78BFA] transition-colors" />
                 </div>
+                <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search payments… (space = AND)"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-[#A78BFA]/40 transition-all"
+                />
+                {search && (
+                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
+                        <X size={13} strokeWidth={2.5} />
+                    </button>
+                )}
             </div>
 
-            {/* Destination Filter Bar — horizontal portal frame */}
-            {isDestOpen && createPortal(
-                <div
-                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
-                    style={{
-                        top: '64px',
-                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
-                        backdropFilter: 'blur(24px)',
-                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
-                    }}
-                >
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Destination</span>
-                    <button
-                        onClick={() => setDestinationFilter('All')}
-                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${destinationFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                            }`}
-                    >All</button>
-                    {Object.entries(destinationsConfig).map(([key, config]) => (
-                        <button
-                            key={key}
-                            onClick={() => setDestinationFilter(key as any)}
-                            className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${destinationFilter === key ? 'bg-[#A78BFA]/20 border-[#A78BFA]/50 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                                }`}
-                        >
-                            <img src={config.icon} alt={config.name} className="w-4 h-4 object-contain" />
-                            {config.name}
-                        </button>
-                    ))}
-                    <button onClick={() => setIsDestOpen(false)} className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors">
-                        <X size={12} strokeWidth={2.5} />
-                    </button>
-                </div>,
-                document.body
+            {/* Pending net total for active destination (floats center above) */}
+            {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-10 pointer-events-none">
+                    <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-[0.2em]">PENDING</span>
+                    <span className="text-[11px] font-mono font-black text-[#A78BFA]">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}</span>
+                    <span className="text-[9px] font-mono text-[#A78BFA]/60">≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                </div>
             )}
 
-            {/* Vendor Filter Bar — horizontal portal frame */}
-            {isVendorOpen && createPortal(
-                <div
-                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
-                    style={{
-                        top: '64px',
-                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
-                        backdropFilter: 'blur(24px)',
-                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
-                    }}
-                >
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Vendor</span>
+            <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
+
+                {/* Destination filter — popup dropdown */}
+                <div className="relative">
                     <button
-                        onClick={() => setVendorFilter('All')}
-                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                            }`}
-                    >All</button>
-                    {activeVendors.map(v => {
-                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                        const isActive = vendorFilter === v;
-                        return (
-                            <button
-                                key={v}
-                                onClick={() => setVendorFilter(v)}
-                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isActive ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
-                                    }`}
-                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}
-                            >{v}</button>
-                        );
-                    })}
-                    <button onClick={() => setIsVendorOpen(false)} className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors">
-                        <X size={12} strokeWidth={2.5} />
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isDestOpen ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
+                        onClick={() => { const o = !isDestOpen; closeAll(); setIsDestOpen(o); }}
+                        title="Filter by Destination"
+                    >
+                        <MapPin size={17} strokeWidth={1.75} />
+                        {destinationFilter !== 'All' && <span className="text-[9px] font-black text-[#A78BFA] ml-0.5">{destinationFilter}</span>}
                     </button>
-                </div>,
-                document.body
-            )}
-        </>
+                    {isDestOpen && (
+                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
+                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Destination</span>
+                            <button onClick={() => { setDestinationFilter('All'); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${destinationFilter === 'All' ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>All</button>
+                            {Object.entries(destinationsConfig).map(([key, config]) => (
+                                <button key={key} onClick={() => { setDestinationFilter(key as any); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${destinationFilter === key ? 'bg-[#A78BFA]/15 text-[#A78BFA]' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>
+                                    <img src={config.icon} alt={config.name} className="w-5 h-5 object-contain" />
+                                    {config.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Vendor filter — popup dropdown */}
+                <div className="relative">
+                    <button
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isVendorOpen ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
+                        onClick={() => { const o = !isVendorOpen; closeAll(); setIsVendorOpen(o); }}
+                        title="Filter by Vendor"
+                    >
+                        <Tag size={17} strokeWidth={1.75} />
+                        {vendorFilter !== 'All' && <span className="text-[9px] font-black ml-0.5" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>}
+                    </button>
+                    {isVendorOpen && (
+                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[150px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
+                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Vendor</span>
+                            <button onClick={() => setVendorFilter('All')} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${vendorFilter === 'All' ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>All</button>
+                            {activeVendors.map(v => {
+                                const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                                return (
+                                    <button key={v} onClick={() => setVendorFilter(v)} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${vendorFilter === v ? 'text-black' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}
+                                        style={vendorFilter === v ? { background: color } : {}}>
+                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />{v}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Category filter (Payment Type) — popup */}
+                <div className="relative">
+                    <button
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${isCategoryOpen || categoryFilter !== 'All' ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'}`}
+                        onClick={() => { const o = !isCategoryOpen; closeAll(); setIsCategoryOpen(o); }}
+                        title="Filter by Payment Type"
+                    >
+                        <LayoutList size={17} strokeWidth={1.75} />
+                        {categoryFilter !== 'All' && <span className="text-[9px] font-black text-[#A78BFA] ml-0.5">{categoryFilter}</span>}
+                    </button>
+                    {isCategoryOpen && (
+                        <div className="absolute top-full right-0 mt-1 z-50 min-w-[140px] rounded-2xl border border-white/10 shadow-2xl p-3 flex flex-col gap-1"
+                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)' }}>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Type</span>
+                            {CATEGORIES.map(cat => (
+                                <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-left ${categoryFilter === cat ? 'bg-[#A78BFA]/20 text-[#A78BFA]' : 'text-white/50 hover:bg-white/5 hover:text-white'}`}>{cat}</button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="w-px h-5 bg-white/10 mx-1" />
+
+                {/* 3-state Overview Toggle */}
+                <button
+                    onClick={cycleOverviewMode}
+                    className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
+                            overviewMode === 'minimal' ? 'text-[#A78BFA]/50 hover:text-[#A78BFA]' : 'text-[#A78BFA]'
+                        }`}
+                    title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
+                >
+                    <CreditCard size={17} strokeWidth={1.75} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
+                </button>
+            </div>
+        </div>
     );
 };
 

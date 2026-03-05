@@ -5,7 +5,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -90,7 +90,7 @@ const DestinationCard: React.FC<{
     if (isCompact) {
         return (
             <div
-                className={`p-2 rounded-lg border-2 flex-1 flex flex-col items-center justify-start gap-1 cursor-pointer transition-all ${isSelected ? 'border-[var(--main-color)] bg-blue-900/20' : 'border-transparent hover:bg-white/10'}`}
+                className={`p-2 rounded-lg border-2 flex-1 flex flex-col items-center justify-start gap-1 cursor-pointer transition-all ${isSelected ? 'border-(--main-color) bg-blue-900/20' : 'border-transparent hover:bg-white/10'}`}
                 onClick={onClick}
             >
                 <img src={config.icon} alt={config.name} className="w-full h-10 object-contain" />
@@ -101,14 +101,14 @@ const DestinationCard: React.FC<{
 
     return (
         <div
-            className={`p-4 rounded-lg border-2 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${isSelected ? 'border-[var(--main-color)] bg-blue-900/20' : 'border-transparent hover:bg-white/10'}`}
+            className={`p-4 rounded-lg border-2 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${isSelected ? 'border-(--main-color) bg-blue-900/20' : 'border-transparent hover:bg-white/10'}`}
             onClick={onClick}
         >
             <img src={config.icon} alt={config.name} className="w-24 h-16 object-contain" />
             <p className="font-semibold text-sm">{config.name}</p>
             {baseAmount !== undefined && (
                 <div className="text-xs text-center mt-2">
-                    {commission !== null && <p className="text-[var(--text-color-secondary)]">Comm: {formatCurrency(commission, 'MXN')}</p>}
+                    {commission !== null && <p className="text-(--text-color-secondary)">Comm: {formatCurrency(commission, 'MXN')}</p>}
                     {total !== null && <p className="font-bold">Total: {formatCurrency(total, 'MXN')}</p>}
                 </div>
             )}
@@ -249,6 +249,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
     const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
     const search = useAtomValue(financeSearchTermAtom);
+    const categoryFilter = useAtomValue(paymentCategoryFilterAtom);
     const user = useAtomValue(userAtom);
     const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
     const overviewMode = useAtomValue(paymentsOverviewModeAtom);
@@ -365,10 +366,14 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
             .filter(expense => {
                 const destinationMatch = destinationFilter === 'All' || expense.destination === destinationFilter;
                 const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(expense.description || '') === vendorFilter;
-                const searchMatch = !search ||
-                    (expense.description?.toLowerCase() || '').includes(search.toLowerCase()) ||
-                    (expense.destination?.toLowerCase() || '').includes(search.toLowerCase());
-                return destinationMatch && vendorMatch && searchMatch;
+                const categoryMatch = categoryFilter === 'All' || (expense.category || '').toUpperCase().includes(categoryFilter);
+                const terms = search ? search.toLowerCase().split(/\s+/).filter(Boolean) : [];
+                const searchMatch = terms.length === 0 || terms.every(t =>
+                    (expense.description?.toLowerCase() || '').includes(t) ||
+                    (expense.destination?.toLowerCase() || '').includes(t) ||
+                    (expense.category?.toLowerCase() || '').includes(t)
+                );
+                return destinationMatch && vendorMatch && categoryMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [expenses, destinationFilter, vendorFilter, search]);
@@ -392,14 +397,14 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
 
             {overviewMode !== 'collapsed' && itemsToRequest.length > 0 && (
                 <div className="glass-panel p-4">
-                    <div className={`space-y-4 overflow-y-auto transition-all duration-300 ${overviewMode === 'minimal' ? 'max-h-32' : 'max-h-64'}`}>
+                    <div className={`flex flex-wrap gap-3 overflow-y-auto transition-all duration-300 ${overviewMode === 'minimal' ? 'max-h-32' : 'max-h-64'}`}>
                         {itemsToRequest.map(group => {
                             const vendorColor = vendors[group.vendorId as keyof typeof vendors]?.color || '#333';
                             const textColor = getTextColorForBg(vendorColor);
                             const buttonBg = textColor === '#FFFFFF' ? 'bg-white/20 hover:bg-white/40' : 'bg-black/10 hover:bg-black/20';
 
                             return (
-                                <div key={group.vendorId} className="p-3 rounded-lg" style={{ backgroundColor: vendorColor, color: textColor }}>
+                                <div key={group.vendorId} className="flex-1 min-w-[220px] p-3 rounded-lg" style={{ backgroundColor: vendorColor, color: textColor }}>
                                     <div className="flex justify-between items-center">
                                         <div>
                                             <h3 className="font-bold" style={{ color: textColor }}>{appUsers[group.vendorId as keyof typeof appUsers]?.name || group.vendorId}</h3>
@@ -407,7 +412,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                         </div>
                                         <div className="text-right">
                                             <p className="font-bold font-mono">{formatCurrency(group.total, 'MXN')}</p>
-                                            <button onClick={() => setRequestingGroup(group)} className={`button text-xs !py-1 !px-3 !min-h-0 mt-1 !border-none ${buttonBg}`} style={{ color: textColor }}>Request Payment</button>
+                                            <button onClick={() => setRequestingGroup(group)} className={`mt-1 text-xs py-1 px-3 rounded-lg border-none! min-h-0! ${buttonBg}`} style={{ color: textColor }}>Request Payment</button>
                                         </div>
                                     </div>
                                 </div>
@@ -417,15 +422,15 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                 </div>
             )}
 
-            <div className="flex-grow min-h-0 glass-panel">
-                <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center">
+            <div className="grow min-h-0! glass-panel">
+                <div className="p-4 border-b border-(--border-color) flex justify-between items-center">
                     <h2 className="font-bold text-lg text-white">Payment Timeline</h2>
-                    <button onClick={() => setIsAddExpenseModalOpen(true)} className="button !min-h-0 text-xs py-1.5 px-3 flex items-center gap-2" title="Add General Expense">
+                    <button onClick={() => setIsAddExpenseModalOpen(true)} className="button min-h-0! text-xs py-1.5 px-3 flex items-center gap-2" title="Add General Expense">
                         <svg className="w-4 h-4"><use href="#file-plus"></use></svg> Add Expense
                     </button>
                 </div>
 
-                <div className="payments-timeline h-full">
+                <div className="payments-timeline h-full min-h-0!">
                     {sortedTimeline.map(expense => (
                         <div key={expense.id} className="timeline-item cursor-pointer hover:bg-white/5 transition-colors rounded-xl p-2 -mx-2" onClick={() => setSelectedExpense(expense)}>
                             <div className="timeline-icon">
@@ -451,7 +456,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                             <span className="timeline-status-badge pending">Pending</span>
                                             <div className="flex items-center gap-4">
                                                 <span className="timeline-amount">{formatCurrency((expense.amount || 0) + (expense.commission || 0), 'MXN')}</span>
-                                                <button onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(expense); }} className="button secondary !min-h-0 text-xs py-1 px-3">Mark as Paid</button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(expense); }} className="button secondary min-h-0! text-xs py-1 px-3">Mark as Paid</button>
                                             </div>
                                         </>
                                     )}
@@ -459,18 +464,18 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                             </div>
                         </div>
                     ))}
-                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-[var(--text-color-secondary)]">No payments found for the selected filters.</p>}
+                    {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-(--text-color-secondary)">No payments found for the selected filters.</p>}
                 </div>
             </div>
 
             {/* Right Slide Drawer Overlay for Selected Expense */}
             {selectedExpense && createPortal(
-                <div className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); setSelectedExpense(null); }}>
-                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[450px] z-[100] flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
+                <div className="fixed inset-0 z-100 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); setSelectedExpense(null); }}>
+                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[450px] z-101 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
                         style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)', borderLeft: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}
                         onClick={e => e.stopPropagation()}>
 
-                        <div className="absolute right-4 top-4 z-[101] flex gap-2">
+                        <div className="absolute right-4 top-4 z-101 flex gap-2">
                             <button onClick={() => setSelectedExpense(null)} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 transition-all text-xs font-black uppercase tracking-widest">
                                 <X className="w-3.5 h-3.5" /> Close
                             </button>
