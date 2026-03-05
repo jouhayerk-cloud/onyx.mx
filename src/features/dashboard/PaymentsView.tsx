@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { X, CreditCard } from 'lucide-react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -245,8 +247,10 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
     const [requestingGroup, setRequestingGroup] = useState<VendorGroup | null>(null);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
-    const [vendorFilter, setVendorFilter] = useState<string | 'All'>('All');
+    const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
+    const search = useAtomValue(financeSearchTermAtom);
     const user = useAtomValue(userAtom);
+    const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
 
     const fetchData = useCallback(async () => {
         if (!db) {
@@ -360,10 +364,13 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
             .filter(expense => {
                 const destinationMatch = destinationFilter === 'All' || expense.destination === destinationFilter;
                 const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(expense.description || '') === vendorFilter;
-                return destinationMatch && vendorMatch;
+                const searchMatch = !search ||
+                    (expense.description?.toLowerCase() || '').includes(search.toLowerCase()) ||
+                    (expense.destination?.toLowerCase() || '').includes(search.toLowerCase());
+                return destinationMatch && vendorMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
-    }, [expenses, destinationFilter, vendorFilter]);
+    }, [expenses, destinationFilter, vendorFilter, search]);
 
     if (isLoading) {
         return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
@@ -410,58 +417,16 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
             )}
 
             <div className="flex-grow min-h-0 glass-panel">
-                <div className="p-4 border-b border-[var(--border-color)]">
-                    {Object.keys(vendorTotals).length > 0 && (
-                        <div className="mb-4">
-                            <h3 className="text-xs font-bold uppercase text-[var(--text-color-secondary)] mb-2">Pending Vendor Payments</h3>
-                            <div className="flex items-center gap-2 overflow-x-auto">
-                                <button
-                                    onClick={() => setVendorFilter('All')}
-                                    className={`tab-button ${vendorFilter === 'All' ? 'active' : ''}`}
-                                >All</button>
-                                {Object.entries(vendorTotals).map(([vendorId, total]) => (
-                                    <button
-                                        key={vendorId}
-                                        onClick={() => setVendorFilter(vendorId)}
-                                        className={`tab-button vendor-tab ${vendorFilter === vendorId ? 'active' : ''}`}
-                                        style={vendorFilter === vendorId ? { backgroundColor: vendors[vendorId as keyof typeof vendors]?.color, color: getTextColorForBg(vendors[vendorId as keyof typeof vendors]?.color) } : {}}
-                                    >
-                                        {/* FIX: Explicitly cast `total` to a number to resolve TypeScript error. */}
-                                        {vendorId} <span className="count">{formatCurrency(total as number, 'MXN')}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2 overflow-x-auto">
-                            <button
-                                onClick={() => setDestinationFilter('All')}
-                                className={`button secondary !min-h-0 text-xs py-1 px-3 flex-shrink-0 ${destinationFilter === 'All' ? '!bg-[var(--main-color)] !text-white' : ''}`}
-                            >
-                                All
-                            </button>
-                            {Object.entries(destinationsConfig).map(([key, config]) => (
-                                <button
-                                    key={key}
-                                    onClick={() => setDestinationFilter(key as PaymentDestination)}
-                                    className={`button !p-2 !min-h-0 flex-shrink-0 ${destinationFilter === key ? 'ring-2 ring-offset-2 ring-offset-black/50 ring-[var(--main-color)]' : ''}`}
-                                    title={config.name}
-                                >
-                                    <img src={config.icon} alt={config.name} className="w-auto h-6 object-contain" />
-                                </button>
-                            ))}
-                        </div>
-                        <button onClick={() => setIsAddExpenseModalOpen(true)} className="button !p-2.5 !min-h-0" title="Add General Expense">
-                            <svg className="w-5 h-5"><use href="#file-plus"></use></svg>
-                        </button>
-                    </div>
+                <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center">
+                    <h2 className="font-bold text-lg text-white">Payment Timeline</h2>
+                    <button onClick={() => setIsAddExpenseModalOpen(true)} className="button !min-h-0 text-xs py-1.5 px-3 flex items-center gap-2" title="Add General Expense">
+                        <svg className="w-4 h-4"><use href="#file-plus"></use></svg> Add Expense
+                    </button>
                 </div>
 
                 <div className="payments-timeline h-full">
                     {sortedTimeline.map(expense => (
-                        <div key={expense.id} className="timeline-item">
+                        <div key={expense.id} className="timeline-item cursor-pointer hover:bg-white/5 transition-colors rounded-xl p-2 -mx-2" onClick={() => setSelectedExpense(expense)}>
                             <div className="timeline-icon">
                                 <img src={destinationsConfig[expense.destination as PaymentDestination]?.icon} alt={expense.destination} className="w-8 h-8 object-contain" />
                             </div>
@@ -485,7 +450,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                                             <span className="timeline-status-badge pending">Pending</span>
                                             <div className="flex items-center gap-4">
                                                 <span className="timeline-amount">{formatCurrency((expense.amount || 0) + (expense.commission || 0), 'MXN')}</span>
-                                                <button onClick={() => handleMarkAsPaid(expense)} className="button secondary !min-h-0 text-xs py-1 px-3">Mark as Paid</button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(expense); }} className="button secondary !min-h-0 text-xs py-1 px-3">Mark as Paid</button>
                                             </div>
                                         </>
                                     )}
@@ -496,6 +461,90 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
                     {sortedTimeline.length === 0 && <p className="text-center text-sm p-8 text-[var(--text-color-secondary)]">No payments found for the selected filters.</p>}
                 </div>
             </div>
+
+            {/* Right Slide Drawer Overlay for Selected Expense */}
+            {selectedExpense && createPortal(
+                <div className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); setSelectedExpense(null); }}>
+                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[450px] z-[100] flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
+                        style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)', borderLeft: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        <div className="absolute right-4 top-4 z-[101] flex gap-2">
+                            <button onClick={() => setSelectedExpense(null)} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 transition-all text-xs font-black uppercase tracking-widest">
+                                <X className="w-3.5 h-3.5" /> Close
+                            </button>
+                        </div>
+
+                        {/* Drawer Header */}
+                        <div className="p-8 pt-16 flex flex-col items-center justify-center relative shrink-0 border-b border-white/10 bg-white/5">
+                            <div className="w-24 h-24 rounded-2xl bg-white/10 flex items-center justify-center mb-6 shadow-xl p-4">
+                                <img src={destinationsConfig[selectedExpense.destination as PaymentDestination]?.icon} alt={selectedExpense.destination} className="w-full h-full object-contain drop-shadow-md" />
+                            </div>
+                            <h2 className="text-2xl font-black text-center text-(--text-color)">{selectedExpense.description}</h2>
+                            <div className="mt-4 px-4 py-1.5 rounded-full border border-white/20 text-xs font-bold uppercase tracking-widest">
+                                {selectedExpense.status}
+                            </div>
+                        </div>
+
+                        {/* Drawer Content */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-6">
+                            <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
+                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Payment Breakdown</h4>
+                                <div className="grid grid-cols-2 gap-y-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Base Amount</span>
+                                        <span className="text-[15px] font-bold text-(--text-color)">{formatCurrency(selectedExpense.amount || 0, 'MXN')}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Commission</span>
+                                        <span className="text-[15px] font-bold text-(--text-color)">{formatCurrency(selectedExpense.commission || 0, 'MXN')}</span>
+                                    </div>
+                                    <div className="flex flex-col col-span-2 pt-4 mt-2 border-t border-white/10">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Total Needed</span>
+                                        <span className="text-xl font-black text-(--main-color) font-mono">{formatCurrency((selectedExpense.amount || 0) + (selectedExpense.commission || 0), 'MXN')}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
+                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Details</h4>
+                                <div className="grid grid-cols-2 gap-y-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Date Created</span>
+                                        <span className="text-[14px] font-bold text-(--text-color)">{new Date(selectedExpense.date || '').toLocaleDateString()}</span>
+                                    </div>
+                                    {selectedExpense.pay_date && (
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Pay Date</span>
+                                            <span className="text-[14px] font-bold text-green-500">{new Date(selectedExpense.pay_date).toLocaleDateString()}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Destination</span>
+                                        <span className="text-[14px] font-bold text-(--text-color)">{selectedExpense.destination}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Category</span>
+                                        <span className="text-[14px] font-bold text-(--text-color)">{selectedExpense.category}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {selectedExpense.status !== 'Paid' && (
+                                <div className="mt-auto pt-6 border-t border-white/10">
+                                    <button
+                                        onClick={() => handleMarkAsPaid(selectedExpense)}
+                                        className="w-full h-12 flex items-center justify-center gap-2 bg-(--main-color) hover:bg-(--main-color-hover) text-white rounded-xl font-black uppercase tracking-widest transition-all shadow-lg"
+                                    >
+                                        <CreditCard size={18} /> Mark as Paid
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

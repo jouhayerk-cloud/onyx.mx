@@ -197,10 +197,14 @@ export type TrafficLightStatus = 'ALL' | 'RED' | 'YELLOW' | 'GREEN';
 export const dashboardStatusFilterAtom = atom<TrafficLightStatus>('ALL');
 export const paymentDestinationFilterAtom = atom<'All' | PaymentDestination>('All');
 export const paymentBankFilterAtom = atom<'All' | 'Ramses BBVA' | 'Martha BBVA' | 'BOA' | 'Direct Client Wire'>('All');
+export const paymentVendorFilterAtom = atom<string>('All');
+export const isPaymentVendorFilterOpenAtom = atom<boolean>(false);
+export const isPaymentDestinationFilterOpenAtom = atom<boolean>(false);
 export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
 export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
 export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('extended');
 export const liveExchangeRateAtom = atom<number | null>(null);
+export const financeSearchTermAtom = atom('');
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});
 
