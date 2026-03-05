@@ -10,7 +10,8 @@ import { handleFileUpload, generateUniqueId, readFileAsDataURL, calculateCodesAn
 import { useDatabase } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
-import { GoogleGenAI, Type } from '@google/genai';
+import { ai } from '../../lib/ai';
+import { Type } from '@google/genai';
 
 
 
@@ -30,11 +31,14 @@ const SuggestChips: React.FC<{
     values: string[];
     onSelect: (v: string) => void;
     current: string;
-}> = ({ values, onSelect, current }) => {
-    if (!values.length) return null;
+    query?: string;
+}> = ({ values, onSelect, current, query }) => {
+    const q = (query || '').toLowerCase();
+    const filtered = values.filter(v => v.toLowerCase().includes(q)).slice(0, 10);
+    if (!filtered.length) return null;
     return (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-            {values.slice(0, 10).map(v => (
+        <div className="flex flex-wrap gap-1 mt-1.5 animate-in fade-in duration-200">
+            {filtered.map(v => (
                 <button key={v} type="button" onClick={() => onSelect(v)}
                     className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all
                         ${v === current ? 'border-(--main-color) text-(--main-color) bg-(--main-color)/10'
@@ -333,7 +337,7 @@ export function UploadEntryForm() {
             <div className="bg-white/2 border border-white/6 rounded-2xl p-4 overflow-hidden">
                 <label className={lbl}>Vendor Selection</label>
                 {canSelectVendor ? (
-                    <div className="flex flex-nowrap gap-4 pb-2 items-center overflow-x-auto custom-scrollbar-thin">
+                    <div className="flex flex-nowrap gap-1 pb-2 items-center overflow-x-auto custom-scrollbar-thin">
                         {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
                             const v = vendors[id as keyof typeof vendors];
                             const isSelected = itemData.vendorId === id;
@@ -342,7 +346,7 @@ export function UploadEntryForm() {
                                     type="button"
                                     key={id}
                                     onClick={() => set('vendorId', id)}
-                                    className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-xl border-2 border-black/20' : 'opacity-40 hover:opacity-100 ring-1 ring-white/10'}`}
+                                    className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-[10px] font-black transition-all ${isSelected ? 'ring-2 ring-white scale-105 shadow-xl border-2 border-black/10' : 'opacity-30 hover:opacity-100 ring-1 ring-white/5'}`}
                                     style={{ backgroundColor: v.color, color: '#000' }}
                                 >
                                     {id}
@@ -444,14 +448,14 @@ export function UploadEntryForm() {
                         <input type="text" name="color" value={itemData.color || ''} onChange={handleChange}
                             list="color-list" placeholder="Cream" className={inp} autoComplete="off" />
                         <datalist id="color-list">{suggestions.color.map(v => <option key={v} value={v} />)}</datalist>
-                        <SuggestChips values={suggestions.color} current={itemData.color || ''} onSelect={v => set('color', v)} />
+                        <SuggestChips values={suggestions.color} current={itemData.color || ''} query={itemData.color || ''} onSelect={v => set('color', v)} />
                     </div>
                     <div>
                         <label className={lbl}>Mat</label>
                         <input type="text" name="material" value={itemData.material || ''} onChange={handleChange}
                             list="material-list" placeholder="Ceramic" className={inp} autoComplete="off" />
                         <datalist id="material-list">{suggestions.material.map(v => <option key={v} value={v} />)}</datalist>
-                        <SuggestChips values={suggestions.material} current={itemData.material || ''} onSelect={v => set('material', v)} />
+                        <SuggestChips values={suggestions.material} current={itemData.material || ''} query={itemData.material || ''} onSelect={v => set('material', v)} />
                     </div>
                 </div>
 
@@ -462,14 +466,14 @@ export function UploadEntryForm() {
                         <input type="text" name="shape" value={itemData.shape || ''} onChange={handleChange}
                             list="shape-list" placeholder="Vase" className={inp} autoComplete="off" />
                         <datalist id="shape-list">{suggestions.shape.map(v => <option key={v} value={v} />)}</datalist>
-                        <SuggestChips values={suggestions.shape} current={itemData.shape || ''} onSelect={v => set('shape', v)} />
+                        <SuggestChips values={suggestions.shape} current={itemData.shape || ''} query={itemData.shape || ''} onSelect={v => set('shape', v)} />
                     </div>
                     <div>
                         <label className={lbl}>Type</label>
                         <input type="text" name="itemType" value={itemData.itemType || ''} onChange={handleChange}
                             list="type-list" placeholder="e.g. Decorative, Functional" className={inp} autoComplete="off" />
                         <datalist id="type-list">{suggestions.itemType.map(v => <option key={v} value={v} />)}</datalist>
-                        <SuggestChips values={suggestions.itemType} current={itemData.itemType || ''} onSelect={v => set('itemType', v)} />
+                        <SuggestChips values={suggestions.itemType} current={itemData.itemType || ''} query={itemData.itemType || ''} onSelect={v => set('itemType', v)} />
                     </div>
                 </div>
 
@@ -489,7 +493,7 @@ export function UploadEntryForm() {
                                     onChange={handleChange}
                                     placeholder={f.placeholder}
                                     className={inpNum} />
-                                <SuggestChips values={f.suggestions} current={(itemData as any)[f.name] || ''} onSelect={v => set(f.name, v)} />
+                                <SuggestChips values={f.suggestions} current={(itemData as any)[f.name] || ''} query={(itemData as any)[f.name] || ''} onSelect={v => set(f.name, v)} />
                             </div>
                         ))}
                     </div>
@@ -505,7 +509,7 @@ export function UploadEntryForm() {
                         <input required type="number" step="0.01" name="price"
                             value={itemData.price || ''} onChange={handleChange}
                             placeholder="0.00" className={inpNum + " pl-8"} />
-                        <SuggestChips values={suggestions.price} current={itemData.price || ''} onSelect={v => set('price', v)} />
+                        <SuggestChips values={suggestions.price} current={itemData.price || ''} query={itemData.price || ''} onSelect={v => set('price', v)} />
                     </div>
                 </div>
                 <div className="flex flex-col justify-end pb-1">

@@ -216,16 +216,21 @@ export const UploadWizard: React.FC = () => {
         </button>
     );
 
-    const renderTagSelector = (field: keyof WizardState, fieldSuggestions: string[]) => (
-        <div className="flex flex-wrap gap-2 mt-3">
-            {fieldSuggestions.slice(0, 12).map(tag => (
-                <button key={tag} onClick={() => set(field, tag)}
-                    className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${state[field] === tag ? 'bg-(--main-color) text-black shadow-sm' : 'bg-(--glass-bg) text-(--text-color-secondary) hover:text-(--text-color) border border-(--border-color)'}`}>
-                    {tag.toUpperCase()}
-                </button>
-            ))}
-        </div>
-    );
+    const renderTagSelector = (field: keyof WizardState, fieldSuggestions: string[]) => {
+        const query = (state[field] as string || '').toLowerCase();
+        const filtered = fieldSuggestions.filter(tag => tag.toLowerCase().includes(query)).slice(0, 12);
+        if (filtered.length === 0) return null;
+        return (
+            <div className="flex flex-wrap gap-2 mt-3 animate-in fade-in duration-200">
+                {filtered.map(tag => (
+                    <button key={tag} onClick={() => set(field, tag)}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${state[field] === tag ? 'bg-(--main-color) text-black shadow-sm' : 'bg-(--glass-bg) text-(--text-color-secondary) hover:text-(--text-color) border border-(--border-color)'}`}>
+                        {tag.toUpperCase()}
+                    </button>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={() => setIsOpen(false)}>
@@ -289,17 +294,17 @@ export const UploadWizard: React.FC = () => {
                             <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">VENDORS</h2>
                             {renderBackButton(1)}
 
-                            <div className="flex overflow-x-auto gap-4 py-6 px-2 custom-scrollbar no-scrollbar scroll-smooth">
+                            <div className="flex overflow-x-auto gap-1 py-6 px-1 custom-scrollbar no-scrollbar scroll-smooth">
                                 {Object.entries(vendors)
                                     .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
                                     .map(([id, cfg]) => (
                                         <button key={id} onClick={() => { set('vendorId', id); setStep(3); }}
-                                            className="shrink-0 flex flex-col items-center gap-4 group">
-                                            <div className="w-20 h-20 rounded-[32px] flex items-center justify-center font-black text-xl shadow-xl border-4 border-black/10 group-hover:border-black/20 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 group-active:scale-95"
+                                            className="shrink-0 flex flex-col items-center gap-2 group">
+                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xs shadow-lg border-2 border-black/5 group-hover:border-black/10 group-hover:scale-105 group-hover:-translate-y-1 transition-all duration-300 group-active:scale-95"
                                                 style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
                                                 {id}
                                             </div>
-                                            <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-widest group-hover:text-(--text-color) transition-colors">{id}</span>
+                                            <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-widest group-hover:text-(--text-color) transition-colors">{id}</span>
                                         </button>
                                     ))}
                             </div>
