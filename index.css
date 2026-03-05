@@ -469,7 +469,8 @@ html.theme-obsidian {
   --app-bg: rgba(10, 10, 15, 0.4);
   --app-bg-solid: #1a1a24;
   --sidebar-bg: rgba(26, 26, 36, 0.92);
-  --main-color: #8da388; /* Pale military green active color */
+  --main-color: #8da388;
+  /* Pale military green active color */
   --secondary-color: #6d8269;
   --text-color: #ffffff;
   --text-color-primary: #ffffff;
@@ -502,8 +503,8 @@ html.theme-fluorite {
   color-scheme: dark;
 }
 
-/* MALAQUITE (Dark) */
-html.theme-malaquite {
+/* EARTH (Dark) - Formerly Malaquite */
+html.theme-earth {
   --c1: #081f13;
   --c2: #0b2f20;
   --c3: #0f4028;
@@ -513,13 +514,15 @@ html.theme-malaquite {
   --app-bg: rgba(5, 20, 15, 0.4);
   --app-bg-solid: #0c2819;
   --sidebar-bg: rgba(12, 40, 25, 0.92);
-  --main-color: #4ade80;
-  --secondary-color: #22c55e;
+  --main-color: #d97706;
+  /* Deep earth copper/orange-brown */
+  --secondary-color: #b45309;
+  /* Darker copper */
   --text-color: #ffffff;
   --text-color-primary: #ffffff;
-  --secondary-text-color: #bbf7d0;
-  --text-color-secondary: #bbf7d0;
-  --border-color: rgba(74, 222, 128, 0.15);
+  --secondary-text-color: #fde68a;
+  --text-color-secondary: #fde68a;
+  --border-color: rgba(217, 119, 6, 0.2);
   --input-color: rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
@@ -528,15 +531,20 @@ html.theme-malaquite {
 html.theme-nacar {
   --c1: #ffffff;
   --c2: #fcfdfe;
-  --c3: #f5f0fa; /* Light lavender */
-  --c4: #f2fae8; /* Pale green */
-  --c5: #fdfae2; /* Pale yellow */
+  --c3: #f5f0fa;
+  /* Light lavender */
+  --c4: #f2fae8;
+  /* Pale green */
+  --c5: #fdfae2;
+  /* Pale yellow */
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
   --app-bg-solid: #ffffff;
   --sidebar-bg: rgba(255, 255, 255, 0.96);
-  --main-color: #bfaee3; /* Lavender */
-  --secondary-color: #c9e4b5; /* Pale green */
+  --main-color: #bfaee3;
+  /* Lavender */
+  --secondary-color: #c9e4b5;
+  /* Pale green */
   --text-color: #2d2640;
   --text-color-primary: #2d2640;
   --secondary-text-color: #6f6885;
@@ -570,19 +578,25 @@ html.theme-tehu {
   color-scheme: light;
 }
 
-/* TEKIS (Light) - Now "Cherry" */
-html.theme-tekis {
+/* CHERRY (Light) - Formerly Tekis */
+html.theme-cherry {
   --c1: #ffffff;
-  --c2: #fff5f8; /* Pale pink */
-  --c3: #fefcf3; /* Cream */
-  --c4: #f0f8ff; /* Light blue / Alice blue */
-  --c5: #fff0f5; /* Lavender blush */
+  --c2: #fff5f8;
+  /* Pale pink */
+  --c3: #fefcf3;
+  /* Cream */
+  --c4: #f0f8ff;
+  /* Light blue / Alice blue */
+  --c5: #fff0f5;
+  /* Lavender blush */
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
   --app-bg-solid: #fcfafb;
   --sidebar-bg: rgba(255, 251, 253, 0.96);
-  --main-color: #ff6b81; /* Cherry */
-  --secondary-color: #ff8e9e; /* Light Cherry */
+  --main-color: #ff6b81;
+  /* Cherry */
+  --secondary-color: #ff8e9e;
+  /* Light Cherry */
   --text-color: #4a2128;
   --text-color-primary: #4a2128;
   --secondary-text-color: #8a5761;
