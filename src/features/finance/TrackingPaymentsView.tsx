@@ -535,7 +535,7 @@ const RequestPaymentModal: React.FC<{
                         ) : (
                             <div className="p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color) text-center">
                                 <p className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em] mb-2">FULL PAYMENT REQUIRED</p>
-                                <p className="text-3xl font-mono font-black text-(--text-color)">{fmtMXN(amountToRequest)}</p>
+                                <p className="text-3xl font-mono font-black text-(--text-color)">{fmtMXN(group.total)}</p>
                             </div>
                         )}
 
@@ -749,7 +749,20 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         } else {
             try {
                 const localDoc = await db.finance.findOne({ selector: { id } }).exec();
-                if (localDoc) await localDoc.remove();
+                if (localDoc) {
+                    const data = localDoc.toJSON();
+                    const idsStr = data.related_ids || (data.related_inventory_ids ? data.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                    if (idsStr && idsStr.length > 0) {
+                        await supabase.from('inventory').update({ pay_req: null }).in('id', idsStr);
+                        for (const iid of idsStr) {
+                            try {
+                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                if (lInv) await lInv.patch({ pay_req: null });
+                            } catch (e) { }
+                        }
+                    }
+                    await localDoc.remove();
+                }
             } catch (e) {
                 console.error('Error removing local doc', e);
             }
@@ -790,8 +803,23 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     if (r.description?.includes('%')) {
                         const perc = r.description.match(/(\d+)%/)?.[1];
                         await supabase.from('inventory').update({ pay_req: `paid ${perc || 'partial'}%` }).in('id', ids);
+                        if (db) {
+                            await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { pay_req: `paid ${perc || 'partial'}%` } });
+                        }
                     } else {
-                        await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                        // Full Liquidation
+                        const isProdPayment = r.subcategory === 'Prod' || r.description?.toLowerCase().includes('liquidation');
+                        const updateData: any = { pay_req: 'true' };
+                        if (isProdPayment) {
+                            updateData.status = 'Acquisition';
+                        }
+
+                        await supabase.from('inventory').update(updateData).in('id', ids);
+                        if (db) {
+                            const lUpdates: any = { pay_req: 'true' };
+                            if (isProdPayment) lUpdates.status = 'Acquisition';
+                            await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: lUpdates });
+                        }
                     }
                 }
             }
