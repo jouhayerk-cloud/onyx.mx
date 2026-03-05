@@ -415,8 +415,8 @@ export function DetailsPanel() {
   const isFullscreen = mode === 'edit';
 
   const panelClasses = isFullscreen
-    ? "fixed inset-0 z-[100] w-full h-full bg-black/95 backdrop-blur-md overflow-y-auto"
-    : `glass-panel rounded-xl shrink-0 w-[85vw] max-w-sm h-full fixed top-0 right-0 z-50 lg:static lg:w-[420px] lg:h-full lg:transform-none transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`;
+    ? "glass-overlay-fullscreen"
+    : `glass-panel rounded-xl shrink-0 w-[85vw] max-w-sm h-full fixed top-0 right-0 z-[100] lg:static lg:w-[420px] lg:h-full lg:transform-none transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`;
 
   if (!isOpen) return null;
 

@@ -141,12 +141,8 @@ export default function App() {
       <Toaster
         position="top-center"
         toastOptions={{
-          duration: 3000,
-          style: {
-            background: 'var(--sidebar-bg)',
-            color: 'var(--text-color)',
-            border: '1px solid var(--border-color)',
-          },
+          duration: 3500,
+          className: 'toast-liquid-glass'
         }}
       />
     </>

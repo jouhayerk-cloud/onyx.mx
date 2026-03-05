@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     uploadItemDataAtom, uploadMediaFilesAtom,
-    userAtom, activeViewAtom, notificationsAtom, exchangeRateAtom
+    userAtom, activeViewAtom, exchangeRateAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
 import { ai } from '../../lib/ai';
 import { Type } from '@google/genai';
+import toast from 'react-hot-toast';
 
 
 
@@ -55,7 +56,6 @@ export function UploadEntryForm() {
     const [mediaFiles, setMediaFiles] = useAtom(uploadMediaFilesAtom);
     const user = useAtomValue(userAtom);
     const setView = useSetAtom(activeViewAtom);
-    const setNotifications = useSetAtom(notificationsAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
 
@@ -152,9 +152,9 @@ export function UploadEntryForm() {
         setMediaFiles(prev => prev.filter((_, idx) => idx !== i));
 
     const notify = (type: string, message: string) => {
-        const id = Date.now();
-        setNotifications((prev: any) => [...prev, { id, type, message }]);
-        if (type !== 'loading') setTimeout(() => setNotifications((prev: any) => prev.filter((n: any) => n.id !== id)), 3500);
+        if (type === 'error') toast.error(message);
+        else if (type === 'success') toast.success(message);
+        else toast(message, { icon: type === 'loading' ? '⌛' : 'ℹ️' });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
