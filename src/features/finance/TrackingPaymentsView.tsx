@@ -4,12 +4,13 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, isPaymentsFilterBarVisibleAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
-import { destinationsConfig } from '../../lib/paymentConfig';
+import { destinationsConfig } from '../../lib/paymentConfig';
+
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
@@ -29,7 +30,8 @@ const normalizeSubcat = (s: string | null | undefined): string => {
 const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
-type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
+type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
+
 const appendExpense = async (payload: any, db: any) => {
     const idsToLink = payload.inventoryItemRows || payload.linkedRows;
     const { error, data } = await supabase.from('finance').insert({
@@ -59,7 +61,8 @@ const appendExpense = async (payload: any, db: any) => {
         if (db) await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { payReq: 'true' } });
     }
     return data;
-};
+};
+
 const AddPaymentModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -121,7 +124,8 @@ const AddPaymentModal: React.FC<{
             const isProd = form.subcategory === 'Prod';
             const group = (form.subcategory === 'Acq' || isProd) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
-            const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
+            const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
+
             if (ids.length > 0) {
                 const isPartial = group && amt < (group.total - group.paidTotal);
                 const perc = group ? Math.round(((group.paidTotal + amt) / group.total) * 100) : 100;
@@ -447,7 +451,8 @@ const AddPaymentModal: React.FC<{
             </div>
         </div>
     );
-};
+};
+
 const RequestPaymentModal: React.FC<{
     group: VendorGroup | null;
     onClose: () => void;
@@ -557,7 +562,8 @@ const RequestPaymentModal: React.FC<{
             </div>
         </div>
     );
-};
+};
+
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
@@ -571,6 +577,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
+    const isFilterBarVisible = useAtomValue(isPaymentsFilterBarVisibleAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
 
     useEffect(() => {
@@ -579,7 +586,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .then(r => r.json())
             .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
             .catch(() => { });
-    }, [liveExchangeRate, setLiveExchangeRate]);
+    }, [liveExchangeRate, setLiveExchangeRate]);
+
     const fetchInventory = useCallback(async () => {
         if (!db) { setIsLoading(false); return; }
         setIsLoading(true);
@@ -590,8 +598,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         setIsLoading(false);
     }, [db, setInventory]);
 
-    useEffect(() => { fetchInventory(); }, [inventoryVersion, paymentsVersion, fetchInventory]);
-    const pendingGroups = useMemo<VendorGroup[]>(() => {
+    useEffect(() => { fetchInventory(); }, [inventoryVersion, paymentsVersion, fetchInventory]);
+
+    const pendingGroups = useMemo<VendorGroup[]>(() => {
+
+
         const targetStatuses = ['acquired', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
 
         const pendingItems = inventory.filter(i => {
@@ -600,7 +611,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         });
 
         const groups: Record<string, VendorGroup> = {};
-        for (const item of pendingItems) {
+        for (const item of pendingItems) {
+
+
+
+
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
@@ -618,7 +633,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             groups[vid].items.push(item);
             groups[vid].total += (price * qty);
             groups[vid].totalQty += qty;
-        }
+        }
+
         const groupList = Object.values(groups);
         for (const group of groupList) {
             const itemIds = new Set(group.items.map(i => String(i.row)));
@@ -627,12 +643,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 ['Requested', 'Paid', 'Sent', 'Dispersed'].includes(d.status) &&
                 (d.related_ids?.some((id: any) => itemIds.has(String(id))) ||
                     d.related_inventory_ids?.split(',').some((id: any) => itemIds.has(String(id))))
-            );
+            );
+
             group.paidTotal = relatedExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
         }
 
         return groupList;
-    }, [inventory, docs]);
+    }, [inventory, docs]);
+
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
         docs.filter(e => e.status === 'Requested').forEach(e => {
@@ -640,7 +658,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             if (vid) totals[vid] = (totals[vid] || 0) + (e.amount || 0) + (e.commission || 0);
         });
         return totals;
-    }, [docs]);
+    }, [docs]);
+
     const filtered = useMemo(() => {
         return [...docs]
             .filter(r => {
@@ -678,7 +697,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 : `Liquidation Payment for ${group.items.length} items from ${group.vendorId}`;
 
             const itemIdsStr = group.items.map(i => String(i.row)).join(',');
-            const ids = itemIdsStr.split(',');
+            const ids = itemIdsStr.split(',');
+
             if (isProduction) {
                 if (isPartial) {
                     await supabase.from('inventory').update({ pay_req: `requested ${percentage}%` }).in('id', ids);
@@ -761,7 +781,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 if (localDoc) await localDoc.patch(updatePayload);
             } catch (e) {
                 console.error('Error patching local doc', e);
-            }
+            }
+
             if (next === 'Paid') {
                 const ids = r.related_ids || r.related_inventory_ids?.split(',');
                 if (ids?.length > 0) {
@@ -776,7 +797,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             setPaymentsVersion(v => v + 1);
             onRefresh();
         }
-    };
+    };
+
     const subcatTotals = useMemo(() => {
         const m: Record<string, number> = {};
         docs.forEach(d => { const k = normalizeSubcat(d.subcategory || d.category); m[k] = (m[k] || 0) + (d.amount || 0); });
@@ -936,7 +958,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             {/* Add payment button */}
                             <button onClick={() => setShowAdd(true)}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-xl transition-all shadow-sm hover:scale-105 active:scale-95">
-                                <svg className="w-4 h-4 flex-shrink-0"><use href="#plus" /></svg>
+                                <svg className="w-4 h-4 shrink-0"><use href="#plus" /></svg>
                                 <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
                             </button>
 
@@ -977,47 +999,49 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             {/* ── Payments Details Section ── */}
             <div className="flex-1 flex flex-col min-h-0 bg-(--glass-bg)">
                 {/* Header/Controls below general overview */}
-                <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
-                    <div className="flex items-center gap-4">
+                {isFilterBarVisible && (
+                    <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
+                        <div className="flex items-center gap-4">
 
-                        {/* Filters embedded here */}
-                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                            {SUBCATEGORIES.map(s => (
-                                <button key={s} onClick={() => setSubcatFilter(s)}
-                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
-                                    {s.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* Destination Picker — stacked card animation */}
-                        <div className="flex items-center justify-center relative h-14 px-2 mt-4">
-                            {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
-                                const isActive = destinationFilter === key;
-                                const total = arr.length;
-                                const offset = idx - (total - 1) / 2;
-                                const spread = isActive ? -8 : Math.pow(offset, 2) * 2;
-                                const rotation = isActive ? 0 : offset * 6;
-
-                                return (
-                                    <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
-                                        className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer outline-none relative ${isActive ? 'scale-150 z-20 mx-4 brightness-125 drop-shadow-2xl' : 'opacity-70 hover:opacity-100 -mx-2.5 hover:scale-125 hover:-translate-y-2 hover:z-30'}`}
-                                        style={{
-                                            transform: `translateY(${spread}px) rotate(${rotation}deg)`,
-                                            zIndex: isActive ? 40 : 10 - Math.abs(offset),
-                                        }}
-                                        title={cfg.name}>
-
-                                        <img src={cfg.icon} alt={cfg.name} className={`h-9 w-auto object-contain transition-all drop-shadow-lg`} />
+                            {/* Filters embedded here */}
+                            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                                {SUBCATEGORIES.map(s => (
+                                    <button key={s} onClick={() => setSubcatFilter(s)}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
+                                        {s.toUpperCase()}
                                     </button>
-                                );
-                            })}
+                                ))}
+                            </div>
+
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {/* Destination Picker — stacked card animation */}
+                            <div className="flex items-center justify-center relative h-14 px-2 mt-4">
+                                {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
+                                    const isActive = destinationFilter === key;
+                                    const total = arr.length;
+                                    const offset = idx - (total - 1) / 2;
+                                    const spread = isActive ? -8 : Math.pow(offset, 2) * 2;
+                                    const rotation = isActive ? 0 : offset * 6;
+
+                                    return (
+                                        <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
+                                            className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer outline-none relative ${isActive ? 'scale-150 z-20 mx-4 brightness-125 drop-shadow-2xl' : 'opacity-70 hover:opacity-100 -mx-2.5 hover:scale-125 hover:-translate-y-2 hover:z-30'}`}
+                                            style={{
+                                                transform: `translateY(${spread}px) rotate(${rotation}deg)`,
+                                                zIndex: isActive ? 40 : 10 - Math.abs(offset),
+                                            }}
+                                            title={cfg.name}>
+
+                                            <img src={cfg.icon} alt={cfg.name} className={`h-9 w-auto object-contain transition-all drop-shadow-lg`} />
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Data dense table */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
@@ -1043,7 +1067,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 return (
                                     <React.Fragment key={r.id}>
                                         <tr
-                                            onClick={(e) => {
+                                            onClick={(e) => {
+
                                                 if ((e.target as HTMLElement).closest('button')) return;
                                                 setExpandedRow(isExpanded ? null : r.id);
                                             }}

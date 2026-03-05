@@ -195,22 +195,22 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/15 uppercase tracking-widest mb-0.5">ACQ COST</span>
                             <span className="text-base font-mono font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
                         </div>
-                        {/* Free-floating icon actions — no bg box */}
-                        <div className="flex gap-1 shrink-0">
-                            <button
-                                onClick={handleEdit}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/25 hover:text-(--main-color) hover:bg-(--main-color)/10 transition-all"
+                        {/* Free-floating icon actions — truly bare SVGs */}
+                        <div className="flex gap-4 shrink-0 px-2 items-center">
+                            <div
+                                onClick={(e) => { e.stopPropagation(); handleEdit(e as any); }}
+                                className="cursor-pointer"
                                 title="Edit Item"
                             >
-                                <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                                onClick={onToggleExpand}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-white/25 hover:text-white hover:bg-white/10 transition-all"
+                                <Edit2 className="w-4 h-4 text-white/50 hover:text-(--main-color) transition-colors" />
+                            </div>
+                            <div
+                                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                                className="cursor-pointer"
                                 title="Item Details"
                             >
-                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-(--main-color)' : ''}`} />
-                            </button>
+                                <ChevronDown className={`w-4 h-4 transition-all duration-300 ${isExpanded ? 'rotate-180 text-(--main-color)' : 'text-white/50 hover:text-white'}`} />
+                            </div>
                         </div>
                     </div>
                 </div>

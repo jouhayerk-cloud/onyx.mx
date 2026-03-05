@@ -5,7 +5,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, isPaymentsFilterBarVisibleAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -253,6 +253,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const user = useAtomValue(userAtom);
     const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
     const overviewMode = useAtomValue(paymentsOverviewModeAtom);
+    const isFilterBarVisible = useAtomValue(isPaymentsFilterBarVisibleAtom);
 
     const fetchData = useCallback(async () => {
         if (!db) {
