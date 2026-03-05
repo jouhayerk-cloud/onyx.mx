@@ -212,10 +212,10 @@ export const UploadWizard: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={() => setIsOpen(false)}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[640px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[640px] max-h-[90dvh] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200 flex flex-col" onClick={e => e.stopPropagation()}>
 
                 {/* Header */}
-                <div className="px-10 pt-10 flex justify-between items-start">
+                <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
                     <div>
                         {renderProgress()}
                         {!isAdmin && (
@@ -225,18 +225,18 @@ export const UploadWizard: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="w-10 h-10 rounded-full bg-(--glass-bg) border border-(--border-color) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all">
+                    <button onClick={() => setIsOpen(false)} className="w-10 h-10 rounded-full bg-(--glass-bg) border border-(--border-color) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all shrink-0">
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
 
-                <div className="px-10 pb-12 flex flex-col min-h-[500px]">
+                <div className="px-8 pb-8 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
 
                     {/* Step 1: Entry Status */}
                     {step === 1 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-5xl font-black text-(--text-color) mb-2 leading-tight tracking-tighter uppercase">ENTRY<br />STATUS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-10 uppercase tracking-[0.3em] font-bold">Initial destination classification</p>
+                            <h2 className="text-4xl font-black text-(--text-color) mb-1 leading-tight tracking-tighter uppercase">ENTRY<br />STATUS</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-6 uppercase tracking-[0.3em] font-bold">Initial destination classification</p>
 
                             <div className="grid grid-cols-1 gap-4">
                                 {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
@@ -272,7 +272,7 @@ export const UploadWizard: React.FC = () => {
                             <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">VENDORS</h2>
                             {renderBackButton(1)}
 
-                            <div className="flex overflow-x-auto gap-4 py-8 px-2 custom-scrollbar no-scrollbar scroll-smooth">
+                            <div className="flex overflow-x-auto gap-4 py-6 px-2 custom-scrollbar no-scrollbar scroll-smooth">
                                 {Object.entries(vendors)
                                     .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
                                     .map(([id, cfg]) => (
@@ -312,7 +312,7 @@ export const UploadWizard: React.FC = () => {
                                 <div className="space-y-4">
                                     <label className="text-[10px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-[0.3em] block ml-1">UNITS TO ADD</label>
                                     <input type="number" value={state.quantity} onChange={e => set('quantity', e.target.value)}
-                                        className="w-full h-20 px-8 text-4xl font-black bg-(--glass-bg) border border-(--border-color) rounded-[32px] text-(--text-color) focus:border-(--main-color)/50 transition-all outline-none" />
+                                        className="w-full h-14 px-8 text-3xl font-black bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) focus:border-(--main-color)/50 transition-all outline-none" />
                                 </div>
 
                                 <div className="space-y-4">
@@ -345,7 +345,7 @@ export const UploadWizard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button onClick={() => setStep(4)} className="w-full py-6 mt-4 bg-(--glass-bg) hover:bg-(--main-color) hover:text-black text-(--text-color) border border-(--border-color) hover:border-(--main-color) rounded-[32px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0">
+                                <button onClick={() => setStep(4)} className="w-full py-4 mt-2 bg-(--glass-bg) hover:bg-(--main-color) hover:text-black text-(--text-color) border border-(--border-color) hover:border-(--main-color) rounded-[24px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0 shrink-0">
                                     CONTINUE →
                                 </button>
                             </div>
@@ -389,7 +389,7 @@ export const UploadWizard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button onClick={() => setStep(5)} className="w-full py-6 mt-4 bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color) hover:bg-(--main-color) hover:text-black text-(--text-color) rounded-[32px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0">
+                                <button onClick={() => setStep(5)} className="w-full py-4 mt-2 bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color) hover:bg-(--main-color) hover:text-black text-(--text-color) rounded-[24px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0 shrink-0">
                                     EXTENDED SPECS →
                                 </button>
                             </div>
@@ -451,7 +451,7 @@ export const UploadWizard: React.FC = () => {
                                 </div>
 
                                 <button onClick={handleSave} disabled={saving}
-                                    className="w-full py-7 mt-2 bg-(--main-color) text-black rounded-[32px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4">
+                                    className="w-full py-5 mt-2 bg-(--main-color) text-black rounded-[24px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4 shrink-0">
                                     {saving ? (
                                         <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
                                     ) : (
