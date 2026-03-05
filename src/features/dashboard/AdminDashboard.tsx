@@ -1,83 +1,60 @@
-import React, { useMemo } from 'react';
-import { useAtomValue, useAtom } from 'jotai/react';
-import { exchangeRateAtom, showFinancialsAtom, financeDataAtom } from '../../lib/atoms';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useAtomValue, useAtom, useSetAtom } from 'jotai';
+import { exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom, topBarRightSlotAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
-import { normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { useState, useEffect } from 'react';
 import {
     Package, DollarSign, Users, TrendingUp, Layers, Shapes,
-    BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Minus
+    BarChart3, PieChart, LayoutGrid, User, Activity
 } from 'lucide-react';
+import { EChart } from '../../components/EChart';
+import type { EChartsOption } from 'echarts';
 
 interface VendorSummary {
     vendorId: string;
-    color: string;
     itemCount: number;
     totalAcqMxn: number;
     totalAcqUsd: number;
-    totalLandedUsd: number;
-    totalRetailUsd: number;
+    color: string;
 }
 
-interface CategorySummary {
-    label: string;
-    count: number;
-    totalMxn: number;
-    totalUsd: number;
-}
-
-const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-color)', trend }: {
-    icon: React.FC<any>; label: string; value: string; subtitle?: string; color?: string; trend?: 'up' | 'down' | 'flat';
+const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-color)' }: {
+    icon: React.FC<any>; label: string; value: string; subtitle?: string; color?: string;
 }) => (
-    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5 flex flex-col gap-3 hover:border-(--border-color) transition-all group">
+    <div className="bg-(--glass-bg) border border-(--border-color) rounded-4xl p-6 flex flex-col gap-3 hover:translate-y-[-2px] transition-all group shadow-sm">
         <div className="flex items-center justify-between">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/10" style={{ background: `${color}15` }}>
-                <Icon size={17} strokeWidth={1.75} style={{ color }} />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5 shadow-inner" style={{ background: `${color}15` }}>
+                <Icon size={24} strokeWidth={1.5} style={{ color }} />
             </div>
-            {trend && (
-                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${trend === 'up' ? 'bg-green-500/10 text-green-400' : trend === 'down' ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-white/30'}`}>
-                    {trend === 'up' ? <ArrowUpRight size={10} /> : trend === 'down' ? <ArrowDownRight size={10} /> : <Minus size={10} />}
-                    {trend}
-                </div>
-            )}
+            {subtitle && <span className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-40">{subtitle}</span>}
         </div>
         <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-1">{label}</p>
-            <p className="text-xl font-black font-mono text-(--text-color) leading-none tracking-tight">{value}</p>
-            {subtitle && <p className="text-[10px] font-mono text-(--text-color-secondary) mt-1">{subtitle}</p>}
-        </div>
-    </div>
-);
-
-const BarRow = ({ label, value, max, color, count, showValue }: {
-    label: string; value: number; max: number; color: string; count: number; showValue: boolean;
-}) => (
-    <div className="flex items-center gap-3 group/bar">
-        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) w-10 shrink-0 text-right">{label}</span>
-        <div className="flex-1 h-7 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
-            <div
-                className="h-full rounded-lg transition-all duration-700 ease-out flex items-center px-3 gap-2"
-                style={{ width: `${max > 0 ? Math.max((value / max) * 100, 2) : 0}%`, backgroundColor: `${color}40` }}
-            >
-                <span className="text-[10px] font-black text-(--text-color-secondary) whitespace-nowrap">{count} items</span>
-            </div>
-            {showValue && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-black text-(--text-color-secondary)">
-                    ${Math.ceil(value).toLocaleString()}
-                </span>
-            )}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-1">{label}</p>
+            <p className="text-2xl font-black font-mono text-(--text-color) leading-none tracking-tight">{value}</p>
         </div>
     </div>
 );
 
 export function AdminDashboard() {
     const db = useDatabase();
+    const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const [showFinancials, setShowFinancials] = useAtom(showFinancialsAtom);
-    const financeData = useAtomValue(financeDataAtom);
+    const setTopBarRightSlot = useSetAtom(topBarRightSlotAtom as any);
+
     const [items, setItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        setTopBarRightSlot(
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#6BCEBB]/10 border border-[#6BCEBB]/20 rounded-full">
+                <LayoutGrid size={14} className="text-[#6BCEBB]" />
+                <span className="text-[10px] font-black text-[#6BCEBB] uppercase tracking-[0.2em]">Analytics</span>
+            </div>
+        );
+        return () => { setTopBarRightSlot(null); };
+    }, [setTopBarRightSlot]);
 
     useEffect(() => {
         if (!db) return;
@@ -92,223 +69,204 @@ export function AdminDashboard() {
                 setItems(prev => [...prev.filter(p => p.source !== 'production'), ...mapped]);
             }),
         ];
-        setTimeout(() => setIsLoading(false), 600);
+        setTimeout(() => setIsLoading(false), 800);
         return () => subs.forEach(s => s.unsubscribe());
     }, [db]);
 
-    const vendorSummaries = useMemo<VendorSummary[]>(() => {
+    const vendorSummaries = useMemo(() => {
         const map: Record<string, VendorSummary> = {};
-        for (const item of items) {
-            const norm = item.data;
-            const vid = String(norm?.itemId || '').split('-')[0] || '?';
-            if (!map[vid]) {
-                map[vid] = {
-                    vendorId: vid,
-                    color: (vendors as any)[vid]?.color || '#888',
+        items.forEach(item => {
+            const vPrefix = item.data.itemId?.split('-')[0] || 'UNK';
+            const priceVal = parseFloat(item.data.priceMx || item.data.priceMxn || item.data.price || 0);
+            const qty = parseInt(item.data.quantity) || 1;
+            const acqMxn = priceVal * qty;
+            const acqUsd = acqMxn / exchangeRate;
+
+            if (!map[vPrefix]) {
+                const vConfig = (vendors as any)[vPrefix];
+                map[vPrefix] = {
+                    vendorId: vPrefix,
                     itemCount: 0,
                     totalAcqMxn: 0,
                     totalAcqUsd: 0,
-                    totalLandedUsd: 0,
-                    totalRetailUsd: 0,
+                    color: vConfig?.color || '#FFFFFF'
                 };
             }
-            const price = parseFloat(norm?.price || 0);
-            const qty = parseInt(norm?.quantity || 1) || 1;
-            const totalPrice = price * qty;
-            const usd = totalPrice / exchangeRate;
-            map[vid].itemCount += qty;
-            map[vid].totalAcqMxn += totalPrice;
-            map[vid].totalAcqUsd += usd;
-            map[vid].totalLandedUsd += usd * 1.4;
-            map[vid].totalRetailUsd += usd * 1.4 * 12;
-        }
-        return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
+            map[vPrefix].itemCount += qty;
+            map[vPrefix].totalAcqMxn += acqMxn;
+            map[vPrefix].totalAcqUsd += acqUsd;
+        });
+        return Object.values(map).sort((a, b) => b.totalAcqUsd - a.totalAcqUsd);
     }, [items, exchangeRate]);
 
-    const shapeTypeSummaries = useMemo<CategorySummary[]>(() => {
-        const map: Record<string, CategorySummary> = {};
-        for (const item of items) {
-            const norm = item.data;
-            const shape = (norm?.shape || 'Unknown').toUpperCase();
-            const type = (norm?.shortDescription || 'Unknown').toUpperCase();
-            const key = `${shape} · ${type}`;
-            if (!map[key]) map[key] = { label: key, count: 0, totalMxn: 0, totalUsd: 0 };
-            const qty = parseInt(norm?.quantity || 1) || 1;
-            const price = parseFloat(norm?.price || 0) * qty;
-            map[key].count += qty;
-            map[key].totalMxn += price;
-            map[key].totalUsd += price / exchangeRate;
-        }
-        return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 15);
-    }, [items, exchangeRate]);
+    const shapeTypeSummaries = useMemo(() => {
+        const counts: Record<string, number> = {};
+        items.forEach(item => {
+            const label = `${item.data.shape || 'OBJ'} · ${item.data.shortDescription || 'ITEM'}`;
+            counts[label] = (counts[label] || 0) + (parseInt(item.data.quantity) || 1);
+        });
+        return Object.entries(counts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    }, [items]);
 
-    const materialSummaries = useMemo<CategorySummary[]>(() => {
-        const map: Record<string, CategorySummary> = {};
-        for (const item of items) {
-            const norm = item.data;
-            const mat = (norm?.material || 'Unknown').toUpperCase();
-            if (!map[mat]) map[mat] = { label: mat, count: 0, totalMxn: 0, totalUsd: 0 };
-            const qty = parseInt(norm?.quantity || 1) || 1;
-            const price = parseFloat(norm?.price || 0) * qty;
-            map[mat].count += qty;
-            map[mat].totalMxn += price;
-            map[mat].totalUsd += price / exchangeRate;
-        }
-        return Object.values(map).sort((a, b) => b.count - a.count).slice(0, 10);
-    }, [items, exchangeRate]);
+    const materialSummaries = useMemo(() => {
+        const counts: Record<string, number> = {};
+        items.forEach(item => {
+            const label = item.data.material || 'N/A';
+            counts[label] = (counts[label] || 0) + (parseInt(item.data.quantity) || 1);
+        });
+        return Object.entries(counts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    }, [items]);
 
+    const financeData = useAtomValue(financeDataAtom);
     const expenseCategories = useMemo(() => {
-        const map: Record<string, { label: string; total: number; count: number }> = {};
-        for (const doc of financeData) {
-            const cat = (doc as any).category || 'Uncategorized';
-            const displayCat = cat === 'Mo-Exp' ? 'Monthly' : cat;
-            if (!map[displayCat]) map[displayCat] = { label: displayCat, total: 0, count: 0 };
-            map[displayCat].total += (doc.amount || 0);
-            map[displayCat].count += 1;
-        }
-        return Object.values(map).sort((a, b) => b.total - a.total);
+        const cats: Record<string, { total: number; count: number }> = {};
+        financeData.forEach(d => {
+            const cat = d.category || 'Uncategorized';
+            if (!cats[cat]) cats[cat] = { total: 0, count: 0 };
+            cats[cat].total += (d.amount || 0) + (d.commission || 0);
+            cats[cat].count += 1;
+        });
+        return Object.entries(cats).map(([label, stats]) => ({ label, total: stats.total, count: stats.count })).sort((a, b) => b.total - a.total);
     }, [financeData]);
 
     const totals = useMemo(() => {
-        const totalItems = vendorSummaries.reduce((a, v) => a + v.itemCount, 0);
-        const totalAcqMxn = vendorSummaries.reduce((a, v) => a + v.totalAcqMxn, 0);
-        const totalAcqUsd = vendorSummaries.reduce((a, v) => a + v.totalAcqUsd, 0);
-        const totalLandedUsd = vendorSummaries.reduce((a, v) => a + v.totalLandedUsd, 0);
-        const totalRetailUsd = vendorSummaries.reduce((a, v) => a + v.totalRetailUsd, 0);
-        const totalExpenses = financeData.reduce((a, b) => a + (b.amount || 0), 0);
-        const paidExpenses = financeData.filter((d: any) => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0);
-        return { totalItems, totalAcqMxn, totalAcqUsd, totalLandedUsd, totalRetailUsd, totalExpenses, paidExpenses };
+        const totalItems = vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0);
+        const totalAcqMxn = vendorSummaries.reduce((acc, v) => acc + v.totalAcqMxn, 0);
+        const totalAcqUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
+        const totalExpenses = financeData.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+        const paidExpenses = financeData.filter(d => d.status === 'Paid').reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+
+        return { totalItems, totalAcqMxn, totalAcqUsd, totalExpenses, paidExpenses };
     }, [vendorSummaries, financeData]);
 
     const fmt = (n: number) => showFinancials ? `$${Math.ceil(n).toLocaleString()}` : '***';
-    const maxVendorAcq = Math.max(...vendorSummaries.map(v => v.totalAcqUsd), 1);
-    const maxShapeCount = Math.max(...shapeTypeSummaries.map(s => s.count), 1);
-    const maxMatCount = Math.max(...materialSummaries.map(m => m.count), 1);
-    const maxExpense = Math.max(...expenseCategories.map(e => e.total), 1);
+
+    // Chart options
+    const vendorChartOption = useMemo<EChartsOption>(() => ({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 10 } },
+        yAxis: { type: 'category', data: vendorSummaries.map(v => v.vendorId), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: 'rgba(255,255,255,0.6)', fontWeight: 'bold' } },
+        series: [{
+            name: 'Value USD', type: 'bar', data: vendorSummaries.map(v => v.totalAcqUsd),
+            itemStyle: { color: (params: any) => vendorSummaries[params.dataIndex].color + 'BB', borderRadius: [0, 8, 8, 0] }
+        }],
+        backgroundColor: 'transparent'
+    }), [vendorSummaries]);
+
+    const pieOption = useMemo<EChartsOption>(() => ({
+        tooltip: { trigger: 'item' },
+        series: [{
+            type: 'pie', radius: ['40%', '70%'],
+            data: materialSummaries.map(m => ({ name: m.label, value: m.count })),
+            itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 5 },
+            label: { show: false }
+        }],
+        color: ['#A78BFA', '#34D399', '#00AEEF', '#FBBF24', '#F87171'],
+        backgroundColor: 'transparent'
+    }), [materialSummaries]);
+
+    const categoriesOption = useMemo<EChartsOption>(() => ({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: shapeTypeSummaries.slice(0, 8).map(s => s.label.split(' · ')[0]), axisLabel: { rotate: 45, color: 'rgba(255,255,255,0.4)', fontSize: 8 } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{
+            type: 'pictorialBar', symbol: 'roundRect',
+            data: shapeTypeSummaries.slice(0, 8).map(s => s.count),
+            itemStyle: { color: '#6BCEBB' }
+        }],
+        backgroundColor: 'transparent'
+    }), [shapeTypeSummaries]);
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-2 border-white/10 border-t-(--main-color) rounded-full animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Loading Dashboard</span>
-                </div>
+            <div className="h-full flex items-center justify-center opacity-40">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Synchronizing Intelligence...</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full overflow-hidden p-6 gap-6">
-            {/* Top Actions */}
-            <div className="flex items-center justify-end shrink-0 gap-2">
-                <button
-                    onClick={() => setShowFinancials(!showFinancials)}
-                    title="Toggle Financials Display"
-                    className={`flex items-center gap-1.5 border rounded-full px-3 py-1.5 hover:brightness-125 transition-all w-fit ${showFinancials ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}
-                >
-                    <span className="text-[9px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financial Info' : 'Unlock Financial Info'}</span>
-                </button>
-                <div className="flex items-center gap-1.5 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full px-3 py-1.5 w-fit">
-                    <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />
-                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest leading-none">Live</span>
+        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-6 animate-in fade-in duration-500">
+            {/* Greeting Top */}
+            <div className="flex items-center px-4 py-8 mx-2 shrink-0 z-10 relative">
+                <div className="flex-1 flex flex-col gap-1.5">
+                    <h2 className="text-[12px] font-black uppercase tracking-[0.4em] text-[#6BCEBB] leading-none">Management Console</h2>
+                    <h1 className="text-4xl font-black text-(--text-color) tracking-tighter leading-none">Global Analytics</h1>
                 </div>
-                <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) hidden sm:block px-2">{items.length} records</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowFinancials(!showFinancials)}
+                        className={`flex items-center gap-3 border rounded-2xl px-6 py-3 transition-all ${showFinancials ? 'bg-red-500/10 border-red-500/20 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'bg-green-500/10 border-green-500/20 text-green-500 shadow-[0_0_20px_rgba(34,197,94,0.1)]'}`}
+                    >
+                        <DollarSign size={16} strokeWidth={2.5} />
+                        <span className="text-[10px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financials' : 'Unlock Financials'}</span>
+                    </button>
+                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-end">
+                        <span className="text-[9px] font-black opacity-20 uppercase tracking-widest leading-none mb-1">Active Index</span>
+                        <span className="text-sm font-mono font-black text-(--text-color)">{items.length.toLocaleString()} <span className="text-[10px] opacity-20">REC</span></span>
+                    </div>
+                </div>
             </div>
 
-            {/* Scrollable content */}
-            <div className="grow min-h-0 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+            {/* Content Body */}
+            <div className="grow min-h-0 overflow-y-auto m-2 mt-0 relative z-20 custom-scrollbar pr-2 space-y-8 pb-20">
                 {/* ── KPI Cards ──────────────────────────────────────────── */}
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <StatCard icon={Package} label="Total Items" value={totals.totalItems.toLocaleString()} color="#6BCEBB" />
-                    <StatCard icon={Users} label="Vendors" value={String(vendorSummaries.length)} color="#00AEEF" />
-                    <StatCard icon={DollarSign} label="Acquisition MXN" value={fmt(totals.totalAcqMxn)} subtitle={`≈ ${fmt(totals.totalAcqUsd)} USD`} color="#A78BFA" />
-                    <StatCard icon={DollarSign} label="Total Expenses" value={fmt(totals.totalExpenses)} subtitle={`Paid: ${fmt(totals.paidExpenses)}`} color="#F87171" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard icon={Package} label="Total Assets" value={totals.totalItems.toLocaleString()} color="#6BCEBB" />
+                    <StatCard icon={Users} label="Vendor Base" value={String(vendorSummaries.length)} color="#00AEEF" />
+                    <StatCard icon={DollarSign} label="Acq Portfolio" value={fmt(totals.totalAcqUsd)} subtitle={`≈ ${fmt(totals.totalAcqMxn)} MXN`} color="#A78BFA" />
+                    <StatCard icon={TrendingUp} label="Dispersals" value={fmt(totals.paidExpenses)} subtitle={`Budget: ${fmt(totals.totalExpenses)}`} color="#FBBF24" />
                 </div>
 
-                {/* ── Vendor Acquisition Breakdown ──────────────────────── */}
-                <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                        <PieChart size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">Acquisition by Vendor</h2>
-                    </div>
-                    <div className="space-y-2">
-                        {vendorSummaries.map(v => (
-                            <BarRow
-                                key={v.vendorId}
-                                label={v.vendorId}
-                                value={v.totalAcqUsd}
-                                max={maxVendorAcq}
-                                color={v.color}
-                                count={v.itemCount}
-                                showValue={showFinancials}
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Two-column grid for Shape/Type and Material */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* ── Shape × Type ─────────────────────────────────── */}
-                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Shapes size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">By Shape · Type</h2>
+                {/* ── Analytics Grid ─────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Bar Chart */}
+                    <div className="lg:col-span-2 bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 space-y-6">
+                        <div className="flex items-center gap-3">
+                            <BarChart3 size={18} className="text-(--main-color)" />
+                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Acquisition Portfolio by Vendor</h2>
                         </div>
-                        <div className="space-y-1.5">
-                            {shapeTypeSummaries.map(s => (
-                                <div key={s.label} className="flex items-center gap-3">
-                                    <div className="flex-1 h-6 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
-                                        <div
-                                            className="h-full rounded-lg bg-(--main-color)/20 flex items-center px-3"
-                                            style={{ width: `${Math.max((s.count / maxShapeCount) * 100, 5)}%` }}
-                                        >
-                                            <span className="text-[9px] font-black text-(--text-color-secondary) truncate">{s.label}</span>
-                                        </div>
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-black text-(--text-color-secondary)">{s.count}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <EChart option={vendorChartOption} style={{ height: '400px' }} />
                     </div>
 
-                    {/* ── Material ──────────────────────────────────────── */}
-                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-2xl p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Layers size={14} strokeWidth={1.75} className="text-(--text-color-secondary)" />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary)">By Material</h2>
+                    {/* Secondary Analytics */}
+                    <div className="flex flex-col gap-6">
+                        {/* Material Pie */}
+                        <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 flex-1 flex flex-col gap-6">
+                            <div className="flex items-center gap-3">
+                                <PieChart size={16} className="text-blue-400" />
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-(--text-color)">Material Concentration</h3>
+                            </div>
+                            <EChart option={pieOption} style={{ height: '220px' }} />
                         </div>
-                        <div className="space-y-1.5">
-                            {materialSummaries.map(m => (
-                                <div key={m.label} className="flex items-center gap-3">
-                                    <div className="flex-1 h-6 bg-(--glass-bg) rounded-lg overflow-hidden relative border border-(--border-color)">
-                                        <div
-                                            className="h-full rounded-lg bg-blue-500/20 flex items-center px-3"
-                                            style={{ width: `${Math.max((m.count / maxMatCount) * 100, 5)}%` }}
-                                        >
-                                            <span className="text-[9px] font-black text-(--text-color-secondary) truncate">{m.label}</span>
-                                        </div>
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-mono font-black text-white/20">{m.count}</span>
-                                    </div>
-                                </div>
-                            ))}
+
+                        {/* Category Stats */}
+                        <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 flex-1 flex flex-col gap-6">
+                            <div className="flex items-center gap-3">
+                                <Shapes size={16} className="text-[#6BCEBB]" />
+                                <h3 className="text-[10px] font-black uppercase tracking-widest text-(--text-color)">Category Distribution</h3>
+                            </div>
+                            <EChart option={categoriesOption} style={{ height: '220px' }} />
                         </div>
                     </div>
                 </div>
 
-                {/* ── Expense Categories ─────────────────────────────────── */}
-                <div className="bg-white/2 border border-white/6 rounded-2xl p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                        <DollarSign size={14} strokeWidth={1.75} className="text-white/30" />
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Expenses by Category</h2>
+                {/* ── Dispersal Analysis ─────────────────────────────────── */}
+                <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8">
+                    <div className="flex items-center gap-3 mb-8">
+                        <DollarSign size={18} strokeWidth={1.75} className="text-white/30" />
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Expense Allocation by Category</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {expenseCategories.map(e => (
-                            <div key={e.label} className="flex items-center gap-3 p-3 bg-white/2 rounded-xl border border-white/5 hover:border-white/10 transition-all">
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/50">{e.label}</p>
-                                    <p className="text-sm font-mono font-black text-white mt-0.5">{showFinancials ? `$${e.total.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '***'}</p>
+                            <div key={e.label} className="p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-(--main-color)/30 transition-all flex flex-col gap-2 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity"><DollarSign className="w-10 h-10" /></div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{e.label}</p>
+                                <p className="text-xl font-mono font-black text-(--text-color)">{showFinancials ? `$${e.total.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '***'}</p>
+                                <div className="w-full h-1 bg-white/10 rounded-full mt-2 overflow-hidden">
+                                    <div className="h-full bg-(--main-color)" style={{ width: `${Math.round((e.total / totals.totalExpenses) * 100)}%` }} />
                                 </div>
-                                <span className="text-[9px] font-mono text-white/20">{e.count} entries</span>
                             </div>
                         ))}
                     </div>

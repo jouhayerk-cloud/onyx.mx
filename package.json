@@ -1,7 +1,7 @@
 {
   "name": "onyx.mx-git",
   "private": true,
-  "version": "1.11.86",
+  "version": "1.11.87",
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host",
@@ -16,6 +16,8 @@
     "@types/qrcode.react": "^1.0.5",
     "dexie": "4.0.10",
     "dotenv": "^17.3.1",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
     "gsap": "^3.13.0",
     "html2canvas": "^1.4.1",
     "jotai": "^2.15.0",
