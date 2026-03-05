@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.98 — 2026-03-05 (Crash Fix)
+- **Packing Crash [fix]:** Resolved a critical application crash occurring when selecting items in the Packing Module. The issue was caused by attempting to call string methods on numeric item numbers.
+- **Data Validation [fix]:** Added robust type checking and fallback values for label generation templates to prevent crashes on malformed or incomplete inventory data.
+- **UI Cleanup [ui]:** Corrected duplicated header metrics in the Packing Module.
+
 ## v1.11.97 — 2026-03-05 (Data Sync Fix)
 - **Packing Sync [fix]:** Implemented direct database listeners in the Packing module to ensure inventory and production items are always loaded and synchronized, even when accessing the module directly.
 - **Packing Header [ui]:** Updated summary header to include "Types", "Count" (total qty), and "Selected" metrics, matching the Unified Inventory View aesthetic.
