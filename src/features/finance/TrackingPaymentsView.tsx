@@ -162,10 +162,10 @@ const AddPaymentModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[600px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[600px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
                 {/* Progress Header */}
-                <div className="px-10 pt-10 flex justify-between items-center mb-8">
+                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
                     <div className="flex gap-2">
                         {[1, 2, 3, 4, 5].map(s => (
                             <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-(--border-color)'}`} />
@@ -174,7 +174,7 @@ const AddPaymentModal: React.FC<{
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm">✕</button>
                 </div>
 
-                <div className="px-10 pb-10 flex flex-col min-h-[460px]">
+                <div className="px-6 md:px-10 pb-10 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-[460px]">
                     {/* Stage 1: Merch vs Expenses */}
                     {step === 1 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -477,9 +477,9 @@ const RequestPaymentModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[500px] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[500px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
 
-                <div className="px-10 pt-10 flex justify-between items-center mb-6">
+                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
                     <div>
                         <h3 className="text-xl font-black text-(--text-color) uppercase tracking-tight">
                             {paidPerc > 0 && percentage === 100 ? 'LIQUIDATE BALANCE' : 'PAYMENT REQUEST'}
@@ -489,7 +489,7 @@ const RequestPaymentModal: React.FC<{
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm">✕</button>
                 </div>
 
-                <div className="px-10 pb-10">
+                <div className="px-6 md:px-10 pb-10 flex-1 overflow-y-auto custom-scrollbar">
                     <div className="flex flex-col gap-6">
                         {/* Status Summary */}
                         <div className="flex justify-between items-end p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
@@ -603,7 +603,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const pendingGroups = useMemo<VendorGroup[]>(() => {
 
 
-        const targetStatuses = ['acquired', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
+        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'available', 'requested', 'avaiable', 'yes', 'catalog', 'production'];
 
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
