@@ -13,6 +13,21 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.75 — 2026-03-04 (Bugfix)
+- **HeroBackground [fix]:** Background elements now use negative z-indices (`-2` image, `-1` scrim) so they sit visually behind all app content without fighting stacking contexts. Previously the scrim at `z-index: 1` was covering the entire app-container, making all UI invisible/fogged.
+- **HeroBackground [fix]:** Scrim opacity reduced to `0.65` — hero images now show through as a subtle blurred texture rather than being fully obscured.
+- **Performance Mode [fix]:** `performanceModeAtom` now read directly inside `HeroBackground` (no prop passing). When ON, renders a static dark gradient with zero animations; when OFF, cycles the full media gallery.
+- **Glass Utilities [fix]:** All text in `.glass-label`, `.glass-field-label`, `.glass-value` now renders at full opacity using `var(--text-color)` directly — removed `color-mix` transparency that was causing text to appear faint/invisible on light themes.
+- **Theme Variables [feat]:** Added `--app-bg-solid` CSS variable to all themes (dark and light) for use as scrim background reference.
+- **Glass Panels [fix]:** Increased panel background opacity across all glass utility classes: `.glass-sm` 50→82%, `.glass-md` 65→88%, `.glass-lg` 70→92% — panels now appear solid and readable.
+
+## v1.11.74 — 2026-03-04 (Feature)
+- **Glass UI System:** Added global glassmorphic CSS utility classes (`.glass-sm/md/lg`, `.glass-label`, `.glass-value`, etc.) across the entire app.
+- **Hero Media Gallery:** Auto-cycling background gallery using 20 images + 8 videos from the Jouhayerk Hero page, served from `/hero/` public folder.
+- **HeroBackground Component:** Crossfade cycling with Ken Burns animation, `buildMediaPool()` interleaving images and videos.
+- **Inventory Overhaul:** Glassmorphic expanded card panel, auto-cycling media bg on edit overlay, vendor glow on card hover.
+- **backdrop-filter [fix]:** Removed `backdropFilter` from scrim elements that was causing the entire app UI to appear blurred.
+
 ## v1.11.73 — 2026-03-04 (Bugfix)
 - **Store Panel BG [fix]:** Blurred background image in item detail panel was rendering as a black screen. Root cause: CSS `background-image` and `position: absolute` inside a `fixed` parent are blocked by cross-origin policy for Google Drive URLs. Fixed by using a `<img>` element with `position: fixed` and explicit `zIndex: 0`, ensuring correct rendering for all image sources.
 - **Store Panel BG [fix]:** Background image brightness increased from `0.25` (near-invisible) to `0.45` for visible cinematic effect.
