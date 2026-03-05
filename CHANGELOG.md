@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.97 — 2026-03-05 (Data Sync Fix)
+- **Packing Sync [fix]:** Implemented direct database listeners in the Packing module to ensure inventory and production items are always loaded and synchronized, even when accessing the module directly.
+- **Packing Header [ui]:** Updated summary header to include "Types", "Count" (total qty), and "Selected" metrics, matching the Unified Inventory View aesthetic.
+- **Search Logic [fix]:** Refined filter to include Tag ID (Barcode) in the search strings.
+
 ## v1.11.96 — 2026-03-05 (Packing Overhaul)
 - **Packing Module [feat]:** Relocated the Packing module to be a primary sidebar navigation item. Improved filtering logic to include ALL inventory items for labeling.
 - **Packing UI [ui]:** Overhauled the Packing interface with a modern, compact design. Replaced the side panel with a stackable horizontal configuration drawer at the top.

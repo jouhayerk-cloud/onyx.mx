@@ -7,14 +7,16 @@ import html2canvas from 'html2canvas';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
 import { Package, CheckCircle2, Printer, Grid, List, ChevronRight, QrCode, ClipboardList, Info, Settings2, Download, Layers } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
-import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import React, { useState, useMemo, useEffect } from 'react';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
+import { useDatabase } from '../../lib/hooks';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n || 0);
 
 export const PackingModule: React.FC = () => {
-    const inventory = useAtomValue(inventoryAtom);
+    const db = useDatabase();
+    const [inventory, setInventory] = useAtom(inventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
     const globalSearchTerm = useAtomValue(TOP_BAR_SEARCH_ATOM);
@@ -26,35 +28,63 @@ export const PackingModule: React.FC = () => {
     const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('40x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(true);
 
+    // Fetch ALL inventory/production items directly to ensure module is always populated
+    useEffect(() => {
+        if (!db) return;
+        const subs = [
+            db.inventory.find({ selector: { status: { $ne: 'Pending Deletion' } } }).$.subscribe(d => {
+                const mapped = d.map(x => ({ ...x.toJSON(), source: 'inventory', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
+                setInventory(prev => {
+                    const filtered = prev.filter(p => (p as any).source !== 'inventory');
+                    return [...filtered, ...mapped] as any;
+                });
+            }),
+            db.production.find().$.subscribe(d => {
+                const mapped = d.map(x => ({ ...x.toJSON(), source: 'production', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
+                setInventory(prev => {
+                    const filtered = prev.filter(p => (p as any).source !== 'production');
+                    return [...filtered, ...mapped] as any;
+                });
+            }),
+        ];
+        return () => subs.forEach(s => s.unsubscribe());
+    }, [db, setInventory]);
+
     const processedItems = useMemo(() => {
         return inventory.filter(item => {
             const data = normalizeInventoryData(item.data);
-            const status = (data.status || '').toLowerCase();
-
-            // Including ALL inventory items by default as requested.
-            // Only excluding explicitly sold or archived items if we want a clean packing list,
-            // but "all inventory items available to be labeled" suggests even available (store) ones might need labels.
-            // For now, let's keep it inclusive of Acquisition and Production.
 
             if (globalSearchTerm) {
-                const term = globalSearchTerm.toLowerCase();
+                const term = globalSearchTerm.toLowerCase().trim();
+                const calculated = calculateCodesAndPrices(data, exchangeRate, workbookPrefix);
                 return (
                     (data.itemId || '').toLowerCase().includes(term) ||
+                    (data.itemNumber || '').toLowerCase().includes(term) ||
                     (data.description || '').toLowerCase().includes(term) ||
                     (data.vendorId || '').toLowerCase().includes(term) ||
+                    (calculated.bookBardcode || '').toLowerCase().includes(term) ||
                     (String(item.row)).includes(term)
                 );
             }
             return true;
         }).map(item => {
             const codes = calculateCodesAndPrices(item.data, exchangeRate, workbookPrefix);
+            const normData = normalizeInventoryData(item.data);
+            const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
+            const imageUrl = getCleanImageUrl(baseImg);
+
             return {
                 ...item,
                 codes,
-                normData: normalizeInventoryData(item.data)
+                normData,
+                imageUrl
             };
         });
     }, [inventory, globalSearchTerm, exchangeRate, workbookPrefix]);
+
+    const totalQty = useMemo(() => {
+        return processedItems.reduce((acc, it) => acc + (parseInt(it.normData.quantity) || 1), 0);
+    }, [processedItems]);
 
     const toggleSelect = (id: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
@@ -177,15 +207,27 @@ export const PackingModule: React.FC = () => {
             <div className="relative z-20 flex flex-col border-b border-white/5 bg-black/20 backdrop-blur-md">
                 <div className="px-10 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-6">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em]">{processedItems.length} ALL INVENTORY</span>
-                            <span className="text-[14px] font-black text-(--text-color) leading-none mt-1">{selectedIds.size} ITEMS READY</span>
+                        <div className="flex gap-6 items-center">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-0.5">Types</span>
+                                <span className="text-sm font-mono font-black text-white leading-none">{processedItems.length.toLocaleString('en-US')}</span>
+                            </div>
+                            <div className="w-px h-6 bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
+                                <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalQty.toLocaleString('en-US')}</span>
+                            </div>
+                            <div className="w-px h-6 bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-(--main-color)/60 mb-0.5">Selected</span>
+                                <span className="text-sm font-mono font-black text-(--main-color) leading-none">{selectedIds.size.toLocaleString('en-US')}</span>
+                            </div>
                         </div>
                         <div className="w-px h-8 bg-white/10" />
                         <div className="flex items-center gap-4">
                             <button onClick={handleSelectAll} className="flex items-center gap-2 group">
-                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${selectedIds.size === processedItems.length ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20 group-hover:border-white/40'}`}>
-                                    {selectedIds.size === processedItems.length && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${selectedIds.size === processedItems.length && processedItems.length > 0 ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20 group-hover:border-white/40'}`}>
+                                    {selectedIds.size === processedItems.length && processedItems.length > 0 && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                                 </div>
                                 <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">Select All</span>
                             </button>
@@ -329,7 +371,7 @@ const ItemCard: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.M
     const d = item.normData;
     const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
     return (
-        <div onClick={onToggle} className={`group relative flex flex-col bg-white/[0.03] border rounded-[24px] overflow-hidden transition-all duration-500 cursor-pointer backdrop-blur-md ${isSelected ? 'border-(--main-color) bg-(--main-color)/5 shadow-lg shadow-(--main-color)/10 ring-1 ring-(--main-color)/20' : 'border-white/5 hover:bg-white/10 hover:border-white/20'}`}>
+        <div onClick={onToggle} className={`group relative flex flex-col bg-white/5 border rounded-[24px] overflow-hidden transition-all duration-500 cursor-pointer backdrop-blur-md ${isSelected ? 'border-(--main-color) bg-(--main-color)/5 shadow-lg shadow-(--main-color)/10 ring-1 ring-(--main-color)/20' : 'border-white/5 hover:bg-white/10 hover:border-white/20'}`}>
             <div className="aspect-square w-full relative overflow-hidden bg-black/40">
                 {item.imageUrl ? <img src={item.imageUrl} alt={d.itemId} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={48} /></div>}
                 <div className="absolute top-3 right-3">
@@ -360,7 +402,7 @@ const ItemRow: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.Mo
     const d = item.normData;
     const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
     return (
-        <div onClick={onToggle} className={`flex items-center gap-6 p-3 rounded-xl border transition-all cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg' : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
+        <div onClick={onToggle} className={`flex items-center gap-6 p-3 rounded-xl border transition-all cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10 group-hover:border-white/30'}`}>{isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}</div>
             <div className="w-12 h-12 rounded-lg bg-black/40 shrink-0 overflow-hidden border border-white/10">
                 {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <Package className="w-full h-full p-3 opacity-10" />}
