@@ -469,8 +469,8 @@ html.theme-obsidian {
   --app-bg: rgba(10, 10, 15, 0.4);
   --app-bg-solid: #1a1a24;
   --sidebar-bg: rgba(26, 26, 36, 0.92);
-  --main-color: #4a90e2;
-  --secondary-color: #357abd;
+  --main-color: #8da388; /* Pale military green active color */
+  --secondary-color: #6d8269;
   --text-color: #ffffff;
   --text-color-primary: #ffffff;
   --secondary-text-color: #aeb4c0;
@@ -526,22 +526,22 @@ html.theme-malaquite {
 
 /* NACAR (Light) */
 html.theme-nacar {
-  --c1: #fdfcf0;
-  --c2: #f4fae8;
-  --c3: #eef9e4;
-  --c4: #fdf3e7;
-  --c5: #fffce0;
+  --c1: #ffffff;
+  --c2: #fcfdfe;
+  --c3: #f5f0fa; /* Light lavender */
+  --c4: #f2fae8; /* Pale green */
+  --c5: #fdfae2; /* Pale yellow */
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --app-bg-solid: #fafbf5;
-  --sidebar-bg: rgba(250, 251, 245, 0.96);
-  --main-color: #84cc16;
-  --secondary-color: #65a30d;
-  --text-color: #1a2e05;
-  --text-color-primary: #1a2e05;
-  --secondary-text-color: #3f6212;
-  --text-color-secondary: #3f6212;
-  --border-color: rgba(63, 98, 18, 0.1);
+  --app-bg-solid: #ffffff;
+  --sidebar-bg: rgba(255, 255, 255, 0.96);
+  --main-color: #bfaee3; /* Lavender */
+  --secondary-color: #c9e4b5; /* Pale green */
+  --text-color: #2d2640;
+  --text-color-primary: #2d2640;
+  --secondary-text-color: #6f6885;
+  --text-color-secondary: #6f6885;
+  --border-color: rgba(191, 174, 227, 0.2);
   --input-color: rgba(255, 255, 255, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;
@@ -570,24 +570,24 @@ html.theme-tehu {
   color-scheme: light;
 }
 
-/* TEKIS (Light) */
+/* TEKIS (Light) - Now "Cherry" */
 html.theme-tekis {
-  --c1: #fffff0;
-  --c2: #fdfbf0;
-  --c3: #fefce8;
-  --c4: #fdfbf0;
-  --c5: #fffdd0;
+  --c1: #ffffff;
+  --c2: #fff5f8; /* Pale pink */
+  --c3: #fefcf3; /* Cream */
+  --c4: #f0f8ff; /* Light blue / Alice blue */
+  --c5: #fff0f5; /* Lavender blush */
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --app-bg-solid: #fcfaf0;
-  --sidebar-bg: rgba(252, 250, 240, 0.96);
-  --main-color: #eab308;
-  --secondary-color: #ca8a04;
-  --text-color: #422006;
-  --text-color-primary: #422006;
-  --secondary-text-color: #713f12;
-  --text-color-secondary: #713f12;
-  --border-color: rgba(113, 63, 18, 0.1);
+  --app-bg-solid: #fcfafb;
+  --sidebar-bg: rgba(255, 251, 253, 0.96);
+  --main-color: #ff6b81; /* Cherry */
+  --secondary-color: #ff8e9e; /* Light Cherry */
+  --text-color: #4a2128;
+  --text-color-primary: #4a2128;
+  --secondary-text-color: #8a5761;
+  --text-color-secondary: #8a5761;
+  --border-color: rgba(255, 107, 129, 0.15);
   --input-color: rgba(255, 255, 255, 0.7);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;

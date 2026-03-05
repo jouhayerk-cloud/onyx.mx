@@ -610,12 +610,12 @@ export function MainHeader() {
                     <Settings size={18} strokeWidth={1.75}
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                         className={`cursor-pointer text-(--text-color) opacity-40 hover:opacity-80 transition-all duration-300 ${isSettingsOpen ? 'rotate-90 text-(--main-color)' : ''}`} />
-                    {isSettingsOpen && (
+                    {isSettingsOpen && createPortal(
                         <>
                             {/* Backdrop */}
                             <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
                             {/* Panel */}
-                            <div className="absolute top-12 right-0 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-9999 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="fixed top-16 right-6 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-9999 animate-in fade-in slide-in-from-top-2 duration-200">
 
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
@@ -665,7 +665,8 @@ export function MainHeader() {
                                     </button>
                                 </div>
                             </div>
-                        </>
+                        </>,
+                        document.body
                     )}
                 </div>
             </div>
