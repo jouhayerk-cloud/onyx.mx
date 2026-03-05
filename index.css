@@ -2472,6 +2472,78 @@ body {
   display: none;
 }
 
+/* --- Top Bar UI Elements --- */
+.top-deploy-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 280px;
+  max-width: 420px;
+  background: color-mix(in srgb, var(--sidebar-bg) 95%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+  border-radius: 16px;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.25);
+  animation: panelSlideDown 0.22s var(--ease-spring) forwards;
+}
+
+@keyframes panelSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.topbar-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: all 0.18s ease;
+  position: relative;
+  background: none;
+}
+
+.topbar-icon-btn:hover,
+.topbar-icon-btn.active {
+  opacity: 1;
+  background: color-mix(in srgb, var(--main-color) 15%, transparent);
+  border-color: color-mix(in srgb, var(--main-color) 40%, transparent);
+  color: var(--main-color);
+}
+
+.topbar-search {
+  height: 32px;
+  width: 200px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sidebar-bg) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-color) 15%, transparent);
+  color: var(--text-color);
+  font-size: 13px;
+  outline: none;
+  transition: width 0.2s ease, border-color 0.2s ease;
+}
+
+.topbar-search:focus {
+  border-color: var(--main-color);
+  width: 260px;
+}
+
 /* --- Sidebar FAB (mini logo when sidebar is hidden) --- */
 .sidebar-fab {
   position: fixed;

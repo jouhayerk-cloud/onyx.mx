@@ -149,7 +149,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store'>('activeView', 'inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Available' | 'Production' | 'Acquisition'>('inventoryStatusFilter', 'All');
+export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Production' | 'Acquisition' | 'Shipped'>('inventoryStatusFilter', 'All');
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list'>('inventoryViewMode', 'list');
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const logisticsSubTabAtom = atomWithStorage<'packing' | 'trucking' | 'shipping'>('logisticsSubTab', 'packing');
@@ -213,6 +213,8 @@ export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
+export const activeVendorsAtom = atom<string[]>([]);
+export const inventoryVendorFilterAtom = atom<string>('All');
 
 export const storeShoppingBagAtom = atom<any[]>([]);
 export const storeActiveUserAtom = atom<string | null>(null); // To view someone's store
@@ -277,3 +279,16 @@ export type Notification = {
   message: string;
 };
 export const notificationsAtom = atom<Notification[]>([]);
+
+// Top-bar deployable panel states
+export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false);
+export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false);
+export const isPaymentsSearchOpenAtom = atom<boolean>(false);
+export const isPaymentsDestFilterOpenAtom = atom<boolean>(false);
+export const isPaymentsDispFilterOpenAtom = atom<boolean>(false);
+export const isPaymentsAddPanelOpenAtom = atom<boolean>(false);
+export const isPaymentsDetailOpenAtom = atomWithStorage<boolean>('paymentsDetail', true);
+export const paymentsSearchTermAtom = atom<string>('');
+export const isStoreBagOpenAtom = atom<boolean>(false);
+export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('controlPanel', 'users');
+export const topBarRightSlotAtom = atom<React.ReactNode>(null);

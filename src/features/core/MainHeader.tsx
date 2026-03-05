@@ -37,19 +37,25 @@ import {
     paymentsOverviewModeAtom,
     paymentDestinationFilterAtom,
     liveExchangeRateAtom,
-    storeSearchTermAtom
+    storeSearchTermAtom,
+    activeVendorsAtom,
+    inventoryVendorFilterAtom,
+    isInventoryVendorFilterOpenAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
+import { topBarRightSlotAtom } from '../../lib/atoms';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
-    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe
-} from 'lucide-react';
+    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
+    OctagonX, Octagon, CheckCircle, Tag
+} from 'lucide-react';
+
 declare const __APP_VERSION__: string;
 
 const themes = [
@@ -59,14 +65,16 @@ const themes = [
     { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
     { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
     { name: 'tekis', gradient: 'linear-gradient(135deg, #fffff0, #fdfbf0, #fefce8)' },
-];
+];
+
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
 const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> = {
     ALL: { icon: '○', title: 'All items' },
     RED: { icon: '●', title: 'Approved, pending payment' },
     YELLOW: { icon: '●', title: 'Payment requested, unpaid' },
     GREEN: { icon: '●', title: 'Paid / shipped' },
-};
+};
+
 const iconToLucide: Record<string, React.FC<any>> = {
     'store': Store,
     'finance': CreditCard,
@@ -88,7 +96,9 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'bank': Landmark,
     'wallet': Wallet,
     'truck': Truck,
-};
+};
+
+
 const SubTabPills: React.FC<{
     tabs: { id: string; label: string; icon?: string }[];
     active: string;
@@ -109,7 +119,8 @@ const SubTabPills: React.FC<{
             );
         })}
     </div>
-);
+);
+
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
@@ -118,7 +129,8 @@ const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({
             <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
         </div>
     );
-};
+};
+
 const ShippingStats: React.FC = () => {
     const crates = useAtomValue(shippingCratesAtom);
     const truckDims = useAtomValue(shippingTruckDimsAtom);
@@ -147,46 +159,91 @@ const ShippingStats: React.FC = () => {
             </div>
         </div>
     );
-};
+};
+
 
 const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
-    const [devStatusFilter, setDevStatusFilter] = useAtom(dashboardStatusFilterAtom);
+    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
+    const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
+    const activeVendors = useAtomValue(activeVendorsAtom);
+    const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
 
     return (
         <div className="flex flex-1 items-center gap-4 ml-2">
-            <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden sm:block" />
+            <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden lg:block" />
 
-            <div className="flex-1 w-full relative group/search max-w-3xl mx-auto">
-                {/* Large liquid glass search bar */}
-                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
+            <div className="flex-1 min-w-[120px] max-w-sm relative group/search">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <Search size={16} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
                 </div>
                 <input
                     type="text"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    placeholder="Search inventory entirely..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-lg backdrop-blur-md"
+                    placeholder="Search..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-md backdrop-blur-md"
                 />
                 {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
-                        <X size={16} strokeWidth={2.5} />
+                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
+                        <X size={14} strokeWidth={2.5} />
                     </button>
                 )}
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-                <button onClick={() => {
-                    const statuses = ['ALL', 'RED', 'YELLOW', 'GREEN'] as const;
-                    setDevStatusFilter(statuses[(statuses.indexOf(devStatusFilter) + 1) % statuses.length]);
-                }} title={filterConfig[devStatusFilter].title}
-                    className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 shrink-0 shadow-lg cursor-pointer">
-                    <span className={`text-base leading-none ${devStatusFilter === 'RED' ? 'text-red-500' :
-                        devStatusFilter === 'YELLOW' ? 'text-yellow-500' :
-                            devStatusFilter === 'GREEN' ? 'text-green-500' :
-                                'text-white/20'
-                        }`}>{filterConfig[devStatusFilter].icon}</span>
+            <div className="flex items-center gap-1 ml-auto relative">
+                {/* Vendor Filter Toggle */}
+                <button className={`topbar-icon-btn ${isVendorFilterOpen ? 'active' : ''}`} onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} title="Filter by Vendor">
+                    <Tag size={16} strokeWidth={1.75} />
+                </button>
+
+                {/* Vendor Filter Deployable Panel */}
+                {isVendorFilterOpen && (
+                    <div className="top-deploy-panel">
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-50 mb-3 block">Vendor Filter</span>
+                        <div className="flex flex-col gap-2 max-h-[300px] overflow-auto custom-scrollbar">
+                            <button onClick={() => setVendorFilter('All')} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === 'All' ? 'bg-white/15' : 'hover:bg-white/5'}`}>
+                                <div className="w-3 h-3 rounded-full border border-white/20" />
+                                <span className="text-xs font-bold text-white uppercase">All Vendors</span>
+                            </button>
+                            {activeVendors.map(v => {
+                                const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                                return (
+                                    <button key={v} onClick={() => setVendorFilter(v)} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${vendorFilter === v ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                                        <div className="w-3 h-3 rounded-full shadow-md" style={{ backgroundColor: color }} />
+                                        <span className="text-xs font-bold text-white uppercase">{v}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                {/* Status Filter Toggles (Stop-sign inspired) */}
+                <button className={`topbar-icon-btn ${statusFilter === 'All' ? 'active' : ''}`} onClick={() => setStatusFilter('All')} title="All Items">
+                    <span className="text-xs font-bold font-mono">ALL</span>
+                </button>
+                <button className={`topbar-icon-btn ${statusFilter === 'Acquisition' ? 'active border-red-500/30!' : ''}`} onClick={() => setStatusFilter('Acquisition')} title="Acquisition (Pending Payment)">
+                    <OctagonX size={16} color={statusFilter === 'Acquisition' ? '#ef4444' : 'currentColor'} strokeWidth={statusFilter === 'Acquisition' ? 2.5 : 1.75} />
+                </button>
+                <button className={`topbar-icon-btn ${statusFilter === 'Production' ? 'active border-yellow-500/30!' : ''}`} onClick={() => setStatusFilter('Production')} title="Production (Paid)">
+                    <Octagon size={16} color={statusFilter === 'Production' ? '#f59e0b' : 'currentColor'} strokeWidth={statusFilter === 'Production' ? 2.5 : 1.75} />
+                </button>
+                <button className={`topbar-icon-btn ${statusFilter === 'Shipped' ? 'active border-green-500/30!' : ''}`} onClick={() => setStatusFilter('Shipped')} title="Shipped (Completed)">
+                    <CheckCircle size={16} color={statusFilter === 'Shipped' ? '#22c55e' : 'currentColor'} strokeWidth={statusFilter === 'Shipped' ? 2.5 : 1.75} />
+                </button>
+
+                <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                {/* View Mode Toggles */}
+                <button className={`topbar-icon-btn hidden sm:flex ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')} title="Grid View">
+                    <LayoutGrid size={16} strokeWidth={1.75} />
+                </button>
+                <button className={`topbar-icon-btn hidden sm:flex ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} title="List View">
+                    <List size={16} strokeWidth={1.75} />
                 </button>
             </div>
         </div>
@@ -356,7 +413,8 @@ const ControlBar: React.FC = () => (
             <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
         </div>
     </>
-);
+);
+
 
 export function MainHeader() {
     const [activeView] = useAtom(activeViewAtom);
@@ -410,6 +468,9 @@ export function MainHeader() {
                     <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Onyx.mx</span>
                 )}
             </div>
+
+            {/* Injected Right-Slot for active view tools */}
+            {useAtomValue(topBarRightSlotAtom)}
 
             {/* User Info & Actions */}
             <div className="flex items-center gap-4 ml-4 pl-4 border-l border-(--text-color)/5 shrink-0">

@@ -15,6 +15,8 @@ import {
     userAtom,
     inventoryViewModeAtom,
     filteredInventoryCountAtom,
+    activeVendorsAtom,
+    inventoryVendorFilterAtom,
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
@@ -219,20 +221,17 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     return (
         <div
-            className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-300 group rounded-2xl border shadow-lg
-                ${isExpanded
-                    ? 'col-span-full md:col-span-2 lg:col-span-3 min-h-[500px] border-(--text-color)/15'
-                    : 'col-span-1 border-(--text-color)/8 hover:border-(--text-color)/25 hover:-translate-y-0.5'}`}
-            style={{ background: isExpanded ? 'transparent' : 'rgba(0,0,0,0.36)' }}
-            onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.4), 0 0 20px ${vendorColor}25`; }}
+            className={`inventory-item-card relative overflow-hidden flex flex-col transition-all duration-300 group rounded-2xl border shadow-lg col-span-1 border-(--text-color)/8 hover:border-(--text-color)/25 hover:-translate-y-0.5`}
+            style={{ background: 'rgba(0,0,0,0.36)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.4), 0 0 20px ${vendorColor}25`; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
         >
             {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
-            <div className={`w-full flex ${isExpanded ? 'h-full flex-col md:flex-row' : 'aspect-4/5 flex-col'} relative`}>
-                <div className={`${isExpanded ? 'relative h-64 md:h-full md:w-2/5' : 'absolute inset-0'} overflow-hidden flex items-center justify-center bg-black/50`}>
+
+            <div className="w-full flex aspect-4/5 flex-col relative">
+                <div className="absolute inset-0 overflow-hidden flex items-center justify-center bg-black/50">
                     {imageUrl ? (
-                        <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-[2s] ${!isExpanded && 'group-hover:scale-110 opacity-80 group-hover:opacity-100'} ${isExpanded ? 'cursor-pointer' : ''}`}
-                            onClick={() => isExpanded && setShowViewer(true)} />
+                        <img src={imageUrl} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />
                     ) : (
                         <div className="absolute inset-0 p-6 sm:p-10 opacity-10 flex items-center justify-center pointer-events-none">
                             <OnyxMiniLogo className="w-full h-full object-contain" />
@@ -240,7 +239,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     )}
                     <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
 
-                    {/* Top bar: vendor tag left, toggle button right */}
                     <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start z-10">
                         {calculated.bookBardcode ? (
                             <div className="px-2 py-1 rounded border border-black text-black font-black text-[10px] shadow-lg flex items-center pointer-events-none" style={{ backgroundColor: vendorColor }}>
@@ -249,93 +247,118 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         ) : (
                             <div className="h-6 px-2 rounded flex items-center justify-center font-bold text-black border border-black shadow-lg text-[10px] pointer-events-none" style={{ backgroundColor: vendorColor }}>{vendorPrefix || '?'}</div>
                         )}
-                        {!isExpanded && (
-                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="pointer-events-auto p-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg border border-white/10 text-white/40 hover:text-white transition-all">
-                                <Menu className="w-3.5 h-3.5" />
-                            </button>
-                        )}
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="pointer-events-auto p-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg border border-white/10 text-white/40 hover:text-white transition-all">
+                            <Menu className="w-3.5 h-3.5" />
+                        </button>
                     </div>
 
-                    {!isExpanded && (
-                        <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
-                            <div className="flex items-end justify-between mb-1 gap-2">
-                                <p className="font-black text-(--main-color) text-base leading-none truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
-                                <div className="flex flex-col items-end shrink-0">
-                                    <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
-                                    <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                                <p className="text-[9px] uppercase font-black tracking-widest text-(--secondary-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
-                                <div className="flex items-center justify-between gap-2 mt-1">
-                                    <div className="flex flex-col">
-                                        <p className="text-[11px] font-black text-white/60 font-mono tracking-tight uppercase leading-none mb-1">{dimensionsStr || 'NO DIM'}</p>
-                                        <div className="flex gap-2">
-                                            <span className="text-[8px] font-bold text-(--main-color) font-mono">AQ: {calculated.bookAqCode}</span>
-                                            <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
-                                        </div>
-                                    </div>
-                                    {/* Edit button at bottom-right */}
-                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(e); }} className="pointer-events-auto p-1.5 px-2.5 bg-white/5 hover:bg-(--main-color)/20 rounded-lg border border-white/10 text-white/30 hover:text-(--main-color) transition-all" title="Edit">
-                                        <Edit2 className="w-3 h-3" />
-                                    </button>
-                                </div>
+                    <div className="absolute bottom-0 inset-x-0 p-3 pt-10 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/60 to-transparent">
+                        <div className="flex items-end justify-between mb-1 gap-2">
+                            <p className="font-black text-(--main-color) text-base leading-none truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</p>
+                            <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[10px] font-black text-(--main-color) font-mono leading-none">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                                <span className="text-[8px] font-black text-white/40 font-mono mt-0.5">x{norm.quantity || 1}</span>
                             </div>
                         </div>
-                    )}
+                        <div className="flex flex-col gap-0.5">
+                            <p className="text-[9px] uppercase font-black tracking-widest text-(--secondary-color) truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                                <div className="flex flex-col">
+                                    <p className="text-[11px] font-black text-white/60 font-mono tracking-tight uppercase leading-none mb-1">{dimensionsStr || 'NO DIM'}</p>
+                                    <div className="flex gap-2">
+                                        <span className="text-[8px] font-bold text-(--main-color) font-mono">AQ: {calculated.bookAqCode}</span>
+                                        <span className="text-[8px] font-bold text-yellow-500 font-mono">LD: {calculated.bookLandCode}</span>
+                                    </div>
+                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); handleEdit(e); }} className="pointer-events-auto p-1.5 px-2.5 bg-white/5 hover:bg-(--main-color)/20 rounded-lg border border-white/10 text-white/30 hover:text-(--main-color) transition-all" title="Edit">
+                                    <Edit2 className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                {isExpanded && (
-                    <div className="flex-1 min-h-0 flex flex-col p-6 overflow-hidden" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)', backdropFilter: 'blur(24px)' }}>
-                        {/* Top-right: Close + Edit */}
-                        <div className="absolute right-4 top-4 z-50 flex flex-col gap-2">
-                            <button onClick={onToggleExpand} className="h-8 px-3 flex items-center justify-center gap-1.5 border border-white/10 rounded-xl text-(--text-color) hover:opacity-100 opacity-60 transition-all text-[10px] font-black uppercase tracking-widest">
-                                <X className="w-3 h-3" />Close
+            </div>
+
+            {/* Right Slide Drawer Overlay */}
+            {isExpanded && (
+                <div className="fixed inset-0 z-90 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300" onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}>
+                    <div className="absolute top-0 right-0 bottom-0 w-full sm:w-[500px] z-100 flex flex-col shadow-2xl animate-in slide-in-from-right-8 duration-300 cursor-default"
+                        style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)', backdropFilter: 'blur(40px)', borderLeft: '1px solid color-mix(in srgb, var(--text-color) 10%, transparent)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        <div className="absolute right-4 top-4 z-50 flex gap-2">
+                            <button onClick={handleEdit} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-xs font-black uppercase tracking-widest">
+                                <Edit2 className="w-3.5 h-3.5" /> Edit
                             </button>
-                            <button onClick={handleEdit} className="h-8 px-3 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-[10px] font-black uppercase tracking-widest">
-                                <Edit2 className="w-3 h-3" />Edit
+                            <button onClick={onToggleExpand} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 transition-all text-xs font-black uppercase tracking-widest">
+                                <X className="w-3.5 h-3.5" /> Close
                             </button>
                         </div>
-                        <div className="overflow-y-auto grow pr-2 custom-scrollbar">
-                            <div className="flex justify-between items-start mb-6 pr-24">
-                                <div className="min-w-0">
-                                    <h3 className="text-3xl font-black text-(--text-color) truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                    <p className="text-[12px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mt-1 truncate">{(norm.color || '') + ' ' + (norm.material || '')}</p>
-                                    <div className="flex gap-4 mt-3">
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">AQ Code</span>
-                                            <span className="text-base font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
-                                        </div>
-                                        <div className="flex flex-col border-l border-(--border-color) pl-4">
-                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">LD Code</span>
-                                            <span className="text-base font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
-                                        </div>
+
+                        {/* Drawer Image Header */}
+                        <div className="h-[40vh] relative shrink-0">
+                            {imageUrl ? (
+                                <img src={imageUrl} onClick={() => setShowViewer(true)} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                            ) : (
+                                <div className="w-full h-full bg-black/40 flex items-center justify-center">
+                                    <OnyxMiniLogo className="w-32 h-32 opacity-20" />
+                                </div>
+                            )}
+                            <div className="absolute top-4 left-4">
+                                {calculated.bookBardcode && (
+                                    <div className="px-3 py-1.5 rounded-lg border border-black text-black font-black text-xs shadow-lg" style={{ backgroundColor: vendorColor }}>
+                                        {calculated.bookBardcode}
                                     </div>
+                                )}
+                            </div>
+                            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                        </div>
+
+                        {/* Drawer Content */}
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-6" style={{ background: 'color-mix(in srgb, var(--background-color) 50%, transparent)' }}>
+                            <div>
+                                <h3 className="text-2xl font-black text-(--text-color) truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                <p className="text-sm font-bold uppercase text-(--text-color-secondary) tracking-widest mt-1">{(norm.color || '') + ' ' + (norm.material || '')}</p>
+                            </div>
+
+                            <div className="flex gap-6">
+                                <div className="flex flex-col">
+                                    <span className="text-[11px] font-black text-(--text-color-secondary) uppercase tracking-widest">AQ Code</span>
+                                    <span className="text-lg font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</span>
+                                </div>
+                                <div className="w-px bg-(--border-color)" />
+                                <div className="flex flex-col">
+                                    <span className="text-[11px] font-black text-(--text-color-secondary) uppercase tracking-widest">LD Code</span>
+                                    <span className="text-lg font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6 p-4 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--text-color) 5%, transparent)' }}>
-                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Material</p><p className="text-lg font-bold text-(--text-color)">{norm.material || '—'}</p></div>
-                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Dimensions</p><p className="text-lg font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
-                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Weight</p><p className="text-lg font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
-                                <div><p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Quantity</p><p className="text-lg font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
+
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--text-color) 3%, transparent)' }}>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Material</p><p className="text-[15px] font-bold text-(--text-color)">{norm.material || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Dimensions</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{dimensionsStr || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Weight</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{weightStr || '—'}</p></div>
+                                <div><p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Quantity</p><p className="text-[15px] font-bold text-(--text-color) font-mono">{norm.quantity || 1}</p></div>
                             </div>
-                            <div className="p-5 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 50%, transparent)', backdropFilter: 'blur(12px)' }}>
-                                <h4 className="text-[11px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Financial Analysis</h4>
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Acq</span><span className="text-2xl font-black text-[#6BCEBB] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
-                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Land</span><span className="text-2xl font-black text-yellow-500 font-mono leading-none">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
-                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Ret</span><span className="text-2xl font-black text-green-500 font-mono leading-none">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
+
+                            <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)' }}>
+                                <h4 className="text-xs font-black uppercase text-(--text-color-secondary) tracking-[0.2em] mb-4">Financial Analysis</h4>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Acq</span><span className="text-[15px] font-black text-[#6BCEBB] font-mono leading-none">{showFinancials ? `$${Math.ceil(parseFloat(String(norm.price || 0)) / exchangeRate)}` : '***'}</span></div>
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Land</span><span className="text-[15px] font-black text-yellow-500 font-mono leading-none">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
+                                    <div className="flex flex-col"><span className="text-[11px] text-(--text-color-secondary) font-black uppercase tracking-widest mb-1">Ret</span><span className="text-[15px] font-black text-green-500 font-mono leading-none">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
                                 </div>
                             </div>
+
                             {norm.description && (
-                                <div className="mt-5 p-4 rounded-2xl border border-(--text-color)/10" style={{ background: 'color-mix(in srgb, var(--text-color) 4%, transparent)' }}>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1.5">Notes</p>
-                                    <p className="text-sm text-(--text-color) leading-relaxed font-medium">{norm.description}</p>
+                                <div className="p-5 rounded-2xl border border-(--border-color)" style={{ background: 'color-mix(in srgb, var(--text-color) 4%, transparent)' }}>
+                                    <p className="text-[11px] font-black uppercase tracking-widest text-(--text-color-secondary) mb-1">Notes</p>
+                                    <p className="text-[15px] text-(--text-color) leading-relaxed">{norm.description}</p>
                                 </div>
                             )}
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -353,7 +376,8 @@ export const UnifiedInventoryView = () => {
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
-    const [vendorFilter, setVendorFilter] = useAtom(inventoryActiveFilterAtom);
+    const vendorFilter = useAtomValue(inventoryVendorFilterAtom);
+    const setGlobalActiveVendors = useSetAtom(activeVendorsAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
 
@@ -507,12 +531,15 @@ export const UnifiedInventoryView = () => {
 
     const filteredItems = useMemo(() => {
         return items.filter(item => {
-            if (statusFilter === 'Available') {
-                if (item.data.status && !['Available', 'Catalog'].includes(item.data.status)) return false;
-            } else if (statusFilter === 'Acquisition') {
+            // Unconditionally hide Available / Catalog items as per new requirements
+            if (!item.data.status || ['Available', 'Catalog', 'available'].includes(item.data.status)) return false;
+
+            if (statusFilter === 'Acquisition') {
                 if (!['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status)) return false;
             } else if (statusFilter === 'Production') {
                 if (item.source !== 'production' && item.data.status !== 'Production') return false;
+            } else if (statusFilter === 'Shipped') {
+                if (!['Shipped', 'shipped'].includes(item.data.status)) return false;
             }
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
             if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
@@ -553,6 +580,10 @@ export const UnifiedInventoryView = () => {
         return Array.from(new Set(items.map(item => item.data.itemId?.split('-')[0]).filter(Boolean))).sort();
     }, [items]);
 
+    useEffect(() => {
+        setGlobalActiveVendors(activeVendors);
+    }, [activeVendors, setGlobalActiveVendors]);
+
     const totalCount = useMemo(() => {
         return filteredItems.reduce((acc, item) => acc + (parseInt(item.data.quantity) || 1), 0);
     }, [filteredItems]);
@@ -560,56 +591,22 @@ export const UnifiedInventoryView = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
 
-            {/* Top row with Types, Count, toggle Display, and Filter expander */}
-            <div className="flex justify-between items-center px-5 py-3 mt-4 bg-(--glass-bg) backdrop-blur-xl rounded-2xl border border-(--border-color) mx-2 shrink-0 z-30 relative">
-                <div className="flex gap-8 items-center">
+            {/* Simple Types/Count Header */}
+            <div className="flex justify-between items-center px-4 py-2 mt-4 mx-2 shrink-0 z-30 relative">
+                <div className="flex gap-6 items-center">
                     <div className="flex flex-col">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-0.5">Types</span>
                         <span className="text-sm font-mono font-black text-(--text-color) leading-none">{filteredItems.length.toLocaleString('en-US')}</span>
                     </div>
-                    <div className="w-px h-8 bg-(--border-color)" />
+                    <div className="w-px h-6 bg-(--border-color)" />
                     <div className="flex flex-col">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
                         <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalCount.toLocaleString('en-US')}</span>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-(--glass-bg) border border-(--border-color) hover:bg-(--main-color)/10 text-(--text-color-secondary) hover:text-(--text-color) transition-all"
-                        title={viewMode === 'grid' ? "Switch to List View" : "Switch to Grid View"}>
-                        <span className="text-lg! leading-none font-black opacity-80">{viewMode === 'grid' ? '☰' : '⊞'}</span>
-                    </button>
-
-                    <button
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                        className={`px-4 h-10 flex items-center gap-2.5 rounded-xl transition-all border ${isFiltersOpen ? 'bg-[#6BCEBB]/15 border-[#6BCEBB]/30 text-[#6BCEBB]' : 'bg-(--glass-bg) border-(--border-color) text-(--text-color-secondary) hover:text-(--text-color) hover:bg-(--main-color)/10'}`}>
-                        <Filter className={`w-4 h-4 transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`} />
-                        <span className="text-[10px] uppercase font-black tracking-[0.1em] hidden sm:block mt-0.5">Filters</span>
-                    </button>
-                </div>
             </div>
 
-            {/* Collapsible Filters Panel */}
-            <div className={`transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shrink-0 overflow-hidden relative z-20 ${isFiltersOpen ? 'max-h-64 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-4 -mt-4'}`}>
-                <div className="flex flex-col md:flex-row items-center gap-4 px-2 py-2 mx-2">
-                    <div className="flex bg-(--glass-bg) p-1.5 rounded-xl border border-(--border-color) shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar no-scrollbar">
-                        {['All', 'Available', 'Production', 'Acquisition'].map(s => (
-                            <button key={s} onClick={() => setStatusFilter(s as any)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg transition-all whitespace-nowrap ${statusFilter === s ? 'bg-[#6BCEBB] text-black shadow-lg translate-y-[-1px]' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}>{s}</button>
-                        ))}
-                    </div>
-                    <div className="flex bg-(--glass-bg) p-1.5 rounded-xl border border-(--border-color) overflow-x-auto grow custom-scrollbar no-scrollbar w-full">
-                        <button onClick={() => setVendorFilter('All')} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40 rounded-lg transition-all shrink-0 ${vendorFilter === 'All' ? 'bg-white/15 text-white shadow-sm' : 'hover:text-white hover:bg-white/5'}`}>ALL</button>
-                        <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
-                        {activeVendors.map(v => {
-                            const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                            return <button key={v} onClick={() => setVendorFilter(v)} className={`px-3 py-1.5 mx-0.5 text-[10px] font-black rounded-lg transition-all shrink-0 ${vendorFilter === v ? 'opacity-100 shadow-md translate-y-[-1px]' : 'opacity-30 hover:opacity-60'}`} style={{ backgroundColor: vendorFilter === v ? color : 'transparent', color: vendorFilter === v ? 'black' : color, border: vendorFilter === v ? 'none' : `1px solid ${color}` }}>{v}</button>;
-                        })}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grow min-h-0 overflow-hidden glass-panel shadow-2xl rounded-[2rem] m-2 mt-0">
+            <div className="grow min-h-0 overflow-hidden m-2 mt-0 relative z-20">
                 <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
                         {isLoading ? (
