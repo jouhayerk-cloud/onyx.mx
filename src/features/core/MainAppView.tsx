@@ -260,6 +260,8 @@ export function MainAppView() {
 
             <HeroBackground />
 
+
+
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar">
                     <div className="sidebar-header">
