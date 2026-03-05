@@ -5,6 +5,8 @@
 :root {
   --app-bg: transparent;
   /* Let body gradient show through */
+  --app-bg-solid: #0a0a0f;
+  /* solid reference for scrims */
   --sidebar-bg: rgba(10, 10, 10, 0.4);
   --main-header-bg: transparent;
   --main-color: #7FBBFF;
@@ -465,7 +467,8 @@ html.theme-obsidian {
   --c5: #161622;
   --c6: #0d0d14;
   --app-bg: rgba(10, 10, 15, 0.4);
-  --sidebar-bg: rgba(26, 26, 36, 0.85);
+  --app-bg-solid: #1a1a24;
+  --sidebar-bg: rgba(26, 26, 36, 0.92);
   --main-color: #4a90e2;
   --secondary-color: #357abd;
   --text-color: #ffffff;
@@ -486,7 +489,8 @@ html.theme-fluorite {
   --c5: #003b36;
   --c6: #1a0a30;
   --app-bg: rgba(20, 10, 35, 0.4);
-  --sidebar-bg: rgba(30, 15, 50, 0.85);
+  --app-bg-solid: #1e0f32;
+  --sidebar-bg: rgba(30, 15, 50, 0.92);
   --main-color: #00e5ff;
   --secondary-color: #00b0ff;
   --text-color: #ffffff;
@@ -507,7 +511,8 @@ html.theme-malaquite {
   --c5: #0b2f20;
   --c6: #051a0e;
   --app-bg: rgba(5, 20, 15, 0.4);
-  --sidebar-bg: rgba(12, 40, 25, 0.85);
+  --app-bg-solid: #0c2819;
+  --sidebar-bg: rgba(12, 40, 25, 0.92);
   --main-color: #4ade80;
   --secondary-color: #22c55e;
   --text-color: #ffffff;
@@ -528,7 +533,8 @@ html.theme-nacar {
   --c5: #fffce0;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(250, 251, 245, 0.9);
+  --app-bg-solid: #fafbf5;
+  --sidebar-bg: rgba(250, 251, 245, 0.96);
   --main-color: #84cc16;
   --secondary-color: #65a30d;
   --text-color: #1a2e05;
@@ -550,7 +556,8 @@ html.theme-tehu {
   --c5: #fcf6ef;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(252, 249, 246, 0.9);
+  --app-bg-solid: #fcf9f6;
+  --sidebar-bg: rgba(252, 249, 246, 0.96);
   --main-color: #f97316;
   --secondary-color: #ea580c;
   --text-color: #431407;
@@ -572,7 +579,8 @@ html.theme-tekis {
   --c5: #fffdd0;
   --c6: #ffffff;
   --app-bg: rgba(255, 255, 255, 0.3);
-  --sidebar-bg: rgba(252, 250, 240, 0.9);
+  --app-bg-solid: #fcfaf0;
+  --sidebar-bg: rgba(252, 250, 240, 0.96);
   --main-color: #eab308;
   --secondary-color: #ca8a04;
   --text-color: #422006;
@@ -3185,25 +3193,25 @@ html.theme-malaquite .sidebar-list-item.active {
 
 /* Light glass panel — chips, badges, small cards */
 .glass-sm {
-  background: color-mix(in srgb, var(--sidebar-bg) 50%, transparent);
+  background: color-mix(in srgb, var(--sidebar-bg) 82%, transparent);
   backdrop-filter: blur(8px);
-  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-color) 16%, transparent);
   border-radius: 12px;
 }
 
 /* Medium glass panel — drawers, popovers */
 .glass-md {
-  background: color-mix(in srgb, var(--sidebar-bg) 65%, transparent);
+  background: color-mix(in srgb, var(--sidebar-bg) 88%, transparent);
   backdrop-filter: blur(16px);
-  border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
   border-radius: 16px;
 }
 
 /* Heavy glass panel — main detail panels */
 .glass-lg {
-  background: color-mix(in srgb, var(--sidebar-bg) 70%, transparent);
+  background: color-mix(in srgb, var(--sidebar-bg) 92%, transparent);
   backdrop-filter: blur(24px);
-  border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
   border-radius: 20px;
 }
 
@@ -3227,7 +3235,7 @@ html.theme-malaquite .sidebar-list-item.active {
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.25em;
-  color: color-mix(in srgb, var(--text-color) 60%, transparent);
+  color: color-mix(in srgb, var(--text-color) 80%, transparent);
   display: block;
   margin-bottom: 6px;
 }
@@ -3238,7 +3246,7 @@ html.theme-malaquite .sidebar-list-item.active {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: color-mix(in srgb, var(--text-color) 55%, transparent);
+  color: color-mix(in srgb, var(--text-color) 75%, transparent);
   display: block;
   margin-bottom: 3px;
 }
@@ -3247,7 +3255,7 @@ html.theme-malaquite .sidebar-list-item.active {
 .glass-value {
   font-size: 13px;
   font-weight: 900;
-  color: color-mix(in srgb, var(--text-color) 90%, transparent);
+  color: color-mix(in srgb, var(--text-color) 95%, transparent);
   font-family: ui-monospace, 'SF Mono', monospace;
 }
 
@@ -3255,7 +3263,7 @@ html.theme-malaquite .sidebar-list-item.active {
 .glass-value-secondary {
   font-size: 10px;
   font-weight: 600;
-  color: color-mix(in srgb, var(--text-color) 55%, transparent);
+  color: color-mix(in srgb, var(--text-color) 72%, transparent);
   font-family: ui-monospace, 'SF Mono', monospace;
   margin-top: 2px;
 }
