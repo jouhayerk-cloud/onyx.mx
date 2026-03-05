@@ -58,5 +58,10 @@ export const OnyxMiniLogo = ({ className, ...props }: React.SVGProps<SVGSVGEleme
 };
 
 export const OnyxFallbackLogo = ({ className, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
-    <img src="/OnyxLogo.png" alt="Onyx.mx Fallback" className={`onyx-logo-fallback ${className || ''}`} {...props} />
+    <img
+        src={`${import.meta.env.BASE_URL}OnyxLogo.png`}
+        alt="Onyx.mx"
+        className={`onyx-logo-fallback ${className || ''}`}
+        {...props}
+    />
 );
