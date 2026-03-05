@@ -13,6 +13,14 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.78 — 2026-03-04 (Enhancement)
+- **Inventory Top Bar [ui]:** Removed search input from Inventory top bar. Grid/List selector replaced with single toggle icon that flips state on each click. Vendor filter deploys as a glassmorphic horizontal pill-bar below the header (portal) instead of a dropdown.
+- **Payments Top Bar [ui]:** Removed search and filter dropdowns from Finance top bar. Destination and Vendor filter toggles now deploy as horizontal portal pill-bars below the header. Overview panel cycle button replaced with single 3-state toggle (Full → Min → Off) with label indicator.
+- **Payments Overview Panel [feat]:** Overview panel now respects the 3-state mode atom — Full shows full height, Min shows compact height, Off hides the panel entirely. Removed inline Full/Min/Hide buttons from panel body.
+- **Inventory Edit [feat]:** Added Quantity and Unit Cost (MXN) fields to the Inventory Edit item panel.
+- **Add Entry Fast-Entry [feat]:** After saving an item in the Manual Entry form, the form stays open with the same vendor, status, and workbook pre-filled, and the item number auto-incremented for rapid consecutive entries.
+- **Upload Wizard [feat]:** Final step now shows two action buttons — **Save & Continue** (saves and resets to Step 3 with same vendor + bumped item count) and **Save & Exit** (saves and closes wizard).
+
 ## v1.11.77 — 2026-03-04 (Enhancement)
 - **Top Bar UI [feat]:** Redesigned FinanceBar to include search and deployable filter panels for Vendors and Destinations to match the InventoryBar. Fixed SVG borderless icons across all TopBars.
 - **Payments Timeline [feat]:** Replaced inline filters with global Top Bar filters. Added independent sliding detail drawer panel for individual payment timeline items.
