@@ -13,6 +13,10 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.80 — 2026-03-04 (UI Polish)
+- **Inventory List Icons [ui]:** Replaced Lucide `<Edit2>` and `<ChevronDown>` button wrappers with bare inline `<svg>` elements — truly free-floating, no background box, no border. Edit icon uses `--main-color` on hover, chevron rotates 180° when expanded. Correct color theme applied.
+- **Payments Filters [ui]:** Consolidated three separate filter buttons (MapPin/Destination, Tag/Vendor, LayoutList/Type) into a single `SlidersHorizontal` inline SVG toggle. Clicking it opens one unified popup panel containing all three filter sections (Destination, Vendor, Payment Type) plus a "Clear All" link. Filter indicator dot shows when any filter is active. Filters are no longer individually visible in the top bar.
+
 ## v1.11.79 — 2026-03-04 (Enhancement + Bugfix)
 - **Inventory Search Bar [feat]:** Restored wide centered smart search bar to Inventory top bar. Supports multi-term AND search (space-separated), matched against Tag ID, shape, color, material, codes.
 - **Inventory List View [ui]:** Edit and Details buttons converted to free-floating ghost icon buttons (no label, no border box) for a cleaner, more compact row layout.
