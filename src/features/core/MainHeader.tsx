@@ -48,7 +48,8 @@ import {
     isPaymentDestinationFilterOpenAtom,
     paymentCategoryFilterAtom,
     isPaymentCategoryFilterOpenAtom,
-    PaymentCategory
+    PaymentCategory,
+    isPaymentsFilterBarVisibleAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -281,9 +282,12 @@ const InventoryBar: React.FC = () => {
                             <button
                                 key={v}
                                 onClick={() => setVendorFilter(v)}
-                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${isActive ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-1.5 ${isActive
+                                    ? 'text-black border-transparent shadow-lg'
+                                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
                                     }`}
-                                style={isActive ? { backgroundColor: color, borderColor: color } : {}}>
+                                style={isActive ? { backgroundColor: color, borderColor: color } : { borderColor: color + '40' }}>
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
                                 {v}
                             </button>
                         );
@@ -346,6 +350,7 @@ const FinanceBar: React.FC = () => {
     const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
 
+    const [isFilterBarVisible, setIsFilterBarVisible] = useAtom(isPaymentsFilterBarVisibleAtom);
     const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
 
     const activeDestPendingRecords = useMemo(() => {
@@ -413,8 +418,8 @@ const FinanceBar: React.FC = () => {
                             destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All')
                             ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'
                             }`}
-                        onClick={() => { const anyOpen = isDestOpen || isVendorOpen || isCategoryOpen; closeAll(); if (!anyOpen) setIsCategoryOpen(true); }}
-                        title="Filters"
+                        onClick={() => setIsFilterBarVisible(!isFilterBarVisible)}
+                        title="Toggle Filter Bar"
                     >
                         {/* SlidersHorizontal inline SVG */}
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -423,78 +428,11 @@ const FinanceBar: React.FC = () => {
                             <line x1="21" y1="20" x2="17" y2="20" /><line x1="13" y1="20" x2="3" y2="20" />
                             <circle cx="7" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><circle cx="17" cy="20" r="2" />
                         </svg>
-                        {/* Active filter indicators */}
                         {(destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All') && (
                             <span className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] ml-0.5" />
                         )}
                     </button>
 
-                    {/* Unified filter popup */}
-                    {(isDestOpen || isVendorOpen || isCategoryOpen) && (
-                        <div className="absolute top-full right-0 mt-1 z-50 w-[220px] rounded-2xl border border-white/10 shadow-2xl p-4 flex flex-col gap-4"
-                            style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 97%, transparent)', backdropFilter: 'blur(40px)' }}>
-
-                            {/* Destination section */}
-                            <div>
-                                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 flex items-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                    Destination
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                    <button onClick={() => setDestinationFilter('All')} className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${destinationFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>All</button>
-                                    {Object.entries(destinationsConfig).map(([key, config]) => (
-                                        <button key={key} onClick={() => setDestinationFilter(key as any)}
-                                            className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-1 ${destinationFilter === key ? 'bg-[#A78BFA]/20 border-[#A78BFA]/40 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
-                                            <img src={config.icon} alt="" className="w-3.5 h-3.5 object-contain" />{config.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="h-px bg-white/8" />
-
-                            {/* Vendor section */}
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Vendor</span>
-                                <div className="flex flex-wrap gap-1">
-                                    <button onClick={() => setVendorFilter('All')} className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All' ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>All</button>
-                                    {activeVendors.map(v => {
-                                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                        return (
-                                            <button key={v} onClick={() => setVendorFilter(v)}
-                                                className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === v ? 'text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                                                style={vendorFilter === v ? { backgroundColor: color } : {}}>
-                                                {v}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="h-px bg-white/8" />
-
-                            {/* Payment Type section */}
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-2 block">Payment Type</span>
-                                <div className="flex flex-wrap gap-1">
-                                    {CATEGORIES.map(cat => (
-                                        <button key={cat} onClick={() => setCategoryFilter(cat)}
-                                            className={`h-6 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border ${categoryFilter === cat ? 'bg-[#A78BFA]/20 border-[#A78BFA]/40 text-[#A78BFA]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}>
-                                            {cat}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Clear all */}
-                            {(destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All') && (
-                                <button onClick={() => { setDestinationFilter('All'); setVendorFilter('All'); setCategoryFilter('All'); }}
-                                    className="w-full text-center text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-white py-1 border-t border-white/8 transition-colors">
-                                    Clear All Filters
-                                </button>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
@@ -675,9 +613,9 @@ export function MainHeader() {
                     {isSettingsOpen && (
                         <>
                             {/* Backdrop */}
-                            <div className="fixed inset-0 z-[99]" onClick={() => setIsSettingsOpen(false)} />
+                            <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
                             {/* Panel */}
-                            <div className="absolute top-12 right-0 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute top-12 right-0 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-9999 animate-in fade-in slide-in-from-top-2 duration-200">
 
                                 {/* Header */}
                                 <div className="flex items-center justify-between">

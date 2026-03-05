@@ -206,7 +206,7 @@ export function StoreView() {
     return (
         <div className="flex flex-col h-full overflow-hidden bg-(--background-color) relative">
             {/* Top bar */}
-            <div className="flex items-center justify-end px-6 py-4 border-b border-white/5 gap-4 shrink-0">
+            <div className="flex items-center justify-end px-6 py-4 border-b border-white/10 gap-4 shrink-0">
                 <div className="flex items-center gap-3">
                     <button onClick={() => setIsBagOpen(true)}
                         className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center hover:scale-105">
@@ -592,7 +592,7 @@ export function StoreView() {
             {/* ─── Shopping Bag Drawer ─────────────────────────────────── */}
             {isBagOpen && (
                 <div className="absolute inset-y-0 right-0 w-full sm:w-[400px] bg-(--background-color)/95 backdrop-blur-2xl border-l border-white/10 flex flex-col z-50 animate-in slide-in-from-right-8 duration-300 shadow-2xl">
-                    <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/[0.03]">
+                    <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/3">
                         <div className="flex items-center gap-3">
                             <ShoppingBag className="w-5 h-5 text-(--main-color)" />
                             <h2 className="text-sm font-black uppercase tracking-widest text-(--text-color)">Acquisition Bag</h2>
@@ -609,7 +609,7 @@ export function StoreView() {
                                 <p className="text-xs font-black uppercase tracking-widest text-center">Your bag is empty</p>
                             </div>
                         ) : shoppingBag.map(item => (
-                            <div key={item.row} className="flex items-center gap-3 p-3.5 bg-white/[0.04] hover:bg-white/[0.07] rounded-2xl border border-white/[0.06] transition-colors group">
+                            <div key={item.row} className="flex items-center gap-3 p-3.5 bg-white/4 hover:bg-white/5 rounded-2xl border border-white/6 transition-colors group">
                                 <div className="w-14 h-14 bg-black/20 rounded-xl overflow-hidden border border-white/5 shrink-0">
                                     {item.imageUrl?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
                                         <video src={item.imageUrl} className="w-full h-full object-cover opacity-80" />
