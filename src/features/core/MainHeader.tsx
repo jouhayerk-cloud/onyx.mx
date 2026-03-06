@@ -49,7 +49,7 @@ import {
     paymentCategoryFilterAtom,
     isPaymentCategoryFilterOpenAtom,
     PaymentCategory,
-    isPaymentsFilterBarVisibleAtom
+    paymentFilterBarModeAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -351,7 +351,7 @@ const FinanceBar: React.FC = () => {
     const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
 
-    const [isFilterBarVisible, setIsFilterBarVisible] = useAtom(isPaymentsFilterBarVisibleAtom);
+    const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
     const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
 
     const activeDestPendingRecords = useMemo(() => {
@@ -415,12 +415,14 @@ const FinanceBar: React.FC = () => {
                 {/* Single consolidated filter toggle */}
                 <div className="relative">
                     <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${(isDestOpen || isVendorOpen || isCategoryOpen ||
-                            destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All')
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${(filterMode !== 'off')
                             ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'
                             }`}
-                        onClick={() => setIsFilterBarVisible(!isFilterBarVisible)}
-                        title="Toggle Filter Bar"
+                        onClick={() => {
+                            const modes: ('off' | 'left' | 'right')[] = ['off', 'left', 'right'];
+                            setFilterMode(modes[(modes.indexOf(filterMode) + 1) % 3]);
+                        }}
+                        title={`Filter Mode: ${filterMode.toUpperCase()}`}
                     >
                         {/* SlidersHorizontal inline SVG */}
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
@@ -429,8 +431,8 @@ const FinanceBar: React.FC = () => {
                             <line x1="21" y1="20" x2="17" y2="20" /><line x1="13" y1="20" x2="3" y2="20" />
                             <circle cx="7" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><circle cx="17" cy="20" r="2" />
                         </svg>
-                        {(destinationFilter !== 'All' || vendorFilter !== 'All' || categoryFilter !== 'All') && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#A78BFA] ml-0.5" />
+                        {filterMode !== 'off' && (
+                            <span className="text-[9px] font-black uppercase tracking-widest">{filterMode}</span>
                         )}
                     </button>
 
