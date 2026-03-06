@@ -432,7 +432,9 @@ const FinanceBar: React.FC = () => {
                             <circle cx="7" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><circle cx="17" cy="20" r="2" />
                         </svg>
                         {filterMode !== 'off' && (
-                            <span className="text-[9px] font-black uppercase tracking-widest">{filterMode}</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest">
+                                {filterMode === 'left' ? 'TYPE' : filterMode === 'right' ? 'ACCOUNTS' : ''}
+                            </span>
                         )}
                     </button>
 
