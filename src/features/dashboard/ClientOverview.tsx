@@ -67,7 +67,7 @@ export const ClientOverview: React.FC = () => {
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const currentExchangeRate = liveExchangeRate || exchangeRate;
     const [showFinancials] = useAtom(showFinancialsAtom);
-    const financeData = useAtomValue(financeDataAtom);
+    const [financeData, setFinanceData] = useAtom(financeDataAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
 
@@ -93,6 +93,9 @@ export const ClientOverview: React.FC = () => {
             db.production.find().$.subscribe(d => {
                 const mapped = d.map(x => ({ ...x.toJSON(), source: 'production', data: normalizeInventoryData(x.toJSON()) }));
                 setItems(prev => [...prev.filter(p => p.source !== 'production'), ...mapped]);
+            }),
+            db.finance.find().$.subscribe(d => {
+                setFinanceData(d.map(x => x.toJSON()));
             }),
         ];
         setTimeout(() => setIsLoading(false), 800);
