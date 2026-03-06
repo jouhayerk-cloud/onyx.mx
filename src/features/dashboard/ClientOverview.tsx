@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { PaymentDestination } from '../../lib/Types';
 import { default as toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { EChart } from '../../components/EChart';
@@ -150,8 +151,10 @@ export const ClientOverview: React.FC = () => {
     const pendingItems = useMemo(() => {
         return items.filter(i => {
             const status = (i.data?.status || '').toLowerCase();
-            return ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status) &&
-                !i.data?.payReq && !(i.data as any)?.pay_req && i.data?.payReq !== 'true' && (i.data as any)?.pay_req !== 'true';
+            const payReqStr = String(i.data?.payReq || (i.data as any)?.pay_req || '').toLowerCase();
+            const isAcq = ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status);
+            const isPaid = payReqStr === 'true' || payReqStr === 'paid';
+            return isAcq && !isPaid;
         });
     }, [items]);
 
@@ -167,7 +170,17 @@ export const ClientOverview: React.FC = () => {
             if (!groups[vid]) groups[vid] = { total: 0 };
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
-            groups[vid].total += (price * qty);
+
+            let ratio = 1;
+            const payReqStr = String(data.payReq || data.pay_req || '').toLowerCase();
+            if (payReqStr.includes('%')) {
+                const match = payReqStr.match(/(\d+)%/);
+                if (match) {
+                    ratio = Math.max(0, (100 - parseInt(match[1])) / 100);
+                }
+            }
+
+            groups[vid].total += (price * ratio * qty);
         }
         return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
@@ -311,7 +324,8 @@ export const ClientOverview: React.FC = () => {
                                         </div>
                                         <div className="flex flex-col items-end">
                                             <div className="text-right mb-2">
-                                                <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+                                                <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors leading-none">{fmtMXN(destReqMXN)}</p>
+                                                <p className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-60 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
                                             </div>
                                             <button
                                                 onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
@@ -365,20 +379,28 @@ export const ClientOverview: React.FC = () => {
                             return (
                                 <div key={`coming-${group.vendorId}`} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-(--main-color)/40 transition-all rounded-4xl group gap-4 opacity-70 hover:opacity-100">
                                     <div className="flex items-center gap-5">
-                                        <div className="w-16 h-12 p-1.5 bg-(--glass-bg) rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden border border-white/10" style={{ borderColor: `${color}40` }}>
-                                            <span className="text-2xl font-black" style={{ color: color }}>{group.vendorId.charAt(0)}</span>
+                                        <div className="relative shrink-0">
+                                            <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10" style={{ borderColor: `${color}80` }}>
+                                                <img src={destinationsConfig[PaymentDestination.Fast_Cash_Wire].icon} alt="Direct Wire" className="w-full h-full object-contain mix-blend-multiply relative z-0 opacity-40 grayscale" />
+                                            </div>
+                                            <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
+                                                <span className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={group.vendorId}>
+                                                    {String(group.vendorId).slice(0, 2).toUpperCase()}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1.5">
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{group.vendorId}</p>
+                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">Generic Dest</p>
                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color)">Coming</span>
                                             </div>
                                             <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated Pending</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-end">
+                                    <div className="flex flex-col items-end justify-center">
                                         <div className="text-right">
-                                            <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors">{fmtMXN(group.total)}</p>
+                                            <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors leading-none">{fmtMXN(group.total)}</p>
+                                            <p className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-60 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
                                         </div>
                                     </div>
                                 </div>
