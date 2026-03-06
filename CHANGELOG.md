@@ -13,6 +13,10 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.11.100 — 2026-03-05 (Deployment Stability)
+- **Deployment [fix]:** Stabilized production builds by explicitly defining Supabase and Gemini environment variables in the Vite configuration. This ensures critical keys are baked into the production bundle, resolving "blank screen" issues on live deployments.
+- **Workflow [infra]:** Implemented isolated git worktree deployment workflow for consistent, high-fidelity production releases.
+
 ## v1.11.99 — 2026-03-05 (Packing Intelligence Update)
 - **Packing Info [feat]:** Adapted the Packing module UI and label templates to display all essential packing metrics: Descriptions, Dimensions, Cypher Codes (ACQ/LC), TAG IDs, Vendor IDs, and USD Retail Prices.
 - **Label Architecture [feat]:** Redesigned the printable label template with a high-density, professional layout that incorporates dimensional data and financial codes for streamlined logistics.

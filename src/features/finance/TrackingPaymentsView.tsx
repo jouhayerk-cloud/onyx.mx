@@ -83,6 +83,8 @@ const AddPaymentModal: React.FC<{
         notes: '',
         recurring: false,
         recurring_day: 1,
+        manualFee: '',
+        includeIva: false,
     });
 
     const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
@@ -101,6 +103,8 @@ const AddPaymentModal: React.FC<{
                 notes: '',
                 recurring: false,
                 recurring_day: new Date().getDate(),
+                manualFee: '',
+                includeIva: false,
             });
         }
     }, [isOpen]);
@@ -115,11 +119,9 @@ const AddPaymentModal: React.FC<{
         setSaving(true);
         const toastId = toast.loading('Saving…');
         try {
-            let commission = destinationsConfig[form.destination].calculateCommission(amt);
-            if (form.destination === PaymentDestination.BBVA_Ramses) {
-                const iva = calculateIVA(amt);
-                commission += iva;
-            }
+            const manualFeeAmt = parseFloat(form.manualFee) || 0;
+            const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
+            const commission = manualFeeAmt + ivaAmt;
 
             const isProd = form.subcategory === 'Prod';
             const group = (form.subcategory === 'Acq' || isProd) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
@@ -167,7 +169,7 @@ const AddPaymentModal: React.FC<{
                 {/* Progress Header */}
                 <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
                     <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map(s => (
+                        {[1, 2, 3, 4, 5, 6].map(s => (
                             <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-(--border-color)'}`} />
                         ))}
                     </div>
@@ -404,11 +406,6 @@ const AddPaymentModal: React.FC<{
 
                             <div className="grid grid-cols-2 gap-4">
                                 {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                    const amt = parseFloat(form.amount) || 0;
-                                    const comm = cfg.calculateCommission(amt);
-                                    const iva = (key === PaymentDestination.BBVA_Ramses) ? calculateIVA(amt) : 0;
-                                    const totalExtra = comm + iva;
-
                                     return (
                                         <button key={key} type="button"
                                             onClick={() => set('destination', key as PaymentDestination)}
@@ -417,30 +414,64 @@ const AddPaymentModal: React.FC<{
                                             <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain mb-1" />
                                             <div className="text-center">
                                                 <div className="text-[11px] font-black text-(--text-color) uppercase tracking-widest opacity-80">{cfg.name}</div>
-                                                {totalExtra > 0 && (
-                                                    <div className="text-[9px] font-mono text-(--main-color) mt-1 font-bold">
-                                                        +{fmtMXN(totalExtra)} FEE
-                                                    </div>
-                                                )}
                                             </div>
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            <div className="mt-10 p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color)">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">TOTAL TRANSACTION</span>
-                                    <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                            <div className="flex gap-5 mt-16">
+                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                                <button onClick={() => setStep(6)} disabled={!form.destination}
+                                    className="flex-[1.5] py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all outline-none">
+                                    CONTINUE TO TAXES
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Stage 6: Taxes & Fees */}
+                    {step === 6 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">ADJUSTMENTS</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Optional taxes and transaction fees</p>
+
+                            <div className="flex flex-col gap-10">
+                                <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
+                                        <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Value added tax calculation</span>
+                                    </div>
+                                    <button onClick={() => set('includeIva', !form.includeIva)}
+                                        className={`w-14 h-8 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeIva ? 'left-7' : 'left-1'}`} />
+                                    </button>
                                 </div>
-                                <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
-                                    {form.destination ? fmtMXN((parseFloat(form.amount) || 0) + destinationsConfig[form.destination].calculateCommission(parseFloat(form.amount) || 0) + (form.destination === PaymentDestination.BBVA_Ramses ? calculateIVA(parseFloat(form.amount) || 0) : 0)) : '—'}
+
+                                <div className="space-y-4">
+                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
+                                    <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
+                                        className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                                </div>
+
+                                <div className="p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color)">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">PAYMENT SUMMARY</span>
+                                        <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                    </div>
+                                    <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
+                                        {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0))}
+                                    </div>
+                                    <div className="flex gap-4 mt-3 opacity-60">
+                                        {form.includeIva && <span className="text-[9px] font-black uppercase tracking-widest text-[#8DC63F]">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-5 mt-10">
-                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
-                                <button onClick={handleSubmit} disabled={saving || !form.destination}
+                            <div className="flex gap-5 mt-12">
+                                <button onClick={() => setStep(5)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                                <button onClick={handleSubmit} disabled={saving}
                                     className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[28px] text-[11px] font-black tracking-[0.2em] disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02] active:scale-95">
                                     {saving ? 'PROCESSING…' : 'CONFIRM PAYMENT'}
                                 </button>
@@ -456,9 +487,11 @@ const AddPaymentModal: React.FC<{
 const RequestPaymentModal: React.FC<{
     group: VendorGroup | null;
     onClose: () => void;
-    onConfirm: (dest: PaymentDestination, percentage: number) => void;
+    onConfirm: (dest: PaymentDestination, percentage: number, manualFee: number, includeIva: boolean) => void;
 }> = ({ group, onClose, onConfirm }) => {
     const [dest, setDest] = useState<PaymentDestination | null>(null);
+    const [manualFee, setManualFee] = useState('');
+    const [includeIva, setIncludeIva] = useState(false);
     const paidPerc = group ? Math.round((group.paidTotal / group.total) * 100) : 0;
     const [percentage, setPercentage] = useState(100);
 
@@ -550,9 +583,36 @@ const RequestPaymentModal: React.FC<{
                             ))}
                         </div>
 
+                        {/* Adjustments Section */}
+                        <div className="flex flex-col gap-4 mt-2">
+                            <div className="flex items-center justify-between p-4 rounded-2xl bg-(--glass-bg) border border-(--border-color)">
+                                <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
+                                <button onClick={() => setIncludeIva(!includeIva)}
+                                    className={`w-12 h-7 rounded-full transition-all relative ${includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${includeIva ? 'left-6' : 'left-1'}`} />
+                                </button>
+                            </div>
+                            <div className="relative group/fee">
+                                <label className="absolute -top-2 left-4 px-2 bg-(--c1) text-[8px] font-black text-(--text-color-secondary) uppercase tracking-widest">MANUAL FEE (MXN)</label>
+                                <input type="number" step="0.01" value={manualFee} onChange={e => setManualFee(e.target.value)}
+                                    className="w-full h-12 px-5 font-mono text-sm font-bold bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                            </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">TOTAL DISBURSEMENT</span>
+                                <span className="text-[10px] font-mono text-(--text-color-secondary)">{fmtMXN(amountToRequest)} BASE</span>
+                            </div>
+                            <div className="text-3xl font-mono font-black text-(--text-color)">
+                                {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0))}
+                            </div>
+                        </div>
+
                         <div className="flex gap-4 mt-2">
                             <button onClick={onClose} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[24px] text-[10px] font-black tracking-widest hover:bg-(--glass-bg) transition-all">CANCEL</button>
-                            <button onClick={() => dest && onConfirm(dest, percentage)} disabled={!dest || amountToRequest <= 0}
+                            <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva)} disabled={!dest || amountToRequest <= 0}
                                 className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[24px] text-[10px] font-black tracking-widest disabled:opacity-40 uppercase transition-all shadow-lg hover:scale-[1.02] active:scale-95">
                                 {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL PAYMENT'}
                             </button>
@@ -672,32 +732,27 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [docs, subcatFilter, destinationFilter, vendorFilter]);
 
-    const handleRequestPayment = async (dest: PaymentDestination, percentage: number) => {
+    const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false) => {
         if (!requestGroup) return;
-        const group = requestGroup;
-        const toastId = toast.loading(`Requesting payment for ${group.vendorId}…`);
+        const toastId = toast.loading('Sending request…');
         try {
-            const targetAmount = group.total * (percentage / 100);
-            const amount = Number(Math.max(0, targetAmount - group.paidTotal).toFixed(2));
+            const targetAmount = requestGroup.total * (percentage / 100);
+            const amount = Number(Math.max(0, targetAmount - requestGroup.paidTotal).toFixed(2));
 
             if (amount <= 0 && percentage < 100) {
-                toast.error('No balanced remaining at this percentage.', { id: toastId });
+                toast.error('No balance remaining at this percentage.', { id: toastId });
                 return;
             }
 
-            let commission = destinationsConfig[dest].calculateCommission(amount);
-            if (dest === PaymentDestination.BBVA_Ramses) {
-                commission += amount * 0.16;
-            }
-            commission = Number(commission.toFixed(2));
+            const commission = Number((manualFee + (includeIva ? amount * 0.16 : 0)).toFixed(2));
 
-            const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
+            const isProduction = requestGroup.items.some(i => (i.data.status || '').toLowerCase() === 'production');
             const isPartial = percentage < 100;
             const desc = isPartial
-                ? `Partial Payment (${percentage}%) for ${group.items.length} items from ${group.vendorId}`
-                : `Liquidation Payment for ${group.items.length} items from ${group.vendorId}`;
+                ? `Partial Payment (${percentage}%) for ${requestGroup.items.length} items from ${requestGroup.vendorId}`
+                : `Liquidation Payment for ${requestGroup.items.length} items from ${requestGroup.vendorId}`;
 
-            const itemIdsStr = group.items.map(i => String(i.row)).join(',');
+            const itemIdsStr = requestGroup.items.map(i => String(i.row)).join(',');
             const ids = itemIdsStr.split(',');
 
             if (isProduction) {
@@ -727,10 +782,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 destination: dest,
                 status: 'Requested',
                 subcategory: isProduction ? 'Prod' : 'Acq',
-                vendor_id: group.vendorId,
+                vendor_id: requestGroup.vendorId,
                 inventoryItemRows: isPartial ? null : itemIdsStr,
                 linkedRows: isPartial ? itemIdsStr : null,
-                notes: isPartial ? `Partial payment for total ${fmtMXN(group.total)}. Current paid: ${fmtMXN(group.paidTotal + amount)}` : null
+                notes: isPartial ? `Partial payment for total ${fmtMXN(requestGroup.total)}. Current paid: ${fmtMXN(requestGroup.paidTotal + amount)}` : null
             }, db);
 
             toast.success(isPartial ? `Partial payment requested.` : `Liquidation requested.`, { id: toastId });
@@ -1105,7 +1160,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <td className="px-5 py-3 font-mono text-[10px] text-(--text-color-secondary) whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
                                                     <svg className={`w-3 h-3 transition-transform text-(--text-color-secondary) ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
-                                                    {fmtDate(r.date)}{r.recurring && <span className="text-[#F7941D] ml-1" title={`Day ${r.recurring_day}`}>↻</span>}
+                                                    {fmtDate(r.date)}
+                                                    {r.recurring && (
+                                                        <div className="flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-full bg-[#F7941D]/10 border border-[#F7941D]/20" title={`Recurring every day ${r.recurring_day}`}>
+                                                            <svg className="w-2.5 h-2.5 text-[#F7941D] animate-spin-slow"><use href="#repeat" /></svg>
+                                                            <span className="text-[8px] font-black text-[#F7941D]">{r.recurring_day}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-3 text-center">
@@ -1173,42 +1234,47 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Paid</span>
                                                                 <span className="font-mono text-[10px] text-(--text-color)">{r.pay_date ? new Date(r.pay_date).toLocaleDateString() : '—'}</span>
                                                             </div>
-                                                        </div>
-
-                                                        {/* Tags Deployable List */}
-                                                        {relatedIds.length > 0 && (
-                                                            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
-                                                                <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
-                                                                    {relatedIds.map((id: string, i: number) => {
-                                                                        const invItem = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
-                                                                        let displayTag = id;
-                                                                        if (invItem) {
-                                                                            const norm = normalizeInventoryData(invItem.data);
-                                                                            const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-                                                                            displayTag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : (norm.itemNumber ? `#${norm.itemNumber}` : id);
-                                                                        } else if (typeof id === 'string' && id.length > 10) {
-                                                                            displayTag = id.slice(0, 8) + '...';
-                                                                        }
-                                                                        return (
-                                                                            <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
-                                                                                {displayTag}
-                                                                            </span>
-                                                                        );
-                                                                    })}
+                                                            {r.recurring && (
+                                                                <div className="flex justify-between gap-4 mt-1 pt-1 border-t border-white/5">
+                                                                    <span className="text-[9px] font-black text-[#F7941D] uppercase tracking-widest">Recurring</span>
+                                                                    <span className="font-mono text-[10px] text-[#F7941D]">Next: Day {r.recurring_day}</span>
                                                                 </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Notes detail if any */}
-                                                        {r.notes && (
-                                                            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Notes</span>
-                                                                <p className="text-[10px] text-(--text-color) font-mono opacity-80 leading-snug">{r.notes}</p>
-                                                            </div>
-                                                        )}
-
+                                                            )}
+                                                        </div>
                                                     </div>
+
+                                                    {/* Tags Deployable List */}
+                                                    {relatedIds.length > 0 && (
+                                                        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
+                                                            <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
+                                                                {relatedIds.map((id: string, i: number) => {
+                                                                    const invItem = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
+                                                                    let displayTag = id;
+                                                                    if (invItem) {
+                                                                        const norm = normalizeInventoryData(invItem.data);
+                                                                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                                                                        displayTag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : (norm.itemNumber ? `#${norm.itemNumber}` : id);
+                                                                    } else if (typeof id === 'string' && id.length > 10) {
+                                                                        displayTag = id.slice(0, 8) + '...';
+                                                                    }
+                                                                    return (
+                                                                        <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
+                                                                            {displayTag}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Notes detail if any */}
+                                                    {r.notes && (
+                                                        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Notes</span>
+                                                            <p className="text-[10px] text-(--text-color) font-mono opacity-80 leading-snug">{r.notes}</p>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         )}
@@ -1247,13 +1313,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                     </symbol>
                     <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
                     </symbol>
                     <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                     </symbol>
                     <symbol id="label" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+                    </symbol>
+                    <symbol id="repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m17 1 4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><path d="m7 23-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
                     </symbol>
                 </defs>
             </svg>
