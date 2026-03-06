@@ -2,14 +2,14 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    userAtom, financeSubTabAtom
+    userAtom, financeSubTabAtom, liveExchangeRateAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import {
     Activity, LayoutDashboard, Database, RefreshCcw, DollarSign, Wallet, Store,
-    ShoppingCart, CreditCard, Package, ArrowRight, User
+    ShoppingCart, CreditCard, Package, ArrowRight, User, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
@@ -63,6 +63,8 @@ export const ClientOverview: React.FC = () => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
+    const currentExchangeRate = liveExchangeRate || exchangeRate;
     const [showFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
@@ -71,6 +73,9 @@ export const ClientOverview: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [storeItems, setStoreItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [expandedDests, setExpandedDests] = useState<Record<string, boolean>>({});
+
+    const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
 
     useEffect(() => {
@@ -104,13 +109,13 @@ export const ClientOverview: React.FC = () => {
             const price = parseFloat(norm?.price || 0);
             const qty = parseInt(norm?.quantity || 1) || 1;
             const totalPrice = price * qty;
-            const usd = totalPrice / exchangeRate;
+            const usd = totalPrice / currentExchangeRate;
             map[vid].itemCount += qty;
             map[vid].totalAcqMxn += totalPrice;
             map[vid].totalAcqUsd += usd;
         }
         return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
-    }, [items, exchangeRate]);
+    }, [items, currentExchangeRate]);
 
     const activeDestPendingRecords = useMemo(() => {
         return financeData.filter(d => (d.status === 'Requested' || !d.status) && d.destination);
@@ -125,7 +130,7 @@ export const ClientOverview: React.FC = () => {
         const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
 
         // Calculate pending payments (Requested)
-        const pendingValueUsd = activeDestReqNetMXN / exchangeRate;
+        const pendingValueUsd = activeDestReqNetMXN / currentExchangeRate;
 
         // "Acquisition (Pending payment)" - Let's define this as total acq value of items not yet markers as strictly paid?
         // Actually the prompt says "Payments (Total acquisition, pending payment)" and "Payments (requested pending payments)"
@@ -140,7 +145,7 @@ export const ClientOverview: React.FC = () => {
                 return Date.now() - updated < 7 * 24 * 60 * 60 * 1000; // last 7 days
             }).length
         };
-    }, [vendorSummaries, storeItems, activeDestReqNetMXN, exchangeRate]);
+    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate]);
 
     const pendingItems = useMemo(() => {
         return items.filter(i => {
@@ -167,13 +172,13 @@ export const ClientOverview: React.FC = () => {
         return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
 
-    const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '***';
+    const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
     const fmtUSD = (val: number, compact = false) => {
         if (!showFinancials) return '***';
         return '$' + val.toLocaleString('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: compact ? 0 : 2
-        }) + (compact ? '' : ' USD');
+        }) + ' USD';
     };
 
     const vendorChartOption = useMemo<EChartsOption>(() => ({
@@ -254,9 +259,15 @@ export const ClientOverview: React.FC = () => {
 
                 {/* Split layout for pending requests destinations */}
                 <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm">
-                    <div className="flex items-center gap-3 mb-8">
-                        <RefreshCcw size={18} className="text-[#00AEEF]" />
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div className="flex items-center gap-3">
+                            <RefreshCcw size={18} className="text-[#00AEEF]" />
+                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-(--main-color)/10 border border-(--main-color)/20 w-fit shrink-0">
+                            <DollarSign size={12} className="text-(--main-color)" />
+                            <span className="text-[9px] font-black text-(--text-color) uppercase tracking-[0.15em]">Rate: {currentExchangeRate.toFixed(2)} MXN/USD</span>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -265,44 +276,85 @@ export const ClientOverview: React.FC = () => {
                             const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
                             if (destReqMXN <= 0) return null;
 
-                            const isDirectWire = cfg.name === 'Direct Wire';
-                            const vendorIdsForDest = isDirectWire ? Array.from(new Set(destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1]))).filter(Boolean) : [];
+                            const vendorIdsForDest = Array.from(new Set(destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1]))).filter(Boolean);
+                            const isExpanded = !!expandedDests[key];
 
                             return (
-                                <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-4xl group gap-4">
-                                    <div className="flex items-center gap-5">
-                                        <div className="relative shrink-0">
-                                            <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply relative z-0" />
-                                            </div>
-                                            {isDirectWire && vendorIdsForDest.length > 0 && (
-                                                <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
-                                                    {vendorIdsForDest.map((vid: any) => {
-                                                        const color = (vendors as any)[vid]?.color || '#888';
-                                                        return (
-                                                            <span key={vid} className="px-1.5 py-0.5 rounded-md text-[7px] font-black text-white leading-none uppercase shadow-md border border-white/20" style={{ backgroundColor: color }}>
-                                                                {vid}
-                                                            </span>
-                                                        );
-                                                    })}
+                                <div key={key} className="flex flex-col p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-4xl group gap-4 relative overflow-hidden">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 w-full">
+                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => toggleDest(key)}>
+                                            <div className="relative shrink-0">
+                                                <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                                                    <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply relative z-0" />
                                                 </div>
-                                            )}
+                                                {vendorIdsForDest.length > 0 && (
+                                                    <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
+                                                        {vendorIdsForDest.map((vid: any) => {
+                                                            const color = (vendors as any)[vid]?.color || '#888';
+                                                            const shortCode = String(vid).slice(0, 2).toUpperCase();
+                                                            return (
+                                                                <span key={vid} className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={vid}>
+                                                                    {shortCode}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{cfg.name}</p>
+                                                    {isExpanded ? <ChevronUp size={14} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-60" /> : <ChevronDown size={14} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-60" />}
+                                                </div>
+                                                <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none mb-1.5">{cfg.name}</p>
-                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
+                                        <div className="flex flex-col items-end">
+                                            <div className="text-right mb-2">
+                                                <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
+                                                className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all w-full md:w-auto">
+                                                Finalize Payment
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end">
-                                        <div className="text-right mb-2">
-                                            <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+
+                                    {/* Payment Details Accordion */}
+                                    {isExpanded && (
+                                        <div className="mt-2 pt-4 border-t border-white/10 space-y-2 animate-in fade-in slide-in-from-top-2 relative z-10 w-full">
+                                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-2 opacity-60 flex items-center justify-between">
+                                                <span>Payment Records</span>
+                                                <span>Details</span>
+                                            </div>
+                                            {destDocs.map(d => (
+                                                <div key={d.id} className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-xs text-white/70 bg-black/20 p-4 rounded-3xl border border-white/5 shadow-inner hover:bg-black/30 transition-colors">
+                                                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                                        <span className="font-black text-(--text-color) tracking-wide truncate" title={d.description || 'Payment Request'}>{d.description || 'Payment Request'}</span>
+                                                        {d.vendor_id && (
+                                                            <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1 opacity-70">
+                                                                VENDOR: <span style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right flex flex-col font-mono text-[10px] items-end shrink-0">
+                                                        <div className="flex gap-4 mb-1">
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="uppercase text-[8px] opacity-50 tracking-widest">Base</span>
+                                                                <span>{fmtMXN(d.amount || 0)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="uppercase text-[8px] opacity-50 tracking-widest">Fee/Tax</span>
+                                                                <span>{fmtMXN(d.commission || 0)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="font-bold text-white text-[12px] bg-(--glass-bg) px-2 py-0.5 rounded-md mt-1 border border-white/10">Total: {fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <button
-                                            onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
-                                            className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all">
-                                            Finalize Payment
-                                        </button>
-                                    </div>
+                                    )}
                                 </div>
                             );
                         })}
