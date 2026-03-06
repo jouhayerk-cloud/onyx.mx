@@ -79,6 +79,7 @@ export const ClientOverview: React.FC = () => {
     const [storeItems, setStoreItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedDests, setExpandedDests] = useState<Record<string, boolean>>({});
+    const [isComingExpanded, setIsComingExpanded] = useState(true);
 
     const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
@@ -382,53 +383,72 @@ export const ClientOverview: React.FC = () => {
                             );
                         })}
 
-                        {/* Render coming payments */}
-                        {comingPaymentsByVendor.map(group => {
-                            const color = (vendors as any)[group.vendorId]?.color || '#888';
-                            return (
-                                <div key={`coming-${group.vendorId}`} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-(--main-color)/40 transition-all rounded-4xl group gap-4 opacity-70 hover:opacity-100">
-                                    <div className="flex items-center gap-5">
-                                        <div className="relative shrink-0">
-                                            <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10" style={{ borderColor: `${color}80` }}>
-                                                <img src={pendingCardIcon} alt="Pending" className="w-full h-full object-contain mix-blend-multiply relative z-0" />
-                                            </div>
-                                            <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
-                                                <span className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={group.vendorId}>
-                                                    {String(group.vendorId).slice(0, 2).toUpperCase()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
-                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color)">Coming</span>
-                                            </div>
-                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated Pending</p>
-                                            {group.partials.length > 0 && (
-                                                <div className="mt-1 flex flex-col gap-0.5">
-                                                    {group.partials.slice(0, 2).map((p, idx) => <span key={idx} className="text-[8px] font-bold text-(--main-color) uppercase opacity-70 leading-none">{p}</span>)}
-                                                    {group.partials.length > 2 && <span className="text-[8px] font-bold text-(--main-color) uppercase opacity-70 leading-none">+{group.partials.length - 2} more partials</span>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end justify-center">
-                                        <div className="text-right">
-                                            <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors leading-none">{fmtMXN(group.total)}</p>
-                                            <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                        {activeDestPendingRecords.length === 0 && comingPaymentsByVendor.length === 0 && (
+                        {activeDestPendingRecords.length === 0 && (
                             <div className="col-span-full p-12 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.3em] uppercase border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30">
                                 No Pending Requisitions found
                             </div>
                         )}
                     </div>
                 </div>
+
+                {comingPaymentsByVendor.length > 0 && (
+                    <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm transition-all duration-300">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group" onClick={() => setIsComingExpanded(!isComingExpanded)}>
+                            <div className="flex items-center gap-3">
+                                <Wallet size={18} className="text-[#00AEEF]" />
+                                <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#00AEEF] transition-colors">Auto-Generated Pending</h2>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest opacity-60 bg-white/5 px-2 py-1 rounded-md">{comingPaymentsByVendor.length} Pending Records</span>
+                                {isComingExpanded ? <ChevronUp size={16} className="text-(--text-color-secondary)" /> : <ChevronDown size={16} className="text-(--text-color-secondary)" />}
+                            </div>
+                        </div>
+
+                        {isComingExpanded && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                                {/* Render coming payments */}
+                                {comingPaymentsByVendor.map(group => {
+                                    const color = (vendors as any)[group.vendorId]?.color || '#888';
+                                    return (
+                                        <div key={`coming-${group.vendorId}`} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-(--main-color)/40 transition-all rounded-4xl group gap-4 opacity-70 hover:opacity-100">
+                                            <div className="flex items-center gap-5 w-full md:w-auto">
+                                                <div className="relative shrink-0">
+                                                    <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10" style={{ borderColor: `${color}80` }}>
+                                                        <img src={pendingCardIcon} alt="Pending" className="w-full h-full object-contain mix-blend-multiply relative z-0" />
+                                                    </div>
+                                                    <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
+                                                        <span className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={group.vendorId}>
+                                                            {String(group.vendorId).slice(0, 2).toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1.5">
+                                                        <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate w-full max-w-[150px]">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
+                                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color) shrink-0">Coming</span>
+                                                    </div>
+                                                    <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated</p>
+                                                    {group.partials.length > 0 && (
+                                                        <div className="mt-2 flex flex-col gap-1">
+                                                            {group.partials.slice(0, 2).map((p, idx) => <span key={idx} className="text-[8px] font-bold text-[#f7d666] uppercase bg-[#f7d666]/10 px-1.5 py-0.5 rounded w-fit leading-none">{p}</span>)}
+                                                            {group.partials.length > 2 && <span className="text-[8px] font-bold text-[#f7d666] uppercase bg-[#f7d666]/10 px-1.5 py-0.5 rounded w-fit leading-none">+{group.partials.length - 2} more partials</span>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end justify-center shrink-0">
+                                                <div className="text-right">
+                                                    <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors leading-none">{fmtMXN(group.total)}</p>
+                                                    <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Summary Tiles */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
