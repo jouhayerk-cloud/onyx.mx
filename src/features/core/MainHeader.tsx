@@ -618,19 +618,19 @@ export function MainHeader() {
             {/* User Info & Actions */}
             <div className="flex items-center gap-4 ml-4 pl-4 border-l border-(--text-color)/5 shrink-0">
                 <div className="hidden lg:flex flex-col items-end">
-                    <span className="text-[8px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.2em] mb-0.5">Welcome back,</span>
-                    <span className="text-[11px] font-black text-(--text-color) leading-none capitalize">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) leading-none mb-1">Welcome back,</span>
+                    <span className="text-xl font-black text-(--text-color) tracking-tight leading-none capitalize">
                         {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                             ? user.name
                             : user?.email?.split('@')[0] || 'User'}
                     </span>
                 </div>
 
-                {UserIcon && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-(--text-color)/5 border border-(--text-color)/10 shrink-0">
-                        <UserIcon className="w-full h-full text-(--text-color)" />
+                <div className="w-10 h-10 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center p-0.5 shrink-0">
+                    <div className="w-full h-full rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        {UserIcon ? <UserIcon className="w-6 h-6 text-(--main-color) opacity-80" /> : <svg className="w-6 h-6 text-(--main-color) opacity-50"><use href="#user" /></svg>}
                     </div>
-                )}
+                </div>
 
                 <div className="flex items-center gap-1 relative">
                     <Settings size={18} strokeWidth={1.75}

@@ -31,24 +31,26 @@ const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 
 }) => (
     <div
         onClick={onAction}
-        className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-6 flex flex-col gap-6 hover:translate-y-[-4px] active:scale-[0.98] cursor-pointer transition-all duration-300 shadow-xl relative overflow-hidden group"
+        className="bg-(--glass-bg) border border-(--border-color) rounded-4xl p-5 flex flex-col gap-4 hover:translate-y-[-4px] active:scale-[0.98] cursor-pointer transition-all duration-300 shadow-xl relative overflow-hidden group"
     >
-        <div className="absolute top-[-20%] right-[-10%] w-40 h-40 rounded-full blur-[60px] opacity-10 z-0" style={{ background: color }} />
+        <div className="absolute top-[-20%] right-[-10%] w-32 h-32 rounded-full blur-[50px] opacity-10 z-0" style={{ background: color }} />
         <div className="flex items-center justify-between relative z-10">
-            <div className="p-4 rounded-2xl border border-white/5 shadow-lg" style={{ background: `${color}10` }}>
-                <Icon size={24} strokeWidth={1.5} style={{ color }} />
+            <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl border border-white/5 shadow-md flex items-center justify-center bg-white/5">
+                    <Icon size={20} strokeWidth={1.75} style={{ color }} />
+                </div>
+                <h3 className="text-[14px] font-black text-(--text-color) tracking-tight uppercase leading-none">{title}</h3>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 group-hover:bg-(--main-color)/20 text-[10px] font-black uppercase tracking-widest text-(--text-color) transition-all">
-                {actionLabel} <ArrowRight size={12} />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 group-hover:bg-(--main-color)/20 text-[9px] font-black uppercase tracking-widest text-(--text-color) transition-all">
+                {actionLabel} <ArrowRight size={10} strokeWidth={2.5} />
             </div>
         </div>
-        <div className="relative z-10">
-            <h3 className="text-xl font-black text-(--text-color) tracking-tight mb-4 uppercase">{title}</h3>
-            <div className="space-y-3">
+        <div className="relative z-10 mt-1">
+            <div className="space-y-2">
                 {stats.map((s, i) => (
                     <div key={i} className="flex justify-between items-end">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-60">{s.label}</span>
-                        <span className="text-lg font-mono font-black text-(--text-color) leading-none">{s.value}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-60">{s.label}</span>
+                        <span className="text-base font-mono font-black text-(--text-color) leading-none">{s.value}</span>
                     </div>
                 ))}
             </div>
@@ -140,6 +142,31 @@ export const ClientOverview: React.FC = () => {
         };
     }, [vendorSummaries, storeItems, activeDestReqNetMXN, exchangeRate]);
 
+    const pendingItems = useMemo(() => {
+        return items.filter(i => {
+            const status = (i.data?.status || '').toLowerCase();
+            return ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status) &&
+                !i.data?.payReq && !(i.data as any)?.pay_req && i.data?.payReq !== 'true' && (i.data as any)?.pay_req !== 'true';
+        });
+    }, [items]);
+
+    const comingPaymentsByVendor = useMemo(() => {
+        const groups: Record<string, { total: number }> = {};
+        for (const item of pendingItems) {
+            const data = item.data;
+            const itemIdStr = String(data.item_id || data.itemId || '');
+            let vid = data.vendor_id || data.vendorId;
+            if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
+            if (!vid) vid = 'Unknown';
+
+            if (!groups[vid]) groups[vid] = { total: 0 };
+            const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
+            const qty = parseInt(String(data.quantity || '1')) || 1;
+            groups[vid].total += (price * qty);
+        }
+        return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
+    }, [pendingItems]);
+
     const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '***';
     const fmtUSD = (val: number, compact = false) => {
         if (!showFinancials) return '***';
@@ -222,24 +249,98 @@ export const ClientOverview: React.FC = () => {
     if (isLoading) return <LoadingIndicator />;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-6 animate-in fade-in duration-500">
-            {/* Header / Greeting */}
-            <div className="flex items-center gap-6 px-4 py-8 mx-2 shrink-0 z-10 relative">
-                <div className="w-20 h-20 rounded-[2rem] bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center p-1 shrink-0">
-                    <div className="w-full h-full rounded-[1.75rem] bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                        <User size={40} className="text-(--main-color) opacity-50" />
+        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-4 gap-6 animate-in fade-in duration-500">
+            <div className="grow min-h-0 overflow-y-auto m-2 mt-0 relative z-20 custom-scrollbar pr-2 space-y-10 pb-20 pt-4">
+
+                {/* Split layout for pending requests destinations */}
+                <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm">
+                    <div className="flex items-center gap-3 mb-8">
+                        <RefreshCcw size={18} className="text-[#00AEEF]" />
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                            const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
+                            const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+                            if (destReqMXN <= 0) return null;
+
+                            const isDirectWire = cfg.name === 'Direct Wire';
+                            const vendorIdsForDest = isDirectWire ? Array.from(new Set(destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1]))).filter(Boolean) : [];
+
+                            return (
+                                <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-4xl group gap-4">
+                                    <div className="flex items-center gap-5">
+                                        <div className="relative shrink-0">
+                                            <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply relative z-0" />
+                                            </div>
+                                            {isDirectWire && vendorIdsForDest.length > 0 && (
+                                                <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
+                                                    {vendorIdsForDest.map((vid: any) => {
+                                                        const color = (vendors as any)[vid]?.color || '#888';
+                                                        return (
+                                                            <span key={vid} className="px-1.5 py-0.5 rounded-md text-[7px] font-black text-white leading-none uppercase shadow-md border border-white/20" style={{ backgroundColor: color }}>
+                                                                {vid}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none mb-1.5">{cfg.name}</p>
+                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <div className="text-right mb-2">
+                                            <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
+                                            className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all">
+                                            Finalize Payment
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Render coming payments */}
+                        {comingPaymentsByVendor.map(group => {
+                            const color = (vendors as any)[group.vendorId]?.color || '#888';
+                            return (
+                                <div key={`coming-${group.vendorId}`} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-(--main-color)/40 transition-all rounded-4xl group gap-4 opacity-70 hover:opacity-100">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-16 h-12 p-1.5 bg-(--glass-bg) rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden border border-white/10" style={{ borderColor: `${color}40` }}>
+                                            <span className="text-2xl font-black" style={{ color: color }}>{group.vendorId.charAt(0)}</span>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{group.vendorId}</p>
+                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color)">Coming</span>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated Pending</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-end">
+                                        <div className="text-right">
+                                            <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors">{fmtMXN(group.total)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {activeDestPendingRecords.length === 0 && comingPaymentsByVendor.length === 0 && (
+                            <div className="col-span-full p-12 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.3em] uppercase border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30">
+                                No Pending Requisitions found
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <h2 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--main-color) leading-none">Welcome back,</h2>
-                    <h1 className="text-4xl font-black text-(--text-color) tracking-tighter leading-none">{user?.name || user?.email?.split('@')[0] || 'User'}</h1>
-                    <p className="text-[11px] font-bold text-(--text-color-secondary) uppercase tracking-widest mt-2 flex items-center gap-2 opacity-40">
-                        <Activity size={12} className="text-(--main-color)" /> Real-time Logistics & Financial Feed
-                    </p>
-                </div>
-            </div>
 
-            <div className="grow min-h-0 overflow-y-auto m-2 mt-0 relative z-20 custom-scrollbar pr-2 space-y-10 pb-20">
                 {/* Summary Tiles */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <SummaryTile
@@ -301,50 +402,7 @@ export const ClientOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Split layout for pending requests destinations */}
-                <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm">
-                    <div className="flex items-center gap-3 mb-8">
-                        <RefreshCcw size={18} className="text-[#00AEEF]" />
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                            const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
-                            const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                            if (destReqMXN <= 0) return null;
-
-                            return (
-                                <div key={key} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-[2rem] group gap-4">
-                                    <div className="flex items-center gap-5">
-                                        <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg shrink-0 overflow-hidden">
-                                            <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none mb-1.5">{cfg.name}</p>
-                                            <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end">
-                                        <div className="text-right mb-2">
-                                            <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors">{fmtMXN(destReqMXN)}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
-                                            className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all">
-                                            Finalize Payment
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        {activeDestPendingRecords.length === 0 && (
-                            <div className="col-span-full p-12 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.3em] uppercase border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30">
-                                No Pending Requisitions found
-                            </div>
-                        )}
-                    </div>
-                </div>
             </div>
         </div>
     );
