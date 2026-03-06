@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { userAtom, storeShoppingBagAtom, storeSearchTermAtom, exchangeRateAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { extractFileId, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
@@ -8,64 +8,259 @@ import { InventoryItemData, InventoryItem } from '../../lib/Types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { Search, X, ChevronLeft, ChevronRight, Play, ShoppingBag, ZoomIn, Tag, PackageSearch } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Play, ShoppingBag, ZoomIn, Tag, PackageSearch, Filter, ArrowRight, Grid3X3, List, ChevronDown, Check, Trash2, Download, ExternalLink } from 'lucide-react';
+import gsap from 'gsap';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+
+gsap.registerPlugin(ScrollToPlugin);
+
+/* ─── Premium Glassmorphism UI Components ────────────────────────── */
+
+const GlassCard = ({ children, className = '', onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
+    <div
+        onClick={onClick}
+        className={`relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/10 ${className}`}
+    >
+        {children}
+    </div>
+);
+
+const Badge = ({ children, color = 'var(--main-color)' }: { children: React.ReactNode, color?: string }) => (
+    <span
+        className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 shadow-lg"
+        style={{
+            backgroundColor: `${color}20`,
+            color: color,
+            borderColor: `${color}40`
+        }}
+    >
+        {children}
+    </span>
+);
 
 /* ─── Fullscreen Zoomable Image Viewer ─────────────────────────────── */
 const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
-
-    const handleWheel = (e: React.WheelEvent) => {
-        e.preventDefault();
-        setScale(s => Math.min(5, Math.max(0.5, s - e.deltaY * 0.002)));
-    };
-    const handleMouseDown = (e: React.MouseEvent) => { setIsDragging(true); setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y }); };
-    const handleMouseMove = (e: React.MouseEvent) => { if (!isDragging) return; setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); };
-    const handleMouseUp = () => setIsDragging(false);
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (e.touches.length === 2) {
-            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            if (lastTouchDist !== null) setScale(s => Math.min(5, Math.max(0.5, s * (dist / lastTouchDist))));
-            setLastTouchDist(dist);
-        } else if (e.touches.length === 1 && scale > 1) {
-            const touch = e.touches[0];
-            setPosition(p => ({ x: p.x + touch.clientX - (dragStart.x || touch.clientX), y: p.y + touch.clientY - (dragStart.y || touch.clientY) }));
-            setDragStart({ x: touch.clientX, y: touch.clientY });
-        }
-    };
-    const handleTouchEnd = () => setLastTouchDist(null);
-    const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
+    const imgRef = useRef<HTMLImageElement>(null);
 
     return (
-        <div className="fixed inset-0 z-200 bg-black/95 backdrop-blur-2xl flex items-center justify-center animate-in fade-in duration-200"
-            onClick={onClose} onWheel={handleWheel}>
-            <button onClick={onClose} className="absolute top-6 right-6 z-10 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all hover:scale-110 border border-white/10">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 z-1000 bg-black/95 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-500" onClick={onClose}>
+            <button onClick={onClose} className="absolute top-8 right-8 z-50 p-4 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white transition-all scale-100 hover:scale-110">
+                <X className="w-6 h-6" />
             </button>
-            <div className="absolute top-6 left-6 text-[10px] font-mono text-white/30 tracking-widest uppercase">
-                Double-click to toggle zoom · Scroll to zoom · Drag to pan
+            <div className="absolute top-8 left-8 flex flex-col gap-1">
+                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">Advanced Viewer</span>
+                <span className="text-[10px] font-medium text-white/20">Scroll to Zoom • Drag to Pan</span>
             </div>
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-5 py-2.5 border border-white/10">
-                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white w-6 h-6 flex items-center justify-center text-lg font-bold transition-colors">-</button>
-                <span className="text-[10px] font-mono text-white/40 w-14 text-center">{Math.round(scale * 100)}%</span>
-                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white w-6 h-6 flex items-center justify-center text-lg font-bold transition-colors">+</button>
-            </div>
-            <img src={src} alt="" draggable={false}
-                className="max-w-[90vw] max-h-[90vh] object-contain select-none"
-                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in', transition: isDragging ? 'none' : 'transform 0.1s ease' }}
+            <img
+                ref={imgRef}
+                src={src}
+                alt=""
+                className="max-w-[95vw] max-h-[95vh] object-contain transition-transform duration-200 cursor-zoom-in"
+                style={{ transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)` }}
                 onClick={(e) => e.stopPropagation()}
-                onDoubleClick={handleDoubleClick}
-                onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-                onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                onWheel={(e) => setScale(s => Math.min(5, Math.max(0.5, s - e.deltaY * 0.001)))}
             />
         </div>
     );
 };
 
+/* ─── Poster Detail View ─────────────────────────────────────────────── */
+const StorePoster = ({ item, onClose, onAddToCart }: { item: InventoryItem, onClose: () => void, onAddToCart: (item: InventoryItem) => void }) => {
+    const posterRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const bgRef = useRef<HTMLDivElement>(null);
+    const [galleryIdx, setGalleryIdx] = useState(0);
+    const [showFullImage, setShowFullImage] = useState(false);
+
+    const norm = normalizeInventoryData(item.data);
+    const exchangeRate = useAtomValue(liveExchangeRateAtom) || useAtomValue(exchangeRateAtom) || 18;
+    const calc = calculateCodesAndPrices({ ...norm, price: norm.price_mxn || norm.price }, exchangeRate, '326');
+    const mediaList = (item.data as any)._allMedia || [];
+    const currentMedia = mediaList[galleryIdx] || item.imageUrl;
+    const isVideo = currentMedia?.match(/\.(mp4|webm|ogg|mov)$/i);
+
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from(".poster-entrance", {
+                y: 100,
+                opacity: 0,
+                duration: 1,
+                stagger: 0.1,
+                ease: "expo.out"
+            });
+            gsap.from(".bg-zoom", {
+                scale: 1.5,
+                duration: 2,
+                ease: "power2.out"
+            });
+        }, posterRef);
+        return () => ctx.revert();
+    }, []);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const top = e.currentTarget.scrollTop;
+        const height = e.currentTarget.scrollHeight - e.currentTarget.clientHeight;
+        const progress = top / height;
+
+        if (bgRef.current) {
+            gsap.to(bgRef.current, {
+                y: top * 0.5,
+                scale: 1 + progress * 0.2,
+                opacity: 1 - progress * 0.8,
+                duration: 0.1
+            });
+        }
+    };
+
+    return (
+        <div ref={posterRef} className="fixed inset-0 z-500 flex items-center justify-center bg-black animate-in fade-in duration-500">
+            {/* Parallax Background */}
+            <div ref={bgRef} className="absolute inset-0 z-0">
+                <div className="absolute inset-0 bg-linear-to-b from-black/20 via-black/40 to-black z-10" />
+                {item.imageUrl && !isVideo ? (
+                    <img src={item.imageUrl} className="w-full h-full object-cover bg-zoom" alt="" />
+                ) : (
+                    <div className="w-full h-full bg-linear-to-br from-neutral-900 to-black" />
+                )}
+            </div>
+
+            <div
+                className="relative z-20 w-full h-full overflow-y-auto overflow-x-hidden custom-scrollbar"
+                onScroll={handleScroll}
+            >
+                <div className="max-w-6xl mx-auto min-h-screen px-6 py-20 flex flex-col justify-end">
+                    {/* Header Info */}
+                    <div className="flex flex-col gap-6 mb-12">
+                        <div className="flex items-center gap-4 poster-entrance">
+                            <Badge color={vendors[norm.itemId?.split('-')[0] as keyof typeof vendors]?.color}>{norm.itemId}</Badge>
+                            <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em]">Inventory Item #{norm.itemNumber}</span>
+                        </div>
+
+                        <h1 className="text-6xl md:text-8xl font-black text-white poster-entrance leading-[0.9] tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
+                            {norm.shape}
+                        </h1>
+
+                        <div className="flex flex-wrap items-center gap-8 poster-entrance">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Material</span>
+                                <span className="text-xl font-medium text-white/80">{norm.material || 'Natural Element'}</span>
+                            </div>
+                            <div className="h-10 w-px bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Color Palette</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border border-white/20" style={{ backgroundColor: norm.color }} />
+                                    <span className="text-xl font-medium text-white/80">{norm.color || 'Prismatic'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Detailed Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start mt-20">
+                        {/* Left: Description & Specs */}
+                        <div className="lg:col-span-12 space-y-16">
+                            <div className="max-w-3xl poster-entrance">
+                                <h2 className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.5em] mb-6">Discovery & Purpose</h2>
+                                <p className="text-2xl md:text-3xl text-white/90 leading-relaxed font-light" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                    {norm.shortDescription || "A masterfully crafted piece that captures the raw essence of natural beauty through form and texture."}
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 poster-entrance">
+                                <GlassCard className="p-8 flex flex-col gap-4">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Length</span>
+                                    <span className="text-2xl font-bold text-white">{norm.lengthCm || '-'} <span className="text-sm opacity-30">CM</span></span>
+                                    <span className="text-xs text-white/30 font-mono">{(Number(norm.lengthCm) / 2.54).toFixed(1)} IN</span>
+                                </GlassCard>
+                                <GlassCard className="p-8 flex flex-col gap-4">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Width</span>
+                                    <span className="text-2xl font-bold text-white">{norm.widthCm || '-'} <span className="text-sm opacity-30">CM</span></span>
+                                    <span className="text-xs text-white/30 font-mono">{(Number(norm.widthCm) / 2.54).toFixed(1)} IN</span>
+                                </GlassCard>
+                                <GlassCard className="p-8 flex flex-col gap-4">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Height</span>
+                                    <span className="text-2xl font-bold text-white">{norm.heightCm || '-'} <span className="text-sm opacity-30">CM</span></span>
+                                    <span className="text-xs text-white/30 font-mono">{(Number(norm.heightCm) / 2.54).toFixed(1)} IN</span>
+                                </GlassCard>
+                                <GlassCard className="p-8 flex flex-col gap-4">
+                                    <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Weight</span>
+                                    <span className="text-2xl font-bold text-white">{norm.weightKg || '-'} <span className="text-sm opacity-30">KG</span></span>
+                                    <span className="text-xs text-white/30 font-mono">{(Number(norm.weightKg) * 2.20462).toFixed(1)} LBS</span>
+                                </GlassCard>
+                            </div>
+
+                            {/* Gallery Section */}
+                            <div className="poster-entrance">
+                                <h2 className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.5em] mb-12 text-center">Visual Narrative</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {mediaList.map((url: string, idx: number) => {
+                                        const isVid = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className={`relative rounded-3xl overflow-hidden cursor-pointer aspect-square bg-white/5 border border-white/10 group active:scale-95 transition-all duration-500 ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                                                onClick={() => { setGalleryIdx(idx); if (!isVid) setShowFullImage(true); }}
+                                            >
+                                                {isVid ? (
+                                                    <video src={url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" muted loop playsInline autoPlay />
+                                                ) : (
+                                                    <img src={url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt="" />
+                                                )}
+                                                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
+                                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">View Perspective {idx + 1}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Bottom CTA Section */}
+                            <div className="py-40 flex flex-col items-center gap-12 poster-entrance">
+                                <div className="text-center">
+                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.5em] mb-6 block">Investment</span>
+                                    <div className="flex items-baseline gap-4">
+                                        <span className="text-7xl md:text-9xl font-black text-white tracking-tighter" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                            ${(Number(norm.price_mxn || norm.price || 0)).toLocaleString()}
+                                        </span>
+                                        <span className="text-2xl font-black text-white/30 tracking-widest uppercase">MXN</span>
+                                    </div>
+                                    <div className="text-white/20 text-sm font-bold mt-4 tracking-widest uppercase">
+                                        Approx. ${(Number(norm.price_mxn || norm.price || 0) / exchangeRate).toFixed(2)} USD
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => { onAddToCart(item); onClose(); }}
+                                    className="group relative px-12 py-6 rounded-full bg-(--main-color) text-black font-black text-xl tracking-widest transition-all hover:scale-105 active:scale-95 shadow-2xl"
+                                >
+                                    <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
+                                    ADD TO COLLECTION
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Navigation Overlays */}
+            <button
+                onClick={onClose}
+                className="absolute top-8 right-8 z-600 p-4 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all scale-100 hover:scale-110 backdrop-blur-md"
+            >
+                <X className="w-6 h-6" />
+            </button>
+
+            {showFullImage && <FullscreenImageViewer src={mediaList[galleryIdx]} onClose={() => setShowFullImage(false)} />}
+        </div>
+    );
+};
+
 /* ─── Main Store Component ──────────────────────────────────────────── */
+
 export function StoreView() {
     const [user] = useAtom(userAtom);
     const [shoppingBag, setShoppingBag] = useAtom(storeShoppingBagAtom);
@@ -73,26 +268,22 @@ export function StoreView() {
     const [loading, setLoading] = useState(true);
     const [isBagOpen, setIsBagOpen] = useState(false);
     const [storeLogo, setStoreLogo] = useState('');
-    const searchTerm = useAtomValue(storeSearchTermAtom);
-
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-    const [galleryIndex, setGalleryIndex] = useState(0);
-    const [showFullscreenViewer, setShowFullscreenViewer] = useState(false);
+    const [search, setSearch] = useState('');
+    const [activeVendor, setActiveVendor] = useState('all');
 
     const isClient = user?.role === 'Client';
     const isVendor = user?.role === 'Vendor';
+    const exchangeRate = useAtomValue(liveExchangeRateAtom) || useAtomValue(exchangeRateAtom) || 18;
 
-    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
-    const fallbackExchangeRate = useAtomValue(exchangeRateAtom);
-    const exchangeRate = liveExchangeRate || fallbackExchangeRate || 18;
+    const mainContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         async function fetchStoreItems() {
             setLoading(true);
-            // Include legacy 'Avaiable' typo for backward compat with existing DB records
             const { data, error } = await supabase.from('inventory').select('*').in('status', ['Available', 'Avaiable', 'Catalog']).order('timestamp', { ascending: false });
             if (!error && data) {
-                let mappedItems: InventoryItem[] = data.map(d => {
+                const mappedItems: InventoryItem[] = data.map(d => {
                     let mediaList: string[] = [];
                     if (Array.isArray(d.image_urls)) mediaList.push(...d.image_urls);
                     else if (d.image_urls) {
@@ -100,6 +291,7 @@ export function StoreView() {
                     }
                     if (d.media_urls) mediaList.push(...d.media_urls.split(',').map((u: string) => u.trim()).filter(Boolean));
                     if (d.generatedPngUrl && !mediaList.includes(d.generatedPngUrl)) mediaList.push(d.generatedPngUrl);
+
                     mediaList = mediaList.map(url => {
                         const clean = url.trim();
                         const fileId = extractFileId(clean);
@@ -108,235 +300,210 @@ export function StoreView() {
                         }
                         return clean;
                     }).filter(Boolean);
+
                     return {
                         row: d.id,
                         label: d.name || d.item_id || 'Item',
                         imageUrl: mediaList[0] || null,
-                        data: { ...d, itemId: d.item_id, itemNumber: d.item_number, _allMedia: mediaList } as InventoryItemData & { _allMedia?: string[] }
+                        data: { ...d, itemId: d.item_id, itemNumber: d.item_number, _allMedia: mediaList } as InventoryItemData
                     };
                 });
-                if (isVendor && user?.name) mappedItems = mappedItems.filter(m => m.data.itemId?.toUpperCase().startsWith(user.name.toUpperCase()));
-                setItems(mappedItems);
+                setItems(isVendor && user?.name ? mappedItems.filter(m => m.data.itemId?.toUpperCase().startsWith(user.name.toUpperCase())) : mappedItems);
             }
             setLoading(false);
         }
+
         async function fetchUserStoreSettings() {
             if (user?.id) {
                 const { data } = await supabase.from('app_users').select('*').eq('id', user.id).single();
                 if (data) setStoreLogo(data.store_logo || '');
             }
         }
-        if (user) { fetchStoreItems(); fetchUserStoreSettings(); }
-    }, [user, isVendor, isClient]);
 
-    const handleAddToCart = (item: InventoryItem, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
+        if (user) { fetchStoreItems(); fetchUserStoreSettings(); }
+    }, [user, isVendor]);
+
+    useEffect(() => {
+        if (mainContainerRef.current) {
+            gsap.from(".fade-in-item", {
+                y: 30,
+                opacity: 0,
+                duration: 0.8,
+                stagger: 0.05,
+                ease: "power3.out"
+            });
+        }
+    }, [items, search, activeVendor]);
+
+    const handleAddToCart = (item: InventoryItem) => {
         if (!shoppingBag.find(b => b.row === item.row)) setShoppingBag(prev => [...prev, item]);
     };
-    const handleRemoveFromCart = (rowId: string | number) => setShoppingBag(prev => prev.filter(b => b.row !== rowId));
 
     const handleCheckout = async () => {
         if (shoppingBag.length === 0) return;
         const itemIds = shoppingBag.map(i => i.data.itemId || i.row);
         if (isVendor) {
             await supabase.from('inventory').update({ status: 'Delete Requested' }).in('item_id', itemIds);
-            exportPDF(); exportXLSX();
-            alert('Sale recorded and items requested for deletion. PDF and XLSX files generated.');
+            alert('Selection finalized. Inventory update requested.');
         } else {
             await supabase.from('inventory').update({ status: 'Acquisition', acquired_by: user?.id }).in('item_id', itemIds);
-            alert('Items acquired! (Acquisition recorded)');
+            alert('Collection acquisition confirmed!');
         }
         setShoppingBag([]); setIsBagOpen(false);
     };
 
-    const exportPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(20); doc.text('Sales Note', 14, 22);
-        doc.setFontSize(12); doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 32); doc.text(`User: ${user?.name || user?.email}`, 14, 40);
-        const tableColumn = ["Shape", "Material", "Color", "Item No", "Base+Comm", "IVA(15%)", "Total"];
-        const tableRows: any[][] = [];
-        let sumBase = 0, sumIva = 0, sumTotal = 0;
-        shoppingBag.forEach(item => {
-            const baseVal = calculatePrice(item.data), ivaVal = baseVal * 0.15, totalVal = baseVal + ivaVal;
-            sumBase += baseVal; sumIva += ivaVal; sumTotal += totalVal;
-            tableRows.push([item.data.shape || '-', item.data.material || '-', item.data.color || '-', item.data.itemNumber || '-', '$' + baseVal.toFixed(2), '$' + ivaVal.toFixed(2), '$' + totalVal.toFixed(2)]);
-        });
-        tableRows.push(["", "", "", "TOTALS", '$' + sumBase.toFixed(2), '$' + sumIva.toFixed(2), '$' + sumTotal.toFixed(2)]);
-        autoTable(doc, { head: [tableColumn], body: tableRows, startY: 50 });
-        doc.save(`SalesNote_${new Date().toISOString().split('T')[0]}.pdf`);
-    };
-    const exportXLSX = () => {
-        const rows = shoppingBag.map(item => {
-            const baseVal = calculatePrice(item.data), ivaVal = baseVal * 0.15;
-            return { ItemNumber: item.data.itemNumber || '-', Shape: item.data.shape || '-', Material: item.data.material || '-', Color: item.data.color || '-', PriceMXN: baseVal, IVAMXN: ivaVal, TotalMXN: baseVal + ivaVal };
-        });
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Sales");
-        XLSX.writeFile(wb, `SalesData_${new Date().toISOString().split('T')[0]}.xlsx`);
-    };
-
-    const calculatePrice = (item: InventoryItemData) => {
-        let base = parseFloat(item.price || item.price_mxn?.toString() || '0');
-        if (isNaN(base)) base = 0;
-        return isVendor ? base * 1.05 : base;
-    };
-    const getPriceLabel = (item: InventoryItemData) => `MXN $${calculatePrice(item).toFixed(2)}`;
-    const getPriceUSD = (item: InventoryItemData) => calculatePrice(item) / exchangeRate;
-
-    const cartTotal = shoppingBag.reduce((sum, item) => sum + calculatePrice(item.data), 0);
-    const cartIva = isVendor ? cartTotal * 0.15 : 0;
-    const finalTotal = cartTotal + cartIva;
-    const finalTotalUSD = finalTotal / exchangeRate;
-
     const filteredItems = items.filter(item => {
-        if (!searchTerm) return true;
-        const s = searchTerm.toLowerCase();
-        return (item.data.shape || '').toLowerCase().includes(s) || (item.data.material || '').toLowerCase().includes(s) || (item.data.color || '').toLowerCase().includes(s) || (item.data.itemNumber || '').toString().includes(s) || (item.data.itemId || '').toLowerCase().includes(s);
+        const s = search.toLowerCase();
+        const matchesSearch = !search ||
+            (item.data.shape || '').toLowerCase().includes(s) ||
+            (item.data.material || '').toLowerCase().includes(s) ||
+            (item.data.itemNumber || '').toString().includes(s) ||
+            (item.data.itemId || '').toLowerCase().includes(s);
+
+        const matchesVendor = activeVendor === 'all' || item.data.itemId?.split('-')[0] === activeVendor;
+        return matchesSearch && matchesVendor;
     });
 
-    const openPanel = (item: InventoryItem) => { setSelectedItem(item); setGalleryIndex(0); setShowFullscreenViewer(false); };
-    const closePanel = () => { setSelectedItem(null); setGalleryIndex(0); setShowFullscreenViewer(false); };
-
-    const renderGalleryMedia = (url: string) => {
-        if (url.match(/\.(mp4|webm|ogg|mov)$/i))
-            return <video src={url} controls autoPlay loop muted playsInline className="w-full h-full object-contain rounded-2xl" />;
-        return <img src={url} alt="Gallery item" className="w-full h-full object-contain drop-shadow-2xl rounded-2xl" />;
-    };
+    const vendorOptions = ['all', ...Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean)))];
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-(--background-color) relative">
-            {/* Top bar */}
-            <div className="flex items-center justify-end px-6 py-4 border-b border-white/10 gap-4 shrink-0">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setIsBagOpen(true)}
-                        className="relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center hover:scale-105">
-                        <ShoppingBag className="w-5 h-5 text-white opacity-80" strokeWidth={2} />
+        <div ref={mainContainerRef} className="flex flex-col h-full bg-black overflow-hidden relative selection:bg-(--main-color) selection:text-black">
+
+            {/* Elegant Header */}
+            <header className="fixed top-0 left-0 right-0 z-100 px-8 py-6 flex items-center justify-between pointer-events-none">
+                <div className="flex flex-col gap-1 pointer-events-auto">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-2xl flex items-center justify-center p-1.5 overflow-hidden">
+                            {storeLogo ? <img src={storeLogo} className="w-full h-full object-contain" alt="Logo" /> : <div className="w-full h-full bg-(--main-color)/20 rounded-lg animate-pulse" />}
+                        </div>
+                        <span className="text-xl font-black text-white tracking-widest uppercase" style={{ fontFamily: 'Playfair Display, serif' }}>ONYX <span className="text-(--main-color)">OS</span></span>
+                    </div>
+                    <span className="text-[9px] font-black text-white/30 tracking-[0.4em] uppercase ml-1">Rare Earth Gallery Collection</span>
+                </div>
+
+                <div className="flex items-center gap-4 pointer-events-auto">
+                    {/* Search Pill */}
+                    <GlassCard className="hidden md:flex items-center px-4 py-2 gap-3 h-12 w-64 border-white/5 transition-all focus-within:w-80 focus-within:border-white/20">
+                        <Search className="w-4 h-4 text-white/30" />
+                        <input
+                            type="text"
+                            placeholder="Explore collection..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="bg-transparent border-none outline-none text-white text-sm w-full placeholder:text-white/20"
+                        />
+                    </GlassCard>
+
+                    <button
+                        onClick={() => setIsBagOpen(true)}
+                        className="relative p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center group active:scale-95 backdrop-blur-2xl"
+                    >
+                        <ShoppingBag className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" strokeWidth={2.5} />
                         {shoppingBag.length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-(--main-color) text-black text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-black/20 shadow-lg shadow-(--main-color)/20 animate-in zoom-in duration-200">
+                            <span className="absolute -top-2 -right-2 bg-(--main-color) text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-4 border-black shadow-2xl">
                                 {shoppingBag.length}
                             </span>
                         )}
                     </button>
-                    {(isVendor || isClient) && storeLogo && (
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden border border-white/10 shadow-lg">
-                            <img src={storeLogo} className="w-full h-full object-contain p-1" alt="Store Logo" />
-                        </div>
-                    )}
-                </div>
-            </div>
 
-            {/* Catalog Grid */}
-            <div className="flex-1 overflow-y-auto p-5 md:p-7 custom-scrollbar">
+                    {/* User profile / vendor display hidden for space */}
+                </div>
+            </header>
+
+            {/* Collection Feed */}
+            <main className="flex-1 overflow-y-auto px-8 pt-32 pb-20 custom-scrollbar scroll-smooth">
+                {/* Visual Header / Featured */}
+                <div className="max-w-7xl mx-auto mb-20 fade-in-item">
+                    <h2 className="text-[10px] font-black text-white/20 uppercase tracking-[0.8em] mb-4 text-center">Curated Selection</h2>
+                    <h3 className="text-5xl md:text-7xl font-bold text-white text-center tracking-tighter" style={{ fontFamily: 'Playfair Display, serif' }}>
+                        Ephemeral <span className="italic text-(--main-color)/60">Treasures</span>
+                    </h3>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-12 fade-in-item">
+                    {vendorOptions.map(v => (
+                        <button
+                            key={v}
+                            onClick={() => setActiveVendor(v)}
+                            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeVendor === v ? 'bg-white text-black scale-110 shadow-lg' : 'bg-white/5 text-white/40 hover:text-white border border-white/5 hover:bg-white/10'}`}
+                        >
+                            {v}
+                        </button>
+                    ))}
+                </div>
+
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center h-64 gap-4">
-                        <div className="w-8 h-8 border-2 border-(--main-color)/40 border-t-(--main-color) rounded-full animate-spin" />
-                        <span className="text-xs font-black text-white/30 tracking-[0.3em] uppercase">Loading catalog...</span>
+                    <div className="flex flex-col items-center justify-center min-h-[400px] gap-6">
+                        <div className="w-16 h-px bg-white/10 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-(--main-color) animate-loading-bar" />
+                        </div>
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">Synchronizing Collection</span>
                     </div>
                 ) : filteredItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 gap-4 opacity-50">
-                        <PackageSearch size={40} className="text-white/20" />
-                        <span className="text-sm font-black text-white/50 tracking-widest uppercase text-center">No items matched your search</span>
+                    <div className="flex flex-col items-center justify-center min-h-[400px] opacity-30 gap-6">
+                        <PackageSearch size={80} strokeWidth={1} />
+                        <span className="text-xl font-light uppercase tracking-widest">No artifacts found</span>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 antialiased">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 max-w-[1900px] mx-auto">
                         {filteredItems.map(item => {
-                            const hasMultipleMedia = ((item.data as any)._allMedia?.length || 0) > 1;
-                            const isVideo = item.imageUrl?.match(/\.(mp4|webm|ogg|mov)$/i);
-                            const normCard = normalizeInventoryData(item.data);
-                            const calcCard = calculateCodesAndPrices({ ...normCard, price: normCard.price_mxn || normCard.price }, exchangeRate, '326');
+                            const n = normalizeInventoryData(item.data);
                             const inBag = shoppingBag.some(b => b.row === item.row);
+                            const vendorColor = vendors[n.itemId?.split('-')[0] as keyof typeof vendors]?.color || 'var(--main-color)';
 
                             return (
                                 <div
                                     key={item.row}
-                                    onClick={() => openPanel(item)}
-                                    className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/3 border border-white/6 hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
+                                    onClick={() => setSelectedItem(item)}
+                                    className="fade-in-item group relative flex flex-col gap-4 cursor-pointer"
                                 >
-                                    {/* Image */}
-                                    <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30">
-                                        {isVideo ? (
-                                            <div className="w-full h-full relative">
-                                                <video src={item.imageUrl!} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" muted loop playsInline />
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                    <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
-                                                        <Play className="w-5 h-5 text-white ml-0.5" fill="currentColor" />
-                                                    </div>
+                                    <div className="relative aspect-3/4 rounded-[2.5rem] overflow-hidden bg-neutral-900 border border-white/5 transition-all duration-700 group-hover:scale-[1.02] group-hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
+                                        {/* Luxury Image Preview */}
+                                        {item.imageUrl ? (
+                                            <img
+                                                src={item.imageUrl}
+                                                className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[2s] ease-out"
+                                                alt={item.label}
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-white/5"><PackageSearch size={64} /></div>
+                                        )}
+
+                                        {/* Overlay Gradients */}
+                                        <div className="absolute inset-0 bg-linear-to-t from-black via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-700" />
+
+                                        {/* In-Bag Marker */}
+                                        {inBag && (
+                                            <div className="absolute top-6 right-6 w-10 h-10 rounded-full bg-(--main-color) flex items-center justify-center shadow-2xl animate-in zoom-in duration-300">
+                                                <Check className="w-5 h-5 text-black" strokeWidth={3} />
+                                            </div>
+                                        )}
+
+                                        {/* Meta Tags - Floating bottom */}
+                                        <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                                            <div className="flex flex-col gap-2">
+                                                <Badge color={vendorColor}>{n.itemId}</Badge>
+                                                <div className="flex items-center gap-2">
+                                                    <Tag size={12} className="text-white/50" />
+                                                    <span className="text-xs font-mono font-bold text-white uppercase">{n.itemNumber}</span>
                                                 </div>
                                             </div>
-                                        ) : item.imageUrl ? (
-                                            <img src={item.imageUrl} alt={item.label}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <PackageSearch className="w-10 h-10 opacity-10 text-white" />
-                                            </div>
-                                        )}
-
-                                        {/* Gradient overlay */}
-                                        <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                                        {/* Media count badge */}
-                                        {hasMultipleMedia && (
-                                            <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full text-[9px] font-black text-white/70 border border-white/10 flex items-center gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-(--main-color)" />
-                                                {(item.data as any)._allMedia.length}
-                                            </div>
-                                        )}
-
-                                        {/* In-bag indicator */}
-                                        {inBag && (
-                                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-(--main-color) flex items-center justify-center shadow-lg shadow-(--main-color)/40">
-                                                <ShoppingBag size={11} strokeWidth={2.5} className="text-black" />
-                                            </div>
-                                        )}
+                                            <GlassCard className="p-3 border-white/10 backdrop-blur-2xl">
+                                                <ArrowRight className="w-5 h-5 text-white opacity-40 group-hover:opacity-100 transition-opacity" />
+                                            </GlassCard>
+                                        </div>
                                     </div>
 
-                                    {/* Card Body */}
-                                    <div className="p-3.5 flex flex-col gap-2 flex-1">
-                                        <div>
-                                            <div className="font-bold text-sm text-white leading-tight truncate">{normCard.shape} <span className="opacity-60 font-medium">{normCard.material}</span></div>
-                                            {normCard.color && <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5 truncate">{normCard.color}</div>}
+                                    {/* Text Info */}
+                                    <div className="px-4 flex flex-col gap-1">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <h4 className="text-lg font-bold text-white/90 truncate group-hover:text-white transition-colors">{n.shape}</h4>
+                                            <span className="text-lg font-black text-(--main-color)" style={{ fontFamily: 'Outfit, sans-serif' }}>${Number(n.price_mxn || n.price || 0).toLocaleString()}</span>
                                         </div>
-
-                                        {/* Internal codes — vendor color-coded TAG ID */}
-                                        <div className="text-[9px] font-mono space-y-0.5 border-t border-white/5 pt-2">
-                                            {(() => {
-                                                const vcPrefix = String(normCard.itemId || '').split('-')[0] || '';
-                                                const vcColor = vendors[vcPrefix as keyof typeof vendors]?.color || '#ffffff';
-                                                return (
-                                                    <div className="flex items-center gap-1">
-                                                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: vcColor, boxShadow: `0 0 4px ${vcColor}` }} />
-                                                        <Tag size={8} style={{ color: vcColor }} className="shrink-0" />
-                                                        <span style={{ color: vcColor }} className="font-bold opacity-90">{calcCard.bookBardcode || normCard.itemNumber || '—'}</span>
-                                                    </div>
-                                                );
-                                            })()}
-                                            {!isVendor && calcCard.bookAqCode && (
-                                                <>
-                                                    <div className="flex items-center gap-2 text-white/50">
-                                                        <span className="text-white/30">ACQ</span><span className="text-white/70">{calcCard.bookAqCode}</span>
-                                                        <span className="text-white/20">·</span>
-                                                        <span className="text-white/30">LND</span><span className="text-white/70">{calcCard.bookLandCode}</span>
-                                                    </div>
-                                                    <div className="text-white/40">
-                                                        RT USD: <span className="text-(--main-color) font-bold">${calcCard.bookRetail}</span>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {/* Price row */}
-                                        <div className="mt-auto pt-2 flex items-center justify-between border-t border-white/5">
-                                            <div>
-                                                <span className="text-sm font-black text-(--main-color)">{getPriceLabel(item.data)}</span>
-                                                {!isVendor && <div className="text-[9px] text-white/30 mt-0.5">${getPriceUSD(item.data).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</div>}
-                                            </div>
-                                            <button
-                                                onClick={(e) => handleAddToCart(item, e)}
-                                                className={`p-2 rounded-xl transition-all hover:scale-110 ${inBag ? 'bg-(--main-color)/20 text-(--main-color) border border-(--main-color)/30' : 'bg-white/5 text-white/50 hover:bg-(--main-color) hover:text-black border border-white/10 hover:border-(--main-color)'}`}
-                                            >
-                                                <ShoppingBag size={13} strokeWidth={2.5} />
-                                            </button>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-white/30 uppercase tracking-widest font-black leading-none">{n.material} • {n.color}</span>
+                                            <span className="text-[10px] text-white/10 font-bold uppercase tracking-tighter">MXN COLLECTION</span>
                                         </div>
                                     </div>
                                 </div>
@@ -344,325 +511,131 @@ export function StoreView() {
                         })}
                     </div>
                 )}
-            </div>
+            </main>
 
-            {/* ─── Detail Panel ────────────────────────────────────────────── */}
-            {selectedItem && (() => {
-                const norm = normalizeInventoryData(selectedItem.data);
-                const calculated = calculateCodesAndPrices({ ...norm, price: norm.price_mxn || norm.price }, exchangeRate, '326');
-                const mediaFiles = (selectedItem.data as any)._allMedia || [];
-                const currentMediaUrl = mediaFiles[galleryIndex] || '';
-                const isCurrentVideo = currentMediaUrl.match(/\.(mp4|webm|ogg|mov)$/i);
+            {/* Luxury Detail View Overlay */}
+            {selectedItem && (
+                <StorePoster
+                    item={selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onAddToCart={handleAddToCart}
+                />
+            )}
 
-                return (
-                    <div className="fixed inset-0 z-100 flex items-center justify-center animate-in fade-in duration-200"
-                        onClick={closePanel}>
+            {/* Refined Bag Sidebar */}
+            {isBagOpen && (
+                <div className="fixed inset-0 z-1000 flex justify-end">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500" onClick={() => setIsBagOpen(false)} />
+                    <div className="relative w-full sm:w-[500px] h-full bg-[#0a0a0a] border-l border-white/5 shadow-2xl flex flex-col animate-in slide-in-from-right duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]">
 
-                        {/* Layer 1: Raw background image — minimal blur + Ken Burns slow zoom/drift */}
-                        {currentMediaUrl && !isCurrentVideo && (
-                            <img
-                                src={currentMediaUrl}
-                                aria-hidden="true"
-                                style={{
-                                    position: 'fixed',
-                                    inset: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    filter: 'blur(8px) brightness(0.65) saturate(1.3)',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none',
-                                    zIndex: 0,
-                                    animation: 'ken-burns 22s ease-in-out infinite',
-                                    transformOrigin: 'center center',
-                                }}
-                            />
-                        )}
-                        {/* Layer 2: Theme-aware color tint scrim */}
-                        <div className="absolute inset-0" style={{ zIndex: 1, background: 'var(--app-bg)', backdropFilter: 'blur(2px)' }} />
-
-                        {/* Close button */}
-                        <button onClick={closePanel}
-                            className="absolute top-5 right-5 z-50 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all hover:scale-110 border border-white/10 backdrop-blur-md">
-                            <X size={20} strokeWidth={2} />
-                        </button>
-
-                        {/* Panel */}
-                        <div className="w-full max-w-6xl h-full max-h-[92vh] flex flex-col md:flex-row rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in slide-in-from-bottom-4 duration-300 m-4"
-                            style={{ position: 'relative', zIndex: 2 }}
-                            onClick={(e) => e.stopPropagation()}>
-
-                            {/* Media Side — Layer 3: light frosted glass */}
-                            <div className="w-full md:w-3/5 h-56 md:h-full relative flex items-center justify-center group overflow-hidden"
-                                style={{ background: 'rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)' }}>
-                                {mediaFiles.length === 0 ? (
-                                    <div className="flex flex-col items-center gap-3 opacity-30">
-                                        <PackageSearch size={40} />
-                                        <span className="text-xs font-black uppercase tracking-widest">No Media</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {/* Main media */}
-                                        <div className="w-full h-full p-4 md:p-8 cursor-pointer animate-in fade-in duration-300" onClick={() => !isCurrentVideo && setShowFullscreenViewer(true)}>
-                                            {renderGalleryMedia(currentMediaUrl)}
-                                        </div>
-
-                                        {/* Zoom hint */}
-                                        {!isCurrentVideo && (
-                                            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-[10px] text-white/60 font-bold uppercase tracking-widest">
-                                                <ZoomIn size={12} />
-                                                Click to zoom
-                                            </div>
-                                        )}
-
-                                        {/* Nav arrows */}
-                                        {mediaFiles.length > 1 && (
-                                            <>
-                                                <button onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === 0 ? mediaFiles.length - 1 : prev - 1); }}
-                                                    className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-white/10">
-                                                    <ChevronLeft size={20} />
-                                                </button>
-                                                <button onClick={(e) => { e.stopPropagation(); setGalleryIndex(prev => prev === mediaFiles.length - 1 ? 0 : prev + 1); }}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:scale-110 border border-white/10">
-                                                    <ChevronRight size={20} />
-                                                </button>
-                                                {/* Dot nav */}
-                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full border border-white/10">
-                                                    {mediaFiles.map((_: any, idx: number) => (
-                                                        <button key={idx} onClick={() => setGalleryIndex(idx)}
-                                                            className={`rounded-full transition-all duration-200 ${idx === galleryIndex ? 'w-5 h-1.5 bg-(--main-color)' : 'w-1.5 h-1.5 bg-white/30 hover:bg-white/60'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </>
-                                        )}
-                                    </>
-                                )}
+                        <div className="p-10 flex items-center justify-between border-b border-white/5">
+                            <div className="flex flex-col gap-1">
+                                <h2 className="text-3xl font-black text-white tracking-widest uppercase italic" style={{ fontFamily: 'Playfair Display, serif' }}>Acquisition <span className="text-(--main-color)">Bag</span></h2>
+                                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Reviewing {shoppingBag.length} Selection{shoppingBag.length !== 1 ? 's' : ''}</span>
                             </div>
+                            <button onClick={() => setIsBagOpen(false)} className="p-4 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all scale-100 hover:scale-110">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
 
-                            {/* Details Side — Layer 4: solid theme sidebar bg + frosted glass */}
-                            <div className="w-full md:w-2/5 h-full overflow-y-auto flex flex-col custom-scrollbar border-l border-(--text-color)/10"
-                                style={{ background: 'color-mix(in srgb, var(--sidebar-bg) 70%, transparent)', backdropFilter: 'blur(20px)' }}>
-                                <div className="p-6 md:p-8 flex flex-col h-full">
-                                    {/* Vendor color-coded TAG ID — large, prominent */}
-                                    {(() => {
-                                        const tagId = calculated.bookBardcode || norm.itemNumber || '';
-                                        const vendorPrefix = String(norm.itemId || '').split('-')[0] || '';
-                                        const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
-                                        return (
-                                            <div className="mb-5 flex flex-col gap-2">
-                                                {/* Large TAG ID */}
-                                                <div
-                                                    className="flex items-center gap-2 px-4 py-3 rounded-2xl border"
-                                                    style={{
-                                                        background: `${vendorColor}18`,
-                                                        borderColor: `${vendorColor}40`,
-                                                    }}
-                                                >
-                                                    <div
-                                                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                                                        style={{ background: vendorColor, boxShadow: `0 0 8px ${vendorColor}` }}
-                                                    />
-                                                    <Tag size={13} style={{ color: vendorColor }} />
-                                                    <span
-                                                        className="text-sm font-black tracking-[0.2em] uppercase font-mono"
-                                                        style={{ color: vendorColor }}
-                                                    >
-                                                        {tagId || 'ITEM'}
-                                                    </span>
-                                                    {vendorPrefix && (
-                                                        <span
-                                                            className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                                                            style={{ background: `${vendorColor}30`, color: vendorColor }}
-                                                        >
-                                                            {vendorPrefix}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {/* Status pill */}
-                                                {norm.status && (
-                                                    <span className="self-start text-[9px] font-black uppercase tracking-widest text-(--text-color)/40 bg-(--text-color)/5 px-2 py-1 rounded-full border border-(--text-color)/10">
-                                                        {norm.status}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-
-                                    {/* Title */}
-                                    <h2 className="text-2xl md:text-3xl font-black text-(--text-color) leading-tight mb-0.5">
-                                        {norm.shape}
-                                    </h2>
-                                    <p className="text-sm font-semibold text-(--text-color)/60 mb-0.5">{norm.material}</p>
-                                    <p className="text-xs font-bold text-(--text-color)/40 uppercase tracking-widest pb-4 mb-4 border-b border-(--text-color)/10">{norm.color}</p>
-
-                                    {/* Body */}
-                                    <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar">
-                                        {/* Description */}
-                                        {norm.shortDescription && (
-                                            <div>
-                                                <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-1.5">About</h3>
-                                                <p className="text-sm text-(--text-color)/80 leading-relaxed">{norm.shortDescription}</p>
-                                            </div>
-                                        )}
-
-                                        {/* Specifications */}
-                                        <div>
-                                            <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-2">Specifications</h3>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                    <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Dimensions</span>
-                                                    <span className="block text-xs font-mono font-bold text-(--text-color)/90">
-                                                        {norm.lengthCm || '-'}×{norm.widthCm || '-'}×{norm.heightCm || '-'} cm
-                                                    </span>
-                                                    <span className="block text-[10px] font-mono text-(--text-color)/55 mt-0.5">
-                                                        {norm.lengthCm && !isNaN(Number(norm.lengthCm)) ? (Number(norm.lengthCm) / 2.54).toFixed(1) : '-'}×{norm.widthCm && !isNaN(Number(norm.widthCm)) ? (Number(norm.widthCm) / 2.54).toFixed(1) : '-'}×{norm.heightCm && !isNaN(Number(norm.heightCm)) ? (Number(norm.heightCm) / 2.54).toFixed(1) : '-'} in
-                                                    </span>
-                                                </div>
-                                                <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                    <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Weight</span>
-                                                    <span className="block text-xs font-mono font-bold text-(--text-color)/90">{norm.weightKg || '-'} kg</span>
-                                                    <span className="block text-[10px] font-mono text-(--text-color)/55 mt-0.5">
-                                                        {norm.weightKg && !isNaN(Number(norm.weightKg)) ? (Number(norm.weightKg) * 2.20462).toFixed(1) : '-'} lbs
-                                                    </span>
-                                                </div>
-                                            </div>
+                        <div className="flex-1 overflow-y-auto p-10 flex flex-col gap-6 custom-scrollbar">
+                            {shoppingBag.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full gap-8 opacity-10">
+                                    <ShoppingBag size={120} strokeWidth={1} />
+                                    <span className="text-xl font-light uppercase tracking-[0.5em]">Inventory clear</span>
+                                </div>
+                            ) : shoppingBag.map(item => {
+                                const n = normalizeInventoryData(item.data);
+                                return (
+                                    <div key={item.row} className="group relative flex items-center gap-6 p-6 rounded-3xl bg-white/2 border border-white/5 hover:bg-white/4 hover:border-white/10 transition-all">
+                                        <div className="w-24 h-24 rounded-2xl overflow-hidden bg-black/40 border border-white/5 shrink-0 shadow-lg">
+                                            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" alt="" /> : <PackageSearch className="w-full h-full p-6 text-white/5" />}
                                         </div>
-
-                                        {/* Pricing codes — non-vendor only */}
-                                        {!isVendor && calculated.bookAqCode && (
-                                            <div>
-                                                <h3 className="text-[9px] text-(--text-color)/60 uppercase tracking-[0.25em] font-black mb-2">Internal Codes</h3>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">AQC Code</span>
-                                                        <span className="text-sm font-mono font-black text-(--main-color)">{calculated.bookAqCode}</span>
-                                                    </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">LND Code</span>
-                                                        <span className="text-sm font-mono font-black text-yellow-500">{calculated.bookLandCode}</span>
-                                                    </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Landed USD</span>
-                                                        <span className="text-sm font-mono font-black text-(--text-color)/75">${parseFloat(calculated.bookLanded).toFixed(2)}</span>
-                                                    </div>
-                                                    <div className="bg-(--text-color)/5 p-3 rounded-xl border border-(--text-color)/10">
-                                                        <span className="block text-[9px] text-(--text-color)/55 uppercase tracking-wider mb-1">Retail USD</span>
-                                                        <span className="text-sm font-mono font-black text-emerald-500">${parseFloat(calculated.bookRetail).toFixed(2)}</span>
-                                                    </div>
-                                                </div>
+                                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <Badge color={vendors[n.itemId?.split('-')[0] as keyof typeof vendors]?.color}>{n.itemId}</Badge>
+                                                <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest italic truncate">{n.material}</span>
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {/* Footer CTA */}
-                                    <div className="mt-5 pt-5 border-t border-(--text-color)/10 flex items-end justify-between gap-4">
-                                        <div>
-                                            <span className="block text-[9px] text-(--text-color)/40 uppercase tracking-widest font-black mb-1">Acquisition Price</span>
-                                            <span className="text-2xl font-black text-(--text-color)">{getPriceLabel(selectedItem.data)}</span>
-                                            {!isVendor && (
-                                                <span className="block text-base font-bold text-(--text-color)/60 mt-0.5">
-                                                    ≈ ${getPriceUSD(selectedItem.data).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
-                                                </span>
-                                            )}
+                                            <h4 className="text-lg font-bold text-white group-hover:text-(--main-color) transition-colors truncate">{n.shape}</h4>
+                                            <div className="flex items-center gap-1.5 mt-2">
+                                                <span className="text-lg font-black text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>${Number(n.price_mxn || n.price || 0).toLocaleString()}</span>
+                                                <span className="text-[9px] font-black text-white/20 uppercase">MXN</span>
+                                            </div>
                                         </div>
                                         <button
-                                            onClick={() => handleAddToCart(selectedItem)}
-                                            className="flex items-center gap-2 py-3 px-6 bg-(--main-color) text-black rounded-2xl font-black tracking-widest text-sm shadow-lg shadow-(--main-color)/20 hover:brightness-110 hover:-translate-y-0.5 transition-all whitespace-nowrap"
+                                            onClick={() => setShoppingBag(prev => prev.filter(b => b.row !== item.row))}
+                                            className="p-3 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all scale-90 hover:scale-100 opacity-0 group-hover:opacity-100"
                                         >
-                                            <ShoppingBag size={16} strokeWidth={2.5} />
-                                            ADD TO BAG
+                                            <Trash2 className="w-5 h-5" />
                                         </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Footer Summary */}
+                        <div className="p-10 border-t border-white/5 bg-black/40 backdrop-blur-3xl">
+                            <div className="space-y-4 mb-10">
+                                <div className="flex justify-between items-center opacity-40">
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Base Value</span>
+                                    <span className="text-lg font-medium">${shoppingBag.reduce((sum, item) => sum + Number(item.data.price_mxn || item.data.price || 0), 0).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-(--main-color)">
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Aggregate Total</span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-4xl font-black italic tracking-tighter" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                            ${shoppingBag.reduce((sum, item) => sum + Number(item.data.price_mxn || item.data.price || 0), 0).toLocaleString()}
+                                        </span>
+                                        <span className="text-[9px] font-black opacity-40 uppercase tracking-widest mt-1">
+                                            Approx. ${(shoppingBag.reduce((sum, item) => sum + Number(item.data.price_mxn || item.data.price || 0), 0) / exchangeRate).toFixed(2)} USD
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                );
-            })()}
 
-            {/* Fullscreen Image Viewer */}
-            {showFullscreenViewer && selectedItem && (() => {
-                const mediaFiles = (selectedItem.data as any)._allMedia || [];
-                const url = mediaFiles[galleryIndex];
-                if (!url || url.match(/\.(mp4|webm|ogg|mov)$/i)) return null;
-                return <FullscreenImageViewer src={url} onClose={() => setShowFullscreenViewer(false)} />;
-            })()}
-
-            {/* ─── Shopping Bag Drawer ─────────────────────────────────── */}
-            {isBagOpen && (
-                <div className="absolute inset-y-0 right-0 w-full sm:w-[400px] bg-(--background-color)/95 backdrop-blur-2xl border-l border-white/10 flex flex-col z-50 animate-in slide-in-from-right-8 duration-300 shadow-2xl">
-                    <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/3">
-                        <div className="flex items-center gap-3">
-                            <ShoppingBag className="w-5 h-5 text-(--main-color)" />
-                            <h2 className="text-sm font-black uppercase tracking-widest text-(--text-color)">Acquisition Bag</h2>
-                        </div>
-                        <button onClick={() => setIsBagOpen(false)} className="p-2 text-(--text-color) opacity-50 hover:opacity-100 bg-white/5 hover:bg-white/10 rounded-full transition-all">
-                            <X className="w-5 h-5" strokeWidth={2} />
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 custom-scrollbar text-(--text-color)">
-                        {shoppingBag.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full opacity-30 gap-4">
-                                <ShoppingBag className="w-12 h-12" />
-                                <p className="text-xs font-black uppercase tracking-widest text-center">Your bag is empty</p>
-                            </div>
-                        ) : shoppingBag.map(item => (
-                            <div key={item.row} className="flex items-center gap-3 p-3.5 bg-white/4 hover:bg-white/5 rounded-2xl border border-white/6 transition-colors group">
-                                <div className="w-14 h-14 bg-black/20 rounded-xl overflow-hidden border border-white/5 shrink-0">
-                                    {item.imageUrl?.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                                        <video src={item.imageUrl} className="w-full h-full object-cover opacity-80" />
-                                    ) : item.imageUrl ? (
-                                        <img src={item.imageUrl} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center"><PackageSearch size={16} className="opacity-20" /></div>
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold truncate">{item.data.shape} <span className="opacity-50">{item.data.material}</span></p>
-                                    <p className="text-[10px] opacity-30 font-black uppercase tracking-widest truncate">{item.data.color}</p>
-                                    <p className="text-xs text-(--main-color) font-black mt-1.5">
-                                        {getPriceLabel(item.data)}
-                                        {!isVendor && <span className="text-[9px] opacity-40 ml-1">≈ ${getPriceUSD(item.data).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>}
-                                    </p>
-                                </div>
-                                <button onClick={() => handleRemoveFromCart(item.row)}
-                                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                                    <X className="w-4 h-4" strokeWidth={2.5} />
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    disabled={shoppingBag.length === 0}
+                                    onClick={handleCheckout}
+                                    className="w-full py-6 rounded-full bg-(--main-color) text-black font-black text-lg tracking-[0.2em] shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed uppercase"
+                                >
+                                    {isVendor ? 'EXECUTE DISPERSAL' : 'CONFIRM ACQUISITION'}
                                 </button>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="p-5 border-t border-white/10 flex flex-col gap-3 bg-black/20 backdrop-blur-md text-(--text-color)">
-                        <div className="flex justify-between text-[11px] font-bold tracking-widest opacity-50 uppercase">
-                            <span>Subtotal ({shoppingBag.length} item{shoppingBag.length !== 1 && 's'})</span>
-                            <span>MXN ${cartTotal.toFixed(2)}</span>
-                        </div>
-                        {isVendor && (
-                            <div className="flex justify-between text-[11px] font-bold tracking-widest opacity-50 uppercase">
-                                <span>IVA (15%)</span>
-                                <span>MXN ${cartIva.toFixed(2)}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between text-base font-black tracking-widest uppercase mt-1 pt-3 border-t border-white/10">
-                            <span>Total</span>
-                            <div className="flex flex-col items-end">
-                                <span className="text-(--main-color)">MXN ${finalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                {!isVendor && <span className="text-[10px] opacity-40 font-bold">≈ ${finalTotalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>}
+                                <div className="flex justify-center">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">Official Transaction Protocol v2.5</span>
+                                </div>
                             </div>
                         </div>
-                        <button
-                            disabled={shoppingBag.length === 0}
-                            onClick={handleCheckout}
-                            className={`mt-2 w-full py-4 rounded-xl text-sm font-black tracking-widest transition-all ${shoppingBag.length > 0 ? 'bg-(--main-color) text-black hover:brightness-110 hover:-translate-y-0.5 shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border border-white/10 opacity-30 cursor-not-allowed'}`}
-                        >
-                            {isVendor ? 'REGISTER SALE & EXPORT' : 'ACQUIRE ITEMS'}
-                        </button>
                     </div>
                 </div>
             )}
+
+            {/* Background Texture/Noise */}
+            <div className="fixed inset-0 z-0 opacity-20 pointer-events-none mix-blend-overlay contrast-150 saturate-0"
+                style={{ backgroundImage: `url('https://grainy-gradients.vercel.app/noise.svg')` }} />
+
+            <style>{`
+                @keyframes loading-bar {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+                .animate-loading-bar {
+                    animation: loading-bar 1.5s infinite ease-in-out;
+                }
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 4px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 20px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: var(--main-color);
+                }
+            `}</style>
         </div>
     );
 }
