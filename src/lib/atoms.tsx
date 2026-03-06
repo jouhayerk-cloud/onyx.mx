@@ -208,7 +208,7 @@ export const financeSearchTermAtom = atom('');
 export type PaymentCategory = 'All' | 'ACQ' | 'PROD' | 'MONTHLY' | 'SPPL' | 'LABR' | 'PACK' | 'OPRT';
 export const paymentCategoryFilterAtom = atom<PaymentCategory>('All');
 export const isPaymentCategoryFilterOpenAtom = atom<boolean>(false);
-export const isPaymentsFilterBarVisibleAtom = atom<boolean>(true);
+export const paymentFilterBarModeAtom = atom<'left' | 'right' | 'off'>('off');
 
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});

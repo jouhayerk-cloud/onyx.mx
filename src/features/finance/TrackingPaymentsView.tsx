@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, isPaymentsFilterBarVisibleAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -55,10 +55,13 @@ const appendExpense = async (payload: any, db: any) => {
         updated_at: new Date().toISOString(),
     }).select();
     if (error) throw error;
-    if (payload.inventoryItemRows) {
-        const ids = payload.inventoryItemRows.split(',');
-        await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
-        if (db) await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { payReq: 'true' } });
+    const finalData = data?.[0];
+    if (finalData && db) {
+        try {
+            await db.finance.insert(finalData);
+        } catch (e) {
+            console.error('Local finance insert failed', e);
+        }
     }
     return data;
 };
@@ -133,12 +136,26 @@ const AddPaymentModal: React.FC<{
                 const perc = group ? Math.round(((group.paidTotal + amt) / group.total) * 100) : 100;
 
                 if (isProd && isPartial) {
-                    await supabase.from('inventory').update({
-                        pay_req: `requested ${perc}%`,
-                        notes: `Partial payment of ${amt} recorded.`
-                    }).in('id', ids);
+                    const up = { pay_req: `requested ${perc}%`, notes: `Partial payment of ${amt} recorded.` };
+                    await supabase.from('inventory').update(up).in('id', ids);
+                    if (db) {
+                        for (const iid of ids) {
+                            try {
+                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                if (lInv) await lInv.patch({ ...up, payReq: up.pay_req });
+                            } catch (e) { console.error(e); }
+                        }
+                    }
                 } else {
-                    await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
+                    await supabase.from('inventory').update({ pay_req: 'true' }).in('id', ids);
+                    if (db) {
+                        for (const iid of ids) {
+                            try {
+                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                if (lInv) await lInv.patch({ pay_req: 'true', payReq: 'true' });
+                            } catch (e) { console.error(e); }
+                        }
+                    }
                 }
             }
 
@@ -637,7 +654,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
-    const isFilterBarVisible = useAtomValue(isPaymentsFilterBarVisibleAtom);
+    const filterMode = useAtomValue(paymentFilterBarModeAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
 
     useEffect(() => {
@@ -755,23 +772,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             const itemIdsStr = requestGroup.items.map(i => String(i.row)).join(',');
             const ids = itemIdsStr.split(',');
 
-            if (isProduction) {
-                if (isPartial) {
-                    await supabase.from('inventory').update({ pay_req: `requested ${percentage}%` }).in('id', ids);
-                    for (const id of ids) {
-                        try {
-                            const localDoc = await db.inventory.findOne({ selector: { id } }).exec();
-                            if (localDoc) await localDoc.patch({ pay_req: `requested ${percentage}%` });
-                        } catch (e) { }
-                    }
-                } else {
-                    await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
-                    for (const id of ids) {
-                        try {
-                            const localDoc = await db.inventory.findOne({ selector: { id } }).exec();
-                            if (localDoc) await localDoc.patch({ pay_req: true });
-                        } catch (e) { }
-                    }
+            const upVal = isPartial ? `requested ${percentage}%` : 'true';
+            await supabase.from('inventory').update({ pay_req: upVal }).in('id', ids);
+            if (db) {
+                for (const iid of ids) {
+                    try {
+                        const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                        if (lInv) await lInv.patch({ pay_req: upVal, payReq: upVal });
+                    } catch (e) { console.error(e); }
                 }
             }
 
@@ -796,33 +804,35 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         setRequestGroup(null);
     };
 
-    const handleDeletePayment = async (id: string) => {
+    const handleDeletePayment = async (r: any) => {
         if (!confirm('Are you sure you want to delete this payment record?')) return;
-        const { error } = await supabase.from('finance').delete().eq('id', id);
+        const { error } = await supabase.from('finance').delete().eq('id', r.id);
         if (error) {
             toast.error(error.message);
         } else {
             try {
-                const localDoc = await db.finance.findOne({ selector: { id } }).exec();
-                if (localDoc) {
-                    const data = localDoc.toJSON();
-                    const idsStr = data.related_ids || (data.related_inventory_ids ? data.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                    if (idsStr && idsStr.length > 0) {
-                        await supabase.from('inventory').update({ pay_req: null }).in('id', idsStr);
+                const idsStr = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                if (idsStr && idsStr.length > 0) {
+                    await supabase.from('inventory').update({ pay_req: null }).in('id', idsStr);
+                    if (db) {
                         for (const iid of idsStr) {
                             try {
                                 const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                if (lInv) await lInv.patch({ pay_req: null });
-                            } catch (e) { }
+                                if (lInv) await lInv.patch({ pay_req: null, payReq: null });
+                            } catch (e) {
+                                console.error('Error patching local inventory', e);
+                            }
                         }
                     }
-                    await localDoc.remove();
                 }
+                const localDoc = await db.finance.findOne({ selector: { id: r.id } }).exec();
+                if (localDoc) await localDoc.remove();
             } catch (e) {
                 console.error('Error removing local doc', e);
             }
             toast.success('Payment deleted');
             setPaymentsVersion(v => v + 1);
+            setInventoryVersion(v => v + 1);
             onRefresh();
         }
     };
@@ -857,9 +867,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 if (ids?.length > 0) {
                     if (r.description?.includes('%')) {
                         const perc = r.description.match(/(\d+)%/)?.[1];
-                        await supabase.from('inventory').update({ pay_req: `paid ${perc || 'partial'}%` }).in('id', ids);
+                        const upStr = `paid ${perc || 'partial'}%`;
+                        await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
                         if (db) {
-                            await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: { pay_req: `paid ${perc || 'partial'}%` } });
+                            for (const iid of ids) {
+                                try {
+                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                    if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr });
+                                } catch (e) { console.error(e); }
+                            }
                         }
                     } else {
                         // Full Liquidation
@@ -871,14 +887,20 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                         await supabase.from('inventory').update(updateData).in('id', ids);
                         if (db) {
-                            const lUpdates: any = { pay_req: 'true' };
+                            const lUpdates: any = { pay_req: 'true', payReq: 'true' };
                             if (isProdPayment) lUpdates.status = 'Acquisition';
-                            await db.inventory.find({ selector: { id: { $in: ids } } }).update({ $set: lUpdates });
+                            for (const iid of ids) {
+                                try {
+                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                    if (lInv) await lInv.patch(lUpdates);
+                                } catch (e) { console.error(e); }
+                            }
                         }
                     }
                 }
             }
             setPaymentsVersion(v => v + 1);
+            setInventoryVersion(v => v + 1);
             onRefresh();
         }
     };
@@ -919,7 +941,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             <AddPaymentModal
                 isOpen={showAdd}
                 onClose={() => setShowAdd(false)}
-                onSaved={() => { setPaymentsVersion(v => v + 1); onRefresh(); }}
+                onSaved={() => { setPaymentsVersion(v => v + 1); setInventoryVersion(v => v + 1); onRefresh(); }}
                 pendingGroups={pendingGroups}
             />
             <RequestPaymentModal
@@ -961,9 +983,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setOverviewMode('extended')} className={`p-1.5 py-1 rounded-lg border transition-all text-[9px] font-black uppercase tracking-widest ${overviewMode === 'extended' ? 'bg-(--main-color)/20 border-(--main-color) text-(--main-color)' : 'border-white/10 text-white/30 hover:text-white/60'}`}>Full</button>
-                            <button onClick={() => setOverviewMode('minimal')} className={`p-1.5 py-1 rounded-lg border transition-all text-[9px] font-black uppercase tracking-widest ${overviewMode === 'minimal' ? 'bg-(--main-color)/20 border-(--main-color) text-(--main-color)' : 'border-white/10 text-white/30 hover:text-white/60'}`}>Min</button>
-                            <button onClick={() => setOverviewMode('collapsed')} className="p-1.5 py-1 rounded-lg border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/60 transition-all text-[9px] font-black uppercase tracking-widest">Hide</button>
+                            {/* Deprecated FULL MIN HIDE buttons removed */}
                         </div>
                     </div>
 
@@ -1083,25 +1103,42 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             {/* ── Payments Details Section ── */}
             <div className="flex-1 flex flex-col min-h-0 bg-(--glass-bg)">
                 {/* Header/Controls below general overview */}
-                {isFilterBarVisible && (
+                {filterMode === 'left' && (
+                    <div className="flex items-center p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
+                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full">
+                            {SUBCATEGORIES.map(s => (
+                                <button key={s} onClick={() => setSubcatFilter(s)}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
+                                    {s.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {filterMode === 'right' && (
                     <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
-                        <div className="flex items-center gap-4">
-
-                            {/* Filters embedded here */}
-                            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                                {SUBCATEGORIES.map(s => (
-                                    <button key={s} onClick={() => setSubcatFilter(s)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
-                                        {s.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-
+                        <div className="flex items-center">
+                            {destinationFilter !== 'All' ? (
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">SELECTED CARD TOTAL</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-sm font-mono font-black text-(--text-color)">
+                                            {fmtMXN(activeDestReqNetMXN)}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-(--text-color-secondary)">
+                                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">SELECT A CARD</span>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2">
                             {/* Destination Picker — stacked card animation */}
-                            <div className="flex items-center justify-center relative h-14 px-2 mt-4">
+                            <div className="flex items-center justify-center relative h-14 px-2">
                                 {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
                                     const isActive = destinationFilter === key;
                                     const total = arr.length;
@@ -1201,7 +1238,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         {r.status || 'Requested'}
                                                     </button>
                                                     {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                                        <button onClick={() => handleDeletePayment(r.id)}
+                                                        <button onClick={() => handleDeletePayment(r)}
                                                             className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100" title="Delete record">
                                                             ✕
                                                         </button>
