@@ -134,28 +134,6 @@ export const ClientOverview: React.FC = () => {
         return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
     }, [activeDestPendingRecords]);
 
-    const globalTotals = useMemo(() => {
-        const totalItems = vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0);
-        const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
-
-        // Calculate pending payments (Requested)
-        const pendingValueUsd = activeDestReqNetMXN / currentExchangeRate;
-
-        // "Acquisition (Pending payment)" - Let's define this as total acq value of items not yet markers as strictly paid?
-        // Actually the prompt says "Payments (Total acquisition, pending payment)" and "Payments (requested pending payments)"
-        // I'll use the total items value as "Total Acquisition"
-        return {
-            totalItems,
-            totalAcqValueUsd,
-            pendingValueUsd,
-            storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
-            newStoreCount: storeItems.filter(x => {
-                const updated = new Date(x.data.updatedAt || 0).getTime();
-                return Date.now() - updated < 7 * 24 * 60 * 60 * 1000; // last 7 days
-            }).length
-        };
-    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate]);
-
     const pendingItems = useMemo(() => {
         return items.filter(i => {
             const status = (i.data?.status || '').toLowerCase();
@@ -195,36 +173,69 @@ export const ClientOverview: React.FC = () => {
         return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total, partials: data.partials })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
 
+    const globalTotals = useMemo(() => {
+        const totalItemsCount = vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0);
+        const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
+
+        // Requested Unpaid (from finance records)
+        const requestedUnpaidMxn = activeDestReqNetMXN;
+        const requestedUnpaidUsd = requestedUnpaidMxn / currentExchangeRate;
+
+        // Pending to be Requested (the "Coming" part)
+        const pendingToRequestMxn = comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0);
+        const pendingToRequestUsd = pendingToRequestMxn / currentExchangeRate;
+
+        // Total Unpaid = Requested + To be requested
+        const totalUnpaidMxn = requestedUnpaidMxn + pendingToRequestMxn;
+        const totalUnpaidUsd = requestedUnpaidUsd + pendingToRequestUsd;
+
+        return {
+            totalItems: totalItemsCount,
+            totalAcqValueUsd,
+            requestedUnpaidUsd,
+            requestedUnpaidMxn,
+            pendingToRequestUsd,
+            pendingToRequestMxn,
+            totalUnpaidUsd,
+            totalUnpaidMxn,
+            storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
+            newStoreCount: storeItems.filter(x => {
+                const updated = new Date(x.data.updatedAt || 0).getTime();
+                return Date.now() - updated < 7 * 24 * 60 * 60 * 1000; // last 7 days
+            }).length
+        };
+    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor]);
+
     const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
-    const fmtUSD = (val: number, compact = false) => {
+    const fmtUSD = (val: number) => {
         if (!showFinancials) return '***';
         return '$' + val.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: compact ? 0 : 2
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         }) + ' USD';
     };
 
     const vendorChartOption = useMemo<EChartsOption>(() => ({
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { left: '3%', right: '4%', bottom: '3%', top: '3%', containLabel: true },
-        xAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 10 } },
-        yAxis: { type: 'category', data: vendorSummaries.slice(0, 8).map(v => v.vendorId), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: 'rgba(255,255,255,0.6)', fontWeight: 'bold' } },
+        tooltip: { trigger: 'item', formatter: (params: any) => `${params.name}: ${params.value.toFixed(2)} units (${params.percent}%)` },
         series: [
             {
-                name: 'Units',
-                type: 'bar',
-                data: vendorSummaries.slice(0, 8).map(v => v.itemCount),
-                itemStyle: { color: (params: any) => vendorSummaries[params.dataIndex].color + 'CC', borderRadius: [0, 8, 8, 0] },
-                barWidth: '60%'
+                name: 'Units by Vendor',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                center: ['50%', '50%'],
+                data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.itemCount })),
+                label: { show: false },
+                itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 1 }
             }
         ],
+        color: vendorSummaries.map(v => v.color),
         backgroundColor: 'transparent',
     }), [vendorSummaries]);
 
     const pieChartOption = useMemo<EChartsOption>(() => {
-        const data = vendorSummaries.slice(0, 5).map(v => ({ name: v.vendorId, value: v.totalAcqUsd }));
+        const data = vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd }));
         return {
-            tooltip: { trigger: 'item', formatter: '{b}: ${c} ({d}%)' },
+            tooltip: { trigger: 'item', formatter: (params: any) => `${params.name}: $${params.value.toFixed(2)} (${params.percent}%)` },
             series: [
                 {
                     name: 'Acquisition',
@@ -236,7 +247,7 @@ export const ClientOverview: React.FC = () => {
                     itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 2 }
                 }
             ],
-            color: vendorSummaries.slice(0, 5).map(v => v.color),
+            color: vendorSummaries.map(v => v.color),
             backgroundColor: 'transparent'
         };
     }, [vendorSummaries]);
@@ -340,7 +351,7 @@ export const ClientOverview: React.FC = () => {
                                             <button
                                                 onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
                                                 className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all w-full md:w-auto">
-                                                Finalize Payment
+                                                Report Payment
                                             </button>
                                         </div>
                                     </div>
@@ -396,7 +407,7 @@ export const ClientOverview: React.FC = () => {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group" onClick={() => setIsComingExpanded(!isComingExpanded)}>
                             <div className="flex items-center gap-3">
                                 <Wallet size={18} className="text-[#00AEEF]" />
-                                <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#00AEEF] transition-colors">Auto-Generated Pending</h2>
+                                <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#00AEEF] transition-colors">To be paid soon</h2>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest opacity-60 bg-white/5 px-2 py-1 rounded-md">{comingPaymentsByVendor.length} Pending Records</span>
@@ -468,7 +479,7 @@ export const ClientOverview: React.FC = () => {
                         title="Acquisitions"
                         stats={[
                             { label: 'Units Registered', value: globalTotals.totalItems.toLocaleString() },
-                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
+                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
                         ]}
                         actionLabel="Inventory"
                         onAction={() => setActiveView('inventory')}
@@ -478,8 +489,9 @@ export const ClientOverview: React.FC = () => {
                         icon={CreditCard}
                         title="Dispersals"
                         stats={[
-                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.pendingValueUsd, true), subValue: fmtMXN(globalTotals.pendingValueUsd * currentExchangeRate) },
-                            { label: 'Unpaid Items Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
+                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.requestedUnpaidUsd), subValue: fmtMXN(globalTotals.requestedUnpaidMxn) },
+                            { label: 'Pending to Request', value: fmtUSD(globalTotals.pendingToRequestUsd), subValue: fmtMXN(globalTotals.pendingToRequestMxn) },
+                            { label: 'Total Unpaid Balance', value: fmtUSD(globalTotals.totalUnpaidUsd), subValue: fmtMXN(globalTotals.totalUnpaidMxn) }
                         ]}
                         actionLabel="Go to Payments"
                         onAction={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
@@ -505,8 +517,8 @@ export const ClientOverview: React.FC = () => {
                         <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) text-center">Value Concentration</h3>
                         <EChart option={pieChartOption} style={{ height: '250px' }} />
                         <div className="text-center">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-(--main-color) mb-1">Top 5 Vendors Share</p>
-                            <p className="text-2xl font-black text-(--text-color) tracking-tighter">{fmtUSD(globalTotals.totalAcqValueUsd * 0.85, true)}</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-(--main-color) mb-1">Total Acquisitions Value</p>
+                            <p className="text-2xl font-black text-(--text-color) tracking-tighter">{fmtUSD(globalTotals.totalAcqValueUsd)}</p>
                         </div>
                     </div>
                 </div>
