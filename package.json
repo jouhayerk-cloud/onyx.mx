@@ -1,7 +1,7 @@
 {
   "name": "onyx.mx-git",
   "private": true,
-  "version": "1.11.99",
+  "version": "1.11.100",
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000 --host",
