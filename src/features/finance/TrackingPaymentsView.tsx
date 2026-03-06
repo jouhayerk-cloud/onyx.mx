@@ -1075,7 +1075,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         const paidPerc = group.total > 0 ? Math.round((group.paidTotal / group.total) * 100) : 0;
                                         return (
                                             <div key={group.vendorId}
-                                                onClick={() => setRequestGroup(group)}
+                                                onClick={() => setShowAdd(true)}
                                                 title={`${group.vendorId}: ${fmtMXN(group.total)}${isProd && paidPerc > 0 ? ` (${paidPerc}% paid)` : ''}`}
                                                 className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-all shadow-lg border-2 relative group/bubble"
                                                 style={{ backgroundColor: color, borderColor: `${color}80` }}>
@@ -1106,12 +1106,19 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 {filterMode === 'left' && (
                     <div className="flex items-center p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
                         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full">
-                            {SUBCATEGORIES.map(s => (
-                                <button key={s} onClick={() => setSubcatFilter(s)}
-                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
-                                    {s.toUpperCase()}
-                                </button>
-                            ))}
+                            {SUBCATEGORIES.map(s => {
+                                const labels: Record<string, string> = {
+                                    'All': 'All', 'Acq': 'Acquisition', 'Prod': 'Production',
+                                    'Monthly': 'Monthly', 'Sppl': 'Supplies', 'Labr': 'Labor',
+                                    'Pack': 'Packaging', 'Oprt': 'Operations'
+                                };
+                                return (
+                                    <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
+                                        {(labels[s] || s).toUpperCase()}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -1170,11 +1177,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         <thead className="sticky top-0 bg-(--glass-bg) z-10 backdrop-blur-3xl shadow-sm">
                             <tr className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) bg-black/5 dark:bg-black/20 border-b border-(--border-color)">
                                 <th className="px-5 py-3 border-r border-white/5">Date</th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Acc</th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Cat</th>
-                                <th className="px-5 py-3 border-r border-white/5">Desc</th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Vend</th>
+                                <th className="px-2 py-3 border-r border-white/5 text-center"></th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Category</th>
+                                <th className="px-5 py-3 border-r border-white/5">Description</th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Vendor</th>
                                 <th className="px-5 py-3 border-r border-white/5 text-right">Amount</th>
+                                <th className="px-3 py-3 border-r border-white/5 text-center">Account</th>
                                 <th className="px-5 py-3 text-center">Status</th>
                             </tr>
                         </thead>
@@ -1198,20 +1206,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 <div className="flex items-center gap-2">
                                                     <svg className={`w-3 h-3 transition-transform text-(--text-color-secondary) ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
                                                     {fmtDate(r.date)}
-                                                    {r.recurring && (
-                                                        <div className="flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-full bg-[#F7941D]/10 border border-[#F7941D]/20" title={`Recurring every day ${r.recurring_day}`}>
-                                                            <svg className="w-2.5 h-2.5 text-[#F7941D] animate-spin-slow"><use href="#repeat" /></svg>
-                                                            <span className="text-[8px] font-black text-[#F7941D]">{r.recurring_day}</span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-3 text-center">
-                                                {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                                    <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                                        alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                                        className="h-5 mx-auto w-auto object-contain drop-shadow-sm" />
-                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
+                                            <td className="px-2 py-3 text-center">
+                                                {r.recurring && (
+                                                    <div className="flex items-center justify-center" title={`Recurring every day ${r.recurring_day}`}>
+                                                        <svg className="w-4 h-4 text-[#F7941D] animate-spin-slow"><use href="#repeat" /></svg>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-3 py-3 text-center">
                                                 <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-black bg-black/10 dark:bg-white/10 text-(--text-color)">
@@ -1230,6 +1232,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <td className="px-5 py-3 text-right">
                                                 <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(r.amount)}</span>
                                                 {(r.commission || 0) > 0 && <span className="text-(--text-color-secondary) font-mono text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
+                                            </td>
+                                            <td className="px-3 py-3 text-center">
+                                                {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
+                                                    <img src={destinationsConfig[r.destination as PaymentDestination].icon}
+                                                        alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
+                                                        className="h-5 mx-auto w-auto object-contain drop-shadow-sm" />
+                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
                                             </td>
                                             <td className="px-5 py-3">
                                                 <div className="flex items-center justify-center gap-3">
