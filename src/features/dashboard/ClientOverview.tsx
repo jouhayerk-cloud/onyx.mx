@@ -28,7 +28,7 @@ interface ClientVendorSummary {
 }
 
 const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 'var(--main-color)' }: {
-    icon: React.FC<any>; title: string; stats: { label: string; value: string }[]; actionLabel: string; onAction: () => void; color?: string;
+    icon: React.FC<any>; title: string; stats: { label: string; value: string; subValue?: string }[]; actionLabel: string; onAction: () => void; color?: string;
 }) => (
     <div
         onClick={onAction}
@@ -51,7 +51,10 @@ const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 
                 {stats.map((s, i) => (
                     <div key={i} className="flex justify-between items-end">
                         <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-60">{s.label}</span>
-                        <span className="text-base font-mono font-black text-(--text-color) leading-none">{s.value}</span>
+                        <div className="text-right flex flex-col items-end">
+                            <span className="text-base font-mono font-black text-(--text-color) leading-none">{s.value}</span>
+                            {s.subValue && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-50 mt-1 leading-none">{s.subValue}</span>}
+                        </div>
                     </div>
                 ))}
             </div>
@@ -162,7 +165,7 @@ export const ClientOverview: React.FC = () => {
     }, [items]);
 
     const comingPaymentsByVendor = useMemo(() => {
-        const groups: Record<string, { total: number }> = {};
+        const groups: Record<string, { total: number, partials: string[] }> = {};
         for (const item of pendingItems) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
@@ -170,7 +173,7 @@ export const ClientOverview: React.FC = () => {
             if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
             if (!vid) vid = 'Unknown';
 
-            if (!groups[vid]) groups[vid] = { total: 0 };
+            if (!groups[vid]) groups[vid] = { total: 0, partials: [] };
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
 
@@ -179,13 +182,15 @@ export const ClientOverview: React.FC = () => {
             if (payReqStr.includes('%')) {
                 const match = payReqStr.match(/(\d+)%/);
                 if (match) {
-                    ratio = Math.max(0, (100 - parseInt(match[1])) / 100);
+                    const percPaid = parseInt(match[1]);
+                    ratio = Math.max(0, (100 - percPaid) / 100);
+                    groups[vid].partials.push(`${percPaid}% paid on lot ${itemIdStr}`);
                 }
             }
 
             groups[vid].total += (price * ratio * qty);
         }
-        return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
+        return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total, partials: data.partials })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
 
     const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
@@ -328,7 +333,7 @@ export const ClientOverview: React.FC = () => {
                                         <div className="flex flex-col items-end">
                                             <div className="text-right mb-2">
                                                 <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors leading-none">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-60 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
+                                                <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
                                             </div>
                                             <button
                                                 onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
@@ -394,16 +399,22 @@ export const ClientOverview: React.FC = () => {
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-1.5">
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">Generic Dest</p>
+                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color)">Coming</span>
                                             </div>
                                             <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated Pending</p>
+                                            {group.partials.length > 0 && (
+                                                <div className="mt-1 flex flex-col gap-0.5">
+                                                    {group.partials.slice(0, 2).map((p, idx) => <span key={idx} className="text-[8px] font-bold text-(--main-color) uppercase opacity-70 leading-none">{p}</span>)}
+                                                    {group.partials.length > 2 && <span className="text-[8px] font-bold text-(--main-color) uppercase opacity-70 leading-none">+{group.partials.length - 2} more partials</span>}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end justify-center">
                                         <div className="text-right">
                                             <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors leading-none">{fmtMXN(group.total)}</p>
-                                            <p className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-60 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
+                                            <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -436,7 +447,7 @@ export const ClientOverview: React.FC = () => {
                         title="Acquisitions"
                         stats={[
                             { label: 'Units Registered', value: globalTotals.totalItems.toLocaleString() },
-                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true) }
+                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
                         ]}
                         actionLabel="Inventory"
                         onAction={() => setActiveView('inventory')}
@@ -446,8 +457,8 @@ export const ClientOverview: React.FC = () => {
                         icon={CreditCard}
                         title="Dispersals"
                         stats={[
-                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.pendingValueUsd, true) },
-                            { label: 'Unpaid Items Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true) } // Placeholder for "pending payment" acq value
+                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.pendingValueUsd, true), subValue: fmtMXN(globalTotals.pendingValueUsd * currentExchangeRate) },
+                            { label: 'Unpaid Items Value', value: fmtUSD(globalTotals.totalAcqValueUsd, true), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
                         ]}
                         actionLabel="Go to Payments"
                         onAction={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
