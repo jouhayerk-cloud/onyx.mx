@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { pendingCardIcon } from './paymentsIcons.svg';
 import { PaymentDestination } from '../../lib/Types';
 import { default as toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -389,7 +390,7 @@ export const ClientOverview: React.FC = () => {
                                     <div className="flex items-center gap-5">
                                         <div className="relative shrink-0">
                                             <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10" style={{ borderColor: `${color}80` }}>
-                                                <img src={destinationsConfig[PaymentDestination.Fast_Cash_Wire].icon} alt="Direct Wire" className="w-full h-full object-contain mix-blend-multiply relative z-0 opacity-40 grayscale" />
+                                                <img src={pendingCardIcon} alt="Pending" className="w-full h-full object-contain mix-blend-multiply relative z-0" />
                                             </div>
                                             <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
                                                 <span className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={group.vendorId}>
