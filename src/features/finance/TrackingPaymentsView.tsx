@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -655,6 +655,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [isLoading, setIsLoading] = useState(true);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const filterMode = useAtomValue(paymentFilterBarModeAtom);
+    const financeSearch = useAtomValue(financeSearchTermAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
 
     useEffect(() => {
@@ -738,16 +739,35 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     }, [docs]);
 
     const filtered = useMemo(() => {
+        const searchWords = financeSearch.toLowerCase().trim().split(/\s+/).filter(Boolean);
+
         return [...docs]
             .filter(r => {
                 const subcatValue = normalizeSubcat(r.subcategory || r.category || '');
-                const subcat = subcatFilter === 'All' || subcatValue === subcatFilter;
-                const dest = destinationFilter === 'All' || r.destination === destinationFilter;
-                const vendor = vendorFilter === 'All' || getVendorIdFromDescription(r.description || '') === vendorFilter;
-                return subcat && dest && vendor;
+                const subcatMatch = subcatFilter === 'All' || subcatValue === subcatFilter;
+                const destMatch = destinationFilter === 'All' || r.destination === destinationFilter;
+                const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(r.description || '') === vendorFilter;
+
+                let searchMatch = true;
+                if (searchWords.length > 0) {
+                    const searchSource = [
+                        r.description || '',
+                        r.notes || '',
+                        r.vendor_id || '',
+                        r.subcategory || '',
+                        r.category || '',
+                        r.reference || '',
+                        r.destination || '',
+                        r.status || 'Requested'
+                    ].join(' ').toLowerCase();
+
+                    searchMatch = searchWords.every(word => searchSource.includes(word));
+                }
+
+                return subcatMatch && destMatch && vendorMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
-    }, [docs, subcatFilter, destinationFilter, vendorFilter]);
+    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch]);
 
     const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false) => {
         if (!requestGroup) return;

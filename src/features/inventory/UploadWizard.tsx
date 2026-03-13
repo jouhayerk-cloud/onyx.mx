@@ -74,7 +74,7 @@ export const UploadWizard: React.FC = () => {
             setState({
                 ...INITIAL_STATE,
                 status: 'Available',
-                vendorId: user?.role === 'Vendor' ? user.id : '',
+                vendorId: user?.role === 'Vendor' ? (user.name || '') : '',
             });
         }
         isOpenRef.current = isOpen;

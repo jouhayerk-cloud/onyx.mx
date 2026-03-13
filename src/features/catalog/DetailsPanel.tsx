@@ -256,13 +256,11 @@ export function DetailsPanel() {
     if (!itemData || !itemRow) return;
     setIsSaving(true);
     try {
-      const payload = { [type]: generatedDesc };
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user }),
-      });
-      const result = await response.json();
-      if (result.status !== 'success') throw new Error(result.message);
+      const payload = { [type]: generatedDesc, updated_at: new Date().toISOString() };
+      
+      const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
+      const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+      if (error) throw error;
 
       setItemData(prev => prev ? { ...prev, ...payload } : null);
       setGeneratedDesc('');
@@ -327,11 +325,34 @@ export function DetailsPanel() {
         const { error } = await supabase.from(tableName).update(dbRow).eq('id', itemRow);
         if (error) throw error;
       } else {
-        const payload = { ...formState, ...newItemFiles, photos: createModeFiles || [] };
-        const body = JSON.stringify({ action: 'appendInventory', inventory: [payload], user });
-        const response = await fetch(SCRIPT_URL, { method: 'POST', body });
-        const result = await response.json();
-        if (result.status !== 'success') throw new Error(result.message);
+        const finalItemId = formState.vendorId && !formState.itemId.startsWith(formState.vendorId)
+          ? `${formState.vendorId}-${formState.itemId}`
+          : formState.itemId;
+
+        const dbRow = {
+          item_id: finalItemId,
+          item_number: formState.itemNumber || '1',
+          shape: formState.shape,
+          material: formState.material,
+          color: formState.color,
+          description: formState.description,
+          short_description: formState.itemType,
+          weight_kg: formState.weightKg ? Number(formState.weightKg) : null,
+          width_cm: formState.widthCm ? Number(formState.widthCm) : null,
+          height_cm: formState.heightCm ? Number(formState.heightCm) : null,
+          length_cm: formState.lengthCm ? Number(formState.lengthCm) : null,
+          price_mxn: formState.price ? Number(formState.price) : null,
+          quantity: formState.quantity ? Number(formState.quantity) : 1,
+          status: formState.status || 'Available',
+          workbook: formState.workbook || 'v326',
+          media_urls: mediaUrlsStr,
+          timestamp: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const tableName = dbRow.status === 'Production' ? 'production' : 'inventory';
+        const { error } = await supabase.from(tableName).insert(dbRow);
+        if (error) throw error;
       }
 
       toast.success(t.itemSavedSuccess, { id: toastId });
@@ -458,14 +479,13 @@ export function DetailsPanel() {
                     status: 'Acquired',
                     acquired_by: user?.email,
                     acquired_at: new Date().toISOString(),
-                    workbook: '326' // Ensure it goes to active workbook
+                    workbook: '326',
+                    updated_at: new Date().toISOString()
                   };
-                  const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user })
-                  });
-                  const result = await response.json();
-                  if (result.status !== 'success') throw new Error(result.message);
+                  
+                  const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
@@ -494,14 +514,13 @@ export function DetailsPanel() {
                 try {
                   const payload = {
                     status: 'Archive',
-                    workbook: '825'
+                    workbook: '825',
+                    updated_at: new Date().toISOString()
                   };
-                  const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user })
-                  });
-                  const result = await response.json();
-                  if (result.status !== 'success') throw new Error(result.message);
+                  
+                  const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);
@@ -529,14 +548,13 @@ export function DetailsPanel() {
                 const toastId = toast.loading('Marking as Shipped...');
                 try {
                   const payload = {
-                    status: 'Shipped'
+                    status: 'Shipped',
+                    updated_at: new Date().toISOString()
                   };
-                  const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'updateFullItem', row: itemRow, itemData: payload, user })
-                  });
-                  const result = await response.json();
-                  if (result.status !== 'success') throw new Error(result.message);
+                  
+                  const tableName = itemData?.status === 'Production' ? 'production' : 'inventory';
+                  const { error } = await supabase.from(tableName).update(payload).eq('id', itemRow);
+                  if (error) throw error;
 
                   setItemData(prev => prev ? { ...prev, ...payload } : null);
                   setInventoryVersion(v => v + 1);

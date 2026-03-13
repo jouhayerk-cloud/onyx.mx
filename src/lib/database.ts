@@ -2,7 +2,7 @@ import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
 import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
-import { supabase } from './supabase';
+import { supabase } from './supabase';
 addRxPlugin(RxDBQueryBuilderPlugin);
 addRxPlugin(RxDBMigrationSchemaPlugin);
 
@@ -81,7 +81,7 @@ const logisticsSchema = {
 
 const productionSchema = {
     title: 'production schema',
-    version: 2,
+    version: 3,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -96,13 +96,16 @@ const productionSchema = {
         progress: { type: ['number', 'null'] },
         ready_date: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
+        rating: { type: ['number', 'null'] },
+        is_hidden: { type: ['boolean', 'null'] },
+        hidden_reason: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 7,
+    version: 8,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -156,6 +159,9 @@ const inventorySchema = {
         sent_at: { type: ['string', 'null'] },
         dispersed_at: { type: ['string', 'null'] },
         requested_by: { type: ['string', 'null'] },
+        rating: { type: ['number', 'null'] },
+        is_hidden: { type: ['boolean', 'null'] },
+        hidden_reason: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
@@ -169,7 +175,7 @@ export type OnyxDatabase = RxDatabase<{
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
 
-async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 20, delay = 150) {
+async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chunkSize = 150, delay = 10) {
     for (let i = 0; i < docs.length; i += chunkSize) {
         const chunk = docs.slice(i, i + chunkSize).map(doc => ({
             ...doc,
@@ -181,35 +187,29 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
         } catch (err) {
             console.error(`[DB] bulkUpsert error in ${collection.name}:`, err);
         }
-        await new Promise(resolve => setTimeout(resolve, delay));
+        // Very short delay to keep event loop breathing
+        if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
     }
 }
 
 const createDatabase = async () => {
     try {
         const db = await createRxDatabase<OnyxDatabase>({
-            name: 'onyxdb7',
+            name: 'onyxdb18', // Forced clean start for mobile stability
             storage: getRxStorageDexie()
         });
 
         await db.addCollections({
             inventory: {
                 schema: inventorySchema,
-                migrationStrategies: {
-                    1: () => null,
-                    2: () => null,
-                    3: () => null,
-                    4: () => null,
-                    5: () => null,
-                    6: () => null,
-                    7: () => null,
+                migrationStrategies: {
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null,
                 }
             },
             finance: {
                 schema: financeSchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null,
-                    4: () => null, 5: () => null, 6: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null,
                 }
             },
             logistics: {
@@ -218,86 +218,76 @@ const createDatabase = async () => {
                     1: () => null, 2: () => null, 3: () => null,
                 }
             },
-            production: { schema: productionSchema }
-        });
-        try {
-            await db.inventory.migratePromise(50);
-            console.log('✅ [DB] Migration complete.');
-        } catch (migErr) {
-            console.warn('⚠️ [DB] Migration error (non-fatal, will resync):', migErr);
-        }
+            production: { 
+                schema: productionSchema,
+                migrationStrategies: {
+                    1: () => null, 2: () => null, 3: () => null,
+                }
+            }
+        });
 
         const pullReplication = async () => {
             try {
-                console.log('🚀 [DB] Starting prioritized paginated sync...');
+                console.log('🚀 [DB] Starting prioritized paginated sync...');
                 const fetchPaginated = async (table: string, filterField?: string, filterVal?: any) => {
                     let page = 0;
-                    const pageSize = 500;
+                    const pageSize = 1000; // Larger pages for faster sync
                     const allData: any[] = [];
 
-                    while (true) {
-                        let query = supabase.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
-                        if (filterField && filterVal !== undefined) {
-                            query = query.eq(filterField, filterVal);
-                        }
+                    try {
+                        while (true) {
+                            let query = supabase.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                            if (filterField && filterVal !== undefined) {
+                                query = query.eq(filterField, filterVal);
+                            }
 
-                        const { data, error } = await query;
-                        if (error) {
-                            console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
-                            break;
-                        }
-                        if (!data || data.length === 0) break;
+                            const { data, error } = await query;
+                            if (error) {
+                                console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
+                                break;
+                            }
+                            if (!data || data.length === 0) break;
 
-                        allData.push(...data);
-                        if (data.length < pageSize) break;
-                        page++;
+                            allData.push(...data);
+                            if (data.length < pageSize) break;
+                            page++;
+                        }
+                    } catch (e) {
+                        console.error(`🔥 [DB] ${table} fetch timeout/error:`, e);
                     }
                     return allData;
-                };
-                console.log('[DB] Paging all inventory items...');
-                const invData = await fetchPaginated('inventory');
+                };
 
+                // Sync sequences...
+                const invData = await fetchPaginated('inventory');
                 const activeData = invData.filter(d => String(d.workbook) !== '825');
                 const archiveData = invData.filter(d => String(d.workbook) === '825');
 
-                console.log(`[DB] Fetched ${invData.length} total inventory items (${activeData.length} active, ${archiveData.length} archive).`);
+                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData);
+                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData);
+                
+                // Pruning stale records (only if on a robust connection/device)
+                if (invData.length > 0 && window.innerWidth > 768) {
+                   const remoteInvIds = new Set(invData.map(d => String(d.id)));
+                   const localInvDocs = await db.inventory.find().exec();
+                   const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
+                   if (staleInv.length > 0) await Promise.all(staleInv.map((doc: any) => doc.remove()));
+                }
 
-                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData, 50, 50);
-                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData, 50, 50);
-                const remoteInvIds = new Set(invData.map(d => String(d.id)));
-                const localInvDocs = await db.inventory.find().exec();
-                const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
-                if (staleInv.length > 0) {
-                    await Promise.all(staleInv.map((doc: any) => doc.remove()));
-                    console.log(`🗑️ [DB] Pruned ${staleInv.length} stale inventory records.`);
-                }
                 const finData = await fetchPaginated('finance');
-                console.log(`[DB] Fetched ${finData.length} finance items.`);
-                if (finData.length > 0) await bulkUpsertChunked(db.finance, finData, 50, 50);
-                const remoteFinIds = new Set(finData.map((d: any) => String(d.id)));
-                const localFinDocs = await db.finance.find().exec();
-                const staleFin = localFinDocs.filter((doc: any) => !remoteFinIds.has(doc.id));
-                if (staleFin.length > 0) await Promise.all(staleFin.map((doc: any) => doc.remove()));
-                const logData = await fetchPaginated('logistics');
-                console.log(`[DB] Fetched ${logData.length} logistics items.`);
-                if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData, 50, 50);
-                const remoteLogIds = new Set(logData.map((d: any) => String(d.id)));
-                const localLogDocs = await db.logistics.find().exec();
-                const staleLog = localLogDocs.filter((doc: any) => !remoteLogIds.has(doc.id));
-                if (staleLog.length > 0) await Promise.all(staleLog.map((doc: any) => doc.remove()));
-                const prodData = await fetchPaginated('production');
-                console.log(`[DB] Fetched ${prodData.length} production items.`);
-                if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData, 50, 50);
-                const remoteProdIds = new Set(prodData.map((d: any) => String(d.id)));
-                const localProdDocs = await db.production.find().exec();
-                const staleProd = localProdDocs.filter((doc: any) => !remoteProdIds.has(doc.id));
-                if (staleProd.length > 0) await Promise.all(staleProd.map((doc: any) => doc.remove()));
+                if (finData.length > 0) await bulkUpsertChunked(db.finance, finData);
 
-                console.log('🏁 [DB] Prioritized paginated sync with pruning complete.');
+                const logData = await fetchPaginated('logistics');
+                if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData);
+
+                const prodData = await fetchPaginated('production');
+                if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData);
+
+                console.log('🏁 [DB] Prioritized paginated sync complete.');
             } catch (err) {
                 console.error('🔥 [DB] Fatal Sync Crash:', err);
             }
-        };
+        };
         console.log('✅ [DB] Collections Created. Initiating Sync...');
         pullReplication().catch(e => console.error('🔥 [DB] Background Sync Failure:', e));
 
@@ -308,10 +298,10 @@ const createDatabase = async () => {
         const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
         const now = Date.now();
 
-        if (now - lastReload > 5000) {
+        if (now - lastReload > 15000) { // Increased to 15s for mobile stability
             console.warn('⚠️ [DB] Wiping all onyxdb* stores and reloading...');
             localStorage.setItem('onyx_last_reload', now.toString());
-            setTimeout(async () => {
+            setTimeout(async () => {
                 try {
                     const dbs = await window.indexedDB.databases();
                     await Promise.all(

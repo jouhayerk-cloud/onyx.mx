@@ -173,14 +173,24 @@ export const useDatabase = () => {
     const timer = setTimeout(() => {
       if (!db) console.warn('🕒 [DB] Database resolution taking longer than 3s...');
     }, 3000);
+    const hardTimeout = setTimeout(() => {
+      if (!db && Date.now() - parseInt(localStorage.getItem('onyx_last_reload') || '0') > 60000) {
+        console.error('🔥 [DB] Fatal initialization hang. Attempting emergency recovery...');
+        localStorage.setItem('onyx_last_reload', Date.now().toString());
+        window.location.reload();
+      }
+    }, 20000); // 20s hard timeout
+
     import('./database').then(m => m.getDatabase()).then(newDb => {
       clearTimeout(timer);
+      clearTimeout(hardTimeout);
       setDb(newDb);
     }).catch(async (err) => {
       clearTimeout(timer);
-      console.error('❌ [DB] useDatabase failed, wiping all onyxdb* stores:', err?.message || err);
+      clearTimeout(hardTimeout);
+      console.error('❌ [DB] useDatabase failed:', err?.message || err);
       const lastReload = parseInt(localStorage.getItem('onyx_last_reload') || '0');
-      if (Date.now() - lastReload > 5000) {
+      if (Date.now() - lastReload > 15000) {
         localStorage.setItem('onyx_last_reload', Date.now().toString());
         try {
           const dbs = await window.indexedDB.databases();

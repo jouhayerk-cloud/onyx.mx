@@ -21,7 +21,7 @@ import {
 import React, { useEffect } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
-    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette
 } from 'lucide-react';
 
 import { MainHeader } from './MainHeader';
@@ -42,6 +42,8 @@ import { AdminDashboard } from '../dashboard/AdminDashboard';
 import { ClientOverview } from '../dashboard/ClientOverview';
 import { StoreView } from '../store/StoreView';
 import { PackingModule } from '../logistics/PackingModule';
+import { ProcessView } from '../process/ProcessView';
+import { DataSyncProvider } from '../../components/DataSyncProvider';
 
 declare const __APP_VERSION__: string;
 
@@ -180,6 +182,7 @@ export function MainAppView() {
             case 'packing': return <PackingModule />;
             case 'finance': return <FinanceView />;
             case 'store': return <StoreView />;
+            case 'process': return <ProcessView />;
             default:
                 return <InventoryView />;
         }
@@ -246,36 +249,34 @@ export function MainAppView() {
         <>
             {/* Sidebar FAB — only visible when sidebar is hidden */}
             {sidebarState === 'hidden' && (
-                <button
-                    className="sidebar-fab"
+                <div 
+                    className="sidebar-fab-logo cursor-pointer hover:scale-110 active:scale-95 transition-all outline-none fixed top-6 left-6 z-1000"
                     onClick={() => setSidebarState('expanded')}
                     title="Open Navigation"
                 >
-                    <OnyxMiniLogo className="w-6 h-6" />
-                </button>
+                    <OnyxMiniLogo className="w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" />
+                </div>
             )}
 
+            <DataSyncProvider />
             <HeroBackground />
 
 
 
             <div className={`app-container sidebar-${sidebarState}`}>
-                <div className="sidebar">
-                    <div className="sidebar-header">
-                        <div className="sidebar-logo">
-                            {/* Logo: full in expanded, mini icon in compact, nothing in hidden (FAB handles that) */}
-                            {sidebarState === 'expanded' && <OnyxLogo className="w-10 h-10" />}
-                            {sidebarState === 'compact' && <OnyxMiniLogo className="w-8 h-8" />}
+                <div className="sidebar border-none bg-transparent">
+                    <div className="sidebar-header p-0! mb-8! border-none bg-transparent">
+                        <div
+                            className="sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center gap-3 w-fit"
+                            onClick={handleSidebarStateToggle}
+                            title="Toggle Sidebar"
+                        >
+                            {sidebarState === 'expanded' && <OnyxLogo className="w-12 h-12 transition-transform duration-300" />}
+                            {sidebarState === 'compact' && <OnyxMiniLogo className="w-12 h-12 transition-transform duration-300" />}
                             {sidebarState === 'expanded' && (
-                                <span className="sidebar-logo-text">Onyx.mx</span>
+                                <span className="sidebar-logo-text text-[16px]! font-black! tracking-[0.3em]! uppercase! opacity-90! text-white">Onyx.mx</span>
                             )}
                         </div>
-                        {/* Toggle: arrow to collapse/hide */}
-                        {sidebarState !== 'hidden' && (
-                            <button className="sidebar-state-toggle" onClick={handleSidebarStateToggle} title="Toggle Sidebar">
-                                <ArrowLeft size={18} strokeWidth={2} className={`transition-transform duration-300 ${sidebarState === 'compact' ? 'rotate-180' : ''}`} />
-                            </button>
-                        )}
                     </div>
                     <ul className="sidebar-list">
                         {user?.role === 'Developer' && (
@@ -296,13 +297,15 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Dashboard</span>
                             </li>
                         )}
-                        <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                            <div className="sidebar-list-item-main">
-                                <LayoutDashboard size={20} strokeWidth={1.75} />
-                                <span className="sidebar-list-item-text">Overview</span>
-                            </div>
-                            <span className="sidebar-compact-tooltip">Overview</span>
-                        </li>
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <LayoutDashboard size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Overview</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Overview</span>
+                            </li>
+                        )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
@@ -312,13 +315,15 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Add Entry</span>
                             </li>
                         )}
-                        <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                            <div className="sidebar-list-item-main">
-                                <Store size={20} strokeWidth={1.75} />
-                                <span className="sidebar-list-item-text">Inventory</span>
-                            </div>
-                            <span className="sidebar-compact-tooltip">Inventory</span>
-                        </li>
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Store size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Inventory</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Inventory</span>
+                            </li>
+                        )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
@@ -328,7 +333,7 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Payments</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Store size={20} strokeWidth={1.75} />
@@ -347,13 +352,22 @@ export function MainAppView() {
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                            <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Package size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Packing</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Packing</span>
-                            </li>
+                            <>
+                                <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                    <div className="sidebar-list-item-main">
+                                        <Package size={20} strokeWidth={1.75} />
+                                        <span className="sidebar-list-item-text">Packing</span>
+                                    </div>
+                                    <span className="sidebar-compact-tooltip">Packing</span>
+                                </li>
+                                <li className={`sidebar-list-item ${activeView === 'process' ? 'active' : ''}`} onClick={() => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                    <div className="sidebar-list-item-main">
+                                        <Pipette size={20} strokeWidth={1.75} />
+                                        <span className="sidebar-list-item-text">Process</span>
+                                    </div>
+                                    <span className="sidebar-compact-tooltip">Process</span>
+                                </li>
+                            </>
                         )}
                     </ul>
 

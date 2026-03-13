@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
 import { themeAtom, userAtom, performanceModeAtom, languageAtom } from '../../lib/atoms';
@@ -7,12 +7,27 @@ import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
+import { WelcomePage } from '../auth/WelcomePage';
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
   const theme = useAtomValue(themeAtom);
   const performanceMode = useAtomValue(performanceModeAtom);
   const setLanguage = useSetAtom(languageAtom);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    // Detect Supabase Confirmation/Recovery links
+    const hash = window.location.hash;
+    if (hash.includes('type=signup') || hash.includes('type=recovery')) {
+      console.log('✅ Activation detected from URL hash.');
+      setShowWelcome(true);
+      // Clean up hash after a short delay to keep URL clean but allow processing
+      setTimeout(() => {
+        window.history.replaceState(null, '', window.location.pathname);
+      }, 500);
+    }
+  }, []);
 
   useEffect(() => {
     import('../../lib/supabase').then(({ supabase }) => {
@@ -115,7 +130,9 @@ export default function App() {
 
   return (
     <>
-      {(user as any)?.__denied ? (
+      {showWelcome ? (
+        <WelcomePage onComplete={() => setShowWelcome(false)} />
+      ) : (user as any)?.__denied ? (
         <div className="w-full h-screen flex items-center justify-center">
           <div className="text-center p-8 max-w-sm">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">

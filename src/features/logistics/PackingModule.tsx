@@ -1,4 +1,3 @@
-
 import { useAtom, useAtomValue } from 'jotai';
 import { inventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import { QRCodeSVG } from 'qrcode.react';
@@ -6,13 +5,44 @@ import Barcode from 'react-barcode';
 import html2canvas from 'html2canvas';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
-import { Package, CheckCircle2, Printer, Grid, List, ChevronRight, QrCode, ClipboardList, Info, Settings2, Download, Layers } from 'lucide-react';
-import React, { useState, useMemo, useEffect } from 'react';
+import { 
+    Package, 
+    CheckCircle2, 
+    Printer, 
+    Grid, 
+    List, 
+    ChevronRight, 
+    QrCode, 
+    ClipboardList, 
+    Info, 
+    Settings2, 
+    Download, 
+    Layers,
+    Bluetooth,
+    Activity,
+    Box
+} from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 
-const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n || 0);
+/* ─── Premium Components ─── */
+
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+    <div className={`bg-white/[0.03] backdrop-blur-3xl border border-white/[0.08] rounded-[2rem] overflow-hidden ${className}`}>
+        {children}
+    </div>
+);
+
+const SectionTitle = ({ children, subtitle }: { children: string, subtitle?: string }) => (
+    <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase">{children}</h2>
+        {subtitle && <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.3em]">{subtitle}</p>}
+    </div>
+);
+
+/* ─── Main Module ─── */
 
 export const PackingModule: React.FC = () => {
     const db = useDatabase();
@@ -25,10 +55,12 @@ export const PackingModule: React.FC = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isReviewMode, setIsReviewMode] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('40x30');
+    const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('50x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(true);
 
-    // Fetch ALL inventory/production items directly to ensure module is always populated
+    const [isConnectingBLE, setIsConnectingBLE] = useState(false);
+    const [connectedDevice, setConnectedDevice] = useState<any>(null);
+
     useEffect(() => {
         if (!db) return;
         const subs = [
@@ -53,7 +85,6 @@ export const PackingModule: React.FC = () => {
     const processedItems = useMemo(() => {
         return inventory.filter(item => {
             const data = normalizeInventoryData(item.data);
-
             if (globalSearchTerm) {
                 const term = globalSearchTerm.toLowerCase().trim();
                 const calculated = calculateCodesAndPrices(data, exchangeRate, workbookPrefix);
@@ -61,9 +92,7 @@ export const PackingModule: React.FC = () => {
                     (data.itemId || '').toLowerCase().includes(term) ||
                     (data.itemNumber || '').toLowerCase().includes(term) ||
                     (data.description || '').toLowerCase().includes(term) ||
-                    (data.vendorId || '').toLowerCase().includes(term) ||
-                    (calculated.bookBardcode || '').toLowerCase().includes(term) ||
-                    (String(item.row)).includes(term)
+                    (calculated.bookBardcode || '').toLowerCase().includes(term)
                 );
             }
             return true;
@@ -71,509 +100,383 @@ export const PackingModule: React.FC = () => {
             const codes = calculateCodesAndPrices(item.data, exchangeRate, workbookPrefix);
             const normData = normalizeInventoryData(item.data);
             const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-            const imageUrl = getCleanImageUrl(baseImg);
-
-            return {
-                ...item,
-                codes,
-                normData,
-                imageUrl
-            };
+            return { ...item, codes, normData, imageUrl: getCleanImageUrl(baseImg) };
         });
     }, [inventory, globalSearchTerm, exchangeRate, workbookPrefix]);
-
-    const totalQty = useMemo(() => {
-        return processedItems.reduce((acc, it) => acc + (parseInt(it.normData.quantity) || 1), 0);
-    }, [processedItems]);
 
     const toggleSelect = (id: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
         const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
+        if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
         setSelectedIds(newSet);
     };
 
-    const handleSelectAll = () => {
-        if (selectedIds.size === processedItems.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(processedItems.map(d => String(d.row))));
+    const handleBLEConnect = async () => {
+        setIsConnectingBLE(true);
+        try {
+            // Future implementation based on vivier/phomemo-tools
+            // const device = await (navigator as any).bluetooth.requestDevice({ filters: [{ namePrefix: 'M110' }] });
+            toast.error("BLE printing requires secure HTTPS context and browser support.");
+        } catch (e) {
+            toast.error("Bluetooth connection failed.");
+        } finally {
+            setIsConnectingBLE(false);
         }
     };
 
-    const generatePhomemoSheet = async () => {
+    const downloadLabels = async () => {
         if (selectedIds.size === 0) return toast.error('Select items first');
         setIsGenerating(true);
-        const toastId = toast.loading('Preparing Label Sheet...');
-
+        const tid = toast.loading('Exporting High-Fidelity Artifacts...');
         try {
             const items = processedItems.filter(d => selectedIds.has(String(d.row)));
             for (const item of items) {
                 const element = document.getElementById(`phomemo-sheet-${item.row}`);
                 if (element) {
-                    const canvas = await html2canvas(element, {
-                        scale: 3,
-                        useCORS: true,
-                        backgroundColor: '#f5f5f7'
-                    });
+                    const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: '#ffffff' });
                     const link = document.createElement('a');
-                    link.download = `Label_${item.normData.itemId || item.row}.png`;
+                    link.download = `OnyxLabel_${item.normData.itemId}.png`;
                     link.href = canvas.toDataURL('image/png');
                     link.click();
-                    link.remove();
+                    await new Promise(r => setTimeout(r, 400));
                 }
             }
-            toast.success(`${items.length} label sheets ready!`, { id: toastId });
-        } catch (e) {
-            toast.error('Failed to generate sheets', { id: toastId });
-            console.error(e);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const generatePhomemoExcel = async () => {
-        if (selectedIds.size === 0) return toast.error('No items selected');
-        const items = processedItems.filter(d => selectedIds.has(String(d.row)));
-        const data = [
-            ['V', 'ACQ', 'DESCRIPTION', 'Barcode', 'Q', 'KG', 'H CM', 'W CM', 'D CM', 'RETAIL', 'SPECS', 'RTCODE', 'COPIES']
-        ];
-        items.forEach(item => {
-            const d = item.normData;
-            const c = item.codes;
-            data.push([
-                d.vendorId || '',
-                c.bookAqCode,
-                d.description || '',
-                c.bookBardcode,
-                d.quantity || 1,
-                d.weightKg || '',
-                d.heightCm || '',
-                d.widthCm || '',
-                d.lengthCm || '',
-                c.bookRetail,
-                `${d.lengthCm || 0}X${d.widthCm || 0}CM`,
-                c.bookLandCode,
-                d.quantity || 1
-            ]);
-        });
-        try {
-            await exportToXLSX(`Phomemo_Upload_${new Date().toISOString().split('T')[0]}`, [{ name: 'Sheet1', data }]);
-            toast.success('Phomemo XLSX ready!');
-        } catch (error) {
-            toast.error('Error generating Phomemo Excel.');
-        }
-    };
-
-    const generateExcel = async () => {
-        if (selectedIds.size === 0) return toast.error('No items selected');
-        const items = processedItems.filter(d => selectedIds.has(String(d.row)));
-        const data = [
-            ['Item ID', 'TAG ID', 'Description', 'Vendor', 'Price MXN', 'Landed USD', 'Weight (kg)', 'Dimensions', 'Status']
-        ];
-        items.forEach(item => {
-            const d = item.normData;
-            data.push([
-                d.itemId || item.row,
-                item.codes.bookBardcode,
-                d.description || '',
-                d.vendorId || '',
-                d.price || 0,
-                item.codes.bookLanded,
-                d.weightKg || 0,
-                `${d.lengthCm || 0}x${d.widthCm || 0}x${d.heightCm || 0}`,
-                d.status || ''
-            ]);
-        });
-        try {
-            await exportToXLSX(`Onyx_PackingList_${new Date().toISOString().split('T')[0]}`, [{ name: 'Packing List', data }]);
-            toast.success('Excel generated!');
-        } catch (error) {
-            toast.error('Error generating Excel.');
-        }
+            toast.success(`${items.length} stickers saved`, { id: tid });
+        } catch (e) { toast.error('Render failed', { id: tid }); }
+        finally { setIsGenerating(true); setTimeout(() => setIsGenerating(false), 500); }
     };
 
     return (
-        <div className="flex flex-col h-full bg-transparent text-(--text-color) overflow-hidden animate-in fade-in duration-700 relative">
-            {/* Background Decor */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-[0.02] z-0">
-                <Package className="absolute top-[15%] left-[5%] w-72 h-72 -rotate-12" />
-                <QrCode className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] rotate-12" />
-                <Printer className="absolute top-[40%] right-[5%] w-56 h-56 -rotate-6" />
-            </div>
-
-            {/* NEW: Horizontal Stackable Config Panel at Top */}
-            <div className="relative z-20 flex flex-col border-b border-white/5 bg-black/20 backdrop-blur-md">
-                <div className="px-10 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <div className="flex gap-6 items-center">
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-0.5">Types</span>
-                                <span className="text-sm font-mono font-black text-white leading-none">{processedItems.length.toLocaleString('en-US')}</span>
-                            </div>
-                            <div className="w-px h-6 bg-white/10" />
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
-                                <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalQty.toLocaleString('en-US')}</span>
-                            </div>
-                            <div className="w-px h-6 bg-white/10" />
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-(--main-color)/60 mb-0.5">Selected</span>
-                                <span className="text-sm font-mono font-black text-(--main-color) leading-none">{selectedIds.size.toLocaleString('en-US')}</span>
-                            </div>
-                        </div>
-                        <div className="w-px h-8 bg-white/10" />
-                        <div className="flex items-center gap-4">
-                            <button onClick={handleSelectAll} className="flex items-center gap-2 group">
-                                <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${selectedIds.size === processedItems.length && processedItems.length > 0 ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20 group-hover:border-white/40'}`}>
-                                    {selectedIds.size === processedItems.length && processedItems.length > 0 && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                                </div>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">Select All</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        {/* View Switchers */}
-                        <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 mr-4">
-                            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-(--main-color) text-white shadow-lg' : 'text-white/30 hover:text-white'}`}>
-                                <Grid size={16} />
-                            </button>
-                            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-(--main-color) text-white shadow-lg' : 'text-white/30 hover:text-white'}`}>
-                                <List size={16} />
-                            </button>
-                            <div className="w-px h-4 bg-white/10 mx-1 self-center" />
-                            <button onClick={() => setIsReviewMode(!isReviewMode)} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isReviewMode ? 'bg-(--main-color) text-white shadow-lg' : 'text-white/30 hover:text-white'}`}>
-                                {isReviewMode ? 'EXIT PREVIEW' : 'PREVIEW LABELS'}
-                            </button>
-                        </div>
-
-                        <button onClick={() => setIsConfigExpanded(!isConfigExpanded)} className="p-2 text-white/40 hover:text-white transition-all transform hover:scale-110">
-                            <Settings2 size={20} className={isConfigExpanded ? 'text-(--main-color)' : ''} />
+        <div className="flex flex-col h-full bg-transparent overflow-hidden relative">
+            {/* Header / Config Control */}
+            <header className="z-30 px-10 py-8 flex items-center justify-between bg-black/40 backdrop-blur-3xl border-b border-white/5">
+                <SectionTitle subtitle="Inventory Packing & Tagging">Logistics Hub</SectionTitle>
+                
+                <div className="flex items-center gap-6">
+                    <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10">
+                        <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/30 hover:text-white'}`}>
+                            <Grid size={18} />
+                        </button>
+                        <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/30 hover:text-white'}`}>
+                            <List size={18} />
                         </button>
                     </div>
+
+                    <button 
+                        onClick={() => setIsReviewMode(!isReviewMode)} 
+                        className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isReviewMode ? 'bg-white text-black shadow-2xl scale-105' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10'}`}
+                    >
+                        {isReviewMode ? 'Exit Review' : 'Label Preview'}
+                    </button>
+
+                    <button onClick={handleBLEConnect} className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40 transition-all">
+                        <Bluetooth size={20} className={isConnectingBLE ? 'animate-pulse text-(--main-color)' : ''} />
+                    </button>
                 </div>
+            </header>
 
-                {/* Collapsible Config & Actions Drawer */}
-                {isConfigExpanded && (
-                    <div className="px-10 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300">
-                        <div className="flex flex-wrap items-end gap-10">
-                            {/* Label Config */}
-                            <div className="flex flex-col gap-3 min-w-[240px]">
-                                <label className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
-                                    <Layers size={12} /> STICKER ARCHITECTURE
-                                </label>
-                                <select
-                                    value={labelSize}
-                                    onChange={(e) => setLabelSize(e.target.value as any)}
-                                    className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-(--main-color)/50 transition-all cursor-pointer w-full uppercase tracking-widest"
-                                >
-                                    <option value="40x30">40mm x 30m (M110 Standard)</option>
-                                    <option value="50x30">50mm x 30mm (Classic)</option>
-                                    <option value="50x80">50mm x 80mm (Large Label)</option>
-                                </select>
-                            </div>
+            {/* Config Drawer */}
+            <div className={`z-20 px-10 py-6 bg-black/20 border-b border-white/5 transition-all duration-500 origin-top ${isConfigExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0 py-0 border-none'}`}>
+                 <div className="flex items-end gap-12">
+                    <div className="flex flex-col gap-3 min-w-[280px]">
+                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
+                            <Layers size={12} /> Paper Architecture
+                        </span>
+                        <select
+                            value={labelSize}
+                            onChange={(e) => setLabelSize(e.target.value as any)}
+                            className="bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-[10px] font-black text-white outline-none focus:border-(--main-color)/50 transition-all uppercase tracking-widest cursor-pointer"
+                        >
+                            <option value="40x30">40mm x 30m (Pocket)</option>
+                            <option value="50x30">50mm x 30mm (Industrial)</option>
+                            <option value="50x80">50mm x 80mm (Elite Wide)</option>
+                        </select>
+                    </div>
 
-                            <div className="w-px h-10 bg-white/5 self-end mb-1" />
+                    <div className="flex gap-4">
+                        <button onClick={downloadLabels} disabled={selectedIds.size === 0 || isGenerating} className="h-14 px-10 rounded-full bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-[11px] flex items-center gap-4 hover:scale-105 transition-all shadow-2xl shadow-(--main-color)/20 disabled:opacity-20">
+                            {isGenerating ? <Activity className="animate-spin" /> : <Printer size={18} />}
+                            Print Batch
+                        </button>
+                        <button onClick={() => {}} className="h-14 px-8 rounded-full bg-white/5 border border-white/10 text-white/40 font-black uppercase tracking-[0.15em] text-[10px] flex items-center gap-3 hover:text-white hover:bg-white/10 transition-all">
+                            <Download size={16} /> Export XLSX
+                        </button>
+                    </div>
 
-                            {/* Export Actions */}
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={generatePhomemoSheet}
-                                    disabled={selectedIds.size === 0 || isGenerating}
-                                    className="h-11 px-8 rounded-xl bg-white text-black font-black uppercase tracking-[0.2em] text-[11px] flex items-center gap-3 hover:bg-(--main-color) hover:text-white transition-all disabled:opacity-20 shadow-xl active:scale-95"
-                                >
-                                    <Printer size={16} />
-                                    {isGenerating ? 'RENDERING...' : 'PRINT PNGS'}
-                                </button>
-
-                                <button
-                                    onClick={generatePhomemoExcel}
-                                    disabled={selectedIds.size === 0}
-                                    className="h-11 px-6 rounded-xl bg-white/5 border border-white/10 text-[#00AEEF] font-black uppercase tracking-[0.15em] text-[10px] flex items-center gap-2 hover:bg-white/10 transition-all disabled:opacity-20"
-                                >
-                                    <Download size={15} /> BULK XLSX
-                                </button>
-
-                                <button
-                                    onClick={generateExcel}
-                                    disabled={selectedIds.size === 0}
-                                    className="h-11 px-6 rounded-xl bg-white/5 border border-white/10 text-white/50 font-black uppercase tracking-[0.15em] text-[10px] flex items-center gap-2 hover:bg-white/10 transition-all disabled:opacity-20"
-                                >
-                                    <ClipboardList size={15} /> PACKING LIST
-                                </button>
-                            </div>
-
-                            <div className="ml-auto flex items-center gap-3 bg-(--main-color)/5 border border-(--main-color)/10 rounded-xl px-4 py-2.5">
-                                <Info size={14} className="text-(--main-color)" />
-                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-none">
-                                    Store PNGs in downloads. Open <span className="text-(--main-color)">Print Master</span> app and select <span className="text-(--main-color)">Scan</span> mode.
-                                </p>
-                            </div>
+                    <div className="ml-auto bg-white/5 rounded-[2rem] p-4 flex items-center gap-4 border border-white/5">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Pipeline</span>
+                            <span className="text-xl font-black text-white font-mono leading-none tracking-tighter">{processedItems.length} <span className="text-[10px] text-white/20">Artifacts</span></span>
+                        </div>
+                        <div className="w-px h-8 bg-white/10" />
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-(--main-color)/40 uppercase tracking-widest">Selected</span>
+                            <span className="text-xl font-black text-(--main-color) font-mono leading-none tracking-tighter">{selectedIds.size}</span>
                         </div>
                     </div>
-                )}
+                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-10 pt-8 pb-32 relative z-10">
+            {/* Scroll Area */}
+            <main className="flex-1 overflow-y-auto px-10 py-12 custom-scrollbar relative z-10">
                 {isReviewMode ? (
-                    <div className="flex flex-wrap justify-center gap-12 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-16 justify-items-center">
                         {selectedIds.size === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-40 opacity-20">
-                                <QrCode size={80} strokeWidth={1} className="mb-6" />
-                                <p className="text-sm font-black uppercase tracking-[0.3em]">Select items to preview</p>
+                            <div className="col-span-full py-40 flex flex-col items-center justify-center opacity-20 gap-6 text-center">
+                                <Box size={100} strokeWidth={0.5} />
+                                <span className="text-sm font-black uppercase tracking-[0.4em]">No artifacts selected for review</span>
                             </div>
                         ) : (
                             processedItems.filter(i => selectedIds.has(String(i.row))).map(item => (
-                                <div key={item.row} className="scale-75 -m-20 origin-top bg-white rounded-[40px] shadow-2xl border border-white/20 overflow-hidden transition-all hover:scale-[0.78]">
-                                    <PhomemoSheetTemplate item={item} size={labelSize} />
+                                <div key={item.row} className="relative group perspective-1000">
+                                    <div className="bg-white rounded-3xl overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.6)] transform group-hover:rotate-y-12 group-hover:scale-105 transition-all duration-700 border-4 border-white/20">
+                                        <PhomemoSheetTemplate item={item} size={labelSize} />
+                                    </div>
+                                    <div className="absolute top-10 -right-4 p-4 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-2xl flex flex-col gap-1 shadow-3xl">
+                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Type</span>
+                                        <span className="text-xs font-black text-white tracking-widest">{labelSize}</span>
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
                 ) : (
-                    <>
-                        {processedItems.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-40 opacity-20">
-                                <Package size={80} strokeWidth={1} className="mb-6" />
-                                <p className="text-sm font-black uppercase tracking-[0.3em]">Inventory Pipeline Empty</p>
-                            </div>
-                        ) : viewMode === 'grid' ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
-                                {processedItems.map(item => (
-                                    <ItemCard key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e) => toggleSelect(String(item.row), e)} />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-2 max-w-6xl mx-auto">
-                                {processedItems.map(item => (
-                                    <ItemRow key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e) => toggleSelect(String(item.row), e)} />
-                                ))}
-                            </div>
-                        )}
-                    </>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-8": "flex flex-col gap-3"}>
+                        {processedItems.map(item => (
+                            viewMode === 'grid' ? 
+                            <LogisticsCard key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} /> :
+                            <LogisticsRow key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} />
+                        ))}
+                    </div>
                 )}
-            </div>
+            </main>
 
-            {/* Hidden Templates for html2canvas */}
-            <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none" style={{ transform: 'translateX(-200%)' }}>
+            {/* Render Scratchpad for html2canvas */}
+            <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-visible" style={{ width: '4000px', height: '4000px' }}>
                 {processedItems.filter(i => selectedIds.has(String(i.row))).map(item => (
                     <PhomemoSheetTemplate key={item.row} item={item} size={labelSize} />
                 ))}
             </div>
+
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color); }
+                .rotate-y-12 { transform: rotateY(12deg); }
+                .perspective-1000 { perspective: 1000px; }
+            `}</style>
         </div>
     );
 };
 
-const ItemCard: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.MouseEvent) => void }> = ({ item, isSelected, onToggle }) => {
-    const d = item.normData;
-    const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
-    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
+/* ─── Premium Card / Row ─── */
 
-    return (
-        <div onClick={onToggle} className={`group relative flex flex-col bg-white/5 border rounded-[24px] overflow-hidden transition-all duration-500 cursor-pointer backdrop-blur-md ${isSelected ? 'border-(--main-color) bg-(--main-color)/5 shadow-lg shadow-(--main-color)/10 ring-1 ring-(--main-color)/20' : 'border-white/5 hover:bg-white/10 hover:border-white/20'}`}>
-            <div className="aspect-square w-full relative overflow-hidden bg-black/40">
-                {item.imageUrl ? <img src={item.imageUrl} alt={d.itemId} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={48} /></div>}
-
-                {/* Selection Indicator */}
-                <div className="absolute top-3 right-3 z-10">
-                    <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color) scale-110' : 'bg-black/60 border-white/20 group-hover:border-white/40'}`}>
-                        {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-                    </div>
-                </div>
-
-                {/* Top Badge: TAG ID */}
-                <div className="absolute top-3 left-3 flex flex-col gap-1">
-                    <span className="bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-md text-[9px] font-mono text-(--main-color) border border-(--main-color)/30 font-black tracking-widest">{item.codes.bookBardcode}</span>
-                    <span className="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-md text-[8px] font-black text-white/60 uppercase tracking-widest self-start">{d.itemId}</span>
-                </div>
-
-                {/* Bottom Overlay: Codes & Dims */}
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-linear-to-t from-black via-black/40 to-transparent translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                        <span style={{ backgroundColor: vendorColor }} className="px-2 py-0.5 rounded text-[8px] font-black text-white uppercase tracking-[0.2em] shadow-lg">{d.vendorId}</span>
-                        <span className="text-[8px] font-bold text-white/70 uppercase tracking-widest bg-white/10 px-1.5 py-0.5 rounded">{dims}</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="flex-1 bg-white/5 rounded p-1.5 border border-white/5">
-                            <p className="text-[7px] font-black text-white/30 uppercase tracking-tight mb-0.5">ACQ</p>
-                            <p className="text-[10px] font-black text-white font-mono">{item.codes.bookAqCode}</p>
-                        </div>
-                        <div className="flex-1 bg-white/5 rounded p-1.5 border border-white/5">
-                            <p className="text-[7px] font-black text-white/30 uppercase tracking-tight mb-0.5">LC</p>
-                            <p className="text-[10px] font-black text-[#6BCEBB] font-mono">{item.codes.bookLandCode}</p>
-                        </div>
-                    </div>
+const LogisticsCard = ({ item, isSelected, onToggle }: any) => (
+    <div onClick={onToggle} className={`group relative bg-white/[0.03] border rounded-[2.5rem] p-6 transition-all duration-500 cursor-pointer overflow-hidden ${isSelected ? 'border-(--main-color) bg-(--main-color)/10 scale-105 shadow-2xl shadow-(--main-color)/10 ring-1 ring-(--main-color)/20' : 'border-white/5 hover:bg-white/[0.06] hover:border-white/20'}`}>
+        <div className="aspect-[3/4] rounded-[2rem] overflow-hidden bg-black/40 mb-6 relative group">
+            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale brightness-50 group-hover:grayscale-0 group-hover:brightness-100 group-hover:scale-110 transition-all duration-[2s]" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={48} /></div>}
+            <div className="absolute top-4 right-4">
+                <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/20 shadow-2xl'}`}>
+                    {isSelected && <CheckCircle2 className="w-6 h-6 text-black" strokeWidth={3} />}
                 </div>
             </div>
-
-            <div className="p-4 flex-1 flex flex-col">
-                <p className="text-[13px] font-black text-white leading-tight line-clamp-2 uppercase flex-1 mb-4 group-hover:text-(--main-color) transition-colors">{d.description}</p>
-                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">RETAIL USD</span>
-                        <span className="text-[14px] font-black text-white font-mono">${item.codes.bookRetail}</span>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">WEIGHT</span>
-                        <span className="text-[12px] font-bold text-white/60">{d.weightKg || 0}kg</span>
-                    </div>
-                </div>
+            <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-1">
+                <span className="text-[9px] font-black text-(--main-color) bg-black/60 px-3 py-1 rounded-full uppercase tracking-[0.2em] w-fit shadow-2xl">{item.codes.bookBardcode}</span>
+                <span className="text-[14px] font-black text-white italic tracking-tighter truncate uppercase">{item.normData.itemId}</span>
             </div>
         </div>
-    );
-};
-
-const ItemRow: React.FC<{ item: any; isSelected: boolean; onToggle: (e: React.MouseEvent) => void }> = ({ item, isSelected, onToggle }) => {
-    const d = item.normData;
-    const vendorColor = vendors[d.vendorId as keyof typeof vendors]?.color || 'var(--main-color)';
-    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
-
-    return (
-        <div onClick={onToggle} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer backdrop-blur-sm ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
-            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10'}`}>{isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}</div>
-
-            <div className="w-14 h-14 rounded-xl bg-black/40 shrink-0 overflow-hidden border border-white/10">
-                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover" /> : <Package className="w-full h-full p-3 opacity-10" />}
-            </div>
-
-            <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
-                <div className="col-span-1 flex flex-col">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">TAG ID</span>
-                    <span className="text-[11px] font-black text-(--main-color) font-mono tracking-widest truncate">{item.codes.bookBardcode}</span>
-                </div>
-
-                <div className="col-span-4 flex flex-col">
-                    <span className="text-[13px] text-white font-black truncate uppercase tracking-tight">{d.description}</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <span style={{ backgroundColor: vendorColor }} className="text-[8px] font-black text-white uppercase tracking-widest px-1.5 py-0.5 rounded">{d.vendorId}</span>
-                        <span className="text-[9px] font-bold text-white/30 uppercase tracking-tighter">{d.itemId}</span>
-                    </div>
-                </div>
-
-                <div className="col-span-2 flex flex-col">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">DIMENSIONS</span>
-                    <span className="text-[11px] font-bold text-white/60 truncate uppercase">{dims} • {d.weightKg || 0}kg</span>
-                </div>
-
-                <div className="col-span-2 flex items-center gap-3">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">ACQ</span>
-                        <span className="text-[12px] font-black text-white font-mono">{item.codes.bookAqCode}</span>
-                    </div>
-                    <div className="w-px h-6 bg-white/10" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">LC</span>
-                        <span className="text-[12px] font-black text-[#6BCEBB] font-mono">{item.codes.bookLandCode}</span>
-                    </div>
-                </div>
-
-                <div className="col-span-2 flex flex-col items-end px-4">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">RETAIL USD</span>
-                    <span className="text-[16px] font-black text-white font-mono tracking-tighter">${item.codes.bookRetail}</span>
-                </div>
-
-                <div className="col-span-1 text-right">
-                    <span className="text-[9px] font-black text-white/10 uppercase tracking-[0.2em] rotate-90 inline-block origin-right">{d.status}</span>
-                </div>
+        <div className="flex flex-col gap-4">
+            <h3 className="text-xs font-black text-white/50 uppercase tracking-widest line-clamp-2 leading-relaxed group-hover:text-white transition-colors">{item.normData.description}</h3>
+            <div className="w-full h-px bg-white/5" />
+            <div className="flex items-center justify-between">
+                 <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Dimension</span>
+                    <span className="text-[10px] font-bold text-white/60 uppercase">{item.normData.widthCm}x{item.normData.heightCm}cm</span>
+                 </div>
+                 <span className="text-lg font-black text-white font-mono tracking-tighter italic">${item.codes.bookRetail} <span className="text-[9px] font-normal not-italic opacity-30">USD</span></span>
             </div>
         </div>
-    );
-};
+    </div>
+);
+
+const LogisticsRow = ({ item, isSelected, onToggle }: any) => (
+    <div onClick={onToggle} className={`flex items-center gap-8 p-4 rounded-3xl border transition-all cursor-pointer backdrop-blur-md ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-3xl' : 'bg-white/2 border-white/5 hover:bg-white/5'}`}>
+        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10'}`}>{isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3} />}</div>
+        <div className="w-16 h-16 rounded-2xl bg-black/40 shrink-0 overflow-hidden border border-white/10 relative group">
+            {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" /> : <Package className="w-full h-full p-4 opacity-10" />}
+        </div>
+        <div className="flex-1 grid grid-cols-12 gap-8 items-center text-left">
+            <div className="col-span-2 flex flex-col">
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Tag Trace</span>
+                <span className="text-[11px] font-black text-(--main-color) font-mono tracking-widest">{item.codes.bookBardcode}</span>
+            </div>
+            <div className="col-span-5 flex flex-col">
+                <span className="text-[14px] font-black text-white uppercase tracking-tight line-clamp-1">{item.normData.description}</span>
+                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-0.5">{item.normData.itemId} • {item.normData.material}</span>
+            </div>
+            <div className="col-span-2 flex flex-col">
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">Metric</span>
+                <span className="text-[11px] font-bold text-white/60 tracking-widest">{item.normData.widthCm}X{item.normData.heightCm} CM • {item.normData.weightKg}KG</span>
+            </div>
+            <div className="col-span-3 flex flex-col items-end">
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">MSRP Artifact</span>
+                <span className="text-xl font-black text-white font-mono tracking-tighter">${item.codes.bookRetail} <span className="text-[10px] font-normal tracking-normal opacity-30">USD</span></span>
+            </div>
+        </div>
+    </div>
+);
+
+/* ─── FIXED LABEL TEMPLATE (Pixel-Perfect Architecture) ─── */
 
 const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, size }) => {
     const d = item.normData;
-    const tagId = item.codes?.bookBardcode || '';
+    const tagId = item.codes?.bookBardcode || 'ONYX-VOID';
 
-    // Safety guard: if no tag ID or calculation failed, don't attempt to render the sheet
-    if (!tagId || tagId === '-' || tagId === 'N/A') {
-        return <div className="p-10 text-white/20 text-[10px] uppercase font-black">Data Missing for {item.row}</div>;
-    }
+    const [wStr, hStr] = (size || '50x30').split('x');
+    const widthMm = parseFloat(wStr) || 50;
+    const heightMm = parseFloat(hStr) || 30;
 
-    const [wStr, hStr] = (size || '40x30').split('x');
-    const widthMm = parseInt(wStr) || 40;
-    const heightMm = parseInt(hStr) || 30;
-    const vendorId = d.vendorId || 'ONYX';
+    // Fixed internal resolution for consistent rendering (Approx 300DPI scale)
+    const baseW = 600;
+    const baseH = Math.round((heightMm / widthMm) * baseW);
+    
+    // Sidebar Architecture
+    const sidebarWidth = Math.round(baseW * 0.12); // ~12% width
+    const contentWidth = baseW - sidebarWidth;
 
-    // Ensure tagId is long enough before substring
-    const workbookPrefix = tagId.length > 5 ? tagId.substring(2, 5) : '000';
-    const itemNum = String(d.itemNumber || '00');
-    const priceCents = Math.floor((parseFloat(String(d.price)) || 0) % 100).toString().padStart(2, '0');
-    const topCode = `${workbookPrefix}${itemNum.padStart(2, '0')}${priceCents}0`;
-    const dims = `${d.widthCm || 0}x${d.heightCm || 0}x${d.lengthCm || 0}cm`;
+    const dims = `${d.widthCm || 0}X${d.lengthCm || 0}X${d.heightCm || 0} CM`.toUpperCase();
+    const spacedTagId = tagId.split('').join('  ');
 
     return (
-        <div
-            id={`phomemo-sheet-${item.row}`}
+        <div id={`phomemo-sheet-${item.row}`}
             style={{
-                width: '600px',
-                minHeight: '1000px',
-                backgroundColor: '#ffffff',
-                padding: '0',
+                width: `${baseW}px`,
+                height: `${baseH}px`,
+                backgroundColor: '#FFF',
                 display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
+                color: '#000',
+                overflow: 'hidden',
                 position: 'relative',
-                color: '#000'
+                fontFamily: 'Outfit, "DM Sans", system-ui, sans-serif',
+                WebkitFontSmoothing: 'antialiased'
             }}
         >
-            {/* Main Label Body - Representative of the printed sticker */}
-            <div style={{ width: '520px', height: `${(heightMm / widthMm) * 520}px`, backgroundColor: '#fff', border: '2px solid #000', padding: '30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', marginBottom: '40px', marginTop: '100px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                            <span style={{ fontSize: '80px', fontWeight: 900, lineHeight: 1 }}>{vendorId}</span>
-                        </div>
-                        <span style={{ fontSize: '18px', fontWeight: 900, opacity: 0.5, letterSpacing: '2px', marginTop: '5px' }}>ONYX LOGISTICS</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <div style={{ fontSize: '48px', fontWeight: 900 }}>{topCode}</div>
-                        <div style={{ fontSize: '12px', fontWeight: 900, opacity: 0.3 }}>Ref: {d.itemId}</div>
-                    </div>
-                </div>
-
-                <div style={{ fontSize: '28px', fontWeight: 900, margin: '15px 0', textTransform: 'uppercase', lineHeight: 1.1, flex: 1 }}>
-                    {d.description}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '4px solid #000', paddingTop: '20px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <div style={{ display: 'flex', gap: '20px' }}>
-                            <div>
-                                <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>ACQ</div>
-                                <div style={{ fontSize: '24px', fontWeight: 900 }}>{item.codes.bookAqCode}</div>
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>LC</div>
-                                <div style={{ fontSize: '24px', fontWeight: 900 }}>{item.codes.bookLandCode}</div>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: '14px', fontWeight: 900 }}>{dims} • {d.weightKg || 0}kg</div>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.4 }}>RETAIL USD</div>
-                        <div style={{ fontSize: '48px', fontWeight: 900 }}>${item.codes.bookRetail}</div>
-                    </div>
+            {/* Sidebar: Industrial Trace */}
+            <div style={{
+                width: `${sidebarWidth}px`,
+                height: '100%',
+                backgroundColor: '#000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+            }}>
+                <div style={{
+                    transform: 'rotate(-90deg)',
+                    whiteSpace: 'nowrap',
+                    fontSize: '32px',
+                    fontWeight: 900,
+                    letterSpacing: '0.4em',
+                    color: '#FFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    MADE IN MEXICO
                 </div>
             </div>
 
-            {/* Barcode Section (Usually on same label or separate depending on config, but following current logic) */}
-            <div style={{ width: '520px', padding: '30px', backgroundColor: '#fff', border: '2px solid #000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginBottom: '40px' }}>
-                <Barcode value={tagId} width={4} height={100} displayValue={false} margin={0} />
-                <div style={{ fontSize: '48px', fontWeight: 900, letterSpacing: '12px' }}>{tagId}</div>
-            </div>
-
-            <div style={{ width: '520px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 900, opacity: 0.4 }}>ONYX.MX CLOUD STORAGE</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900 }}>SCAN FOR TRACKING</div>
+            {/* Content: Premium Artifact Labeling */}
+            <div style={{
+                flex: 1,
+                padding: '24px 32px',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative'
+            }}>
+                {/* ID & Dims (High-Visibility Header) */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    marginBottom: '10px'
+                }}>
+                    <span style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '-0.02em' }}>{d.itemId}</span>
+                    <span style={{ fontSize: '24px', fontWeight: 600, opacity: 0.7 }}>{dims}</span>
                 </div>
-                <QRCodeSVG value={`https://onyx.mx/item/${tagId}`} size={100} />
+
+                {/* Industrial Description Block (Inverted) */}
+                <div style={{
+                    backgroundColor: '#000',
+                    width: '100%',
+                    padding: '16px 20px',
+                    marginBottom: '8px'
+                }}>
+                    <div style={{
+                        color: '#FFF',
+                        fontSize: '48px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        lineHeight: 1,
+                        letterSpacing: '-0.01em',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical'
+                    }}>
+                        {d.description || 'ONYX PIECE'}
+                    </div>
+                </div>
+
+                {/* Specification Line */}
+                <div style={{ 
+                    fontSize: '36px', 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '0.05em',
+                    color: '#000',
+                    lineHeight: 1,
+                    marginBottom: '10px'
+                }}>
+                    {d.material || 'ONYX'} • {d.color || 'NATURAL'}
+                </div>
+
+                {/* Industrial Barcode & Trace Code */}
+                <div style={{
+                    marginTop: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: '100%'
+                }}>
+                    <Barcode
+                        value={tagId}
+                        width={2.8}
+                        height={90}
+                        displayValue={false}
+                        margin={0}
+                        background="transparent"
+                        lineColor="#000"
+                    />
+                    <div style={{
+                        fontSize: '26px',
+                        fontWeight: 900,
+                        marginTop: '12px',
+                        letterSpacing: '0.35em',
+                        textTransform: 'uppercase',
+                        borderTop: '2px solid #000',
+                        paddingTop: '6px',
+                        width: '100%',
+                        textAlign: 'center'
+                    }}>
+                        {spacedTagId}
+                    </div>
+                </div>
             </div>
+            
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800;900&display=swap" rel="stylesheet" />
         </div>
     );
 };

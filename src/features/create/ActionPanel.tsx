@@ -17,6 +17,7 @@ import {
   workflowStepAtom,
 } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
+import { supabase } from '../../lib/supabase';
 import { GeminiIcon } from '../../components/GeminiIcon';
 import { useTranslation, useNotify } from '../../lib/hooks';
 import {
@@ -59,27 +60,22 @@ export function ActionPanel() {
         return;
       }
       try {
-        console.log('[Backend] Creating initial item entry...');
-        const createResponse = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          mode: 'cors',
-          cache: 'no-cache',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'createInitialItem',
-            vendorId: creationVendorId,
-            user,
-          }),
-        });
-        const createResult = await createResponse.json();
-        if (createResult.status !== 'success') {
-          throw new Error(createResult.message);
-        }
+        console.log('[Backend] Creating initial item entry in Supabase...');
+        const newId = crypto.randomUUID();
+        const { data, error } = await supabase.from('inventory').insert({
+          id: newId,
+          vendor_id: creationVendorId,
+          timestamp: new Date().toISOString(),
+          status: 'Draft',
+          updated_at: new Date().toISOString(),
+          created_by: user?.name || user?.email,
+        }).select().single();
+
+        if (error) throw error;
         
-        const { newItemData, newRow } = createResult;
-        console.log(`[Backend] Initial item created in row ${newRow}.`);
-        setSelectedItemRow(newRow);
-        setSelectedItemData(newItemData);
+        console.log(`[Backend] Initial item created with ID ${data.id}.`);
+        setSelectedItemRow(data.id);
+        setSelectedItemData(data as any);
       } catch (error: any) {
         console.error('[Backend] Failed to create initial item:', error);
         notify.error(`Failed to start creation: ${error.message}`);

@@ -90,9 +90,11 @@ export interface InventoryItemData {
   dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   bank_account?: string;
   acquired_by?: string;
-  acquired_at?: string;
-  sent_at?: string;
-  dispersed_at?: string;
+  id?: string;
+  rating?: number;
+  is_hidden?: boolean;
+  hidden_reason?: string;
+  updated_at?: string;
   requested_by?: string;
   item_id?: string;
   vendor_id?: string;
@@ -103,6 +105,7 @@ export interface InventoryItem {
   row: number | string;
   label: string;
   imageUrl: string | null;
+  source?: 'inventory' | 'production';
   data: InventoryItemData;
 }
 

@@ -20,6 +20,10 @@ export type FormState = {
   price: string;
   quantity: string;
   color: string;
+  vendorId: string;
+  itemType: string;
+  status: string;
+  workbook: string;
 };
 
 interface InventoryFormProps {
@@ -48,6 +52,10 @@ const defaultFormState: FormState = {
   price: '',
   quantity: '1',
   color: '',
+  vendorId: '',
+  itemType: '',
+  status: 'Catalog',
+  workbook: 'v326',
 };
 
 const FormInput = ({
