@@ -10,7 +10,7 @@ This script serves as the bridge between the React frontend and Google Drive. It
  * Logic: Google Drive Uploads + Base64 Image Fetching
  */
 
-const UPLOAD_FOLDER_ID = '14lmh3w9cYaW41jHw7-p8hrdQ1uKAJr9i';
+const UPLOAD_FOLDER_ID = '1tr9_cgbNUVs5lwLJYOYaHiDa-CLLUIek';
 
 function doPost(e) {
   try {
@@ -88,7 +88,7 @@ function handleBatchGetImageBase64(fileIds) {
 
 function jsonResponse(obj) { 
   return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON); 
+    .setMimeType(ContentService.MimeType.TEXT); 
 }
 
 function doOptions(e) { 
