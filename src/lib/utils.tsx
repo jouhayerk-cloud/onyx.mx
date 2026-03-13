@@ -52,7 +52,6 @@ export async function handleFileUpload(file: File, user: any): Promise<{ fileId:
           method: 'POST',
           mode: 'cors',
           cache: 'no-cache',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'uploadMedia',
             fileName: file.name,

@@ -1,7 +1,7 @@
 
 
 export const SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzSFfy3OWzPpSnqdFH8QFmDswwjtwj8-GxFIkXtK-_zHCn8vBtT4AVbuEkYZtSElsIUUw/exec';
+  'https://script.google.com/macros/s/AKfycbwK_T6ifUOLO0f65SRVbHOqZyhKQbXABaPcBTEVC31JrlQoWjzuJQB9oVI4ib6vHNQ8KA/exec';
 
 export const colors = [
   'rgb(0, 0, 0)',
