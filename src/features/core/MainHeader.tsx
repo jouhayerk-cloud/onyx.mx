@@ -315,17 +315,16 @@ const StoreBar: React.FC = () => {
         <div className="flex flex-1 items-center gap-4 ml-2 relative">
             <Store size={22} strokeWidth={1.75} color="#F36F21" className="shrink-0 hidden sm:block" />
 
-            <div className="flex-1 w-full relative group/search max-w-3xl mx-auto">
-                {/* Large liquid glass search bar */}
+            <div className="flex-1 w-full relative group/search max-w-2xl mx-auto">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#F36F21] transition-colors" />
+                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[var(--main-color)] transition-colors" />
                 </div>
                 <input
                     type="text"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    placeholder="Search brand catalog by shape, color, or ID..."
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-white/20 transition-all shadow-lg backdrop-blur-md"
+                    placeholder="Search Tag ID, Shape, Color... (space = AND)"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-[var(--main-color)]/40 transition-all shadow-lg backdrop-blur-md"
                 />
                 {search && (
                     <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
@@ -502,8 +501,8 @@ const PackingBar: React.FC = () => {
     return (
         <div className="flex flex-1 items-center gap-4 ml-2">
             <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-                <div className="w-10 h-10 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center text-(--main-color) shadow-inner backdrop-blur-md">
-                    <svg className="w-5 h-5 opacity-90 transition-transform hover:scale-110 duration-500"><use href="#pkg" /></svg>
+                <div className="flex items-center justify-center text-(--main-color) transition-all duration-500 hover:scale-110">
+                    <svg className="w-7 h-7 opacity-90"><use href="#pkg" /></svg>
                 </div>
                 <div className="flex flex-col">
                     <h2 className="text-[14px] font-black tracking-tight leading-none text-(--text-color)">PACKING</h2>
@@ -577,7 +576,7 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
+        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-[var(--main-header-bg)]">
 
             {/* Mobile Sidebar toggle if needed, or simply let FAB handle it mostly, but good to have a simple button here */}
             {sidebarState !== 'expanded' && (
@@ -628,10 +627,8 @@ export function MainHeader() {
                     </span>
                 </div>
 
-                <div className="w-10 h-10 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center p-0.5 shrink-0">
-                    <div className="w-full h-full rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                        {UserIcon ? <UserIcon className="w-6 h-6 text-(--main-color) opacity-80" /> : <svg className="w-6 h-6 text-(--main-color) opacity-50"><use href="#user" /></svg>}
-                    </div>
+                <div className="flex items-center justify-center shrink-0 hover:scale-105 transition-transform duration-300">
+                    {UserIcon ? <UserIcon className="w-8 h-8 text-(--main-color) opacity-80" /> : <svg className="w-8 h-8 text-(--main-color) opacity-50"><use href="#user" /></svg>}
                 </div>
 
                 <div className="flex items-center gap-1 relative">

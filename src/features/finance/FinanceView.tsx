@@ -9,24 +9,14 @@ const fmt = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFract
 export const FinanceView: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
-    const [docs, setDocs] = useState<any[]>([]);
+    const docs = useAtomValue(financeDataAtom);
     const [ver, setVer] = useState(0);
-    const setFinanceData = useSetAtom(financeDataAtom);
     const refresh = () => setVer(v => v + 1);
 
     useEffect(() => {
-        if (!db) return;
-        let timer: any;
-        const sub = db.finance.find().$.subscribe((d: any[]) => {
-            clearTimeout(timer);
-            timer = setTimeout(() => {
-                const data = d.map((x: any) => x.toJSON());
-                setDocs(data);
-                setFinanceData(data);
-            }, 200);
-        });
-        return () => { sub.unsubscribe(); clearTimeout(timer); };
-    }, [db, ver]);
+        // ver remains to allow manual refreshes if needed, 
+        // though DataSyncProvider handles background updates.
+    }, [ver]);
 
     const grandTotal = docs.reduce((a, b) => a + (b.amount || 0), 0);
     const paid = docs.filter(d => d.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0);

@@ -4,7 +4,7 @@
   "version": "1.11.111",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3000 --host",
+    "dev": "vite --port 1001 --host",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && npx gh-pages -d dist"

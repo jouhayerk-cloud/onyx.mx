@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
@@ -18,6 +18,7 @@ import {
     filteredInventoryCountAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
+    inventoryAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
@@ -80,8 +81,8 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
     const handleTouchEnd = () => setLastTouchDist(null);
     const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
 
-    return (
-        <div className="fixed inset-0 z-200 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300"
+    return createPortal(
+        <div className="fixed inset-0 z-10000 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300 overflow-hidden"
             onClick={onClose} onWheel={handleWheel}>
             <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X className="w-5 h-5" />
@@ -103,7 +104,8 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
             />
-        </div>
+        </div>,
+        document.body
     );
 };
 
@@ -133,6 +135,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const setSelectedItemData = useSetAtom(SelectedItemDataAtom);
     const setSelectedItemRow = useSetAtom(SelectedItemRowAtom);
     const setImageSrc = useSetAtom(ImageSrcAtom);
+    const user = useAtomValue(userAtom);
+    const isEditable = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor';
 
     const descLine = [norm.color, norm.material, norm.shape, norm.shortDescription].filter(Boolean).map(s => s.toUpperCase()).join(' Â· ');
 
@@ -197,13 +201,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
                         {/* Free-floating icon actions — truly bare SVGs */}
                         <div className="flex gap-4 shrink-0 px-2 items-center">
-                            <div
-                                onClick={(e) => { e.stopPropagation(); handleEdit(e as any); }}
-                                className="cursor-pointer"
-                                title="Edit Item"
-                            >
-                                <Edit2 className="w-4 h-4 text-white/50 hover:text-(--main-color) transition-colors" />
-                            </div>
+                            {isEditable && (
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); handleEdit(e as any); }}
+                                    className="cursor-pointer"
+                                    title="Edit Item"
+                                >
+                                    <Edit2 className="w-4 h-4 text-white/50 hover:text-(--main-color) transition-colors" />
+                                </div>
+                            )}
                             <div
                                 onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
                                 className="cursor-pointer"
@@ -298,9 +304,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-white/40 bg-white/5 px-2 py-1 rounded-md font-mono">x{norm.quantity || 1}</span>
-                        <button onClick={(e) => handleEdit(e)} className="p-1.5 bg-white/5 hover:bg-(--main-color)/20 border border-white/10 rounded-lg text-white/40 hover:text-(--main-color) transition-all" title="Edit Item">
-                            <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                        {isEditable && (
+                            <button onClick={(e) => handleEdit(e)} className="p-1.5 bg-white/5 hover:bg-(--main-color)/20 border border-white/10 rounded-lg text-white/40 hover:text-(--main-color) transition-all" title="Edit Item">
+                                <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -314,9 +322,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                         {/* Modal action bar */}
                         <div className="absolute right-4 top-4 z-101 flex gap-2">
-                            <button onClick={handleEdit} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-xs font-black uppercase tracking-widest">
-                                <Edit2 className="w-3.5 h-3.5" /> Edit
-                            </button>
+                            {isEditable && (
+                                <button onClick={handleEdit} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 rounded-xl text-(--main-color) transition-all text-xs font-black uppercase tracking-widest">
+                                    <Edit2 className="w-3.5 h-3.5" /> Edit
+                                </button>
+                            )}
                             <button onClick={onToggleExpand} className="h-9 px-4 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 transition-all text-xs font-black uppercase tracking-widest">
                                 <X className="w-3.5 h-3.5" /> Close
                             </button>
@@ -399,7 +409,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 export const UnifiedInventoryView = () => {
     const t = useTranslation();
     const db = useDatabase();
-    const [items, setItems] = useState<any[]>([]);
+    const items = useAtomValue(inventoryAtom);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -416,7 +426,7 @@ export const UnifiedInventoryView = () => {
     const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
     const [mode, setMode] = useAtom(detailsPanelModeAtom);
     const [isSaving, setIsSaving] = useState(false);
-    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+    const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const user = useAtomValue(userAtom);
     const setFilteredCount = useSetAtom(filteredInventoryCountAtom);
 
@@ -544,24 +554,28 @@ export const UnifiedInventoryView = () => {
     };
 
     useEffect(() => {
-        if (!db) return;
-        setIsLoading(true);
-        const subs = [
-            db.inventory.find({ selector: { status: { $ne: 'Pending Deletion' } } }).$.subscribe(d => {
-                const mapped = d.map(x => ({ ...x.toJSON(), source: 'inventory', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
-                setItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...mapped]);
-            }),
-            db.production.find().$.subscribe(d => {
-                const mapped = d.map(x => ({ ...x.toJSON(), source: 'production', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
-                setItems(prev => [...prev.filter(p => p.source !== 'production'), ...mapped]);
-            }),
-        ];
-        setTimeout(() => setIsLoading(false), 500);
-        return () => subs.forEach(s => s.unsubscribe());
-    }, [db]);
+        if (items.length > 0) {
+            const vendorsSet = new Set<string>();
+            items.forEach(i => {
+                const vId = i.data.itemId?.split('-')[0];
+                if (vId) vendorsSet.add(vId);
+            });
+            setGlobalActiveVendors(Array.from(vendorsSet));
+            setIsLoading(false);
+        } else if (!db) {
+            // Wait for DB initialization
+            setIsLoading(true);
+        } else {
+            // DB is ready but items might still be loading in provider
+            setIsLoading(items.length === 0);
+        }
+    }, [items, setGlobalActiveVendors, db]);
 
     const filteredItems = useMemo(() => {
         return items.filter(item => {
+            // Global Hidden Filter
+            if (item.data.is_hidden) return false;
+
             // Hide Available / Catalog items — they belong to the Store view
             if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
@@ -573,6 +587,10 @@ export const UnifiedInventoryView = () => {
                 if (!['Shipped', 'shipped'].includes(item.data.status)) return false;
             }
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
+
+            // Vendors only see their own items (data isolation)
+            if (user?.role === 'Vendor' && vendorPrefix !== user?.name) return false;
+
             if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
             if (searchTerm) {
                 const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
@@ -600,7 +618,7 @@ export const UnifiedInventoryView = () => {
                 if (!terms.every(term => searchableString.includes(term))) return false;
             }
             return true;
-        }).sort((a, b) => (new Date(b.data.updatedAt || 0).getTime()) - (new Date(a.data.updatedAt || 0).getTime()));
+        }).sort((a, b) => (new Date(b.data.updated_at || b.data.timestamp || 0).getTime()) - (new Date(a.data.updated_at || a.data.timestamp || 0).getTime()));
     }, [items, statusFilter, vendorFilter, searchTerm]);
 
     useEffect(() => {
@@ -654,7 +672,7 @@ export const UnifiedInventoryView = () => {
                                     key={item.row}
                                     item={item}
                                     isExpanded={expandedCardId === item.row}
-                                    onToggleExpand={() => setExpandedCardId(prev => prev === item.row ? null : item.row)}
+                                    onToggleExpand={() => setExpandedCardId(prev => String(prev) === String(item.row) ? null : String(item.row))}
                                     exchangeRate={exchangeRate}
                                     showFinancials={showFinancials}
                                     viewMode={viewMode}

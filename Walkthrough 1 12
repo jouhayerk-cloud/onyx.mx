@@ -1,0 +1,54 @@
+# Development Cycle 1.12+: Onyx.mx Evolution
+
+Welcome to the 1.12+ development cycle. This phase focuses on deep industrial tools, premium visual fidelity, and robust user interactions.
+
+## 1. The PROCESS Module (New Core Feature)
+We have introduced a professional-grade image processing suite directly integrated into the Onyx ecosystem. Available exclusively to **Admins** and **Developers**, this module bridges the gap between raw inventory and market-ready assets.
+
+### Features:
+- **Multi-Layer Canvas**: Compositional engine supporting high-resolution images and vector overlays.
+- **Vector Masking**: Precision path-drawing tools to highlight specific product features.
+- **Gradient Designer**: Apply custom linear/radial gradients to masks for advanced visual effects.
+- **Transformation Engine**: Real-time repositioning, scaling, and rotation of every layer.
+- **Instant Export**: Professional-grade PNG generation for immediate supply chain or marketing use.
+
+---
+
+## 2. Store View Enhancements
+The customer-facing experience has been sharpened with better hierarchy and new feedback loops.
+
+### Key Updates:
+- **Sticky Architecture**: Essential tags (Shape/Material) now follow the user during scroll, integrated into a shrinking premium header.
+- **Scroll-Triggered Logic**: A floating "Remove from Collection" button appears as you explore product details, facilitating rapid inventory auditing.
+- **Feedback Loops**: Implemented a 5-star rating system and a detailed removal confirmation dialog with mandatory comment fields.
+- **Visual Stability**: The image viewer now utilizes DOM portals, ensuring a zero-conflict rendering hierarchy at `z-10000`.
+
+---
+
+## 3. Packing & Logistics (Phomemo M110)
+Standardized the labeling workflow for international shipping.
+
+### Sticker Redesign (50x30mm):
+- **Unified Stamp**: Merged QR codes, barcodes, and technical specs into a single, high-contrast monochrome design.
+- **203 DPI Optimization**: Tailored typography and line weights for thermal printing clarity.
+- **Aspect Ratio Correction**: Fixed label dimensions to 5:3, matching standard industrial M110 sticker rolls.
+
+---
+
+## 4. Design Philosophy Audit
+Adhered to the "Free Floating" SVG icon mandate:
+- **Zero Containers**: Icons in headers and sidebars are now uncontained, utilizing negative space for a premium feel.
+- **Theme Consistency**: All new elements respect the Obsidian theme while introducing subtle glassmorphism effects via `backdrop-blur`.
+
+---
+
+## Next Steps
+- [ ] **Sticker Batching**: Optimize the multi-sticker export for bulk operations.
+- [ ] **Process Module Persistence**: Integrate layer data saving into the Supabase schema.
+- [ ] **A/B Performance Testing**: Monitor performance impact of the new canvas engine.
+
+> [!TIP]
+> Use the **Process** module to create "Spotlight" versions of products by masking textures and applying subtle golden gradients.
+
+> [!IMPORTANT]
+> All code changes are local. No git push has been performed per user requirements.

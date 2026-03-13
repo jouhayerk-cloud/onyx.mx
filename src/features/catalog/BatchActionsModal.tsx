@@ -11,6 +11,7 @@ import {
     isCatalogBatchSelectModeAtom,
     catalogBatchSelectedItemsAtom,
 } from '../../lib/atoms';
+import { supabase } from '../../lib/supabase';
 import { SCRIPT_URL } from '../../lib/consts';
 import { BoundingBox2DType, BoundingBoxMaskType, InventoryItem, PointingType } from '../../lib/Types';
 import { createCurvePath, findContour, generatePngAndSvgFromMasks, loadImage, simplifyContour, extractGradientFromMask } from '../../lib/utils';
@@ -175,13 +176,14 @@ export function BatchActionsModal() {
         return response.text;
     };
 
-    const saveBatchUpdate = async (row: number | string, payload: any) => {
-        const response = await fetch(SCRIPT_URL, {
-            method: 'POST', mode: 'cors', cache: 'no-cache', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'updateFullItem', row, ...payload, user }),
-        });
-        const result = await response.json();
-        if (result.status !== 'success') throw new Error(result.message);
+    const saveBatchUpdate = async (item: any, payload: any) => {
+        const tableName = item.data?.status === 'Production' ? 'production' : 'inventory';
+        const { error } = await supabase.from(tableName).update({
+            ...payload.itemData,
+            updated_at: new Date().toISOString()
+        }).eq('id', item.row);
+        
+        if (error) throw error;
     };
 
     const handleDelete = async () => {
@@ -193,13 +195,17 @@ export function BatchActionsModal() {
         const toastId = notify.loading(currentTask);
 
         try {
-            const rowsToDelete = batchActionItems.map(item => item.row);
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST', mode: 'cors', cache: 'no-cache', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'batchDeleteItems', rows: rowsToDelete, user }),
-            });
-            const result = await response.json();
-            if (result.status !== 'success') throw new Error(result.message);
+            const inventoryRows = batchActionItems.filter(i => i.data?.status !== 'Production').map(i => i.row);
+            const productionRows = batchActionItems.filter(i => i.data?.status === 'Production').map(i => i.row);
+
+            if (inventoryRows.length > 0) {
+                const { error } = await supabase.from('inventory').delete().in('id', inventoryRows);
+                if (error) throw error;
+            }
+            if (productionRows.length > 0) {
+                const { error } = await supabase.from('production').delete().in('id', productionRows);
+                if (error) throw error;
+            }
 
             setProgress(batchActionItems.length);
             notify.success(`Successfully deleted ${batchActionItems.length} items.`, { id: toastId });
@@ -289,7 +295,7 @@ export function BatchActionsModal() {
                 if (Object.keys(newDataPayload).length > 0 || Object.keys(generatedFilesPayload).length > 0) {
                     setCurrentTask(`Saving data for ${itemLabel} ${progressLabel}...`);
                     notify.loading(currentTask, { id: toastId });
-                    await saveBatchUpdate(item.row, { itemData: newDataPayload, ...generatedFilesPayload });
+                    await saveBatchUpdate(item, { itemData: newDataPayload, ...generatedFilesPayload });
                 }
 
                 setProgress(i + 1);

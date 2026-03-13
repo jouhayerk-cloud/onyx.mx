@@ -674,7 +674,10 @@ export const normalizeInventoryData = (data: any): any => {
     sentDate: data.sentDate || data.sent_date,
     printDate: data.printDate || data.print_date,
     isClientVisible: data.isClientVisible !== undefined ? data.isClientVisible : data.is_client_visible,
-    dispersal_status: data.dispersal_status // Ensure this is preserved
+    rating: data.rating !== undefined ? data.rating : 0,
+    is_hidden: data.is_hidden !== undefined ? data.is_hidden : false,
+    hidden_reason: data.hidden_reason || '',
+    dispersal_status: data.dispersal_status
   };
 };
 
