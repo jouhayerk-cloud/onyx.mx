@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.12.2 — 2026-03-13 (Drive & Supabase Stability)
+- **Drive Upload [fix]:** Resolved "Failed to fetch" error during media uploads by simplifying CORS headers and updating the Google Apps Script response mime-type to `TEXT` (CORS-safe redirect).
+- **Drive Folder [infra]:** Migrated the primary upload target to the new `GlobalUploads` folder.
+- **Supabase [sync]:** Finalized the full migration of all data persistence operations from Google Sheets to Supabase. Replaced legacy Apps Script backend calls with direct Supabase CRUD operations across all modules.
+
 ## v1.11.100 — 2026-03-05 (Deployment Stability)
 - **Deployment [fix]:** Stabilized production builds by explicitly defining Supabase and Gemini environment variables in the Vite configuration. This ensures critical keys are baked into the production bundle, resolving "blank screen" issues on live deployments.
 - **Workflow [infra]:** Implemented isolated git worktree deployment workflow for consistent, high-fidelity production releases.

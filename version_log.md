@@ -4,6 +4,17 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.12.2 - Drive & Supabase Integration Completion**
+
+### **Date:** 2026-03-13
+
+- **FIX: Drive Upload "Failed to fetch"** — Solved the CORS/redirect issue that blocked media responses from Google Drive.
+- **INFRA: GlobalUploads Migration** — Re-targeted all media uploads to the new centralized Google Drive folder.
+- **BACKEND: Full Supabase Migration** — Removed all remaining dependencies on Google Sheets for data saving. All modules (Inventory, Payments, Shipping, Dashboard) now read/write directly to Supabase.
+- **BACKEND: Media Bridge Optimized** — Simplified Google Apps Script to a media-only role (uploads and base64 fetching).
+
+---
+
 ## **v1.10.58 - Admin Dashboard & Payments UX**
 
 ### **Date:** 2026-03-02
