@@ -42,7 +42,8 @@ import {
     Maximize2,
     Play,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -179,8 +180,9 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                     </button>
                     
                     {/* Counter Indicator */}
-                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-[10px] font-black tracking-widest text-white/40 uppercase">
-                        {galleryIndex + 1} / {galleryMedia.length}
+                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-4 text-[10px] font-black tracking-widest text-white/40 uppercase">
+                        <span>{galleryIndex + 1} / {galleryMedia.length}</span>
+                        {isNavigating && <Loader2 className="w-3 h-3 text-(--main-color) animate-spin" />}
                     </div>
                 </div>
             )}
