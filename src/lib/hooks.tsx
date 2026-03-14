@@ -192,9 +192,13 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
             // Actually, we'll store the thumbnail in imageCache for this fileId
             // and return the thumbnail. Components that need playback will fetch the video again or we can provide it.
             imageCache.set(fileId, dataUrl); // Always store full video in main cache
-            finalUrl = await generateVideoThumbnail(dataUrl);
-            imageCache.set(thumbKey, finalUrl); // Store thumb separately
-          } catch (e) { console.warn("Video thumb failed", e); }
+            const thumb = await generateVideoThumbnail(dataUrl);
+            imageCache.set(thumbKey, thumb); // Store thumb separately
+            finalUrl = thumb;
+          } catch (e) { 
+            console.warn("Video thumb failed", e); 
+            finalUrl = null; 
+          }
         } else {
           // Resize large images for better performance and memory
           try { 

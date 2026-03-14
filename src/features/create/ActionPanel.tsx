@@ -223,7 +223,7 @@ export function ActionPanel() {
 
   return (
     <div className="flex flex-col gap-3 h-full">
-        <h3 className="text-sm font-bold uppercase text-[var(--text-color-secondary)]">
+        <h3 className="text-sm font-bold uppercase text-(--text-color-secondary)">
           {`Image ${creationGalleryIndex + 1} - ${currentStep.title}`}
         </h3>
         <div className="flex flex-col gap-2 grow">
@@ -246,7 +246,7 @@ export function ActionPanel() {
         </div>
         <div className="flex gap-2 items-center">
             <button
-                className="button !bg-transparent grow flex items-center justify-center gap-2"
+                className="button bg-transparent! grow flex items-center justify-center gap-2"
                 onClick={handleSend}
                 disabled={isLoading}
             >
