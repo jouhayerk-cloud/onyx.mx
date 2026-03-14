@@ -20,6 +20,7 @@ import {
   selectedPointsIndicesAtom,
   ShareStreamAtom,
   VideoRefAtom,
+  workflowStepAtom,
 } from '../lib/atoms';
 import {segmentationColors} from '../lib/consts';
 import {BoundingBoxMaskType} from '../lib/Types';
@@ -29,23 +30,37 @@ export function Content() {
   const [imageSrc] = useAtom(ImageSrcAtom);
   const [stream] = useAtom(ShareStreamAtom);
   const [videoRef] = useAtom(VideoRefAtom);
+  const [workflowStep] = useAtom(workflowStepAtom);
   const setImageDimensions = useSetAtom(imageDimensionsAtom);
+
+  const isVideo = imageSrc?.startsWith('data:video/') || imageSrc?.includes('.mov') || imageSrc?.includes('.mp4');
 
   useEffect(() => {
     if (imageSrc && !stream) {
-      const img = new Image();
-      img.onload = () => {
-        setImageDimensions({
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-        });
-      };
-      img.onerror = () => {
-        console.error('Failed to load image to determine dimensions:', imageSrc);
-      };
-      img.src = imageSrc;
+      if (isVideo) {
+        const vid = document.createElement('video');
+        vid.onloadedmetadata = () => {
+          setImageDimensions({
+            width: vid.videoWidth,
+            height: vid.videoHeight,
+          });
+        };
+        vid.src = imageSrc;
+      } else {
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions({
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
+        };
+        img.onerror = () => {
+          console.error('Failed to load image to determine dimensions:', imageSrc);
+        };
+        img.src = imageSrc;
+      }
     }
-  }, [imageSrc, stream, setImageDimensions]);
+  }, [imageSrc, stream, setImageDimensions, isVideo]);
 
   const [allAnnotationData] = useAtom(allAnnotationDataAtom);
   const {boxes, masks, points} = allAnnotationData;
@@ -352,18 +367,31 @@ export function Content() {
           className="absolute inset-0 w-full h-full"
           style={{overflow: 'visible'}}>
           {imageSrc && (
-            <image
-              href={imageSrc!} // Stream is handled by drawing frames to a canvas if needed, but for now we just show image
-              x="0"
-              y="0"
-              width={imageDimensions.width}
-              height={imageDimensions.height}
-              style={{imageRendering: 'auto'}} // Prevents pixelation on zoom
-            />
+            isVideo ? (
+              <foreignObject x="0" y="0" width={imageDimensions.width} height={imageDimensions.height}>
+                <video
+                  src={imageSrc}
+                  className="w-full h-full object-contain"
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                />
+              </foreignObject>
+            ) : (
+              <image
+                href={imageSrc!} // Stream is handled by drawing frames to a canvas if needed, but for now we just show image
+                x="0"
+                y="0"
+                width={imageDimensions.width}
+                height={imageDimensions.height}
+                style={{imageRendering: 'auto'}} // Prevents pixelation on zoom
+              />
+            )
           )}
 
           {/* Render all masks */}
-          {masks.map((mask: BoundingBoxMaskType, i: number) => {
+          {workflowStep !== 'fullscreenView' && masks.map((mask: BoundingBoxMaskType, i: number) => {
             const color = segmentationColors[i % segmentationColors.length];
 
             const isBeingEdited = i === editingMaskIndex;
@@ -391,7 +419,7 @@ export function Content() {
           })}
 
           {/* Render all 2D Boxes */}
-          {boxes.map((box, i) => {
+          {workflowStep !== 'fullscreenView' && boxes.map((box, i) => {
             const x = box.x * imageDimensions.width;
             const y = box.y * imageDimensions.height;
             const w = box.width * imageDimensions.width;
@@ -437,7 +465,7 @@ export function Content() {
           })}
 
           {/* Render all Points */}
-          {points.map((p, i) => {
+          {workflowStep !== 'fullscreenView' && points.map((p, i) => {
              const cx = p.point.x * imageDimensions.width;
              const cy = p.point.y * imageDimensions.height;
              const labelY = cy - 10 / zoom;

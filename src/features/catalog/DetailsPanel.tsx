@@ -28,7 +28,7 @@ import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
 import { BoundingBoxMaskType, InventoryItemData, UploadedFile } from '../../lib/Types';
-import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices, handleFileUpload } from '../../lib/utils';
+import { createCurvePath, imageCache, normalizeInventoryData, calculateCodesAndPrices, handleFileUpload, extractFileId, fetchImageBatch, resizeImage } from '../../lib/utils';
 import { exchangeRateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 
@@ -59,6 +59,59 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
   const setEditingMaskIndex = useSetAtom(editingMaskIndexAtom);
   const setImageSrc = useSetAtom(ImageSrcAtom);
+
+  const mediaUrls = data.mediaUrls ? data.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
+  const [activeIsVideo, setActiveIsVideo] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(false);
+
+  React.useEffect(() => {
+    const urlToLoad = activeMediaIndex === 0 && data.generatedPngUrl ? data.generatedPngUrl : mediaUrls[activeMediaIndex];
+    if (!urlToLoad) return;
+
+    const fileId = extractFileId(urlToLoad);
+    if (!fileId) return;
+
+    let isActive = true;
+    setIsMediaLoading(true);
+
+    if (imageCache.has(fileId)) {
+      const cached = imageCache.get(fileId)!;
+      setActiveMediaUrl(cached);
+      setActiveIsVideo(cached.startsWith('data:video/') || urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4'));
+      setIsMediaLoading(false);
+      return;
+    }
+
+    fetchImageBatch(fileId)
+      .then(async (res) => {
+        if (!isActive) return;
+        const mime = res.mimeType;
+        const isVid = mime.startsWith('video/');
+        const dataUrl = `data:${mime};base64,${res.base64}`;
+        
+        let finalUrl = dataUrl;
+        if (!isVid) {
+          try { finalUrl = await resizeImage(dataUrl, 1200); } catch (e) { console.warn("Resize failed", e); }
+        }
+
+        imageCache.set(fileId, finalUrl);
+        setActiveMediaUrl(finalUrl);
+        setActiveIsVideo(isVid);
+      })
+      .finally(() => {
+        if (isActive) setIsMediaLoading(false);
+      });
+
+    return () => { isActive = false; };
+  }, [activeMediaIndex, data.mediaUrls, data.generatedPngUrl]);
+
+  const handleOpenFullscreen = () => {
+    if (!activeMediaUrl) return;
+    setImageSrc(activeMediaUrl);
+    setWorkflowStep('fullscreenView');
+  };
 
   const handleEditMasks = async () => {
     if (!data.spatialMasks) {
@@ -126,22 +179,67 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
 
   return (
     <div className="space-y-4">
-      {isLoading ? <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><LoadingIndicator /></div> :
-        imageUrl && (
-          isVideo ? (
-            <video
-              src={imageUrl}
-              controls
-              autoPlay
-              muted
-              loop
-              className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20 shadow-lg"
-            />
-          ) : (
-            <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
-          )
-        )
-      }
+      <div className="relative group">
+        {isMediaLoading ? (
+          <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center">
+            <LoadingIndicator />
+          </div>
+        ) : activeMediaUrl ? (
+          <div className="relative cursor-zoom-in" onClick={handleOpenFullscreen}>
+            {activeIsVideo ? (
+              <video
+                src={activeMediaUrl}
+                controls
+                autoPlay
+                muted
+                loop
+                className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10"
+              />
+            ) : (
+              <img 
+                src={activeMediaUrl} 
+                alt={data.shape} 
+                className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10" 
+              />
+            )}
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+               <div className="bg-black/60 backdrop-blur-md p-2 rounded-full border border-white/20">
+                  <svg className="w-4 h-4 text-white"><use href="#maximize" /></svg>
+               </div>
+            </div>
+          </div>
+        ) : (
+           <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center text-white/20">
+             <svg className="w-12 h-12"><use href="#image" /></svg>
+           </div>
+        )}
+      </div>
+
+      {mediaUrls.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {mediaUrls.map((url, idx) => {
+            const fid = extractFileId(url);
+            const cached = fid ? imageCache.get(fid) : null;
+            return (
+              <button
+                key={idx}
+                onClick={() => setActiveMediaIndex(idx)}
+                className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
+                  activeMediaIndex === idx ? 'border-(--main-color) scale-105 shadow-lg' : 'border-white/10 opacity-60 hover:opacity-100'
+                }`}
+              >
+                {cached ? (
+                   <img src={cached} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-white/30">{idx + 1}</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="flex gap-2">
         <DetailRow label="Vendor" value={data.itemId} />
         {calculated.bookBardcode && (

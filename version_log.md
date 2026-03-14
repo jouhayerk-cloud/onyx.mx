@@ -4,6 +4,16 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.12.4 - Multi-Media Gallery & Fullscreen Viewer**
+
+### **Date:** 2026-03-14
+
+- **Media Gallery [feature]:** Implemented a multi-media browsing system in the Inventory Details panel. Users can now view all images and videos attached to an item via a thumbnail navigation bar.
+- **Fullscreen Viewer [feature]:** Added a dedicated fullscreen media viewer with support for both images and videos. The viewer supports zoom, pan, and native video playback controls.
+- **Rendering [feature]:** Enhanced the core Content viewer to support video rendering via `foreignObject` in SVG, ensuring video playback is integrated into the existing zoom/pan architecture.
+
+---
+
 ## **v1.12.3 - Video Support & Thumbnail Engine**
 
 ### **Date:** 2026-03-13
