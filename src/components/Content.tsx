@@ -33,7 +33,7 @@ export function Content() {
   const [workflowStep] = useAtom(workflowStepAtom);
   const setImageDimensions = useSetAtom(imageDimensionsAtom);
 
-  const isVideo = imageSrc?.startsWith('data:video/') || imageSrc?.includes('.mov') || imageSrc?.includes('.mp4');
+  const isVideo = imageSrc?.startsWith('data:video/') || imageSrc?.toLowerCase().includes('.mov') || imageSrc?.toLowerCase().includes('.mp4');
 
   useEffect(() => {
     if (imageSrc && !stream) {

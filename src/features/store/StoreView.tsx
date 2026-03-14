@@ -33,7 +33,8 @@ import {
     Star,
     Trash2,
     MessageSquare,
-    Maximize2
+    Maximize2,
+    Play
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,7 +55,7 @@ const Badge = ({ children, color = "var(--main-color)" }: { children: React.Reac
     </span>
 );
 
-const FullscreenImageViewer = ({ src, rating, onUpdateRating, onClose }: { src: string; rating: number; onUpdateRating?: (r: number) => void; onClose: () => void }) => {
+const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }: { src: string; isVideo?: boolean; rating: number; onUpdateRating?: (r: number) => void; onClose: () => void }) => {
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -88,15 +89,25 @@ const FullscreenImageViewer = ({ src, rating, onUpdateRating, onClose }: { src: 
                 <StarRating rating={rating} onChange={onUpdateRating} />
             </div>
 
-            <img src={src} alt="" draggable={false}
-                className="max-w-[95vw] max-h-[95vh] object-contain select-none transition-transform duration-100"
-                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            />
+            {isVideo ? (
+                <video 
+                    src={src} 
+                    controls 
+                    autoPlay 
+                    loop 
+                    className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl"
+                />
+            ) : (
+                <img src={src} alt="" draggable={false}
+                    className="max-w-[95vw] max-h-[95vh] object-contain select-none transition-transform duration-100"
+                    style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                />
+            )}
         </div>,
         document.body
     );
@@ -342,7 +353,7 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
     const n = normalizeInventoryData(item.data);
     const vendorPrefix = n.itemId?.split('-')[0];
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
-    const { imageUrl, isLoading: imgLoading } = useItemImage(n);
+    const { imageUrl, isVideo, isLoading: imgLoading } = useItemImage(n);
     const imgStyle = n.generatedPngUrl ? { backgroundColor: n.dominantColor || n.vibeColor || 'rgba(255,255,255,0.02)' } : {};
 
     return (
@@ -354,12 +365,21 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
             {/* Unified Card Header/Image Area */}
             <div className="relative aspect-4/5 overflow-hidden bg-neutral-950/40">
                 {imageUrl ? (
-                    <img
-                        src={imageUrl}
-                        className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl ? 'p-16 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`}
-                        style={imgStyle}
-                        alt={item.label}
-                    />
+                    <>
+                        <img
+                            src={imageUrl}
+                            className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl ? 'p-16 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`}
+                            style={imgStyle}
+                            alt={item.label}
+                        />
+                        {isVideo && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover:scale-125 transition-transform duration-500">
+                                    <Play className="w-6 h-6 text-white fill-white ml-1" strokeWidth={3} />
+                                </div>
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4">
                         {imgLoading ? <div className="w-12 h-12 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" /> : <PackageSearch size={80} strokeWidth={0.5} />}
@@ -422,7 +442,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
     const [removeReason, setRemoveReason] = useState('');
     const [showFullscreen, setShowFullscreen] = useState(false);
 
-    const { imageUrl, isLoading: imgLoading } = useItemImage(n);
+    const { imageUrl, isVideo, isLoading: imgLoading } = useItemImage(n);
 
     return (
         <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-500" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -439,12 +459,25 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                     </div>
 
                     {imageUrl ? (
-                        <img 
-                            src={imageUrl} 
-                            onClick={() => setShowFullscreen(true)}
-                            className="w-full h-full object-cover opacity-60 hover:opacity-80 transition-all duration-700 cursor-zoom-in scale-100 hover:scale-105"
-                            alt=""
-                        />
+                        isVideo ? (
+                            <div className="w-full h-full bg-black">
+                                <video 
+                                    src={imageUrl} 
+                                    controls 
+                                    autoPlay 
+                                    muted 
+                                    loop 
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                        ) : (
+                            <img 
+                                src={imageUrl} 
+                                onClick={() => setShowFullscreen(true)}
+                                className="w-full h-full object-cover opacity-60 hover:opacity-80 transition-all duration-700 cursor-zoom-in scale-100 hover:scale-105"
+                                alt=""
+                            />
+                        )
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4">
                             {imgLoading ? <div className="w-16 h-16 border-4 border-white/10 border-t-(--main-color) rounded-full animate-spin" /> : <PackageSearch size={120} strokeWidth={0.5} />}
@@ -572,7 +605,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                  </div>
              </div>
 
-             {showFullscreen && <FullscreenImageViewer src={imageUrl} rating={n.rating || 0} onUpdateRating={(r: number) => onUpdateRating(r)} onClose={() => setShowFullscreen(false)} />}
+             {showFullscreen && <FullscreenImageViewer src={imageUrl} isVideo={isVideo} rating={n.rating || 0} onUpdateRating={(r: number) => onUpdateRating(r)} onClose={() => setShowFullscreen(false)} />}
         </div>
     );
 };
