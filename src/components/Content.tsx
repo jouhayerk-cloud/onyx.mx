@@ -426,7 +426,14 @@ export function Content() {
                   controls
                   autoPlay
                   muted
+                  playsInline
                   loop
+                  onLoadedMetadata={(e) => {
+                    setImageDimensions({
+                      width: e.currentTarget.videoWidth,
+                      height: e.currentTarget.videoHeight,
+                    });
+                  }}
                 />
               </foreignObject>
             ) : (

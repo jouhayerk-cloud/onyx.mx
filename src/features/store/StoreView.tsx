@@ -18,7 +18,9 @@ import {
     getCleanImageUrl,
     extractFileId,
     imageCache,
-    fetchImageBatch 
+    fetchImageBatch,
+    resizeImage,
+    generateVideoThumbnail
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
@@ -146,6 +148,8 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                     src={activeSrc} 
                     controls 
                     autoPlay 
+                    muted
+                    playsInline
                     loop 
                     className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl"
                 />
@@ -519,18 +523,75 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
     const [showConfirmRemove, setShowConfirmRemove] = useState(false);
     const [removeReason, setRemoveReason] = useState('');
     const [showFullscreen, setShowFullscreen] = useState(false);
-    const { imageUrl, isVideo, isLoading: imgLoading } = useItemImage(n);
+    
+    const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+    const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
+    const [activeIsVideo, setActiveIsVideo] = useState(false);
+    const [isMediaLoading, setIsMediaLoading] = useState(false);
+
     const setActiveGalleryMedia = useSetAtom(ActiveGalleryMediaAtom);
     const setActiveGalleryIndex = useSetAtom(ActiveGalleryIndexAtom);
     const setImageSrc = useSetAtom(ImageSrcAtom);
 
-    const mediaUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-    const galleryItems = [n.generatedPngUrl, ...mediaUrls].filter(Boolean) as string[];
+    const mediaUrls = useMemo(() => {
+        const urls = [n.generatedPngUrl, ...(n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [])];
+        return urls.filter(Boolean);
+    }, [n.generatedPngUrl, n.mediaUrls]);
+
+    useEffect(() => {
+        const urlToLoad = mediaUrls[activeMediaIndex];
+        if (!urlToLoad) {
+            setActiveMediaUrl(null);
+            return;
+        }
+
+        let isActive = true;
+        setIsMediaLoading(true);
+
+        const fileId = extractFileId(urlToLoad);
+        if (!fileId) {
+            setActiveMediaUrl(urlToLoad);
+            setActiveIsVideo(urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4'));
+            setIsMediaLoading(false);
+            return;
+        }
+
+        if (imageCache.has(fileId)) {
+            const cached = imageCache.get(fileId)!;
+            const isVid = cached.startsWith('data:video/') || urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4');
+            setActiveMediaUrl(cached);
+            setActiveIsVideo(isVid);
+            setIsMediaLoading(false);
+            return;
+        }
+
+        fetchImageBatch(fileId)
+            .then(async (res) => {
+                if (!isActive) return;
+                const dataUrl = `data:${res.mimeType};base64,${res.base64}`;
+                let finalUrl = dataUrl;
+                const isVid = res.mimeType.startsWith('video/');
+                if (!isVid) {
+                    try { finalUrl = await resizeImage(dataUrl, 1200); } catch (e) {}
+                }
+                imageCache.set(fileId, finalUrl);
+                setActiveMediaUrl(finalUrl);
+                setActiveIsVideo(isVid);
+            })
+            .catch(() => {
+                if (isActive) setActiveMediaUrl(null);
+            })
+            .finally(() => {
+                if (isActive) setIsMediaLoading(false);
+            });
+
+        return () => { isActive = false; };
+    }, [activeMediaIndex, mediaUrls]);
 
     const handleOpenFullscreen = () => {
-        setActiveGalleryMedia(galleryItems);
-        setActiveGalleryIndex(0);
-        setImageSrc(imageUrl || galleryItems[0] || '');
+        setActiveGalleryMedia(mediaUrls);
+        setActiveGalleryIndex(activeMediaIndex);
+        setImageSrc(activeMediaUrl || mediaUrls[activeMediaIndex]);
         setShowFullscreen(true);
     };
 
@@ -548,21 +609,22 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                         <div className="absolute bottom-0 -right-1/4 w-full h-full bg-white/10 rounded-full mix-blend-screen filter blur-[120px]" />
                     </div>
 
-                    {imageUrl ? (
-                        isVideo ? (
+                    {activeMediaUrl ? (
+                        activeIsVideo ? (
                             <div className="w-full h-full bg-black">
                                 <video 
-                                    src={imageUrl} 
+                                    src={activeMediaUrl} 
                                     controls 
                                     autoPlay 
                                     muted 
+                                    playsInline
                                     loop 
                                     className="w-full h-full object-contain"
                                 />
                             </div>
                         ) : (
                             <img 
-                                src={imageUrl} 
+                                src={activeMediaUrl} 
                                 onClick={() => setShowFullscreen(true)}
                                 className="w-full h-full object-cover opacity-60 hover:opacity-80 transition-all duration-700 cursor-zoom-in scale-100 hover:scale-105"
                                 alt=""
@@ -570,11 +632,39 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                         )
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4">
-                            {imgLoading ? <div className="w-16 h-16 border-4 border-white/10 border-t-(--main-color) rounded-full animate-spin" /> : <PackageSearch size={120} strokeWidth={0.5} />}
-                            <span className="text-sm font-black uppercase tracking-[0.5em]">{imgLoading ? 'Loading Visuals' : 'No Media'}</span>
+                            {isMediaLoading ? <div className="w-16 h-16 border-4 border-white/10 border-t-(--main-color) rounded-full animate-spin" /> : <PackageSearch size={120} strokeWidth={0.5} />}
+                            <span className="text-sm font-black uppercase tracking-[0.5em]">{isMediaLoading ? 'Loading Visuals' : 'No Media'}</span>
                         </div>
                     )}
                     <div className="absolute inset-0 bg-linear-to-r from-black/20 via-transparent to-[#080808] pointer-events-none" />
+
+                    {/* Gallery Thumb Strip */}
+                    {mediaUrls.length > 1 && (
+                        <div className="absolute bottom-40 left-16 right-16 flex gap-4 overflow-x-auto pb-4 scrollbar-none pointer-events-auto">
+                            {mediaUrls.map((url, idx) => {
+                                const fid = extractFileId(url);
+                                const thumbKey = fid ? fid + '_thumb' : null;
+                                const cached = thumbKey ? imageCache.get(thumbKey) : (fid ? imageCache.get(fid) : null);
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setActiveMediaIndex(idx)}
+                                        className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 bg-black/40 backdrop-blur-md ${
+                                            activeMediaIndex === idx ? 'border-(--main-color) scale-110 shadow-3xl' : 'border-white/5 opacity-40 hover:opacity-100 hover:border-white/20'
+                                        }`}
+                                    >
+                                        {cached ? (
+                                            <img src={cached} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white/20">
+                                                {idx + 1}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                     
                     <button 
                         onClick={onClose}
@@ -695,7 +785,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                  </div>
              </div>
 
-             {showFullscreen && <FullscreenImageViewer src={imageUrl} isVideo={isVideo} rating={n.rating || 0} onUpdateRating={(r: number) => onUpdateRating(r)} onClose={() => setShowFullscreen(false)} />}
+             {showFullscreen && <FullscreenImageViewer src={activeMediaUrl!} isVideo={activeIsVideo} rating={n.rating || 0} onUpdateRating={(r: number) => onUpdateRating(r)} onClose={() => setShowFullscreen(false)} />}
         </div>
     );
 };
