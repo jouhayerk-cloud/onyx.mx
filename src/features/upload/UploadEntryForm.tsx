@@ -399,13 +399,12 @@ export function UploadEntryForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                         {mediaFiles.map((f, i) => (
                             <div key={i} className="flex gap-4 p-3 bg-white/3 border border-white/5 rounded-xl group relative">
-                                <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10">
-                                    {f.type === 'video' ? (
-                                        <div className="w-full h-full bg-black flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-white/40"><use href="#video" /></svg>
+                                <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 border border-white/10 relative">
+                                    <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
+                                    {f.type === 'video' && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                            <svg className="w-5 h-5 text-white/80" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                         </div>
-                                    ) : (
-                                        <img src={f.localUrl || f.dataUrl} alt="" className="w-full h-full object-cover" />
                                     )}
                                 </div>
                                 <div className="flex flex-col justify-between grow">

@@ -37,7 +37,7 @@ import {
 import { translations } from './translations';
 import { InventoryItemData } from './Types';
 import { SCRIPT_URL } from './consts';
-import { fetchImageBatch, imageCache } from './utils';
+import { fetchImageBatch, imageCache, resizeImage } from './utils';
 import toast from 'react-hot-toast';
 
 export function useTranslation() {
@@ -118,6 +118,7 @@ export function useLogout() {
 
 export const useItemImage = (itemData: InventoryItemData | null) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
 
     if (!urlToLoad) {
       setImageUrl(null);
+      setIsVideo(false);
       return;
     }
 
@@ -137,19 +139,34 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
       return;
     }
 
+    // Rough check before fetch
+    const isVidPossible = urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4');
+
     if (imageCache.has(fileId)) {
-      setImageUrl(imageCache.get(fileId)!);
+      const cached = imageCache.get(fileId)!;
+      setImageUrl(cached);
+      setIsVideo(cached.startsWith('data:video/') || isVidPossible);
       setIsLoading(false);
       return;
     }
 
     fetchImageBatch(fileId)
-      .then(data => {
-        if (isActive) {
-          const dataUrl = `data:${data.mimeType};base64,${data.base64}`;
-          imageCache.set(fileId, dataUrl);
-          setImageUrl(dataUrl);
+      .then(async data => {
+        if (!isActive) return;
+        const mime = data.mimeType;
+        const isVid = mime.startsWith('video/');
+        const dataUrl = `data:${mime};base64,${data.base64}`;
+        
+        setIsVideo(isVid);
+        
+        let finalUrl = dataUrl;
+        if (!isVid) {
+          // Resize large images for better performance and memory
+          try { finalUrl = await resizeImage(dataUrl, 1200); } catch (e) { console.warn("Resize failed", e); }
         }
+
+        imageCache.set(fileId, finalUrl);
+        setImageUrl(finalUrl);
       })
       .catch(error => {
         console.error('Failed to load item image:', error);
@@ -164,7 +181,7 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
     };
   }, [itemData]);
 
-  return { imageUrl, isLoading };
+  return { imageUrl, isVideo, isLoading };
 };
 
 export const useDatabase = () => {

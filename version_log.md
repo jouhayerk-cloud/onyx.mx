@@ -4,6 +4,16 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ---
 
+## **v1.12.3 - Video Support & Thumbnail Engine**
+
+### **Date:** 2026-03-13
+
+- **Media Rendering [feature]:** Implemented browser-side MOV video decoding and playback.
+- **Thumbnail Engine [feature]:** Added automatic video thumbnail generation and image resizing for optimized inventory grid performance.
+- **Upload [feature]:** Enabled video support in Upload Wizard and Manual Entry with real-time previews.
+
+---
+
 ## **v1.12.2 - Drive & Supabase Integration Completion**
 
 ### **Date:** 2026-03-13
