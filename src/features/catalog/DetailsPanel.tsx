@@ -12,6 +12,8 @@ import {
   detailsPanelModeAtom,
   editingMaskIndexAtom,
   ImageSrcAtom,
+  ActiveGalleryMediaAtom,
+  ActiveGalleryIndexAtom,
   InventoryVersionAtom,
   is3DViewerOpenAtom,
   isDetailsPanelOpenAtom,
@@ -24,6 +26,7 @@ import {
 } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { useItemImage, useTranslation } from '../../lib/hooks';
+import { Maximize2, PackageSearch, Edit3, Image as ImageIcon } from 'lucide-react';
 import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
@@ -59,6 +62,8 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   const setAllAnnotationData = useSetAtom(allAnnotationDataAtom);
   const setEditingMaskIndex = useSetAtom(editingMaskIndexAtom);
   const setImageSrc = useSetAtom(ImageSrcAtom);
+  const setActiveGalleryMedia = useSetAtom(ActiveGalleryMediaAtom);
+  const setActiveGalleryIndex = useSetAtom(ActiveGalleryIndexAtom);
 
   const mediaUrls = data.mediaUrls ? data.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
@@ -78,10 +83,16 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
 
     if (imageCache.has(fileId)) {
       const cached = imageCache.get(fileId)!;
-      setActiveMediaUrl(cached);
-      setActiveIsVideo(cached.startsWith('data:video/') || urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4'));
-      setIsMediaLoading(false);
-      return;
+      const cachedIsVideo = cached.startsWith('data:video/');
+      const expectedVideo = urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4');
+      
+      // Only use cache if it's the expected video or we don't expect a video
+      if (cachedIsVideo || !expectedVideo) {
+        setActiveMediaUrl(cached);
+        setActiveIsVideo(cachedIsVideo);
+        setIsMediaLoading(false);
+        return;
+      }
     }
 
     fetchImageBatch(fileId)
@@ -109,6 +120,29 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
 
   const handleOpenFullscreen = () => {
     if (!activeMediaUrl) return;
+    
+    // Pass the entire gallery to the fullscreen viewer
+    const galleryItems = [
+      data.generatedPngUrl,
+      ...mediaUrls
+    ].filter(Boolean) as string[];
+
+    setActiveGalleryMedia(galleryItems);
+    setActiveGalleryIndex(activeMediaIndex + (data.generatedPngUrl ? 0 : 0)); // Simplified: better to just map activeMediaIndex correctly
+    
+    // We also need to map the activeMediaIndex to the galleryItems array correctly
+    const actualIndex = data.generatedPngUrl ? activeMediaIndex : activeMediaIndex; 
+    // Wait, let's be more precise:
+    let currentGalleryIndex = 0;
+    const fullGallery = [];
+    if (data.generatedPngUrl) fullGallery.push(data.generatedPngUrl);
+    mediaUrls.forEach(u => fullGallery.push(u));
+    
+    currentGalleryIndex = activeMediaIndex;
+
+    setActiveGalleryMedia(fullGallery);
+    setActiveGalleryIndex(currentGalleryIndex);
+    
     setImageSrc(activeMediaUrl);
     setWorkflowStep('fullscreenView');
   };
@@ -204,13 +238,13 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
             )}
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                <div className="bg-black/60 backdrop-blur-md p-2 rounded-full border border-white/20">
-                  <svg className="w-4 h-4 text-white"><use href="#maximize" /></svg>
+                  <Maximize2 size={16} className="text-white" />
                </div>
             </div>
           </div>
         ) : (
            <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center text-white/20">
-             <svg className="w-12 h-12"><use href="#image" /></svg>
+             <ImageIcon size={48} />
            </div>
         )}
       </div>
@@ -273,7 +307,7 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       {data.detailedDescription && <DetailRow label="Details" value={<div className="prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: data.detailedDescription }}></div>} />}
       {data.spatialMasks && (
         <div className="pt-4 border-t border-(--border-color)">
-          <button onClick={handleEditMasks} className="button w-full"><svg className="w-3 h-3 inline-block mr-1"><use href="#edit" /></svg>Masks</button>
+          <button onClick={handleEditMasks} className="button w-full"><Edit3 size={14} className="inline-block mr-2" />Masks</button>
         </div>
       )}
     </div>

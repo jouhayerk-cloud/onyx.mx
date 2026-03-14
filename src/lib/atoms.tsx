@@ -45,6 +45,8 @@ export const workflowStepAtom = atom<
 >('idle');
 
 export const ImageSrcAtom = atomWithStorage<string | null>('imageSrc', null);
+export const ActiveGalleryMediaAtom = atom<string[]>([]);
+export const ActiveGalleryIndexAtom = atom<number>(0);
 export const IsUploadedImageAtom = atomWithStorage<boolean>(
   'isUploadedImage',
   false,

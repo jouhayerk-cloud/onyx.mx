@@ -37,7 +37,7 @@ import {
 import { translations } from './translations';
 import { InventoryItemData } from './Types';
 import { SCRIPT_URL } from './consts';
-import { fetchImageBatch, imageCache, resizeImage } from './utils';
+import { fetchImageBatch, imageCache, resizeImage, extractFileId, generateVideoThumbnail } from './utils';
 import toast from 'react-hot-toast';
 
 export function useTranslation() {
@@ -133,7 +133,7 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
     let isActive = true;
     setIsLoading(true);
 
-    const fileId = (urlToLoad.match(/id=([\w-]+)/) || [])[1];
+    const fileId = extractFileId(urlToLoad);
     if (!fileId) {
       setIsLoading(false);
       return;
@@ -142,10 +142,31 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
     // Rough check before fetch
     const isVidPossible = urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4');
 
+    const thumbKey = fileId + '_thumb';
+    if (imageCache.has(thumbKey)) {
+        const cached = imageCache.get(thumbKey)!;
+        setImageUrl(cached);
+        setIsVideo(isVidPossible);
+        setIsLoading(false);
+        return;
+    }
+
     if (imageCache.has(fileId)) {
       const cached = imageCache.get(fileId)!;
-      setImageUrl(cached);
-      setIsVideo(cached.startsWith('data:video/') || isVidPossible);
+      if (cached.startsWith('data:video/')) {
+        setIsVideo(true);
+        generateVideoThumbnail(cached).then(thumb => {
+            if (isActive) {
+                setImageUrl(thumb);
+                imageCache.set(thumbKey, thumb);
+            }
+        }).catch(() => {
+            if (isActive) setImageUrl(cached);
+        });
+      } else {
+        setImageUrl(cached);
+        setIsVideo(false);
+      }
       setIsLoading(false);
       return;
     }
@@ -160,12 +181,28 @@ export const useItemImage = (itemData: InventoryItemData | null) => {
         setIsVideo(isVid);
         
         let finalUrl = dataUrl;
-        if (!isVid) {
+        if (isVid) {
+          try {
+            // We want the actual video for playback, but an image tag needs a thumbnail.
+            // Component should decide which to use if possible, but here we provide a thumbnail as the primary URL
+            // and keep the video flag. 
+            // WAIT: If we want playback in fullscreen, we need the video URL.
+            // If we want a preview, we need a thumbnail.
+            // Let's generate a thumbnail but keep the video source available?
+            // Actually, we'll store the thumbnail in imageCache for this fileId
+            // and return the thumbnail. Components that need playback will fetch the video again or we can provide it.
+            imageCache.set(fileId, dataUrl); // Always store full video in main cache
+            finalUrl = await generateVideoThumbnail(dataUrl);
+            imageCache.set(thumbKey, finalUrl); // Store thumb separately
+          } catch (e) { console.warn("Video thumb failed", e); }
+        } else {
           // Resize large images for better performance and memory
-          try { finalUrl = await resizeImage(dataUrl, 1200); } catch (e) { console.warn("Resize failed", e); }
+          try { 
+            finalUrl = await resizeImage(dataUrl, 1200); 
+            imageCache.set(fileId, finalUrl); // Store high-res thumb/image in main cache
+          } catch (e) { console.warn("Resize failed", e); }
         }
 
-        imageCache.set(fileId, finalUrl);
         setImageUrl(finalUrl);
       })
       .catch(error => {

@@ -88,15 +88,21 @@ export function extractFileId(url: string | null | undefined): string | null {
   const sForm = String(url);
 
   const patterns = [
-    /\/d\/([a-zA-Z0-9_-]{25,})/,
-    /[?&]id=([a-zA-Z0-9_-]{25,})/,
-    /\/file\/d\/([a-zA-Z0-9_-]{25,})/
+    /\/d\/([a-zA-Z0-9_-]{10,})/,
+    /[?&]id=([a-zA-Z0-9_-]{10,})/,
+    /\/file\/d\/([a-zA-Z0-9_-]{10,})/,
+    /drive\.google\.com\/uc\?id=([a-zA-Z0-9_-]{10,})/,
+    /docs\.google\.com\/.*id=([a-zA-Z0-9_-]{10,})/
   ];
 
   for (const p of patterns) {
     const m = sForm.match(p);
     if (m && m[1]) return m[1];
   }
+  
+  // Fallback: if it looks like just an ID
+  if (/^[a-zA-Z0-9_-]{15,}$/.test(sForm)) return sForm;
+
   return null;
 }
 

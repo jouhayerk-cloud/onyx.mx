@@ -1,17 +1,24 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { createPortal } from 'react-dom';
 import { 
     inventoryAtom, 
     exchangeRateAtom, 
     storeShoppingBagAtom as shoppingBagAtom, 
     workbookVersionAtom, 
-    storeSearchTermAtom
+    storeSearchTermAtom,
+    ActiveGalleryMediaAtom,
+    ActiveGalleryIndexAtom,
+    ImageSrcAtom,
+    workflowStepAtom,
 } from '../../lib/atoms';
 import { 
     calculateCodesAndPrices, 
     normalizeInventoryData,
-    getCleanImageUrl 
+    getCleanImageUrl,
+    extractFileId,
+    imageCache,
+    fetchImageBatch 
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
@@ -25,7 +32,6 @@ import {
     Plus, 
     Check, 
     X, 
-    ChevronRight,
     Filter,
     Layers,
     Box,
@@ -34,7 +40,9 @@ import {
     Trash2,
     MessageSquare,
     Maximize2,
-    Play
+    Play,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -56,6 +64,49 @@ const Badge = ({ children, color = "var(--main-color)" }: { children: React.Reac
 );
 
 const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }: { src: string; isVideo?: boolean; rating: number; onUpdateRating?: (r: number) => void; onClose: () => void }) => {
+    const [galleryMedia] = useAtom(ActiveGalleryMediaAtom);
+    const [galleryIndex, setGalleryIndex] = useAtom(ActiveGalleryIndexAtom);
+    const [imageSrc, setImageSrc] = useAtom(ImageSrcAtom);
+    const [isNavigating, setIsNavigating] = useState(false);
+
+    const activeSrc = src || imageSrc;
+    const activeIsVideo = activeSrc?.startsWith('data:video/') || activeSrc?.toLowerCase().includes('.mov') || activeSrc?.toLowerCase().includes('.mp4');
+
+    const handleNavigate = async (dir: number) => {
+        if (isNavigating || galleryMedia.length <= 1) return;
+        const newIndex = (galleryIndex + dir + galleryMedia.length) % galleryMedia.length;
+        const urlToLoad = galleryMedia[newIndex];
+        if (!urlToLoad) return;
+
+        setIsNavigating(true);
+        setGalleryIndex(newIndex);
+
+        const fileId = extractFileId(urlToLoad);
+        if (!fileId) {
+            setImageSrc(urlToLoad);
+            setIsNavigating(false);
+            return;
+        }
+
+        if (imageCache.has(fileId)) {
+            setImageSrc(imageCache.get(fileId)!);
+            setIsNavigating(false);
+            return;
+        }
+
+        try {
+            const res = await fetchImageBatch(fileId);
+            const mime = res.mimeType;
+            const dataUrl = `data:${mime};base64,${res.base64}`;
+            imageCache.set(fileId, dataUrl);
+            setImageSrc(dataUrl);
+        } catch (err) {
+            console.error("Gallery nav failed", err);
+        } finally {
+            setIsNavigating(false);
+        }
+    };
+
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -89,16 +140,16 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                 <StarRating rating={rating} onChange={onUpdateRating} />
             </div>
 
-            {isVideo ? (
+            {activeIsVideo ? (
                 <video 
-                    src={src} 
+                    src={activeSrc} 
                     controls 
                     autoPlay 
                     loop 
                     className="max-w-[95vw] max-h-[95vh] rounded-2xl shadow-2xl"
                 />
             ) : (
-                <img src={src} alt="" draggable={false}
+                <img src={activeSrc} alt="" draggable={false}
                     className="max-w-[95vw] max-h-[95vh] object-contain select-none transition-transform duration-100"
                     style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
                     onClick={(e) => e.stopPropagation()}
@@ -107,6 +158,31 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
                 />
+            )}
+
+            {/* Navigation Controls */}
+            {galleryMedia.length > 1 && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-10">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleNavigate(-1); }}
+                        disabled={isNavigating}
+                        className="w-16 h-16 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-all pointer-events-auto disabled:opacity-20"
+                    >
+                        <ChevronLeft size={32} />
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleNavigate(1); }}
+                        disabled={isNavigating}
+                        className="w-16 h-16 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-all pointer-events-auto disabled:opacity-20"
+                    >
+                        <ChevronRight size={32} />
+                    </button>
+                    
+                    {/* Counter Indicator */}
+                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 px-6 py-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-[10px] font-black tracking-widest text-white/40 uppercase">
+                        {galleryIndex + 1} / {galleryMedia.length}
+                    </div>
+                </div>
             )}
         </div>,
         document.body
@@ -441,8 +517,20 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
     const [showConfirmRemove, setShowConfirmRemove] = useState(false);
     const [removeReason, setRemoveReason] = useState('');
     const [showFullscreen, setShowFullscreen] = useState(false);
-
     const { imageUrl, isVideo, isLoading: imgLoading } = useItemImage(n);
+    const setActiveGalleryMedia = useSetAtom(ActiveGalleryMediaAtom);
+    const setActiveGalleryIndex = useSetAtom(ActiveGalleryIndexAtom);
+    const setImageSrc = useSetAtom(ImageSrcAtom);
+
+    const mediaUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+    const galleryItems = [n.generatedPngUrl, ...mediaUrls].filter(Boolean) as string[];
+
+    const handleOpenFullscreen = () => {
+        setActiveGalleryMedia(galleryItems);
+        setActiveGalleryIndex(0);
+        setImageSrc(imageUrl || galleryItems[0] || '');
+        setShowFullscreen(true);
+    };
 
     return (
         <div className="fixed inset-0 z-100 flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-500" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -504,7 +592,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                     </div>
 
                     <div className="absolute top-10 right-10 flex gap-4">
-                         <button onClick={() => setShowFullscreen(true)} className="w-14 h-14 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-all">
+                         <button onClick={handleOpenFullscreen} className="w-14 h-14 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white transition-all">
                              <Maximize2 size={24} />
                          </button>
                     </div>
