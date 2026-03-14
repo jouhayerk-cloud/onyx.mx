@@ -36,6 +36,7 @@ export const workflowStepAtom = atom<
   | 'idle'
   | 'processing'
   | 'fullscreenEdit'
+  | 'fullscreenView'
   | 'formReview'
   | 'fastEntry'
   | 'fastEntryPendingUpload'

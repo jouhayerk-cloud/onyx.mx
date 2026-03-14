@@ -216,6 +216,20 @@ export function ExtraModeControls() {
     }
   };
 
+  if (workflowStep === 'fullscreenView') {
+    return (
+      <div className="flex justify-center p-4 border-t border-(--border-color) bg-black/40 backdrop-blur-md">
+        <button 
+          onClick={() => setWorkflowStep('idle')} 
+          className="button secondary px-8 hover:bg-white/10 transition-all font-bold uppercase tracking-widest text-xs"
+        >
+          <svg className="w-4 h-4 inline-block mr-2"><use href="#x" /></svg>
+          Close Viewer
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 border-t border-[var(--border-color)] bg-[var(--sidebar-bg)]">
       <div className="flex items-center gap-4">
