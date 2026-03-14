@@ -6,7 +6,7 @@ import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom } fro
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, handleFileUpload, formatCurrency } from '../../lib/utils';
+import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL } from '../../lib/utils';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
@@ -124,11 +124,13 @@ export const UploadWizard: React.FC = () => {
 
     const set = (k: keyof WizardState, v: any) => setState(prev => ({ ...prev, [k]: v }));
 
-    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             set('media', file);
-            set('mediaPreview', URL.createObjectURL(file));
+            const type = file.type.startsWith('video/') ? 'video' : 'image';
+            const preview = await readFileAsDataURL(file, type);
+            set('mediaPreview', preview);
         }
     };
 
@@ -350,7 +352,7 @@ export const UploadWizard: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="relative group/media cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*" />
+                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" />
                                         {state.mediaPreview ? (
                                             <div className="w-full h-40 rounded-[32px] overflow-hidden border border-(--border-color) group-hover:border-(--main-color)/50 transition-all shadow-2xl">
                                                 <img src={state.mediaPreview} alt="Preview" className="w-full h-full object-cover" />

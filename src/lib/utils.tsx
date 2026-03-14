@@ -108,11 +108,58 @@ export function getCleanImageUrl(url: string | null | undefined): string | null 
 
   const fileId = extractFileId(clean);
   if (fileId && clean.toLowerCase().includes('drive.google.com')) {
-
+    // If it's a known video extension, we might prefer a direct link or thumb
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
 
   return clean;
+}
+
+export const isVideoMime = (mime: string) => mime?.startsWith('video/');
+export const isVideoFile = (fileName: string) => {
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  return ['mov', 'mp4', 'webm', 'ogg', 'm4v'].includes(ext || '');
+};
+
+export async function generateVideoThumbnail(videoSrc: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = videoSrc;
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+
+    const timeout = setTimeout(() => {
+      video.src = '';
+      reject(new Error('Thumbnail generation timeout'));
+    }, 5000);
+
+    video.onloadedmetadata = () => {
+      video.currentTime = 0.5;
+    };
+
+    video.onseeked = () => {
+      clearTimeout(timeout);
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL('image/jpeg', 0.7);
+        video.src = '';
+        resolve(data);
+      } else {
+        reject(new Error('Canvas context failed'));
+      }
+    };
+
+    video.onerror = (e) => {
+      clearTimeout(timeout);
+      reject(new Error('Video load failed for thumbnail'));
+    };
+  });
 }
 
 export const imageCache = new Map<string, string>();
@@ -397,7 +444,19 @@ export function createCurvePath(points: { x: number; y: number }[]): string {
 }
 
 export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = false) =>
-  new Promise<string>((resolve, reject) => {
+  new Promise<string>(async (resolve, reject) => {
+    if (type === 'video') {
+      try {
+        const url = URL.createObjectURL(file);
+        const thumb = await generateVideoThumbnail(url);
+        resolve(thumb);
+      } catch (e) {
+        console.warn("Video thumbnail failed:", e);
+        resolve(URL.createObjectURL(file));
+      }
+      return;
+    }
+
     if (forAI && type === 'image') {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -417,7 +476,6 @@ export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = f
       };
       reader.onerror = () => reject(new Error('File reading failed'));
     } else {
-
       resolve(URL.createObjectURL(file));
     }
   });

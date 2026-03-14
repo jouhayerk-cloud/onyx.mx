@@ -47,7 +47,7 @@ const DetailRow = ({ label, value }: { label: string; value: any }) => {
 };
 
 const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
-  const { imageUrl, isLoading } = useItemImage(data);
+  const { imageUrl, isVideo, isLoading } = useItemImage(data);
   const exchangeRate = useAtomValue(exchangeRateAtom);
   const dimensions = [data.widthCm, data.heightCm, data.lengthCm].filter(Boolean).join(' x ');
 
@@ -127,7 +127,20 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   return (
     <div className="space-y-4">
       {isLoading ? <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center"><LoadingIndicator /></div> :
-        imageUrl && <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
+        imageUrl && (
+          isVideo ? (
+            <video
+              src={imageUrl}
+              controls
+              autoPlay
+              muted
+              loop
+              className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20 shadow-lg"
+            />
+          ) : (
+            <img src={imageUrl} alt={data.shape} className="w-full h-auto max-h-64 object-contain rounded-lg bg-black/20" />
+          )
+        )
       }
       <div className="flex gap-2">
         <DetailRow label="Vendor" value={data.itemId} />

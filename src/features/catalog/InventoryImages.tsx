@@ -30,7 +30,7 @@ import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { DetectTypes, InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, extractFileId, resizeImage, generateVideoThumbnail } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const StatusMarkers = ({
@@ -163,17 +163,55 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   useEffect(() => {
     if (!isVisible) return;
 
+    let isActive = true;
     setIsLoading(true);
-    const rawUrl = item.data.generatedPngUrl || (item.imageUrl ? String(item.imageUrl).split(',')[0].trim() : null);
-    const firstUrl = getCleanImageUrl(rawUrl);
 
-    if (!firstUrl) {
+    const rawUrl = item.data.generatedPngUrl || (item.imageUrl ? String(item.imageUrl).split(',')[0].trim() : null);
+    const fileId = extractFileId(rawUrl);
+
+    if (!fileId) {
       setIsLoading(false);
       return;
     }
 
-    setImageDataUrl(firstUrl);
-    setIsLoading(false);
+    if (imageCache.has(fileId)) {
+      setImageDataUrl(imageCache.get(fileId)!);
+      setIsLoading(false);
+      return;
+    }
+
+    fetchImageBatch(fileId)
+      .then(async (data) => {
+        if (!isActive) return;
+        const mime = data.mimeType;
+        const dataUrl = `data:${mime};base64,${data.base64}`;
+        let finalThumb = dataUrl;
+
+        try {
+          if (mime.startsWith('video/')) {
+            // Generate video thumbnail in browser
+            finalThumb = await generateVideoThumbnail(dataUrl);
+          } else {
+            // Generate image thumbnail (resize to small size for grid)
+            finalThumb = await resizeImage(dataUrl, 512); 
+          }
+        } catch (e) {
+          console.warn("[Grid] Thumb gen failed for " + fileId, e);
+        }
+
+        if (isActive) {
+          imageCache.set(fileId, finalThumb);
+          setImageDataUrl(finalThumb);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load grid item image:", err);
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
+      });
+
+    return () => { isActive = false; };
   }, [isVisible, item.imageUrl, item.data.generatedPngUrl]);
 
   const handleClick = () => {
