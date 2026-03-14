@@ -21,17 +21,68 @@ import {
   ShareStreamAtom,
   VideoRefAtom,
   workflowStepAtom,
+  ActiveGalleryMediaAtom,
+  ActiveGalleryIndexAtom,
 } from '../lib/atoms';
-import {segmentationColors} from '../lib/consts';
-import {BoundingBoxMaskType} from '../lib/Types';
-import {createCurvePath} from '../lib/utils';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { segmentationColors } from '../lib/consts';
+import { BoundingBoxMaskType } from '../lib/Types';
+import { createCurvePath, extractFileId, fetchImageBatch, resizeImage, generateVideoThumbnail, imageCache } from '../lib/utils';
 
 export function Content() {
   const [imageSrc] = useAtom(ImageSrcAtom);
   const [stream] = useAtom(ShareStreamAtom);
   const [videoRef] = useAtom(VideoRefAtom);
   const [workflowStep] = useAtom(workflowStepAtom);
+  const [galleryMedia] = useAtom(ActiveGalleryMediaAtom);
+  const [galleryIndex, setGalleryIndex] = useAtom(ActiveGalleryIndexAtom);
+  const setImageSrc = useSetAtom(ImageSrcAtom);
   const setImageDimensions = useSetAtom(imageDimensionsAtom);
+  const [isNavigating, setIsNavigating] = React.useState(false);
+
+  async function handleNavigate(dir: number) {
+        if (isNavigating) return;
+        const newIndex = (galleryIndex + dir + galleryMedia.length) % galleryMedia.length;
+        const urlToLoad = galleryMedia[newIndex];
+        if (!urlToLoad) return;
+
+        setIsNavigating(true);
+        setGalleryIndex(newIndex);
+
+        const fileId = extractFileId(urlToLoad);
+        if (!fileId) {
+            setImageSrc(urlToLoad);
+            setIsNavigating(false);
+            return;
+        }
+
+        if (imageCache.has(fileId)) {
+            setImageSrc(imageCache.get(fileId)!);
+            setIsNavigating(false);
+            return;
+        }
+
+        try {
+            const res = await fetchImageBatch(fileId);
+            const mime = res.mimeType;
+            const isVid = mime.startsWith('video/');
+            const dataUrl = `data:${mime};base64,${res.base64}`;
+            
+            let finalUrl = dataUrl;
+            if (isVid) {
+                // For playback we want the video data url
+            } else {
+                try { finalUrl = await resizeImage(dataUrl, 1600); } catch(e) {}
+            }
+            
+            imageCache.set(fileId, finalUrl);
+            setImageSrc(finalUrl);
+        } catch (err) {
+            console.error("Gallery navigation failed", err);
+        } finally {
+            setIsNavigating(false);
+        }
+    }
 
   const isVideo = imageSrc?.startsWith('data:video/') || imageSrc?.toLowerCase().includes('.mov') || imageSrc?.toLowerCase().includes('.mp4');
 
@@ -525,6 +576,48 @@ export function Content() {
               />
             ))}
         </svg>
+
+        {/* Gallery Navigation Controls (Fullscreen Only) */}
+        {workflowStep === 'fullscreenView' && galleryMedia.length > 1 && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-8 z-50">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleNavigate(-1);
+                    }}
+                    disabled={isNavigating}
+                    className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
+                >
+                    <ChevronLeft size={32} strokeWidth={3} />
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleNavigate(1);
+                    }}
+                    disabled={isNavigating}
+                    className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
+                >
+                    <ChevronRight size={32} strokeWidth={3} />
+                </button>
+
+                {/* Counter & Indicator */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full flex items-center gap-4 pointer-events-auto">
+                    <div className="flex gap-1.5">
+                        {galleryMedia.map((_, i) => (
+                            <div 
+                                key={i}
+                                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === galleryIndex ? 'w-4 bg-(--main-color)' : 'bg-white/20'}`}
+                            />
+                        ))}
+                    </div>
+                    <span className="text-[10px] font-black tracking-widest text-white/40 uppercase">
+                        {galleryIndex + 1} / {galleryMedia.length}
+                    </span>
+                    {isNavigating && <Loader2 className="w-3 h-3 text-(--main-color) animate-spin" />}
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

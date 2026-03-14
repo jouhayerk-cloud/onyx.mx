@@ -175,12 +175,33 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       return;
     }
 
-    if (imageCache.has(fileId)) {
-      const cached = imageCache.get(fileId)!;
+    const thumbKey = fileId + '_thumb';
+    if (imageCache.has(thumbKey)) {
+      const cached = imageCache.get(thumbKey)!;
       setImageDataUrl(cached);
-      setIsVideo(cached.startsWith('data:video/') || rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
+      setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
       setIsLoading(false);
       return;
+    }
+
+    if (imageCache.has(fileId)) {
+        const cached = imageCache.get(fileId)!;
+        if (cached.startsWith('data:video/')) {
+            setIsVideo(true);
+            generateVideoThumbnail(cached).then(thumb => {
+                if (isActive) {
+                    setImageDataUrl(thumb);
+                    imageCache.set(thumbKey, thumb);
+                }
+            }).catch(() => {
+                if (isActive) setImageDataUrl(cached);
+            });
+        } else {
+            setImageDataUrl(cached);
+            setIsVideo(false);
+        }
+        setIsLoading(false);
+        return;
     }
 
     fetchImageBatch(fileId)
@@ -205,7 +226,12 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
         }
 
         if (isActive) {
-          imageCache.set(fileId, finalThumb);
+          if (mime.startsWith('video/')) {
+             imageCache.set(fileId, dataUrl); // Still cache the full video
+             imageCache.set(thumbKey, finalThumb); // Cache thumb separately
+          } else {
+             imageCache.set(fileId, finalThumb); // Images can shared the same key if it's high res enough
+          }
           setImageDataUrl(finalThumb);
         }
       })
