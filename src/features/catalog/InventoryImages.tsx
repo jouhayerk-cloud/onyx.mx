@@ -133,6 +133,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   exchangeRate,
 }) => {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -175,7 +176,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
     }
 
     if (imageCache.has(fileId)) {
-      setImageDataUrl(imageCache.get(fileId)!);
+      const cached = imageCache.get(fileId)!;
+      setImageDataUrl(cached);
+      setIsVideo(cached.startsWith('data:video/') || rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
       setIsLoading(false);
       return;
     }
@@ -189,9 +192,11 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
 
         try {
           if (mime.startsWith('video/')) {
+            setIsVideo(true);
             // Generate video thumbnail in browser
             finalThumb = await generateVideoThumbnail(dataUrl);
           } else {
+            setIsVideo(false);
             // Generate image thumbnail (resize to small size for grid)
             finalThumb = await resizeImage(dataUrl, 512); 
           }
@@ -239,7 +244,18 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       disabled={isLoading}>
       {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
       {error && <div className="text-red-500">{error}</div>}
-      {imageDataUrl && <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />}
+      {imageDataUrl && (
+        <>
+          <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />
+          {isVideo && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:scale-125 transition-transform duration-500">
+                <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+              </div>
+            </div>
+          )}
+        </>
+      )}
       {!isLoading && !imageDataUrl && !error && (
         <div className="absolute top-2 right-2 z-10 text-(--secondary-color)">
           <OnyxMiniLogo />
