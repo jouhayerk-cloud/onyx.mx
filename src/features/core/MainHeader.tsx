@@ -52,6 +52,7 @@ import {
     paymentFilterBarModeAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
+import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
@@ -182,6 +183,7 @@ const InventoryBar: React.FC = () => {
     const activeVendors = useAtomValue(activeVendorsAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const inventory = useAtomValue(inventoryAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
     const [isExporting, setIsExporting] = useState(false);
 
     // Statuses that are store/catalog items — excluded from the export
@@ -231,6 +233,7 @@ const InventoryBar: React.FC = () => {
 
                 const rows = items.map(item => {
                     const d = item.data as any;
+                    const norm = normalizeInventoryData(d);
                     const itemIdStr = String(d.item_id || d.itemId || '');
                     const price = parseFloat(String(d.price_mxn || d.price || '0')) || 0;
                     const qty = parseFloat(String(d.quantity || '1')) || 1;
@@ -239,6 +242,10 @@ const InventoryBar: React.FC = () => {
                     if (payReq === 'true' || payReq === true) payStatus = 'Paid';
                     else if (String(payReq).startsWith('requested')) payStatus = payReq;
                     else if (String(payReq).startsWith('paid')) payStatus = payReq;
+
+                    // Compute codes live using the workbook exchange rate
+                    const computed = calculateCodesAndPrices(norm, exchangeRate, norm.workbook || '326');
+
                     return {
                         'Tag ID': itemIdStr,
                         'Item #': d.item_number || d.itemNumber || '',
@@ -250,14 +257,15 @@ const InventoryBar: React.FC = () => {
                         'Qty': qty,
                         'Price (MXN)': price,
                         'Subtotal (MXN)': +(price * qty).toFixed(2),
+                        'ACQ Code': computed.bookAqCode,
+                        'LND Code': computed.bookLandCode,
+                        'Retail (USD)': computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
+                        'Pay Status': payStatus,
                         'Weight (kg)': parseFloat(String(d.weight_kg || d.weightKg || '0')) || '',
                         'H (cm)': parseFloat(String(d.height_cm || d.heightCm || '0')) || '',
                         'W (cm)': parseFloat(String(d.width_cm || d.widthCm || '0')) || '',
                         'L (cm)': parseFloat(String(d.length_cm || d.lengthCm || '0')) || '',
-                        'Pay Status': payStatus,
                         'Workbook': d.workbook || '',
-                        'ACQ Code': d.book_aq_code || d.bookAqCode || '',
-                        'Land Code': d.box_land_code || d.bookLanded || '',
                         'Notes': d.notes || '',
                     };
                 });
@@ -274,16 +282,18 @@ const InventoryBar: React.FC = () => {
                     'Qty': totalQty,
                     'Price (MXN)': '',
                     'Subtotal (MXN)': +totalMXN.toFixed(2),
-                    'Weight (kg)': '', 'H (cm)': '', 'W (cm)': '', 'L (cm)': '',
-                    'Pay Status': '', 'Workbook': '', 'ACQ Code': '', 'Land Code': '', 'Notes': '',
+                    'ACQ Code': '', 'LND Code': '', 'Retail (USD)': '',
+                    'Pay Status': '', 'Weight (kg)': '', 'H (cm)': '', 'W (cm)': '', 'L (cm)': '',
+                    'Workbook': '', 'Notes': '',
                 } as any);
 
                 const ws = XLSX.utils.json_to_sheet(rows);
                 ws['!cols'] = [
                     { wch: 20 }, { wch: 10 }, { wch: 13 }, { wch: 14 }, { wch: 14 },
-                    { wch: 12 }, { wch: 36 }, { wch: 6 }, { wch: 13 }, { wch: 15 },
+                    { wch: 12 }, { wch: 36 }, { wch: 6 }, { wch: 14 }, { wch: 15 },
+                    { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 13 },
                     { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
-                    { wch: 16 }, { wch: 10 }, { wch: 13 }, { wch: 13 }, { wch: 28 },
+                    { wch: 12 }, { wch: 28 },
                 ];
 
                 // Sheet name max 31 chars, must be unique

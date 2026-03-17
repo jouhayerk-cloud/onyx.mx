@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 
-const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
+const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
 const normalizeSubcat = (s: string | null | undefined): string => {

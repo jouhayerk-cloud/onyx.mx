@@ -13,6 +13,13 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.13.4 — 2026-03-17
+### Fixed
+- **Float precision [fix]:** Prices stored as whole MXN pesos now correctly round at each calculation step (`round2 = Math.round(x * 100) / 100`) inside `calculateCodesAndPrices`, preventing IEEE 754 drift from producing long decimal tails in USD conversions, cypher codes, and retail prices.
+- **Payments display [fix]:** `fmtMXN` in TrackingPaymentsView now clamps to `maximumFractionDigits: 2`, eliminating floating-point artifacts like `$1,500.000000001` in the Payments view.
+### Added
+- **Inventory Export (codes) [feat]:** ACQ Code, LND Code, and Retail (USD) are now **computed live** using the workbook exchange rate via `calculateCodesAndPrices`, replacing stale DB-stored values. Columns reordered: Tag ID, Item #, Status, Shape, Material, Color, Description, Qty, Price (MXN), Subtotal (MXN), ACQ Code, LND Code, Retail (USD), Pay Status, Weight, Dimensions, Workbook, Notes.
+
 ## v1.13.3 — 2026-03-17
 ### Added
 - **Inventory Export [feat]:** Added XLSX export button to the Inventory top bar. Exports all acquisition and production items (excludes Available/catalog/store items) as `Onyx_Inventory_YYYY-MM-DD.xlsx`. File contains **one sheet per vendor**, sorted by Tag ID, with columns: Tag ID, Item #, Status, Shape, Material, Color, Description, Qty, Price (MXN), Subtotal (MXN), Weight, Dimensions (H/W/L cm), Pay Status, Workbook, ACQ Code, Land Code, Notes. Each sheet includes a totals row at the bottom.
