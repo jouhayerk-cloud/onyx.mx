@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2 } from 'lucide-react';
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
@@ -152,72 +152,54 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         return (
             <div className="flex flex-col gap-1">
                 {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-center gap-4 bg-black/20 hover:bg-black/40 border border-white/5 p-2 pr-4 rounded-xl transition-all group ${isExpanded ? 'border-(--main-color)/30 bg-black/40 shadow-lg' : ''}`}>
-                    {/* Thumbnail â€” clickable for fullscreen */}
-                    <div className={`w-12 h-12 rounded-lg overflow-hidden bg-black/40 grow-0 shrink-0 border border-white/10 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
+                <div className={`flex items-center p-3.5 bg-(--stitch-card-bg) border border-white/5 rounded-xl hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
+                    <div className={`w-[60px] h-[60px] rounded-lg overflow-hidden bg-black/40 shrink-0 mr-5 border border-white/5 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
                         {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full p-2.5 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                     </div>
 
-                    {/* Meta & Description */}
-                    <div className="grow min-w-0 flex flex-col justify-center max-w-[300px]">
-                        <div className="flex items-center gap-2">
-                            <div className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black text-black leading-none" style={{ backgroundColor: vendorColor }}>
-                                {vendorPrefix}
-                            </div>
-                            <span className="text-[10px] font-mono font-bold text-white/40 tracking-tighter">{norm.itemNumber}</span>
-                            <span className="text-xs font-black text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</span>
-                            <span className="px-1.5 py-0.5 rounded-[4px] text-[8px] font-black bg-white/10 text-white/50 whitespace-nowrap">QTY: {norm.quantity || 1}</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[9px] text-white/20 font-medium uppercase tracking-tighter">{dimensionsStr || 'NO DIMENSIONS'} Â· {weightStr || 'NO WEIGHT'}</span>
-                            <div className={`w-1.5 h-1.5 rounded-full ${statusClass === 'GREEN' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : statusClass === 'YELLOW' ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
+                    <div className="grow min-w-0 flex flex-col justify-center">
+                        <h3 className="text-[15px] font-semibold text-white mb-1 truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                        <div className="flex items-center gap-4 text-[13px] text-white/40">
+                            <span>Qty: <span className="text-white/80">{norm.quantity || 1}</span></span>
+                            <span>Dim: <span className="text-white/80 shrink-0 truncate max-w-[120px]">{dimensionsStr || 'â€”'}</span></span>
+                            <span>Wgt: <span className="text-white/80">{weightStr || 'â€”'}</span></span>
                         </div>
                     </div>
 
-                    {/* Data Dense Center â€” removed BOOK column */}
-                    <div className="hidden md:flex items-center gap-4 grow justify-around border-x border-white/5 px-4 max-w-[400px]">
-                        <div className="flex flex-col min-w-[100px]">
-                            <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 leading-none">TAG ID</span>
-                            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-[4px] text-black w-fit whitespace-nowrap" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span>
+                    <div className="flex items-center gap-10 mr-4">
+                        <div className="flex flex-col w-32 shrink-0">
+                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">Tag ID</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-[0_0_10px_rgba(0,0,0,0.3)] w-fit" style={{ backgroundColor: vendorColor }}>
+                                {calculated.bookBardcode || 'N/A'}
+                            </span>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="flex flex-col items-center">
-                                <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">AQ CODE</span>
-                                <span className="text-[11px] font-mono font-black text-(--main-color)/80 shadow-sm">{calculated.bookAqCode || 'â€”'}</span>
-                            </div>
-                            <div className="flex flex-col items-center">
-                                <span className="text-[7px] font-black text-white/15 uppercase tracking-[0.25em] mb-1 text-center leading-none">LD CODE</span>
-                                <span className="text-[11px] font-mono font-black text-yellow-500/80 shadow-sm">{calculated.bookLandCode || 'â€”'}</span>
-                            </div>
+
+                        <div className="flex flex-col w-12 shrink-0">
+                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">AQ Code</span>
+                            <span className="text-[15px] text-white/80 font-mono">{calculated.bookAqCode || 'â€”'}</span>
+                        </div>
+
+                        <div className="flex flex-col w-12 shrink-0">
+                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">LD Code</span>
+                            <span className="text-[15px] text-white/80 font-mono">{calculated.bookLandCode || 'â€”'}</span>
+                        </div>
+
+                        <div className="flex flex-col w-24 shrink-0">
+                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">Acq Cost</span>
+                            <span className="text-[15px] font-medium text-white">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
                         </div>
                     </div>
 
-                    {/* Pricing & Actions */}
-                    <div className="flex items-center gap-6 shrink-0 ml-auto">
-                        <div className="flex flex-col items-end mr-2">
-                            <span className="text-[8px] font-black text-white/15 uppercase tracking-widest mb-0.5">ACQ COST</span>
-                            <span className="text-base font-mono font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
-                        </div>
-                        {/* Free-floating icon actions — truly bare SVGs */}
-                        <div className="flex gap-4 shrink-0 px-2 items-center">
-                            {isEditable && (
-                                <div
-                                    onClick={(e) => { e.stopPropagation(); handleEdit(e as any); }}
-                                    className="cursor-pointer"
-                                    title="Edit Item"
-                                >
-                                    <Edit2 className="w-4 h-4 text-white/50 hover:text-(--main-color) transition-colors" />
-                                </div>
-                            )}
-                            <div
-                                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                                className="cursor-pointer"
-                                title="Item Details"
-                            >
-                                <ChevronDown className={`w-4 h-4 transition-all duration-300 ${isExpanded ? 'rotate-180 text-(--main-color)' : 'text-white/50 hover:text-white'}`} />
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-2 ml-2 text-white/40 shrink-0">
+                        {isEditable && (
+                            <button onClick={(e) => handleEdit(e)} className="p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                                <Pencil className="w-4 h-4 stroke-2" />
+                            </button>
+                        )}
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors ${isExpanded ? 'text-(--main-color)' : ''}`}>
+                            <Maximize2 className={`w-4 h-4 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
                     </div>
                 </div>
                 {isExpanded && (
@@ -640,17 +622,22 @@ export const UnifiedInventoryView = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
 
-            {/* Simple Types/Count Header */}
-            <div className="flex justify-between items-center px-4 py-2 mt-4 mx-2 shrink-0 z-30 relative">
-                <div className="flex gap-6 items-center">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-0.5">Types</span>
-                        <span className="text-sm font-mono font-black text-(--text-color) leading-none">{filteredItems.length.toLocaleString('en-US')}</span>
+            {/* Stitch-inspired Sub-Header */}
+            <div className="flex items-end gap-8 px-4 py-6 mt-4 mx-2 shrink-0 z-30 relative">
+                <div>
+                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+                        Types
                     </div>
-                    <div className="w-px h-6 bg-(--border-color)" />
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 mb-0.5">Count</span>
-                        <span className="text-sm font-mono font-black text-[#6BCEBB] leading-none">{totalCount.toLocaleString('en-US')}</span>
+                    <div className="text-[2.5rem] font-bold text-white leading-none tracking-tighter">
+                        {filteredItems.length.toLocaleString('en-US')}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+                        Count
+                    </div>
+                    <div className="text-[2.5rem] font-bold text-[#6BCEBB] leading-none tracking-tighter">
+                        {totalCount.toLocaleString('en-US')}
                     </div>
                 </div>
             </div>

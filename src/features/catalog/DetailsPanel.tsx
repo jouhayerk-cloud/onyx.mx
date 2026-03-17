@@ -2,7 +2,7 @@
 
 import { ai } from '@/lib/ai';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import {
@@ -26,7 +26,7 @@ import {
 } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { useItemImage, useTranslation } from '../../lib/hooks';
-import { Maximize2, PackageSearch, Edit3, Image as ImageIcon } from 'lucide-react';
+import { Maximize2, PackageSearch, Edit3, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { InventoryForm, type FormState } from '../../components/InventoryForm';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { ProductPoster } from '../../components/ProductPoster';
@@ -65,41 +65,57 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
   const setActiveGalleryMedia = useSetAtom(ActiveGalleryMediaAtom);
   const setActiveGalleryIndex = useSetAtom(ActiveGalleryIndexAtom);
 
-  const mediaUrls = data.mediaUrls ? data.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [];
+  const mediaUrls = React.useMemo(() => data.mediaUrls ? data.mediaUrls.split(',').map(u => u.trim()).filter(Boolean) : [], [data.mediaUrls]);
+  const fullGallery = React.useMemo(() => {
+    const gallery = [];
+    if (data.generatedPngUrl) gallery.push(data.generatedPngUrl);
+    mediaUrls.forEach(u => gallery.push(u));
+    return gallery;
+  }, [data.generatedPngUrl, mediaUrls]);
+
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [activeMediaUrl, setActiveMediaUrl] = useState<string | null>(null);
   const [activeIsVideo, setActiveIsVideo] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(false);
 
+  // Autoplay on idle
+  useEffect(() => {
+    if (fullGallery.length <= 1) return;
+    const interval = setInterval(() => {
+        setActiveMediaIndex(prev => (prev + 1) % fullGallery.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fullGallery.length]);
+
   React.useEffect(() => {
-    const urlToLoad = activeMediaIndex === 0 && data.generatedPngUrl ? data.generatedPngUrl : mediaUrls[activeMediaIndex];
+    const urlToLoad = fullGallery[activeMediaIndex];
     if (!urlToLoad) return;
 
     const fileId = extractFileId(urlToLoad);
-    if (!fileId) return;
+    if (!fileId) {
+        setActiveMediaUrl(urlToLoad);
+        setActiveIsVideo(/\.(mov|mp4|webm|m4v)$/i.test(urlToLoad.split(/[#?]/)[0]));
+        return;
+    }
 
     let isActive = true;
     setIsMediaLoading(true);
 
     if (imageCache.has(fileId)) {
       const cached = imageCache.get(fileId)!;
-      const cachedIsVideo = cached.startsWith('data:video/');
-      const expectedVideo = urlToLoad.toLowerCase().includes('.mov') || urlToLoad.toLowerCase().includes('.mp4');
+      const cachedIsVideo = cached.startsWith('data:video/') || /\.(mov|mp4|webm|m4v)$/i.test(urlToLoad.split(/[#?]/)[0]);
       
-      // Only use cache if it's the expected video or we don't expect a video
-      if (cachedIsVideo || !expectedVideo) {
-        setActiveMediaUrl(cached);
-        setActiveIsVideo(cachedIsVideo);
-        setIsMediaLoading(false);
-        return;
-      }
+      setActiveMediaUrl(cached);
+      setActiveIsVideo(cachedIsVideo);
+      setIsMediaLoading(false);
+      return;
     }
 
     fetchImageBatch(fileId)
       .then(async (res) => {
         if (!isActive) return;
         const mime = res.mimeType;
-        const isVid = mime.startsWith('video/');
+        const isVid = mime.startsWith('video/') || /\.(mov|mp4|webm|m4v)$/i.test(urlToLoad.split(/[#?]/)[0]);
         const dataUrl = `data:${mime};base64,${res.base64}`;
         
         let finalUrl = dataUrl;
@@ -116,33 +132,13 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
       });
 
     return () => { isActive = false; };
-  }, [activeMediaIndex, data.mediaUrls, data.generatedPngUrl]);
+  }, [activeMediaIndex, fullGallery]);
 
   const handleOpenFullscreen = () => {
     if (!activeMediaUrl) return;
     
-    // Pass the entire gallery to the fullscreen viewer
-    const galleryItems = [
-      data.generatedPngUrl,
-      ...mediaUrls
-    ].filter(Boolean) as string[];
-
-    setActiveGalleryMedia(galleryItems);
-    setActiveGalleryIndex(activeMediaIndex + (data.generatedPngUrl ? 0 : 0)); // Simplified: better to just map activeMediaIndex correctly
-    
-    // We also need to map the activeMediaIndex to the galleryItems array correctly
-    const actualIndex = data.generatedPngUrl ? activeMediaIndex : activeMediaIndex; 
-    // Wait, let's be more precise:
-    let currentGalleryIndex = 0;
-    const fullGallery = [];
-    if (data.generatedPngUrl) fullGallery.push(data.generatedPngUrl);
-    mediaUrls.forEach(u => fullGallery.push(u));
-    
-    currentGalleryIndex = activeMediaIndex;
-
     setActiveGalleryMedia(fullGallery);
-    setActiveGalleryIndex(currentGalleryIndex);
-    
+    setActiveGalleryIndex(activeMediaIndex);
     setImageSrc(activeMediaUrl);
     setWorkflowStep('fullscreenView');
   };
@@ -226,6 +222,7 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
                 controls
                 autoPlay
                 muted
+                playsInline
                 loop
                 className="w-full h-auto max-h-80 object-contain rounded-xl bg-black/40 shadow-2xl border border-white/10"
               />
@@ -241,6 +238,33 @@ const FullDetailsDisplay = ({ data }: { data: InventoryItemData }) => {
                   <Maximize2 size={16} className="text-white" />
                </div>
             </div>
+            
+            {/* Navigation Arrows Overlay */}
+            {fullGallery.length > 1 && (
+              <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveMediaIndex(prev => (prev - 1 + fullGallery.length) % fullGallery.length); }}
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-black pointer-events-auto shadow-lg"
+                >
+                  <ChevronLeft size={16} strokeWidth={3} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActiveMediaIndex(prev => (prev + 1) % fullGallery.length); }}
+                  className="p-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-black pointer-events-auto shadow-lg"
+                >
+                  <ChevronRight size={16} strokeWidth={3} />
+                </button>
+              </div>
+            )}
+            
+            {/* Dots */}
+            {fullGallery.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                {fullGallery.map((_, i) => (
+                  <div key={i} className={`h-1 rounded-full transition-all ${i === activeMediaIndex ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/40'}`} />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
            <div className="aspect-square w-full bg-black/20 rounded-lg flex items-center justify-center text-white/20">

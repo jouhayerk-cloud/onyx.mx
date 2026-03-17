@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { vendors } from '../lib/consts';
 import { useTranslation } from '../lib/hooks';
 import { InventoryItemData, UploadedFile } from '../lib/Types';
-import { readFileAsDataURL } from '../lib/utils';
+import { readFileAsDataURL, extractFileId, fetchImageBatch, imageCache, generateVideoThumbnail, resizeImage } from '../lib/utils';
+import { Play, FileVideo, ImageIcon, Plus } from 'lucide-react';
 
 export type FormState = {
   itemId: string;
@@ -97,6 +98,75 @@ const FormTextarea = ({
   </div>
 );
 
+const DriveThumbnail = ({ url }: { url: string }) => {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fileId = extractFileId(url);
+    if (!fileId) {
+      setDataUrl(url);
+      setIsVideo(url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.mp4'));
+      return;
+    }
+
+    const thumbKey = fileId + '_thumb';
+    if (imageCache.has(thumbKey)) {
+      setDataUrl(imageCache.get(thumbKey)!);
+      setIsVideo(url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.mp4'));
+      return;
+    }
+
+    let active = true;
+    setIsLoading(true);
+    fetchImageBatch(fileId)
+      .then(async (res) => {
+        if (!active) return;
+        const mime = res.mimeType;
+        const rawBase64 = `data:${mime};base64,${res.base64}`;
+        let finalUrl = rawBase64;
+        const isVid = mime.startsWith('video/');
+        
+        if (isVid) {
+          try {
+            finalUrl = await generateVideoThumbnail(rawBase64);
+            imageCache.set(fileId, rawBase64);
+            imageCache.set(thumbKey, finalUrl);
+          } catch (e) { finalUrl = rawBase64; }
+        } else {
+          try {
+            finalUrl = await resizeImage(rawBase64, 200);
+            imageCache.set(fileId, finalUrl);
+          } catch (e) {}
+        }
+        
+        if (active) {
+          setDataUrl(finalUrl);
+          setIsVideo(isVid);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (active) setIsLoading(false); });
+
+    return () => { active = false; };
+  }, [url]);
+
+  if (isLoading) return <div className="h-14 w-14 bg-white/5 rounded-lg flex items-center justify-center animate-pulse"><div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" /></div>;
+  if (!dataUrl) return <div className="h-14 w-14 bg-white/5 rounded-lg flex items-center justify-center text-white/10"><ImageIcon size={16} /></div>;
+
+  return (
+    <div className="relative group shrink-0">
+      <img src={dataUrl} className="h-14 w-14 object-cover rounded-lg border border-white/10" alt="Preview" />
+      {isVideo && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+          <Play size={14} className="text-white fill-white" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function InventoryForm({
   initialData,
   onSubmit,
@@ -110,6 +180,15 @@ export function InventoryForm({
     ...defaultFormState,
   });
   const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
+
+  const existingMedia = React.useMemo(() => {
+    const urls: string[] = [];
+    if (initialData?.generatedPngUrl) urls.push(initialData.generatedPngUrl);
+    if (initialData?.mediaUrls) {
+      urls.push(...initialData.mediaUrls.split(',').map(u => u.trim()).filter(Boolean));
+    }
+    return urls;
+  }, [initialData?.mediaUrls, initialData?.generatedPngUrl]);
 
   useEffect(() => {
 
@@ -262,24 +341,52 @@ export function InventoryForm({
         </div>
 
         {isEditMode && (
-          <div className="flex flex-col gap-1 pt-2 border-t border-(--border-color)">
-            <label className="text-xs font-bold uppercase text-(--text-color-secondary)">
-              Media
+          <div className="flex flex-col gap-3 pt-4 border-t border-(--border-color)">
+            <label className="text-xs font-black uppercase tracking-widest text-(--text-color-secondary)">
+              Operational Media Gallery
             </label>
-            <input
-              type="file"
-              multiple
-              onChange={handleNewFiles}
-              accept="image/*,video/*"
-              className="w-full text-xs"
-            />
-            {newFiles.length > 0 && (
-              <div className="flex gap-2 mt-2 overflow-x-auto p-1 text-(--text-color-secondary)">
-                {newFiles.map((file, index) => (
-                  <img key={index} src={file.dataUrl} className="h-14 w-14 object-cover rounded-lg shrink-0 border border-white/10" alt="Preview" />
+            
+            {(existingMedia.length > 0 || newFiles.length > 0) && (
+              <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                {/* Existing DB Media */}
+                {existingMedia.map((url, idx) => (
+                  <DriveThumbnail key={`existing-${idx}`} url={url} />
+                ))}
+                
+                {/* Locally Uploaded Pending Files */}
+                {newFiles.map((file, idx) => (
+                  <div key={`new-${idx}`} className="relative group shrink-0">
+                    <img src={file.dataUrl} className="h-14 w-14 object-cover rounded-lg border border-(--main-color)/30" alt="New Preview" />
+                    <div className="absolute top-0 right-0 p-1">
+                      <div className="bg-(--main-color) w-2 h-2 rounded-full shadow-[0_0_10px_var(--main-color)]" />
+                    </div>
+                    {file.type === 'video' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                        <Play size={14} className="text-white fill-white" />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
+
+            <div className="relative">
+              <input
+                type="file"
+                multiple
+                id="inventory-media-upload"
+                onChange={handleNewFiles}
+                accept="image/*,video/*"
+                className="hidden"
+              />
+              <label 
+                htmlFor="inventory-media-upload"
+                className="flex items-center justify-center gap-2 w-full h-12 border border-dashed border-white/20 hover:border-(--main-color)/50 hover:bg-(--main-color)/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all cursor-pointer rounded-lg"
+              >
+                <Plus size={14} />
+                Upload Additional Media
+              </label>
+            </div>
           </div>
         )}
 

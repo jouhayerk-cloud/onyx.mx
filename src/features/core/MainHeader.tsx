@@ -63,18 +63,19 @@ import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
-    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList
+    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download
 } from 'lucide-react';
 
 declare const __APP_VERSION__: string;
 
 const themes = [
-    { name: 'obsidian', gradient: 'linear-gradient(135deg, #1a1a24, #212130, #2a2a3d)' },
-    { name: 'fluorite', gradient: 'linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40)' },
-    { name: 'earth', gradient: 'linear-gradient(135deg, #051a0e, #d97706, #0b2f20)' },
-    { name: 'nacar', gradient: 'linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4)' },
-    { name: 'tehu', gradient: 'linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec)' },
-    { name: 'cherry', gradient: 'linear-gradient(135deg, #f0f7ff, #ffdce0, #ffffff)' },
+    { name: 'obsidian', gradient: 'var(--gradient-obsidian)' },
+    { name: 'fluorite', gradient: 'var(--gradient-fluorite)' },
+    { name: 'earth', gradient: 'var(--gradient-earth)' },
+    { name: 'nacar', gradient: 'var(--gradient-nacar)' },
+    { name: 'tehu', gradient: 'var(--gradient-tehu)' },
+    { name: 'cherry', gradient: 'var(--gradient-cherry)' },
+    { name: 'stitch', gradient: 'var(--gradient-stitch)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
@@ -184,12 +185,12 @@ const InventoryBar: React.FC = () => {
     return (
         <>
             <div className="flex flex-1 items-center gap-4 ml-2">
-                <Store size={22} strokeWidth={1.75} color="#6BCEBB" className="shrink-0 hidden lg:block" />
+                <Store size={22} strokeWidth={1.75} color="var(--color-inventory)" className="shrink-0 hidden lg:block" />
 
                 {/* Search bar — full width, centered */}
                 <div className="flex-1 relative group/search mx-auto max-w-2xl">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#6BCEBB] transition-colors" />
+                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--color-inventory) transition-colors" />
                     </div>
                     <input
                         type="text"
@@ -208,7 +209,7 @@ const InventoryBar: React.FC = () => {
                 <div className="flex items-center gap-1 ml-2 relative">
                     {/* Vendor Filter Toggle */}
                     <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-[#6BCEBB]' : 'text-white/50 hover:text-white'}`}
+                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-(--color-inventory)' : 'text-white/50 hover:text-white'}`}
                         onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
                         title="Filter by Vendor"
                     >
@@ -313,7 +314,7 @@ const StoreBar: React.FC = () => {
 
     return (
         <div className="flex flex-1 items-center gap-4 ml-2 relative">
-            <Store size={22} strokeWidth={1.75} color="#F36F21" className="shrink-0 hidden sm:block" />
+            <Store size={22} strokeWidth={1.75} color="var(--color-store)" className="shrink-0 hidden sm:block" />
 
             <div className="flex-1 w-full relative group/search max-w-2xl mx-auto">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
@@ -349,6 +350,7 @@ const FinanceBar: React.FC = () => {
     const [isDestOpen, setIsDestOpen] = useAtom(isPaymentDestinationFilterOpenAtom);
     const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
+    const [isExporting, setIsExporting] = useState(false);
 
     const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
     const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
@@ -377,14 +379,114 @@ const FinanceBar: React.FC = () => {
 
     const CATEGORIES: PaymentCategory[] = ['All', 'ACQ', 'PROD', 'MONTHLY', 'SPPL', 'LABR', 'PACK', 'OPRT'];
 
+    const handleExportXLSX = async () => {
+        if (isExporting || docs.length === 0) return;
+        setIsExporting(true);
+        try {
+            const XLSX = await import('xlsx');
+
+            // ── Sheet 1: Full Ledger ──────────────────────────────────────
+            const ledgerRows = docs.map(r => ({
+                'Date': r.date ? new Date(r.date).toLocaleDateString('en-US') : '',
+                'Description': r.description || '',
+                'Category': r.subcategory || r.category || '',
+                'Vendor': r.vendor_id || '',
+                'Amount (MXN)': r.amount ?? 0,
+                'Commission (MXN)': r.commission ?? 0,
+                'Total (MXN)': (r.amount ?? 0) + (r.commission ?? 0),
+                'Status': r.status || 'Requested',
+                'Destination': r.destination || '',
+                'Payment Method': r.payment_method || '',
+                'Reference': r.reference || '',
+                'Pay Date': r.pay_date ? new Date(r.pay_date).toLocaleDateString('en-US') : '',
+                'Notes': r.notes || '',
+                'Recurring': r.recurring ? 'Yes' : 'No',
+                'ID': r.id || '',
+            }));
+
+            const ledgerSheet = XLSX.utils.json_to_sheet(ledgerRows);
+
+            // Column widths
+            ledgerSheet['!cols'] = [
+                { wch: 12 }, { wch: 48 }, { wch: 12 }, { wch: 10 },
+                { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
+                { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
+                { wch: 32 }, { wch: 10 }, { wch: 36 },
+            ];
+
+            // ── Sheet 2: Summary ──────────────────────────────────────────
+            const totalAll  = docs.reduce((s, d) => s + (d.amount ?? 0), 0);
+            const totalPaid = docs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0), 0);
+            const totalPend = totalAll - totalPaid;
+            const rate = liveExchangeRate || exchangeRate;
+
+            const catMap: Record<string, { total: number; paid: number }> = {};
+            docs.forEach(d => {
+                const cat = d.subcategory || d.category || 'Other';
+                if (!catMap[cat]) catMap[cat] = { total: 0, paid: 0 };
+                catMap[cat].total += d.amount ?? 0;
+                if (d.status === 'Paid') catMap[cat].paid += d.amount ?? 0;
+            });
+
+            const destMap: Record<string, { total: number; paid: number }> = {};
+            docs.forEach(d => {
+                const dest = d.destination || 'Unknown';
+                if (!destMap[dest]) destMap[dest] = { total: 0, paid: 0 };
+                destMap[dest].total += d.amount ?? 0;
+                if (d.status === 'Paid') destMap[dest].paid += d.amount ?? 0;
+            });
+
+            const summaryRows: any[] = [
+                { 'Section': '── OVERVIEW ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': 'Finance Database', 'Label': 'Grand Total', 'Total (MXN)': totalAll, 'Paid (MXN)': totalPaid, 'Pending (MXN)': totalPend, 'Total (USD)': +(totalAll / rate).toFixed(2) },
+                { 'Section': '', 'Label': `Exchange Rate Used`, 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': rate },
+                { 'Section': '', 'Label': `Records`, 'Total (MXN)': docs.length, 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': '── BY CATEGORY ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                ...Object.entries(catMap).sort((a, b) => b[1].total - a[1].total).map(([cat, v]) => ({
+                    'Section': 'Category', 'Label': cat,
+                    'Total (MXN)': v.total,
+                    'Paid (MXN)': v.paid,
+                    'Pending (MXN)': v.total - v.paid,
+                    'Total (USD)': +(v.total / rate).toFixed(2),
+                })),
+                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': '── BY ACCOUNT ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                ...Object.entries(destMap).sort((a, b) => b[1].total - a[1].total).map(([dest, v]) => ({
+                    'Section': 'Account', 'Label': dest,
+                    'Total (MXN)': v.total,
+                    'Paid (MXN)': v.paid,
+                    'Pending (MXN)': v.total - v.paid,
+                    'Total (USD)': +(v.total / rate).toFixed(2),
+                })),
+            ];
+
+            const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+            summarySheet['!cols'] = [{ wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
+
+            // ── Build & Download ──────────────────────────────────────────
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Finance Ledger');
+            XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+
+            const ts = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Onyx_Finance_${ts}.xlsx`);
+            toast.success(`Exported ${docs.length} records`);
+        } catch (err: any) {
+            toast.error(`Export failed: ${err.message}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="flex flex-1 items-center gap-3 ml-2 relative">
-            <CreditCard size={22} strokeWidth={1.75} color="#A78BFA" className="shrink-0 hidden sm:block" />
+            <CreditCard size={22} strokeWidth={1.75} color="var(--color-finance)" className="shrink-0 hidden sm:block" />
 
             {/* Smart search bar */}
             <div className="flex-1 relative group/search mx-auto max-w-2xl">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                    <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[#A78BFA] transition-colors" />
+                    <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--color-finance) transition-colors" />
                 </div>
                 <input
                     type="text"
@@ -402,10 +504,10 @@ const FinanceBar: React.FC = () => {
 
             {/* Pending net total for active destination (floats center above) */}
             {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-10 pointer-events-none">
-                    <span className="text-[9px] font-black text-[#A78BFA] uppercase tracking-[0.2em]">PENDING</span>
-                    <span className="text-[11px] font-mono font-black text-[#A78BFA]">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}</span>
-                    <span className="text-[9px] font-mono text-[#A78BFA]/60">≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-10 pointer-events-none" style={{ backgroundColor: 'color-mix(in srgb, var(--color-finance) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-finance) 30%, transparent)' }}>
+                    <span className="text-[9px] font-black text-(--color-finance) uppercase tracking-[0.2em]" style={{ color: 'var(--color-finance)' }}>PENDING</span>
+                    <span className="text-[11px] font-mono font-black text-(--color-finance)" style={{ color: 'var(--color-finance)' }}>{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}</span>
+                    <span className="text-[9px] font-mono text-(--color-finance)/60" style={{ color: 'color-mix(in srgb, var(--color-finance) 60%, transparent)' }}>≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
                 </div>
             )}
 
@@ -415,7 +517,7 @@ const FinanceBar: React.FC = () => {
                 <div className="relative">
                     <button
                         className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${(filterMode !== 'off')
-                            ? 'text-[#A78BFA]' : 'text-white/40 hover:text-white'
+                            ? 'text-(--color-finance)' : 'text-white/40 hover:text-white'
                             }`}
                         onClick={() => {
                             const modes: ('off' | 'left' | 'right')[] = ['off', 'left', 'right'];
@@ -441,11 +543,24 @@ const FinanceBar: React.FC = () => {
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
 
+                {/* Export XLSX button */}
+                <button
+                    onClick={handleExportXLSX}
+                    disabled={isExporting || docs.length === 0}
+                    className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-finance) disabled:opacity-20 disabled:cursor-not-allowed"
+                    title={`Export Finance Database to XLSX (${docs.length} records)`}
+                >
+                    <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
+                    <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
+                </button>
+
+                <div className="w-px h-5 bg-white/10 mx-1" />
+
                 {/* 3-state Overview Toggle */}
                 <button
                     onClick={cycleOverviewMode}
                     className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
-                        overviewMode === 'minimal' ? 'text-[#A78BFA]/50 hover:text-[#A78BFA]' : 'text-[#A78BFA]'
+                        overviewMode === 'minimal' ? 'text-(--color-finance)/50 hover:text-(--color-finance)' : 'text-(--color-finance)'
                         }`}
                     title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
                 >
@@ -470,7 +585,7 @@ const LogisticsBar: React.FC = () => {
 
     return (
         <>
-            <ModuleBadge icon="truck" label="Logistics" color="#F7941D" />
+            <ModuleBadge icon="truck" label="Logistics" color="var(--color-logistics)" />
 
             <div className="hidden md:flex items-center gap-2 ml-2">
                 {/* Warehouse organise */}
@@ -482,7 +597,7 @@ const LogisticsBar: React.FC = () => {
                 <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
                     {(['warehouse', 'truck'] as const).map(m => (
                         <button key={m} onClick={() => setViewMode(m)}
-                            className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-[#F7941D] text-black' : 'text-white/35 hover:text-white/70'}`}>
+                            className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-(--color-logistics) text-black' : 'text-white/35 hover:text-white/70'}`}>
                             {m}
                         </button>
                     ))}
@@ -533,7 +648,7 @@ const UploadBar: React.FC = () => {
     const itemData = useAtomValue(uploadItemDataAtom);
     return (
         <div className="flex items-center gap-4">
-            <ModuleBadge icon="upload" label="Add Entry" color="#8DC63F" />
+            <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
 
             <div className="bg-(--main-color) text-black px-5 py-2.5 rounded-b-xl shadow-2xl flex flex-col items-center min-w-[90px] border-x border-b border-black/20 transform -translate-y-2 hover:translate-y-1 transition-all duration-700 cursor-default group z-50">
                 <span className="text-[9px] font-black uppercase tracking-[0.25em] leading-none mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">BOOK V</span>
@@ -545,7 +660,7 @@ const UploadBar: React.FC = () => {
 
 const ControlBar: React.FC = () => (
     <>
-        <ModuleBadge icon="shield" label="Control" color="#a78bfa" />
+        <ModuleBadge icon="shield" label="Control" color="var(--color-control)" />
         <div className="ml-auto">
             <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
         </div>
@@ -604,7 +719,7 @@ export function MainHeader() {
                 )}
                 {activeView === 'dashboard' && (
                     <>
-                        <ModuleBadge icon="layout-grid" label="Analytics" color="#6BCEBB" />
+                        <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
                         <div className="ml-auto">
                             <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Admin Control</span>
                         </div>

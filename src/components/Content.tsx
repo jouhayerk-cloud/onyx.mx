@@ -43,11 +43,16 @@ export function Content() {
   async function handleNavigate(dir: number) {
         if (isNavigating) return;
         const newIndex = (galleryIndex + dir + galleryMedia.length) % galleryMedia.length;
-        const urlToLoad = galleryMedia[newIndex];
+        handleJumpTo(newIndex);
+    }
+
+    async function handleJumpTo(index: number) {
+        if (isNavigating) return;
+        const urlToLoad = galleryMedia[index];
         if (!urlToLoad) return;
 
         setIsNavigating(true);
-        setGalleryIndex(newIndex);
+        setGalleryIndex(index);
 
         const fileId = extractFileId(urlToLoad);
         if (!fileId) {
@@ -69,22 +74,24 @@ export function Content() {
             const dataUrl = `data:${mime};base64,${res.base64}`;
             
             let finalUrl = dataUrl;
-            if (isVid) {
-                // For playback we want the video data url
-            } else {
+            if (!isVid) {
                 try { finalUrl = await resizeImage(dataUrl, 1600); } catch(e) {}
             }
             
             imageCache.set(fileId, finalUrl);
             setImageSrc(finalUrl);
         } catch (err) {
-            console.error("Gallery navigation failed", err);
+            console.error("Gallery jump failed", err);
         } finally {
             setIsNavigating(false);
         }
     }
 
-  const isVideo = imageSrc?.startsWith('data:video/') || imageSrc?.toLowerCase().includes('.mov') || imageSrc?.toLowerCase().includes('.mp4');
+    const isVideo = useMemo(() => {
+        if (!imageSrc) return false;
+        if (imageSrc.startsWith('data:video/')) return true;
+        return /\.(mov|mp4|webm|m4v)$/i.test(imageSrc.split(/[#?]/)[0]);
+    }, [imageSrc]);
 
   useEffect(() => {
     if (imageSrc && !stream) {
@@ -586,42 +593,69 @@ export function Content() {
 
         {/* Gallery Navigation Controls (Fullscreen Only) */}
         {workflowStep === 'fullscreenView' && galleryMedia.length > 1 && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-8 z-50">
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigate(-1);
-                    }}
-                    disabled={isNavigating}
-                    className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
-                >
-                    <ChevronLeft size={32} strokeWidth={3} />
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleNavigate(1);
-                    }}
-                    disabled={isNavigating}
-                    className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
-                >
-                    <ChevronRight size={32} strokeWidth={3} />
-                </button>
+            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-between p-8 z-50">
+                <div className="w-full flex items-center justify-between grow">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleNavigate(-1);
+                        }}
+                        disabled={isNavigating}
+                        className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
+                    >
+                        <ChevronLeft size={32} strokeWidth={3} />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleNavigate(1);
+                        }}
+                        disabled={isNavigating}
+                        className="p-4 rounded-full bg-black/40 backdrop-blur-3xl border border-white/10 text-white hover:bg-black/60 hover:scale-110 transition-all pointer-events-auto disabled:opacity-50"
+                    >
+                        <ChevronRight size={32} strokeWidth={3} />
+                    </button>
+                </div>
 
-                {/* Counter & Indicator */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full flex items-center gap-4 pointer-events-auto">
-                    <div className="flex gap-1.5">
-                        {galleryMedia.map((_, i) => (
-                            <div 
-                                key={i}
-                                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === galleryIndex ? 'w-4 bg-(--main-color)' : 'bg-white/20'}`}
-                            />
-                        ))}
+                {/* Interactive Gallery Strip */}
+                <div className="w-full max-w-4xl flex flex-col items-center gap-4 pointer-events-auto bg-black/20 backdrop-blur-xl p-4 rounded-2xl border border-white/5 shadow-2xl">
+                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar w-full justify-center">
+                        {galleryMedia.map((url, i) => {
+                            const fileId = extractFileId(url);
+                            const thumbUrl = fileId ? (imageCache.get(fileId + '_thumb') || imageCache.get(fileId) || url) : url;
+                            const isVid = url.toLowerCase().includes('.mov') || url.toLowerCase().includes('.mp4') || (fileId && (imageCache.get(fileId)?.startsWith('data:video/') || false));
+                            
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => handleJumpTo(i)}
+                                    className={`relative shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === galleryIndex ? 'border-(--main-color) scale-110' : 'border-transparent opacity-50 hover:opacity-100 hover:scale-105'}`}
+                                >
+                                    <img src={thumbUrl} className="w-full h-full object-cover" />
+                                    {isVid && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                            <div className="w-0 h-0 border-t-4 border-t-transparent border-l-6 border-l-white border-b-4 border-b-transparent ml-0.5" />
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
-                    <span className="text-[10px] font-black tracking-widest text-white/40 uppercase">
-                        {galleryIndex + 1} / {galleryMedia.length}
-                    </span>
-                    {isNavigating && <Loader2 className="w-3 h-3 text-(--main-color) animate-spin" />}
+                    
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-1">
+                            {galleryMedia.map((_, i) => (
+                                <div 
+                                    key={i}
+                                    className={`h-1 rounded-full transition-all duration-300 ${i === galleryIndex ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/20'}`}
+                                />
+                            ))}
+                        </div>
+                        <span className="text-[10px] font-black tracking-widest text-white/40 uppercase">
+                            {galleryIndex + 1} / {galleryMedia.length}
+                        </span>
+                        {isNavigating && <Loader2 className="w-3 h-3 text-(--main-color) animate-spin" />}
+                    </div>
                 </div>
             </div>
         )}
