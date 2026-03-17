@@ -26,6 +26,7 @@ import {
   workflowStepAtom,
   exchangeRateAtom,
 } from '../../lib/atoms';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
@@ -132,6 +133,7 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   onToggleSelect,
   exchangeRate,
 }) => {
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [isVideo, setIsVideo] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -161,16 +163,29 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
     };
   }, []);
 
+  const mediaUrls = useMemo(() => {
+    const norm = normalizeInventoryData(item.data);
+    const urls = [norm.generatedPngUrl, ...(norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [])];
+    return urls.filter(Boolean);
+  }, [item.data]);
+
   useEffect(() => {
     if (!isVisible) return;
 
     let isActive = true;
     setIsLoading(true);
 
-    const rawUrl = item.data.generatedPngUrl || (item.imageUrl ? String(item.imageUrl).split(',')[0].trim() : null);
+    const rawUrl = mediaUrls[activeMediaIndex];
+    if (!rawUrl) {
+        setIsLoading(false);
+        return;
+    }
+
     const fileId = extractFileId(rawUrl);
 
     if (!fileId) {
+      setImageDataUrl(rawUrl);
+      setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
       setIsLoading(false);
       return;
     }
@@ -214,11 +229,9 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
         try {
           if (mime.startsWith('video/')) {
             setIsVideo(true);
-            // Generate video thumbnail in browser
             finalThumb = await generateVideoThumbnail(dataUrl);
           } else {
             setIsVideo(false);
-            // Generate image thumbnail (resize to small size for grid)
             finalThumb = await resizeImage(dataUrl, 512); 
           }
         } catch (e) {
@@ -227,10 +240,10 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
 
         if (isActive) {
           if (mime.startsWith('video/')) {
-             imageCache.set(fileId, dataUrl); // Still cache the full video
-             imageCache.set(thumbKey, finalThumb); // Cache thumb separately
+             imageCache.set(fileId, dataUrl);
+             imageCache.set(thumbKey, finalThumb);
           } else {
-             imageCache.set(fileId, finalThumb); // Images can shared the same key if it's high res enough
+             imageCache.set(fileId, finalThumb);
           }
           setImageDataUrl(finalThumb);
         }
@@ -243,7 +256,24 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
       });
 
     return () => { isActive = false; };
-  }, [isVisible, item.imageUrl, item.data.generatedPngUrl]);
+  }, [isVisible, activeMediaIndex, mediaUrls]);
+
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (!isHovered || mediaUrls.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setActiveMediaIndex(prev => (prev + 1) % mediaUrls.length);
+    }, 2000);
+    
+    return () => clearInterval(interval);
+  }, [isHovered, mediaUrls.length]);
+
+  const handleNavigate = (e: React.MouseEvent, dir: number) => {
+    e.stopPropagation();
+    setActiveMediaIndex((prev) => (prev + dir + mediaUrls.length) % mediaUrls.length);
+  };
 
   const handleClick = () => {
     if (isSelectMode) {
@@ -262,80 +292,113 @@ export const InventoryImageItem: React.FC<InventoryImageItemProps> = ({
   const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
   return (
-    <button
-      ref={ref}
-      className="inventory-item-card w-full aspect-4/3 relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 group rounded-2xl border border-white/5 bg-black/40 hover:border-white/20 hover:scale-[1.02] hover:z-10"
-      onClick={handleClick}
-      title={item.label}
-      disabled={isLoading}>
-      {isLoading && <div className="scale-50"><LoadingIndicator /></div>}
-      {error && <div className="text-red-500">{error}</div>}
-      {imageDataUrl && (
-        <>
-          <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-110 opacity-80 group-hover:opacity-100" />
-          {isVideo && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover:scale-125 transition-transform duration-500">
-                <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+    <div 
+      className="relative group/card aspect-4/3"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <button
+        ref={ref}
+        className="inventory-item-card w-full h-full relative overflow-hidden flex items-center justify-center text-xs shadow-md focus:outline-none transition-all duration-300 rounded-2xl border border-white/5 bg-black/40 group-hover/card:border-white/20 group-hover/card:scale-[1.02] group-hover/card:z-10"
+        onClick={handleClick}
+        title={item.label}
+        disabled={isLoading}>
+        {isLoading && <div className="scale-50 relative z-20"><LoadingIndicator /></div>}
+        {error && <div className="text-red-500 relative z-20">{error}</div>}
+        {imageDataUrl && (
+          <>
+            <img src={imageDataUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover/card:scale-110 opacity-80 group-hover/card:opacity-100" />
+            {isVideo && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-8 h-8 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 group-hover/card:scale-125 transition-transform duration-500">
+                  <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1" />
+                </div>
               </div>
+            )}
+          </>
+        )}
+        {!isLoading && !imageDataUrl && !error && (
+          <div className="absolute top-2 right-2 z-10 text-(--secondary-color)">
+            <OnyxMiniLogo />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
+
+        {/* Top badges */}
+        <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
+            style={{ backgroundColor: vendorColor }}
+            title={`Vendor: ${vendorPrefix}`}>
+            {vendorPrefix || '?'}
+          </div>
+        </div>
+
+        {/* Bottom text block */}
+        <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/80 to-transparent">
+          <div className="flex items-end justify-between mb-1">
+            <p className="font-black text-white text-base leading-tight truncate">{norm.shape || 'Unknown Object'}</p>
+            <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
+            <p className="truncate uppercase font-medium tracking-wide">{norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}</p>
+          </div>
+
+          <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">
+            <div className="flex items-center gap-1.5 font-mono text-[9px] text-white/90 shrink-0">
+              <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+              <span>{dimensions ? `${dimensions}` : '—'}</span>
+              <span className="text-white/40 ml-1">{norm.weightKg ? `${norm.weightKg}kg` : ''}</span>
             </div>
-          )}
-        </>
-      )}
-      {!isLoading && !imageDataUrl && !error && (
-        <div className="absolute top-2 right-2 z-10 text-(--secondary-color)">
-          <OnyxMiniLogo />
-        </div>
-      )}
-      <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
-
-      {/* Top badges */}
-      <div className="absolute top-0 inset-x-0 p-3 flex justify-between items-start pointer-events-none">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black shadow-lg text-[10px]"
-          style={{ backgroundColor: vendorColor }}
-          title={`Vendor: ${vendorPrefix}`}>
-          {vendorPrefix || '?'}
-        </div>
-      </div>
-
-      {/* Bottom text block */}
-      <div className="absolute bottom-0 inset-x-0 p-3 flex flex-col justify-end text-left pointer-events-none z-10 bg-linear-to-t from-black via-black/80 to-transparent">
-        <div className="flex items-end justify-between mb-1">
-          <p className="font-black text-white text-base leading-tight truncate">{norm.shape || 'Unknown Object'}</p>
-          <p className="font-mono text-[9px] text-white/50 shrink-0 ml-2">#{norm.itemNumber}</p>
-        </div>
-
-        <div className="flex items-center justify-between text-[10px] text-white/70 mb-2">
-          <p className="truncate uppercase font-medium tracking-wide">{norm.material || 'Mixed Material'} · {norm.shortDescription || 'Misc'}</p>
-        </div>
-
-        <div className="flex items-center justify-between bg-white/10 rounded-lg px-2 py-1.5 backdrop-blur-sm border border-white/5">
-          <div className="flex items-center gap-1.5 font-mono text-[9px] text-white/90 shrink-0">
-            <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-            <span>{dimensions ? `${dimensions}` : '—'}</span>
-            <span className="text-white/40 ml-1">{norm.weightKg ? `${norm.weightKg}kg` : ''}</span>
+            <div className="flex flex-col items-end">
+              <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="font-bold text-[11px] text-[#AEE6F5] pr-1">{calculated.bookLanded !== '-' ? `$${calculated.bookLanded}` : '-'}</span>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="font-mono text-[8px] text-white/40 tracking-widest">{calculated.bookBardcode || 'N/A'}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-[7px] text-white/30 uppercase tracking-widest">Retail</span>
+              <span className="font-medium text-[9px] text-green-300">${calculated.bookRetail}</span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <span className="font-mono text-[8px] text-white/40 tracking-widest">{calculated.bookBardcode || 'N/A'}</span>
-          <div className="flex items-center gap-1">
-            <span className="text-[7px] text-white/30 uppercase tracking-widest">Retail</span>
-            <span className="font-medium text-[9px] text-green-300">${calculated.bookRetail}</span>
+        {isSelectMode && (
+          <div className={`absolute top-3 right-3 w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
+            {isSelected && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
           </div>
-        </div>
-      </div>
+        )}
+      </button>
 
-      {isSelectMode && (
-        <div className={`absolute top-3 right-3 w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-400' : 'bg-black/50 border-white/50'}`}>
-          {isSelected && <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
+      {/* Grid Item Navigation Overlay */}
+      {mediaUrls.length > 1 && (
+        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-2 opacity-0 group-hover/card:opacity-100 transition-opacity z-30 pointer-events-none">
+            <button 
+                onClick={(e) => handleNavigate(e, -1)}
+                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-xl"
+            >
+                <ChevronLeft size={16} strokeWidth={3} />
+            </button>
+            <button 
+                onClick={(e) => handleNavigate(e, 1)}
+                className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-xl"
+            >
+                <ChevronRight size={16} strokeWidth={3} />
+            </button>
         </div>
       )}
-    </button>
+
+      {/* Media Indicator Dots */}
+      {mediaUrls.length > 1 && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 flex gap-1 z-30 pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity">
+            {mediaUrls.map((_, i) => (
+                <div key={i} className={`h-1 rounded-full transition-all ${i === activeMediaIndex ? 'w-3 bg-(--main-color)' : 'w-1 bg-white/20'}`} />
+            ))}
+        </div>
+      )}
+    </div>
   );
 };
 

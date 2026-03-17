@@ -435,28 +435,115 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
     const n = normalizeInventoryData(item.data);
     const vendorPrefix = n.itemId?.split('-')[0];
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
-    const { imageUrl, isVideo, isLoading: imgLoading } = useItemImage(n);
-    const imgStyle = n.generatedPngUrl ? { backgroundColor: n.dominantColor || n.vibeColor || 'rgba(255,255,255,0.02)' } : {};
+    
+    const mediaUrls = useMemo(() => {
+        const urls = [n.generatedPngUrl, ...(n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [])];
+        return urls.filter(Boolean);
+    }, [n.generatedPngUrl, n.mediaUrls]);
+
+    const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+    const [isVideo, setIsVideo] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const rawUrl = mediaUrls[activeMediaIndex];
+        if (!rawUrl) return;
+
+        let isActive = true;
+        setIsLoading(true);
+
+        const fileId = extractFileId(rawUrl);
+        if (!fileId) {
+            setImageDataUrl(rawUrl);
+            setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
+            setIsLoading(false);
+            return;
+        }
+
+        const thumbKey = fileId + '_thumb';
+        if (imageCache.has(thumbKey)) {
+            setImageDataUrl(imageCache.get(thumbKey)!);
+            setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
+            setIsLoading(false);
+            return;
+        }
+
+        if (imageCache.has(fileId)) {
+            const cached = imageCache.get(fileId)!;
+            const isVid = cached.startsWith('data:video/') || rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4');
+            if (isVid) {
+                setIsVideo(true);
+                generateVideoThumbnail(cached).then(thumb => {
+                    if (isActive) {
+                        setImageDataUrl(thumb);
+                        imageCache.set(thumbKey, thumb);
+                    }
+                }).catch(() => {
+                    if (isActive) setImageDataUrl(cached);
+                });
+            } else {
+                setImageDataUrl(cached);
+                setIsVideo(false);
+            }
+            setIsLoading(false);
+            return;
+        }
+
+        fetchImageBatch(fileId)
+            .then(async (res) => {
+                if (!isActive) return;
+                const dataUrl = `data:${res.mimeType};base64,${res.base64}`;
+                let finalUrl = dataUrl;
+                const isVid = res.mimeType.startsWith('video/');
+                if (isVid) {
+                    setIsVideo(true);
+                    finalUrl = await generateVideoThumbnail(dataUrl);
+                    imageCache.set(fileId, dataUrl);
+                    imageCache.set(thumbKey, finalUrl);
+                } else {
+                    finalUrl = await resizeImage(dataUrl, 600);
+                    imageCache.set(fileId, finalUrl);
+                    setIsVideo(false);
+                }
+                setImageDataUrl(finalUrl);
+            })
+            .catch(() => {
+                if (isActive) setImageDataUrl(null);
+            })
+            .finally(() => {
+                if (isActive) setIsLoading(false);
+            });
+
+        return () => { isActive = false; };
+    }, [activeMediaIndex, mediaUrls]);
+
+    const handleNavigate = (e: React.MouseEvent, dir: number) => {
+        e.stopPropagation();
+        setActiveMediaIndex((prev) => (prev + dir + mediaUrls.length) % mediaUrls.length);
+    };
+
+    const imgStyle = n.generatedPngUrl && activeMediaIndex === 0 ? { backgroundColor: n.dominantColor || n.vibeColor || 'rgba(255,255,255,0.02)' } : {};
 
     return (
         <div 
             onClick={onClick}
-            className="group relative flex flex-col bg-white/5 backdrop-blur-3xl border border-white/5 rounded-3xl overflow-hidden transition-all duration-700 hover:scale-[1.02] hover:border-white/20 hover:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] cursor-pointer fade-in-item"
+            className="group/card relative flex flex-col bg-white/5 backdrop-blur-3xl border border-white/5 rounded-3xl overflow-hidden transition-all duration-700 hover:scale-[1.02] hover:border-white/20 hover:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] cursor-pointer fade-in-item"
             style={{ animationDelay: `${index * 30}ms`, position: 'relative', fontFamily: 'Inter, sans-serif' }}
         >
             {/* Unified Card Header/Image Area */}
             <div className="relative aspect-4/5 overflow-hidden bg-neutral-950/40">
-                {imageUrl ? (
+                {imageDataUrl ? (
                     <>
                         <img
-                            src={imageUrl}
-                            className={`w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl ? 'p-16 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`}
+                            src={imageDataUrl}
+                            className={`w-full h-full object-cover opacity-60 group-hover/card:opacity-100 group-hover/card:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl && activeMediaIndex === 0 ? 'p-16 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`}
                             style={imgStyle}
                             alt={item.label}
                         />
                         {isVideo && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover:scale-125 transition-transform duration-500">
+                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover/card:scale-125 transition-transform duration-500">
                                     <Play className="w-6 h-6 text-white fill-white ml-1" strokeWidth={3} />
                                 </div>
                             </div>
@@ -464,15 +551,42 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
                     </>
                 ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4">
-                        {imgLoading ? <div className="w-12 h-12 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" /> : <PackageSearch size={80} strokeWidth={0.5} />}
-                        <span className="text-[10px] font-black uppercase tracking-[0.5em]">{imgLoading ? 'Synchronizing' : 'Imagery Pending'}</span>
+                        {isLoading ? <div className="w-12 h-12 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" /> : <PackageSearch size={80} strokeWidth={0.5} />}
+                        <span className="text-[10px] font-black uppercase tracking-[0.5em]">{isLoading ? 'Synchronizing' : 'Imagery Pending'}</span>
                     </div>
+                )}
+
+                {/* Navigation Overlays */}
+                {mediaUrls.length > 1 && (
+                    <>
+                        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-4 opacity-0 group-hover/card:opacity-100 transition-opacity z-20 pointer-events-none">
+                            <button 
+                                onClick={(e) => handleNavigate(e, -1)}
+                                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto"
+                            >
+                                <ChevronLeft size={20} strokeWidth={3} />
+                            </button>
+                            <button 
+                                onClick={(e) => handleNavigate(e, 1)}
+                                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto"
+                            >
+                                <ChevronRight size={20} strokeWidth={3} />
+                            </button>
+                        </div>
+                        {/* Dots */}
+                        <div className="absolute top-20 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
+                            {mediaUrls.map((_, i) => (
+                                <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === activeMediaIndex ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/20'}`} />
+                            ))}
+                        </div>
+                    </>
                 )}
 
                 {/* Badges Overlay */}
                 <div className="absolute top-8 left-8 flex items-start justify-between right-8 z-10">
                     <div className="flex flex-col gap-2">
-                         {/* Removed redundant shape tag from here per user request */}
+                         {/* Vendor ID Badge */}
+                         <div className="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/10 text-[9px] font-black text-(--main-color) uppercase tracking-widest">{vendorPrefix}</div>
                     </div>
                     {inBag && (
                         <div className="w-10 h-10 bg-(--main-color) flex items-center justify-center shadow-3xl animate-in zoom-in duration-500 rounded-lg">
@@ -492,7 +606,7 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
                         <StarRating rating={n.rating || 0} onChange={onUpdateRating} fullWidth={true} />
                     </div>
                     <div className="flex flex-col">
-                        <h3 className="text-base font-black text-white uppercase italic tracking-tighter leading-none mb-2 group-hover:text-(--main-color) transition-colors">{n.shape} {n.shortDescription || 'Artifact'}</h3>
+                        <h3 className="text-base font-black text-white uppercase italic tracking-tighter leading-none mb-2 group-hover/card:text-(--main-color) transition-colors">{n.shape} {n.shortDescription || 'Artifact'}</h3>
                         <p className="text-sm font-bold text-white/40 uppercase tracking-[0.3em]">{n.color} {n.material}</p>
                     </div>
                 </div>
@@ -507,7 +621,7 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
                 </div>
             </div>
             
-            <div className="absolute inset-0 border border-white/0 group-hover:border-(--main-color)/20 transition-all pointer-events-none" />
+            <div className="absolute inset-0 border border-white/0 group-hover/card:border-(--main-color)/20 transition-all pointer-events-none" />
         </div>
     );
 };
@@ -636,6 +750,26 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                             <span className="text-sm font-black uppercase tracking-[0.5em]">{isMediaLoading ? 'Loading Visuals' : 'No Media'}</span>
                         </div>
                     )}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black via-transparent to-transparent pointer-events-none" />
+
+                    {/* Navigation Overlays */}
+                    {mediaUrls.length > 1 && (
+                        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-6 opacity-0 group-hover/detailimg:opacity-100 transition-opacity z-20 pointer-events-none">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveMediaIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-2xl"
+                            >
+                                <ChevronLeft size={24} strokeWidth={3} />
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveMediaIndex((prev) => (prev + 1) % mediaUrls.length); }}
+                                className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto shadow-2xl"
+                            >
+                                <ChevronRight size={24} strokeWidth={3} />
+                            </button>
+                        </div>
+                    )}
+                    
                     <div className="absolute inset-0 bg-linear-to-r from-black/20 via-transparent to-[#080808] pointer-events-none" />
 
                     {/* Gallery Thumb Strip */}

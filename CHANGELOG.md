@@ -13,6 +13,10 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.13.2 — 2026-03-17
+### Added
+- **Finance Export [feat]:** Added XLSX export button to the Finance top bar. Exports the full `finance` database as a timestamped file (`Onyx_Finance_YYYY-MM-DD.xlsx`) with two sheets: **Finance Ledger** (all records with Date, Description, Category, Vendor, Amount, Commission, Total, Status, Destination, Reference, Pay Date, Notes) and **Summary** (grand totals + breakdown by category and by account, with MXN and USD equivalents using the live exchange rate).
+
 ## v1.12.4 — 2026-03-14
 ### Added
 - Multi-media gallery in the Inventory Details view, allowing users to browse all uploaded images and videos for a single item.
