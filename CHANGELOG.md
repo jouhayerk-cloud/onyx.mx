@@ -13,6 +13,10 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.13.3 — 2026-03-17
+### Added
+- **Inventory Export [feat]:** Added XLSX export button to the Inventory top bar. Exports all acquisition and production items (excludes Available/catalog/store items) as `Onyx_Inventory_YYYY-MM-DD.xlsx`. File contains **one sheet per vendor**, sorted by Tag ID, with columns: Tag ID, Item #, Status, Shape, Material, Color, Description, Qty, Price (MXN), Subtotal (MXN), Weight, Dimensions (H/W/L cm), Pay Status, Workbook, ACQ Code, Land Code, Notes. Each sheet includes a totals row at the bottom.
+
 ## v1.13.2 — 2026-03-17
 ### Added
 - **Finance Export [feat]:** Added XLSX export button to the Finance top bar. Exports the full `finance` database as a timestamped file (`Onyx_Finance_YYYY-MM-DD.xlsx`) with two sheets: **Finance Ledger** (all records with Date, Description, Category, Vendor, Amount, Commission, Total, Status, Destination, Reference, Pay Date, Notes) and **Summary** (grand totals + breakdown by category and by account, with MXN and USD equivalents using the live exchange rate).

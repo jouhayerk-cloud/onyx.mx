@@ -181,6 +181,125 @@ const InventoryBar: React.FC = () => {
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const activeVendors = useAtomValue(activeVendorsAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
+    const inventory = useAtomValue(inventoryAtom);
+    const [isExporting, setIsExporting] = useState(false);
+
+    // Statuses that are store/catalog items — excluded from the export
+    const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
+
+    const handleExportInventoryXLSX = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            const XLSX = await import('xlsx');
+
+            // Filter to acquisition / production items only
+            const exportItems = inventory.filter(item => {
+                const status = (item.data.status || '').toLowerCase().trim();
+                return !EXCLUDED_STATUSES.has(status);
+            });
+
+            if (exportItems.length === 0) {
+                toast.error('No acquisition or production items to export.');
+                setIsExporting(false);
+                return;
+            }
+
+            // Group by vendor
+            const vendorMap: Record<string, typeof exportItems> = {};
+            for (const item of exportItems) {
+                const d = item.data as any;
+                const itemIdStr = String(d.item_id || d.itemId || '');
+                let vid: string = d.vendor_id || d.vendorId || '';
+                if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
+                if (!vid) vid = 'Unknown';
+                if (!vendorMap[vid]) vendorMap[vid] = [];
+                vendorMap[vid].push(item);
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            // Sort vendors — known ones first in consts order, then unknown
+            const vendorOrder = Object.keys(vendors);
+            const sortedVendorIds = [
+                ...vendorOrder.filter(v => vendorMap[v]),
+                ...Object.keys(vendorMap).filter(v => !vendorOrder.includes(v)),
+            ];
+
+            for (const vid of sortedVendorIds) {
+                const items = vendorMap[vid];
+
+                const rows = items.map(item => {
+                    const d = item.data as any;
+                    const itemIdStr = String(d.item_id || d.itemId || '');
+                    const price = parseFloat(String(d.price_mxn || d.price || '0')) || 0;
+                    const qty = parseFloat(String(d.quantity || '1')) || 1;
+                    const payReq = d.pay_req || d.payReq || '';
+                    let payStatus = 'Unpaid';
+                    if (payReq === 'true' || payReq === true) payStatus = 'Paid';
+                    else if (String(payReq).startsWith('requested')) payStatus = payReq;
+                    else if (String(payReq).startsWith('paid')) payStatus = payReq;
+                    return {
+                        'Tag ID': itemIdStr,
+                        'Item #': d.item_number || d.itemNumber || '',
+                        'Status': d.status || '',
+                        'Shape': d.shape || '',
+                        'Material': d.material || '',
+                        'Color': d.color || '',
+                        'Description': d.description || d.short_description || d.shortDescription || '',
+                        'Qty': qty,
+                        'Price (MXN)': price,
+                        'Subtotal (MXN)': +(price * qty).toFixed(2),
+                        'Weight (kg)': parseFloat(String(d.weight_kg || d.weightKg || '0')) || '',
+                        'H (cm)': parseFloat(String(d.height_cm || d.heightCm || '0')) || '',
+                        'W (cm)': parseFloat(String(d.width_cm || d.widthCm || '0')) || '',
+                        'L (cm)': parseFloat(String(d.length_cm || d.lengthCm || '0')) || '',
+                        'Pay Status': payStatus,
+                        'Workbook': d.workbook || '',
+                        'ACQ Code': d.book_aq_code || d.bookAqCode || '',
+                        'Land Code': d.box_land_code || d.bookLanded || '',
+                        'Notes': d.notes || '',
+                    };
+                });
+
+                // Sort rows by Tag ID
+                rows.sort((a, b) => String(a['Tag ID']).localeCompare(String(b['Tag ID'])));
+
+                // Totals row
+                const totalQty = rows.reduce((s, r) => s + (Number(r['Qty']) || 0), 0);
+                const totalMXN = rows.reduce((s, r) => s + (Number(r['Subtotal (MXN)']) || 0), 0);
+                rows.push({
+                    'Tag ID': '', 'Item #': '', 'Status': '', 'Shape': '', 'Material': '',
+                    'Color': '', 'Description': `TOTAL — ${rows.length - 1} items`,
+                    'Qty': totalQty,
+                    'Price (MXN)': '',
+                    'Subtotal (MXN)': +totalMXN.toFixed(2),
+                    'Weight (kg)': '', 'H (cm)': '', 'W (cm)': '', 'L (cm)': '',
+                    'Pay Status': '', 'Workbook': '', 'ACQ Code': '', 'Land Code': '', 'Notes': '',
+                } as any);
+
+                const ws = XLSX.utils.json_to_sheet(rows);
+                ws['!cols'] = [
+                    { wch: 20 }, { wch: 10 }, { wch: 13 }, { wch: 14 }, { wch: 14 },
+                    { wch: 12 }, { wch: 36 }, { wch: 6 }, { wch: 13 }, { wch: 15 },
+                    { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+                    { wch: 16 }, { wch: 10 }, { wch: 13 }, { wch: 13 }, { wch: 28 },
+                ];
+
+                // Sheet name max 31 chars, must be unique
+                const sheetName = vid.slice(0, 31);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
+
+            const ts = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Onyx_Inventory_${ts}.xlsx`);
+            toast.success(`Exported ${exportItems.length} items across ${sortedVendorIds.length} vendor sheets`);
+        } catch (err: any) {
+            toast.error(`Export failed: ${err.message}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     return (
         <>
@@ -252,6 +371,19 @@ const InventoryBar: React.FC = () => {
                         {viewMode === 'grid'
                             ? <List size={18} strokeWidth={1.75} />
                             : <LayoutGrid size={18} strokeWidth={1.75} />}
+                    </button>
+
+                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+
+                    {/* Export Inventory XLSX */}
+                    <button
+                        onClick={handleExportInventoryXLSX}
+                        disabled={isExporting || inventory.length === 0}
+                        className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-inventory) disabled:opacity-20 disabled:cursor-not-allowed"
+                        title={`Export Inventory to XLSX — one sheet per vendor (acquisition & production only)`}
+                    >
+                        <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
+                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
                     </button>
                 </div>
             </div>
