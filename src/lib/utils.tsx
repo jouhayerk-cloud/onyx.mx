@@ -746,7 +746,11 @@ export const normalizeInventoryData = (data: any): any => {
 
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
   const norm = normalizeInventoryData(data);
-  const costMxn = parseFloat(norm.price) || 0;
+  // Prices are stored as whole MXN pesos (e.g. 1500 = MX$1,500)
+  // Round at each step to 2dp to prevent IEEE 754 float drift
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  const costMxn = round2(parseFloat(norm.price) || 0);
   if (costMxn === 0 || !exchangeRate || isNaN(exchangeRate)) {
     return {
       bookLanded: '-',
@@ -757,11 +761,11 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     };
   }
 
-  const costUsd = costMxn / exchangeRate;
-  const landedCost = costUsd * 1.4;
-  const retailPrice = landedCost * 12;
+  const costUsd     = round2(costMxn / exchangeRate);
+  const landedCost  = round2(costUsd * 1.4);
+  const retailPrice = round2(landedCost * 12);
 
-  const costUsdRounded = Math.floor(costUsd);
+  const costUsdRounded    = Math.floor(costUsd);
   const landedCostRounded = Math.floor(landedCost);
 
   const vendorPrefix = String(norm.vendorId || norm.itemId || '').substring(0, 2).toUpperCase();
@@ -775,9 +779,9 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
 
   return {
-    bookLanded: Math.floor(landedCost).toString(),
-    bookRetail: Math.floor(retailPrice).toString(),
-    bookAqCode: numberToCypher(costUsdRounded),
+    bookLanded:   Math.floor(landedCost).toString(),
+    bookRetail:   Math.floor(retailPrice).toString(),
+    bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBardcode: newTagId,
   };
