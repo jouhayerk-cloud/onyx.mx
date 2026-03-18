@@ -209,21 +209,27 @@ export const PackingModule: React.FC = () => {
                 // Combined Sizes: W*L*H CM
                 const combinedSizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
                 
+                // Book Retail (Combined): ACQCODE-BOOKv(326)RETAIL_USD (Example: HX-3260389)
+                const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
+                const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+                const combinedRetail = `${c.bookAqCode}-${bookv}${retailStr}`;
+                
                 return [
                     c.bookBardcode,
                     combinedDesc,
                     combinedMatColor,
                     combinedSizes,
+                    d.quantity || 1,
                     c.bookLandCode,
                     c.bookAqCode,
-                    c.bookRetail
+                    combinedRetail
                 ];
             });
 
             const sheets = [{
                 name: 'Packing List',
                 data: [
-                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL'],
+                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL'],
                     ...rows
                 ]
             }];
