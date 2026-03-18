@@ -592,59 +592,62 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     <span style={{ fontSize: '28px', fontWeight: 800, opacity: 0.8, letterSpacing: '0.05em' }}>{dims}</span>
                 </div>
 
-                {/* Primary Description Title (Clean and Sharp) */}
+                {/* Primary Description Title (Combines Shape/Type if Description is missing) */}
                 <div style={{
                     width: '100%',
-                    marginBottom: '12px'
+                    marginBottom: '8px',
+                    minHeight: '100px',
+                    display: 'flex',
+                    alignItems: 'center'
                 }}>
                     <div style={{
                         color: '#000',
-                        fontSize: '56px',
+                        fontSize: '48px', // Slightly smaller to prevent cut-off
                         fontWeight: 900,
                         textTransform: 'uppercase',
-                        lineHeight: 1,
-                        letterSpacing: '-0.04em',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        textOverflow: 'ellipsis'
+                        lineHeight: 1.1,
+                        letterSpacing: '-0.02em',
+                        width: '100%',
+                        wordBreak: 'break-word',
+                        display: '-webkit-box',
+                        WebkitLineClamp: '2',
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
                     }}>
-                        {d.description || 'ONYX PIECE'}
+                        {d.description || `${d.shape || ''} ${d.itemType || d.type || ''}`.trim() || 'ONYX PIECE'}
                     </div>
                 </div>
 
-
-                {/* Product Metadata (Shape, Type, Specs) */}
+                {/* Product Metadata (Material, Specs & QR) */}
                 <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginTop: 'auto', // Push to bottom
-                    height: '110px'
+                    alignItems: 'flex-end', // Align to bottom of this slot
+                    marginBottom: '20px',    // Space before barcode
+                    minHeight: '120px'
                 }}>
                     <div style={{ flex: 1, paddingRight: '20px' }}>
-                        <div style={{ fontSize: '32px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, color: '#000', marginBottom: '4px' }}>
-                            {d.shape || ''} {d.itemType || d.type || ''}
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: 800, textTransform: 'uppercase', color: '#000', opacity: 0.6 }}>
+                        <div style={{ fontSize: '28px', fontWeight: 800, textTransform: 'uppercase', color: '#000', marginBottom: '8px' }}>
                             {d.material || 'ONYX'} • {d.color || 'NATURAL'}
                         </div>
-                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#000', opacity: 0.4, marginTop: '8px' }}>
-                            WEIGHT: {d.weightKg || '--'}KG
+                        <div style={{ fontSize: '22px', fontWeight: 800, color: '#000', opacity: 0.5 }}>
+                            MASS: {d.weightKg || '--'}KG
                         </div>
                     </div>
                     
                     {/* Online Tag QR */}
                     <div style={{
-                        width: '100px',
-                        height: '100px',
-                        padding: '4px',
-                        border: '2px solid #000',
-                        borderRadius: '12px',
+                        width: '110px',
+                        height: '110px',
+                        padding: '6px',
+                        border: '3px solid #000',
+                        borderRadius: '16px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        backgroundColor: '#FFF'
                     }}>
-                        <QRCodeSVG value={tagUrl} size={90} level="H" />
+                        <QRCodeSVG value={tagUrl} size={100} level="H" />
                     </div>
                 </div>
 
