@@ -473,7 +473,7 @@ const LogisticsRow = ({ item, isSelected, onToggle }: any) => {
 const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, size }) => {
     const d = item.normData;
     const tagId = item.codes?.bookBardcode || 'ONYX-VOID';
-    const tagUrl = `https://onyx.mx/?tagid=${tagId}`;
+    const tagUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagId}`;
 
     const [wStr, hStr] = (size || '50x30').split('x');
     const widthMm = parseFloat(wStr) || 50;
@@ -538,31 +538,29 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                 flexDirection: 'column',
                 position: 'relative'
             }}>
-                {/* ID & Dims (High-Visibility Header) */}
+                {/* ID & Dims (High-Visibility Header) - Adjusted Sizes */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'baseline',
                     justifyContent: 'space-between',
-                    marginBottom: '10px'
+                    marginBottom: '4px'
                 }}>
-                    <span style={{ fontSize: '36px', fontStyle: 'italic', fontWeight: 900, letterSpacing: '-0.05em' }}>{d.itemId}</span>
-                    <span style={{ fontSize: '24px', fontWeight: 700, opacity: 0.5, letterSpacing: '0.05em' }}>{dims}</span>
+                    <span style={{ fontSize: '28px', fontStyle: 'italic', fontWeight: 800, letterSpacing: '-0.02em', opacity: 0.6 }}>{tagId}</span>
+                    <span style={{ fontSize: '28px', fontWeight: 800, opacity: 0.8, letterSpacing: '0.05em' }}>{dims}</span>
                 </div>
 
-                {/* Industrial Description Block */}
+                {/* Primary Description Title (Clean and Sharp) */}
                 <div style={{
-                    backgroundColor: '#000',
                     width: '100%',
-                    padding: '16px 20px',
-                    marginBottom: '8px'
+                    marginBottom: '12px'
                 }}>
                     <div style={{
-                        color: '#FFF',
-                        fontSize: '48px',
+                        color: '#000',
+                        fontSize: '56px',
                         fontWeight: 900,
                         textTransform: 'uppercase',
                         lineHeight: 1,
-                        letterSpacing: '-0.01em',
+                        letterSpacing: '-0.04em',
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         textOverflow: 'ellipsis'
