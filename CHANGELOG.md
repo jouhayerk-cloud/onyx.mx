@@ -13,6 +13,21 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.0 — 2026-03-18
+### Added
+- **Phomymo Designer Integration [feat]:** Replaced the static label preview with a live-embedded Phomymo Designer iframe in the packing sidebar. The designer receives the active item's data via `postMessage` for real-time label population and preview.
+- **Split-Pane Logistics Layout [ui]:** Packing Module now uses a full split-pane layout — scrollable item list on the left, persistent glass sidebar (designer + execution) on the right — for a data-dense workflow.
+- **Glass Dashboard Nav [ui]:** Completely redesigned the top control panel with modern glassmorphism. Includes an integrated liquid-glass search field, live BLE/batch status pills, and a condensed icon-palette for view/filter toggles.
+- **Liquid Filter Drawer [ui]:** Filters panel (vendor chips, label size selector, select-all) now slides in as a collapsible glass layer beneath the nav.
+- **Premium Card & Row Components [ui]:** Redesigned `LogisticsCard` and `LogisticsRow` with refined hover micro-animations, vendor identity ribbons, and glassmorphism depth layering consistent with the rest of the app.
+- **Local Search Field [feat]:** Added an inline search input in the nav bar that combines with the global top-bar search atom for fast artifact scanning.
+- **BLE + Execution Sidebar [feat]:** BLE printer connection, batch print, XLSX export, and PNG download are all accessible in the right sidebar without leaving the item list view.
+- **Item Navigator [feat]:** Added prev/next item navigation controls within the designer panel to cycle through selected batch items.
+
+### Fixed
+- **Broken JSX / Duplicate Layout [fix]:** Resolved accumulated broken JSX from partial edits. Complete module rewrite eliminates all runtime TS errors.
+- **Missing `search` State [fix]:** Fixed `Cannot find name 'search'` TS errors by adding proper local `search`/`setSearch` state wired to `processedItems` memoization.
+
 ## v1.17.1 — 2026-03-18
 ### Fixed
 - **Artifact Framing [ui]:** Corrected image scaling to `object-contain` within a white-filled frame, ensuring artifacts are never cropped and fit perfectly on all devices.

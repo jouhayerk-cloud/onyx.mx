@@ -137,6 +137,15 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // Default to M-series sizes (imported from constants.js)
 let LABEL_SIZES = { ...M_SERIES_LABEL_SIZES, ...M_SERIES_ROUND_LABELS };
 
+// Check for embedding modes
+const urlParams = new URLSearchParams(window.location.search);
+const isMiniMode = urlParams.has('mini') || urlParams.get('mode') === 'mini';
+const isPreviewMode = urlParams.has('preview') || urlParams.get('mode') === 'preview';
+
+if (isMiniMode || isPreviewMode) {
+  document.documentElement.classList.add('is-embedded');
+}
+
 // App state
 const state = {
   connectionType: 'ble',
@@ -7820,6 +7829,42 @@ function init() {
 
   console.log('Phomymo Label Designer initialized');
 }
+
+// External Messaging Interface
+window.addEventListener('message', (event) => {
+  const { type, payload } = event.data;
+
+  if (type === 'LOAD_DESIGN') {
+    if (payload.elements) state.elements = payload.elements;
+    if (payload.labelSize) {
+      state.labelSize = payload.labelSize;
+      state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
+    }
+    if (payload.templateData) state.templateData = payload.templateData;
+    
+    resetHistory();
+    state.renderer.clearCache();
+    detectTemplateFields();
+    render();
+    updatePropertiesPanel();
+    updateToolbarState();
+    setStatus('Design loaded from application');
+  }
+
+  if (type === 'UPDATE_DATA') {
+    if (payload.templateData) {
+      state.templateData = payload.templateData;
+      detectTemplateFields();
+      render();
+      setStatus('Template data updated');
+    }
+  }
+
+  if (type === 'GET_RASTER') {
+    // Parent wants the current raster data for printing
+    // implementation could return current canvas as dataURL or raw bytes
+  }
+});
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
