@@ -13,6 +13,16 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.15.1 — 2026-03-18
+### Added
+- **XLSX Column Consistency [feat]:** Refined the logistics export columns: `DESCRIPTION` now combines `SHAPE` + `TYPE`, and `BOOK RETAIL` uses a composite tag (`{ACQCODE}-BOOKv{RETAIL_USD}`).
+- **Quantity Column [feat]:** Added `QUANTITY` tracking for each item in the logistics export.
+- **PNG Label Branding [ui]:** Removed the "ONYX • ITEM" prefix from the label metadata and replaced it with a dedicated `SHAPE TYPE` tag.
+- **Improved Item Titles [ui]:** Empty item descriptions now fallback to `{SHAPE} {TYPE}` instead of "UNNAMED PIECE" in both Grid and List views.
+
+### Fixed
+- **Packing Search Hardening [fix]:** Implemented `useDeferredValue` for the search term, preventing input lag in the Packing module. Added a global `try-catch` to the filtering memo for zero-crash stability.
+
 ## v1.15.0 — 2026-03-18
 ### Added
 - **Public Online Tags [feat]:** Scanned QR codes now correctly resolve to the GitHub Pages deployment (`https://jouhayerk-cloud.github.io/onyx.mx/?tagid={ID}`).
