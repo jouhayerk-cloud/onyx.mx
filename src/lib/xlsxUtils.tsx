@@ -1,6 +1,6 @@
 
 
-import * as JSZip from 'jszip';
+import JSZip from 'jszip';
 
 const escapeXml = (str: string) => {
     return String(str ?? '').replace(/[<>&'"]/g, (c) => {
