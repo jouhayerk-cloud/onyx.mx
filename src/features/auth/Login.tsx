@@ -61,6 +61,7 @@ export function Login() {
         email,
         password,
         options: {
+          emailRedirectTo: 'https://jouhayerk-cloud.github.io/onyx.mx/',
           data: {
             name: email.split('@')[0],
             role: 'Vendor'
