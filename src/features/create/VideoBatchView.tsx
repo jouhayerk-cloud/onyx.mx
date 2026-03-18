@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { ai } from "../../lib/ai";
 import { useAtomValue, useSetAtom } from 'jotai/react';
 import { userAtom, batchActionItemsDataAtom, isBatchActionsModalOpenAtom, InventoryVersionAtom } from '../../lib/atoms';
 import { SCRIPT_URL, vendors } from '../../lib/consts';

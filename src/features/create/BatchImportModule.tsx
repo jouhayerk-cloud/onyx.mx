@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai/react';
 import { userAtom, SelectedItemRowAtom } from '../../lib/atoms';
 import { SCRIPT_URL, vendors } from '../../lib/consts';
+import { ai } from '../../lib/ai';
 import { GoogleGenAI, Type } from '@google/genai';
 import { useNotify } from '../../lib/hooks';
 import { BoundingBox2DType, BoundingBoxMaskType, PointingType } from '../../lib/Types';
