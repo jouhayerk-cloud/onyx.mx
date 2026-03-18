@@ -299,12 +299,25 @@
       width: 100%;
     }
 
-    /* Mobile menu */
-    #mobile-menu-panel {
-      transition: transform 0.3s ease-out;
+    /* Embedded Mode Overrides */
+    .is-embedded header,
+    .is-embedded .desktop-only.bg-white.border-b,
+    .is-embedded .mobile-toolbar,
+    .is-embedded #zoom-controls,
+    .is-embedded footer {
+      display: none !important;
     }
-    #mobile-menu-panel.menu-open {
-      transform: translateX(0) !important;
+    .is-embedded main {
+      height: 100vh !important;
+    }
+    .is-embedded #props-panel {
+      display: none !important;
+    }
+    .is-embedded #canvas-container {
+      box-shadow: none !important;
+    }
+    .is-embedded .flex-1.flex.items-center.justify-center {
+      padding: 0 !important;
     }
   </style>
 </head>

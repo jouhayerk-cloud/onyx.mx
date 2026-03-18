@@ -12,44 +12,24 @@ import {
     Grid,
     List,
     ChevronRight,
-    QrCode,
-    ClipboardList,
-    Info,
-    Settings2,
     Download,
-    Layers,
     Bluetooth,
     Activity,
-    Box,
     Filter,
     CheckSquare,
     Square,
-    ExternalLink,
     Search,
     X,
     FileSpreadsheet,
-    Smartphone
+    Smartphone,
+    Monitor,
+    Maximize2,
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { M110Driver } from '../../utils/PhomemoM110';
-
-/* ─── Premium Components ─── */
-
-const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-    <div className={`bg-white/3 backdrop-blur-3xl border border-white/8 rounded-4xl overflow-hidden ${className}`}>
-        {children}
-    </div>
-);
-
-const SectionTitle = ({ children, subtitle }: { children: string, subtitle?: string }) => (
-    <div className="flex flex-col gap-1">
-        <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">{children}</h2>
-        {subtitle && <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.4em]">{subtitle}</p>}
-    </div>
-);
 
 /* ─── Main Module ─── */
 
@@ -64,15 +44,18 @@ export const PackingModule: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isGenerating, setIsGenerating] = useState(false);
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
-    const [isReviewMode, setIsReviewMode] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('50x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(false);
     const [vendorFilter, setVendorFilter] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
 
     const [isConnectingBLE, setIsConnectingBLE] = useState(false);
     const m110Driver = useRef<M110Driver>(new M110Driver());
     const [isConnectedBLE, setIsConnectedBLE] = useState(false);
+
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [activeItemIndex, setActiveItemIndex] = useState(0);
 
     useEffect(() => {
         if (!db) return;
@@ -97,38 +80,22 @@ export const PackingModule: React.FC = () => {
 
     const processedItems = useMemo(() => {
         try {
-            const searchTerm = String(deferredSearch || '').toLowerCase().trim();
-
             return inventory.map(item => {
                 const normData = normalizeInventoryData(item?.data || {});
                 const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
                 const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-
-                return {
-                    ...item,
-                    codes,
-                    normData,
-                    imageUrl: getCleanImageUrl(baseImg)
-                };
+                return { ...item, codes, normData, imageUrl: getCleanImageUrl(baseImg) };
             }).filter(item => {
                 const { normData, codes } = item;
                 if (!normData || !codes) return false;
 
-                // Search filter
-                if (searchTerm) {
-                    const searchStr = [
-                        normData.itemId,
-                        normData.itemNumber,
-                        normData.description,
-                        normData.shape,
-                        normData.itemType,
-                        codes.bookBardcode
-                    ].map(v => String(v || '').toLowerCase()).join(' ');
-
-                    if (!searchStr.includes(searchTerm)) return false;
+                const combinedSearch = (deferredSearch || search || '').toLowerCase().trim();
+                if (combinedSearch) {
+                    const searchStr = [normData.itemId, normData.itemNumber, normData.description, normData.shape, normData.itemType, codes.bookBardcode]
+                        .map(v => String(v || '').toLowerCase()).join(' ');
+                    if (!searchStr.includes(combinedSearch)) return false;
                 }
 
-                // Vendor filter
                 if (vendorFilter) {
                     const vendorCode = String(codes.bookBardcode || '').substring(0, 2);
                     if (vendorCode !== vendorFilter) return false;
@@ -137,10 +104,10 @@ export const PackingModule: React.FC = () => {
                 return true;
             });
         } catch (e) {
-            console.error("Critical processedItems error:", e);
+            console.error('Critical processedItems error:', e);
             return [];
         }
-    }, [inventory, deferredSearch, exchangeRate, workbookPrefix, vendorFilter]);
+    }, [inventory, deferredSearch, exchangeRate, workbookPrefix, vendorFilter, search]);
 
     const availableVendors = useMemo(() => {
         const vendorSet = new Set<string>();
@@ -152,8 +119,34 @@ export const PackingModule: React.FC = () => {
         return Array.from(vendorSet).sort();
     }, [inventory, exchangeRate, workbookPrefix]);
 
-    const toggleSelect = (id: string, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
+    // Items selected for designer / print
+    const filteredItems = useMemo(
+        () => processedItems.filter(item => selectedIds.has(String(item.row))),
+        [processedItems, selectedIds]
+    );
+    const activeItem = filteredItems[activeItemIndex] || null;
+
+    // Clamp index
+    useEffect(() => {
+        if (activeItemIndex >= filteredItems.length && filteredItems.length > 0) {
+            setActiveItemIndex(filteredItems.length - 1);
+        }
+    }, [filteredItems.length, activeItemIndex]);
+
+    // Sync active item data to designer iframe
+    useEffect(() => {
+        const iframe = iframeRef.current;
+        if (!iframe || !activeItem) return;
+        const timer = setTimeout(() => {
+            iframe.contentWindow?.postMessage({
+                type: 'UPDATE_DATA',
+                payload: { templateData: [{ ...activeItem.normData, ...activeItem.codes }] }
+            }, '*');
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [activeItem, activeItemIndex]);
+
+    const toggleSelect = (id: string) => {
         const newSet = new Set(selectedIds);
         if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
         setSelectedIds(newSet);
@@ -175,18 +168,15 @@ export const PackingModule: React.FC = () => {
             toast.success(`Connected to ${name}`);
         } catch (e: any) {
             setIsConnectedBLE(false);
-            if (e.name !== 'NotFoundError') {
-                toast.error(`BLE Connection Failed: ${e.message}`);
-            }
+            if (e.name !== 'NotFoundError') toast.error(`BLE Connection Failed: ${e.message}`);
         } finally {
             setIsConnectingBLE(false);
         }
     };
 
     const handlePrintBLE = async () => {
-        if (!isConnectedBLE || !m110Driver.current.isConnected()) {
+        if (!isConnectedBLE || !m110Driver.current.isConnected())
             return toast.error('Printer not connected. Connect via Bluetooth first.');
-        }
         if (selectedIds.size === 0) return toast.error('Select items first');
 
         setIsGenerating(true);
@@ -227,63 +217,40 @@ export const PackingModule: React.FC = () => {
                 }
             }
             toast.success(`${items.length} stickers saved`, { id: tid });
-        } catch (e) { toast.error('Render failed', { id: tid }); }
-        finally { setIsGenerating(true); setTimeout(() => setIsGenerating(false), 500); }
+        } catch (e) {
+            toast.error('Render failed', { id: tid });
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const handleExportXLSX = async () => {
         if (isExportingXLSX || selectedIds.size === 0) return;
         setIsExportingXLSX(true);
         const tid = toast.loading('Generating Export Artifact...');
-
         try {
             const itemsToExport = processedItems.filter(item => selectedIds.has(String(item.row)));
-
             const rows = itemsToExport.map(item => {
                 const d = item.normData;
                 const c = item.codes;
-
-                // Combined Description: SHAPE TYPE (shape description)
                 const combinedDesc = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
-
-                // Combined Material Color
                 const combinedMatColor = `${d.material || 'ONYX'} ${d.color || ''}`.trim();
-
-                // Combined Sizes: W*L*H CM
                 const combinedSizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
-
-                // Book Retail (Combined): ACQCODE-BOOKv(326)RETAIL_USD (Example: HX-3260389)
                 const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
                 const retailStr = String(c.bookRetail || '0').padStart(4, '0');
                 const combinedRetail = `${c.bookAqCode}-${bookv}${retailStr}`;
-
                 const qrUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`;
-
-                return [
-                    c.bookBardcode,
-                    combinedDesc,
-                    combinedMatColor,
-                    combinedSizes,
-                    d.quantity || 1,
-                    c.bookLandCode,
-                    c.bookAqCode,
-                    combinedRetail,
-                    qrUrl
-                ];
+                return [c.bookBardcode, combinedDesc, combinedMatColor, combinedSizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, combinedRetail, qrUrl];
             });
 
             const sheets = [{
                 name: 'Packing List',
-                data: [
-                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'],
-                    ...rows
-                ]
+                data: [['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
             }];
 
             await exportToXLSX(`Packing_List_${new Date().toISOString().split('T')[0]}`, sheets);
             toast.success('XLSX generated successfully', { id: tid });
         } catch (error: any) {
-            console.error(error);
             toast.error(`Export failed: ${error.message}`, { id: tid });
         } finally {
             setIsExportingXLSX(false);
@@ -292,193 +259,284 @@ export const PackingModule: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full bg-transparent overflow-hidden relative">
-            {/* Minimalist Top Nav */}
-            <nav className="z-40 px-6 py-4 flex items-center justify-between bg-black/60 backdrop-blur-2xl border-b border-white/5 sticky top-0">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-2xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center text-(--main-color)">
-                        <Package size={20} />
+
+            {/* ── GLASS NAV ── */}
+            <nav className="z-50 shrink-0 px-8 py-5 flex items-center justify-between bg-black/40 backdrop-blur-3xl border-b border-white/5 sticky top-0">
+                <div className="flex items-center gap-8">
+                    {/* Brand */}
+                    <div className="flex items-center gap-4">
+                        <div className="relative group cursor-pointer">
+                            <div className="absolute -inset-2 bg-(--main-color)/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                            <div className="relative w-11 h-11 rounded-2xl bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center text-(--main-color)">
+                                <Package size={20} />
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                            <h1 className="text-lg font-black text-white uppercase tracking-tighter leading-none italic">
+                                Packing <span className="text-(--main-color)/60">Module</span>
+                            </h1>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[8px] font-black text-(--main-color) uppercase tracking-[0.3em] font-mono">Logistics Hub v1.17</span>
+                                <div className="w-1 h-1 rounded-full bg-white/20" />
+                                <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] font-mono">{processedItems.length} artifacts</span>
+                            </div>
+                        </div>
                     </div>
-                    <SectionTitle subtitle="Logistics Hub">Packing</SectionTitle>
+
+                    {/* Liquid glass search */}
+                    <div className="hidden lg:flex items-center group relative min-w-[260px]">
+                        <div className="absolute left-4 text-white/20 group-focus-within:text-(--main-color) transition-colors z-10 pointer-events-none">
+                            <Search size={13} />
+                        </div>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="SCAN OR SEARCH..."
+                            className="w-full h-10 bg-white/5 border border-white/5 focus:border-(--main-color)/40 focus:bg-white/10 rounded-2xl pl-10 pr-8 text-[9px] font-black uppercase tracking-widest text-white placeholder:text-white/10 transition-all outline-none"
+                        />
+                        {search && (
+                            <button onClick={() => setSearch('')} className="absolute right-3 p-1 text-white/20 hover:text-white transition-colors">
+                                <X size={12} />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => setIsReviewMode(!isReviewMode)}
-                        className={`hidden md:flex px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isReviewMode ? 'bg-white text-black shadow-2xl scale-105' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white'}`}
-                    >
-                        {isReviewMode ? 'Exit Review' : 'Label Preview'}
-                    </button>
+                    {/* Live status pills */}
+                    <div className="hidden xl:flex items-center bg-white/2 rounded-2xl border border-white/5 overflow-hidden text-[8px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-2 px-3 py-2 border-r border-white/5">
+                            <div className={`w-1.5 h-1.5 rounded-full transition-all ${isConnectedBLE ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-white/10'}`} />
+                            <span className={isConnectedBLE ? 'text-green-400' : 'text-white/20'}>BLE</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-2 border-r border-white/5">
+                            <span className={selectedIds.size > 0 ? 'text-(--main-color)' : 'text-white/20'}>{selectedIds.size} ready</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-2">
+                            <span className="text-white/20">{processedItems.length} total</span>
+                        </div>
+                    </div>
 
-                    <button
-                        onClick={() => setIsConfigExpanded(!isConfigExpanded)}
-                        className={`p-3 rounded-2xl transition-all ${isConfigExpanded ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white'}`}
-                    >
-                        <Settings2 size={18} />
-                    </button>
+                    {/* Action icons */}
+                    <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/8">
+                        <button
+                            onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
+                            className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all"
+                            title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+                        >
+                            {viewMode === 'grid' ? <List size={16} /> : <Grid size={16} />}
+                        </button>
+                        <div className="w-px h-4 bg-white/10" />
+                        <button
+                            onClick={() => setIsConfigExpanded(!isConfigExpanded)}
+                            className={`p-2 rounded-xl transition-all ${isConfigExpanded ? 'bg-(--main-color) text-black shadow-lg' : 'text-white/30 hover:text-white'}`}
+                            title="Filters & Config"
+                        >
+                            <Filter size={16} />
+                        </button>
+                    </div>
                 </div>
             </nav>
 
-            {/* Config Drawer / Filters */}
-            <div className={`z-30 px-6 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/5 transition-all duration-500 overflow-hidden ${isConfigExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 py-0 border-none'}`}>
-                <div className="flex flex-col gap-6">
-                    {/* Multi-Select & Selection Actions */}
-                    <div className="flex items-center justify-between">
+            {/* ── FILTER DRAWER ── */}
+            <div className={`shrink-0 z-40 overflow-hidden transition-all duration-500 bg-black/60 backdrop-blur-3xl border-b border-white/5 ${isConfigExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
+                <div className="px-8 py-6 flex flex-col gap-5">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <button onClick={selectAll} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all">
-                                {selectedIds.size === processedItems.length ? <CheckSquare size={14} className="text-(--main-color)" /> : <Square size={14} />}
-                                {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select Visible'}
+                            <button
+                                onClick={selectAll}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/8 text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all"
+                            >
+                                {selectedIds.size === processedItems.length ? <CheckSquare size={13} className="text-(--main-color)" /> : <Square size={13} />}
+                                {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
                             </button>
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] px-2">{selectedIds.size} Selected</span>
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{selectedIds.size} selected</span>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
-                                <Grid size={16} />
-                            </button>
-                            <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
-                                <List size={16} />
-                            </button>
-                        </div>
+                        <select
+                            value={labelSize}
+                            onChange={e => setLabelSize(e.target.value as any)}
+                            className="bg-white/5 border border-white/8 px-4 py-2 rounded-xl text-[9px] font-black text-white outline-none uppercase tracking-widest cursor-pointer"
+                        >
+                            <option value="40x30">40×30 mm Pocket</option>
+                            <option value="50x30">50×30 mm Industrial</option>
+                            <option value="50x80">50×80 mm Elite Wide</option>
+                        </select>
                     </div>
 
-                    {/* Vendor Filter Palette */}
-                    <div className="flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] flex items-center gap-2 italic">
-                            <Filter size={10} /> Segment by Vendor
-                        </span>
-                        <div className="flex flex-wrap gap-2">
+                    {/* Vendor chips */}
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={() => setVendorFilter(null)}
+                            className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border ${!vendorFilter ? 'bg-white text-black border-white' : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20'}`}
+                        >All Vendors</button>
+                        {availableVendors.map(v => (
                             <button
-                                onClick={() => setVendorFilter(null)}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${!vendorFilter ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white/40'}`}
+                                key={v}
+                                onClick={() => setVendorFilter(v)}
+                                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${vendorFilter === v ? 'bg-(--main-color) text-black border-(--main-color)' : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20'}`}
                             >
-                                All Vendors
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: (vendors as any)[v]?.color || '#FFF' }} />
+                                {v}
                             </button>
-                            {availableVendors.map(v => (
-                                <button
-                                    key={v}
-                                    onClick={() => setVendorFilter(v)}
-                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${vendorFilter === v ? 'bg-(--main-color) text-black border-(--main-color)' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
-                                >
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: (vendors as any)[v]?.color || '#FFF' }} />
-                                    {v}
-                                </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── MAIN SPLIT LAYOUT ── */}
+            <div className="flex-1 flex overflow-hidden min-h-0">
+
+                {/* LEFT: Item grid / list */}
+                <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar">
+                    {processedItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-5 text-white/10">
+                            <div className="w-24 h-24 rounded-full border border-dashed border-white/8 flex items-center justify-center">
+                                <Package size={36} strokeWidth={1} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] italic">No Artifacts Found</span>
+                        </div>
+                    ) : viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 content-start">
+                            {processedItems.map(item => (
+                                <LogisticsCard
+                                    key={item.row}
+                                    item={item}
+                                    isSelected={selectedIds.has(String(item.row))}
+                                    onToggle={() => toggleSelect(String(item.row))}
+                                />
                             ))}
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col gap-2.5 content-start">
+                            {processedItems.map(item => (
+                                <LogisticsRow
+                                    key={item.row}
+                                    item={item}
+                                    isSelected={selectedIds.has(String(item.row))}
+                                    onToggle={() => toggleSelect(String(item.row))}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                    <div className="w-full h-px bg-white/5" />
+                {/* RIGHT: Glass sidebar — designer + execution */}
+                <div className="hidden md:flex flex-col w-[400px] xl:w-[440px] shrink-0 border-l border-white/5 bg-black/40 backdrop-blur-3xl overflow-y-auto custom-scrollbar shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-30">
+                    <div className="p-7 flex flex-col gap-7">
 
-                    <div className="flex flex-wrap gap-4 items-center">
-                        <div className="flex items-center gap-3 bg-white/5 p-1.5 rounded-2xl border border-white/10">
-                            <select
-                                value={labelSize}
-                                onChange={(e) => setLabelSize(e.target.value as any)}
-                                className="bg-transparent px-4 py-1.5 text-[10px] font-black text-white outline-none uppercase tracking-widest cursor-pointer"
-                            >
-                                <option value="40x30">40x30 Pocket</option>
-                                <option value="50x30">50x30 Industrial</option>
-                                <option value="50x80">50x80 Elite Wide</option>
-                            </select>
+                        {/* Stats row */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white/2 border border-white/5 rounded-3xl p-5 flex flex-col gap-2 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-14 h-14 bg-white/5 blur-2xl -mr-7 -mt-7 rounded-full" />
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Batch</span>
+                                <span className="text-3xl font-black text-white italic tracking-tighter">{selectedIds.size}</span>
+                            </div>
+                            <div className="bg-white/2 border border-white/5 rounded-3xl p-5 flex flex-col gap-2 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-14 h-14 bg-(--main-color)/5 blur-2xl -mr-7 -mt-7 rounded-full" />
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Est. Value</span>
+                                <span className="text-2xl font-black text-(--main-color) italic tracking-tighter">
+                                    ${filteredItems.reduce((acc, i) => acc + parseFloat(i.codes.bookRetail || '0'), 0).toLocaleString()}
+                                </span>
+                            </div>
                         </div>
 
-                        <div className="flex grow gap-3 h-12">
-                            <button
-                                onClick={(navigator as any).bluetooth ? handleBLEConnect : () => toast.error('BLE requires HTTPS and browser support')}
-                                className={`aspect-square rounded-2xl bg-white/5 border flex items-center justify-center transition-all
-                                    ${(navigator as any).bluetooth
-                                        ? isConnectedBLE
-                                            ? 'border-blue-500/50 text-blue-400'
-                                            : 'border-white/10 text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40'
-                                        : 'text-white/5 opacity-50 cursor-not-allowed'}`}
-                            >
-                                <Bluetooth size={16} className={isConnectingBLE ? 'animate-pulse text-(--main-color)' : ''} />
-                            </button>
+                        {/* Phomymo Designer iframe */}
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em] italic">Label Designer</span>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => window.open('/phomemo-designer/index.html', '_blank')}
+                                        className="text-[8px] font-black text-(--main-color)/50 hover:text-(--main-color) italic uppercase tracking-[0.2em] transition-colors flex items-center gap-1"
+                                    >
+                                        <Maximize2 size={9} /> Full Screen
+                                    </button>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">
+                                        {activeItem ? `${activeItemIndex + 1} / ${filteredItems.length}` : '— / —'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* iframe container */}
+                            <div className="aspect-video rounded-3xl bg-black border border-white/8 overflow-hidden relative shadow-2xl">
+                                {activeItem ? (
+                                    <iframe
+                                        ref={iframeRef}
+                                        src="/phomemo-designer/index.html?mini=true"
+                                        className="w-full h-full border-none"
+                                        title="Phomymo Label Designer"
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full gap-4 text-white/10">
+                                        <Package size={48} strokeWidth={1} />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.5em] italic">Select an Artifact</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Item nav */}
+                            <div className="flex gap-2">
+                                <button
+                                    disabled={!activeItem || activeItemIndex === 0}
+                                    onClick={() => setActiveItemIndex(i => Math.max(0, i - 1))}
+                                    className="flex-1 py-3 rounded-2xl bg-white/3 border border-white/5 text-[9px] font-black text-white/30 hover:text-white disabled:opacity-10 disabled:cursor-not-allowed transition-all"
+                                >‹ Prev</button>
+                                <button
+                                    disabled={!activeItem || activeItemIndex >= filteredItems.length - 1}
+                                    onClick={() => setActiveItemIndex(i => Math.min(filteredItems.length - 1, i + 1))}
+                                    className="flex-1 py-3 rounded-2xl bg-white/3 border border-white/5 text-[9px] font-black text-white/30 hover:text-white disabled:opacity-10 disabled:cursor-not-allowed transition-all"
+                                >Next ›</button>
+                            </div>
+                        </div>
+
+                        {/* BLE connect */}
+                        <button
+                            onClick={handleBLEConnect}
+                            className={`w-full py-3.5 rounded-2xl border flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-[0.25em] transition-all ${isConnectedBLE ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/2 border-white/5 text-white/20 hover:text-white/60 hover:border-white/15'}`}
+                        >
+                            <Smartphone size={14} />
+                            {isConnectingBLE ? 'Scanning...' : isConnectedBLE ? 'Sync Stable · M110' : 'Initialize BLE Printer'}
+                        </button>
+
+                        {/* Execution zone */}
+                        <div className="flex flex-col gap-3">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] italic flex items-center gap-2">
+                                <Monitor size={11} /> Execution
+                            </span>
 
                             <button
                                 onClick={handlePrintBLE}
-                                disabled={isGenerating || !isConnectedBLE}
-                                className={`w-full py-2.5 rounded-2xl flex items-center justify-center gap-2 font-black tracking-widest text-[10px] transition-all duration-500 border
-                                    ${isConnectedBLE
-                                        ? 'bg-blue-600/20 border-blue-500/50 text-blue-400 hover:bg-blue-600/30'
-                                        : 'bg-white/5 border-white/10 text-white/20'}`}
+                                disabled={selectedIds.size === 0 || !isConnectedBLE}
+                                className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.25em] hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                <Bluetooth size={14} className={isGenerating ? "animate-spin" : ""} />
-                                {isGenerating ? "PRINTING..." : "PRINT (M110 BLE)"}
+                                <Bluetooth size={15} strokeWidth={3} />
+                                {isGenerating ? 'Printing...' : 'Print Batch · BLE'}
                             </button>
 
-                            <button
-                                onClick={handleExportXLSX}
-                                disabled={selectedIds.size === 0 || isExportingXLSX}
-                                className="grow md:grow-0 px-6 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-20"
-                            >
-                                {isExportingXLSX ? <Activity size={14} className="animate-spin text-(--main-color)" /> : <FileSpreadsheet size={16} />}
-                                Export XLSX
-                            </button>
-
-                            <button
-                                onClick={downloadLabels}
-                                disabled={selectedIds.size === 0 || isGenerating}
-                                className="grow md:grow-0 px-8 rounded-2xl bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-(--main-color)/20 disabled:opacity-20"
-                            >
-                                {isGenerating ? <Activity size={14} className="animate-spin" /> : <Printer size={16} />}
-                                Batch Print
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={handleExportXLSX}
+                                    disabled={selectedIds.size === 0 || isExportingXLSX}
+                                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/3 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest hover:bg-white/8 hover:text-white active:scale-95 transition-all disabled:opacity-20"
+                                >
+                                    <FileSpreadsheet size={13} /> XLSX
+                                </button>
+                                <button
+                                    onClick={downloadLabels}
+                                    disabled={selectedIds.size === 0 || isGenerating}
+                                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/3 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest hover:bg-white/8 hover:text-white active:scale-95 transition-all disabled:opacity-20"
+                                >
+                                    <Download size={13} /> PNG
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Scroll Area / Workspace */}
-            <main className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar relative z-10 flex flex-col">
-                {isReviewMode ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 justify-items-center">
-                        {selectedIds.size === 0 ? (
-                            <div className="col-span-full py-40 flex flex-col items-center justify-center opacity-20 gap-6 text-center">
-                                <Smartphone size={80} strokeWidth={1} />
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-sm font-black uppercase tracking-[0.4em]">Review Context: Void</span>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Select items to preview physical artifacts</span>
-                                </div>
-                            </div>
-                        ) : (
-                            processedItems.filter(i => selectedIds.has(String(i.row))).map(item => (
-                                <div key={item.row} className="relative group w-full max-w-sm">
-                                    <div className="bg-white rounded-4xl overflow-hidden shadow-3xl transform transition-all duration-700 border-4 border-white/10 ring-1 ring-black/40">
-                                        <PhomemoSheetTemplate item={item} size={labelSize} />
-                                    </div>
-                                    <div className="absolute top-6 -right-2 p-3 bg-black/80 backdrop-blur-3xl border border-white/10 rounded-2xl flex flex-col gap-1 shadow-2xl">
-                                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-[0.2em]">Active Layout</span>
-                                        <span className="text-[10px] font-black text-white tracking-widest">{labelSize}MM</span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" : "flex flex-col gap-3"}>
-                        {processedItems.length === 0 ? (
-                            <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-30 gap-4 text-center">
-                                <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center">
-                                    <Search size={24} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">No Matches Found</span>
-                                    <span className="text-[9px] font-bold opacity-60">Try adjusting your filters or search term</span>
-                                </div>
-                            </div>
-                        ) : (
-                            processedItems.map(item => (
-                                viewMode === 'grid' ?
-                                    <LogisticsCard key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} /> :
-                                    <LogisticsRow key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} />
-                            ))
-                        )}
-                    </div>
-                )}
-            </main>
-
-            {/* Render Scratchpad for html2canvas (Hidden) */}
-            <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-visible" style={{ width: '4000px', height: '4000px' }}>
+            {/* Hidden html2canvas scratchpad */}
+            <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none" style={{ width: '4000px', height: '4000px' }}>
                 {processedItems.filter(i => selectedIds.has(String(i.row))).map(item => (
                     <PhomemoSheetTemplate key={item.row} item={item} size={labelSize} />
                 ))}
@@ -489,45 +547,48 @@ export const PackingModule: React.FC = () => {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color); }
-                .shadow-3xl { shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7); }
             `}</style>
         </div>
     );
 };
 
-/* ─── Premium Card / Row ─── */
-
+/* ─── CARD VIEW ─── */
 const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
     const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
     const vendorColor = (vendors as any)[vendorCode]?.color || 'transparent';
 
     return (
-        <div onClick={onToggle} className={`group relative bg-white/2 border rounded-4xl p-4 transition-all duration-500 cursor-pointer overflow-hidden ${isSelected ? 'border-(--main-color) bg-(--main-color)/10 scale-[1.02] shadow-2xl shadow-(--main-color)/5' : 'border-white/5 hover:bg-white/5 hover:border-white/20'}`}>
+        <div
+            onClick={onToggle}
+            className={`group relative bg-white/2 border rounded-4xl p-4 transition-all duration-700 cursor-pointer overflow-hidden ${isSelected ? 'border-(--main-color)/40 bg-(--main-color)/5 scale-[1.02] shadow-2xl shadow-(--main-color)/10' : 'border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+        >
             <div className="aspect-square rounded-3xl overflow-hidden bg-black/40 mb-4 relative">
-                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 group-hover:scale-110 transition-all duration-1000" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={40} /></div>}
-                <div className="absolute top-3 right-3">
-                    <div className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/40 border-white/20'}`}>
-                        {isSelected && <CheckCircle2 className="w-5 h-5 text-black" strokeWidth={3} />}
+                {item.imageUrl
+                    ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 group-hover:scale-105 transition-all duration-[1.5s] ease-out" alt="" />
+                    : <div className="w-full h-full flex items-center justify-center opacity-5"><Package size={40} /></div>
+                }
+                {/* Selection indicator */}
+                <div className="absolute top-3 right-3 z-10">
+                    <div className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all duration-500 ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/60 border-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100'}`}>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3} />}
                     </div>
                 </div>
-                {/* Vendor Ribbon */}
-                <div className="absolute top-0 left-0 w-8 h-8 flex items-center justify-center" style={{ backgroundColor: vendorColor }}>
-                    <span className="text-[10px] font-black text-black mix-blend-difference">{vendorCode}</span>
+                {/* Vendor tag */}
+                <div className="absolute top-0 left-0 px-2 py-1 rounded-br-2xl -translate-x-full group-hover:translate-x-0 transition-transform duration-500" style={{ backgroundColor: vendorColor }}>
+                    <span className="text-[8px] font-black text-black tracking-widest uppercase">{vendorCode}</span>
                 </div>
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
 
             <div className="flex flex-col gap-3">
-                <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">{item.codes.bookBardcode}</span>
-                    <h3 className="text-[11px] font-black text-white/70 uppercase tracking-widest line-clamp-1 group-hover:text-white transition-colors">
+                <div>
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-1">{item.codes.bookBardcode}</span>
+                    <h3 className="text-[11px] font-black text-white/60 uppercase tracking-widest line-clamp-1 group-hover:text-white transition-colors duration-500 font-mono">
                         {item.normData.description || `${item.normData.shape || ''} ${item.normData.itemType || item.normData.type || ''}`.trim() || 'ONYX PIECE'}
                     </h3>
                 </div>
-
-                <div className="w-full h-px bg-white/5" />
-
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter italic">{item.normData.widthCm}x{item.normData.heightCm}cm</span>
+                <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                    <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest italic">{item.normData.widthCm}×{item.normData.heightCm} CM</span>
                     <span className="text-sm font-black text-white font-mono tracking-tighter">${item.codes.bookRetail}</span>
                 </div>
             </div>
@@ -535,39 +596,48 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
     );
 };
 
+/* ─── ROW VIEW ─── */
 const LogisticsRow = ({ item, isSelected, onToggle }: any) => {
     const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
     const vendorColor = (vendors as any)[vendorCode]?.color || 'transparent';
 
     return (
-        <div onClick={onToggle} className={`flex items-center gap-6 p-3 rounded-2xl border transition-all cursor-pointer ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/2 border-white/5 hover:bg-white/5'}`}>
-            <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10'}`}>{isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3} />}</div>
-
-            <div className="w-12 h-12 rounded-xl bg-black/40 shrink-0 overflow-hidden border border-white/10 relative">
-                {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" /> : <Package className="w-full h-full p-3 opacity-10" />}
-                <div className="absolute bottom-0 left-0 w-full h-1" style={{ backgroundColor: vendorColor }} />
+        <div
+            onClick={onToggle}
+            className={`flex items-center gap-5 p-4 rounded-2xl border transition-all duration-300 cursor-pointer group ${isSelected ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+        >
+            <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/10 opacity-40 group-hover:opacity-100'}`}>
+                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
             </div>
 
-            <div className="flex-1 grid grid-cols-12 gap-6 items-center">
-                <div className="col-span-3 flex flex-col">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">ID Artifact</span>
-                    <span className="text-[11px] font-black text-white uppercase tracking-tight line-clamp-1">{item.normData.itemId}</span>
+            <div className="w-12 h-12 rounded-xl bg-black/60 shrink-0 overflow-hidden border border-white/5 relative group-hover:scale-105 transition-transform duration-500">
+                {item.imageUrl
+                    ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
+                    : <Package className="w-full h-full p-3 opacity-5" />
+                }
+                <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: vendorColor }} />
+            </div>
+
+            <div className="flex-1 grid grid-cols-12 gap-4 items-center min-w-0">
+                <div className="col-span-3 flex flex-col min-w-0">
+                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1 italic truncate">{item.normData.itemId}</span>
+                    <span className="text-[10px] font-black text-white uppercase tracking-tight truncate font-mono">{item.codes.bookBardcode}</span>
                 </div>
-                <div className="col-span-6 flex flex-col">
-                    <span className="text-[11px] font-medium text-white/60 uppercase tracking-wide line-clamp-1 italic">{item.normData.description}</span>
-                    <span className="text-[8px] font-black text-(--main-color)/40 uppercase tracking-[0.2em] mt-0.5">{item.codes.bookBardcode}</span>
+                <div className="col-span-6 flex flex-col min-w-0">
+                    <span className="text-[11px] font-bold text-white/50 uppercase tracking-wide truncate group-hover:text-white transition-colors duration-300">{item.normData.description}</span>
+                    <span className="text-[7px] font-black text-(--main-color)/50 uppercase tracking-[0.3em] mt-0.5 italic">{item.normData.material} · {item.normData.widthCm}×{item.normData.heightCm} CM</span>
                 </div>
-                <div className="col-span-3 flex flex-col items-end">
+                <div className="col-span-3 flex items-center justify-end gap-3">
                     <span className="text-sm font-black text-white font-mono tracking-tighter italic">${item.codes.bookRetail}</span>
+                    <ChevronRight size={13} className="text-white/10 group-hover:text-(--main-color) group-hover:translate-x-1 transition-all duration-300 shrink-0" />
                 </div>
             </div>
         </div>
     );
 };
 
-/* ─── FIXED LABEL TEMPLATE (Pixel-Perfect Architecture) ─── */
-
-const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, size }) => {
+/* ─── PHOMEMO LABEL TEMPLATE (html2canvas render target — hidden) ─── */
+const PhomemoSheetTemplate: React.FC<{ item: any; size: string }> = ({ item, size }) => {
     const d = item.normData;
     const tagId = item.codes?.bookBardcode || 'ONYX-VOID';
     const tagUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagId}`;
@@ -575,153 +645,54 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
     const [wStr, hStr] = (size || '50x30').split('x');
     const widthMm = parseFloat(wStr) || 50;
     const heightMm = parseFloat(hStr) || 30;
-
     const baseW = 600;
     const baseH = Math.round((heightMm / widthMm) * baseW);
-
-    // Vendor Theming
-    const vendorCode = tagId.substring(0, 2);
-    const vendorColor = (vendors as any)[vendorCode]?.color || '#000';
-    const sidebarWidth = Math.round(baseW * 0.12);
-
-    const dims = `${d.widthCm || 0}X${d.lengthCm || 0}X${d.heightCm || 0} CM`.toUpperCase();
     const spacedTagId = tagId.split('').join('  ');
+    const dims = `${d.widthCm || 0}×${d.lengthCm || 0}×${d.heightCm || 0} CM`;
 
     return (
-        <div id={`phomemo-sheet-${item.row}`}
-            style={{
-                width: `${baseW}px`,
-                height: `${baseH}px`,
-                backgroundColor: '#FFF',
-                display: 'flex',
-                color: '#000',
-                overflow: 'hidden',
-                position: 'relative',
-                fontFamily: 'Outfit, "DM Sans", system-ui, sans-serif',
-                WebkitFontSmoothing: 'antialiased'
-            }}
+        <div
+            id={`phomemo-sheet-${item.row}`}
+            style={{ width: `${baseW}px`, height: `${baseH}px`, backgroundColor: '#FFF', display: 'flex', color: '#000', overflow: 'hidden', position: 'relative', fontFamily: 'Outfit, "DM Sans", system-ui, sans-serif' }}
         >
-            {/* Sidebar (Made in Mexico branding) */}
-            <div style={{
-                width: '48px', // Reduced to avoid overlap
-                height: '100%',
-                backgroundColor: '#000', // Changed to high-contrast black
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden'
-            }}>
-                <div style={{
-                    transform: 'rotate(-90deg)',
-                    whiteSpace: 'nowrap',
-                    fontSize: '22px', // Scaled down for harmony
-                    fontWeight: 900,
-                    letterSpacing: '0.4em',
-                    color: '#FFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}>
+            {/* Sidebar */}
+            <div style={{ width: '48px', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ transform: 'rotate(-90deg)', whiteSpace: 'nowrap', fontSize: '20px', fontWeight: 900, letterSpacing: '0.4em', color: '#FFF' }}>
                     MADE IN MEXICO
                 </div>
             </div>
 
-            {/* Content Section (Top Half for Metadata, Bottom Half for Barcode) */}
-            <div style={{
-                flex: 1,
-                padding: '20px 32px',
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'relative',
-                justifyContent: 'space-between'
-            }}>
-                {/* Top Half (Metadata) */}
+            {/* Content */}
+            <div style={{ flex: 1, padding: '18px 28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        justifyContent: 'space-between',
-                        marginBottom: '8px'
-                    }}>
-                        <span style={{ fontSize: '24px', fontStyle: 'italic', fontWeight: 800, opacity: 0.6 }}>{tagId}</span>
-                        <span style={{ fontSize: '24px', fontWeight: 800, opacity: 0.8 }}>{dims}</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '22px', fontStyle: 'italic', fontWeight: 800, opacity: 0.6 }}>{tagId}</span>
+                        <span style={{ fontSize: '22px', fontWeight: 800, opacity: 0.8 }}>{dims}</span>
                     </div>
-
-                    <div style={{
-                        fontSize: '38px', // Optimized for top half space
-                        fontWeight: 900,
-                        textTransform: 'uppercase',
-                        lineHeight: 1.05,
-                        letterSpacing: '-0.02em',
-                        marginBottom: '10px',
-                        display: '-webkit-box',
-                        WebkitLineClamp: '2',
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden'
-                    }}>
+                    <div style={{ fontSize: '36px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: '8px', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {`${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE'}
                     </div>
-
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ fontSize: '22px', fontWeight: 800, textTransform: 'uppercase', opacity: 0.9 }}>
-                                {d.material || 'ONYX'} · {d.color || 'NATURAL'}
-                            </div>
-                            <div style={{ fontSize: '18px', fontWeight: 800, opacity: 0.5 }}>
-                                MASS: {d.weightKg || '--'}KG
-                            </div>
+                        <div>
+                            <div style={{ fontSize: '20px', fontWeight: 800, textTransform: 'uppercase', opacity: 0.9 }}>{d.material || 'ONYX'} · {d.color || 'NATURAL'}</div>
+                            <div style={{ fontSize: '16px', fontWeight: 800, opacity: 0.5 }}>MASS: {d.weightKg || '--'} KG</div>
                         </div>
-
-                        {/* Online Tag QR - Scaled for corner */}
-                        <div style={{
-                            width: '80px',
-                            height: '80px',
-                            padding: '6px',
-                            border: '3px solid #000',
-                            borderRadius: '12px',
-                            backgroundColor: '#FFF'
-                        }}>
-                            <QRCodeSVG value={tagUrl} size={68} level="H" />
+                        <div style={{ width: '72px', height: '72px', padding: '5px', border: '3px solid #000', borderRadius: '10px', backgroundColor: '#FFF' }}>
+                            <QRCodeSVG value={tagUrl} size={62} level="H" />
                         </div>
                     </div>
                 </div>
 
-                {/* Bottom Half (Industrial Barcode Focus) */}
-                <div style={{
-                    height: '45%', // Take near bottom half
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    borderTop: '3px solid #000',
-                    paddingTop: '15px'
-                }}>
-                    <div style={{ transform: 'scale(1.6)', transformOrigin: 'bottom', marginBottom: '25px' }}>
-                        <Barcode
-                            value={tagId}
-                            width={2.2}
-                            height={70}
-                            displayValue={false}
-                            margin={0}
-                            background="transparent"
-                            lineColor="#000"
-                        />
+                {/* Barcode zone */}
+                <div style={{ height: '45%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', borderTop: '3px solid #000', paddingTop: '12px' }}>
+                    <div style={{ transform: 'scale(1.5)', transformOrigin: 'bottom', marginBottom: '22px' }}>
+                        <Barcode value={tagId} width={2.2} height={65} displayValue={false} margin={0} background="transparent" lineColor="#000" />
                     </div>
-                    <div style={{
-                        fontSize: '32px',
-                        fontWeight: 900,
-                        letterSpacing: '0.4em',
-                        textTransform: 'uppercase',
-                        width: '100%',
-                        textAlign: 'center',
-                        lineHeight: 1
-                    }}>
+                    <div style={{ fontSize: '28px', fontWeight: 900, letterSpacing: '0.4em', textTransform: 'uppercase', width: '100%', textAlign: 'center', lineHeight: 1 }}>
                         {spacedTagId}
                     </div>
                 </div>
             </div>
-
             <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet" />
         </div>
     );
