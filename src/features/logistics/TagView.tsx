@@ -212,7 +212,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
             {/* Inquire Bar */}
             <div className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none">
                 <div className="max-w-md mx-auto pointer-events-auto">
-                    <button className="w-full bg-black text-white h-20 rounded-[2rem] font-black uppercase tracking-[0.5em] text-[10px] shadow-2xl hover:scale-[0.98] transition-all flex items-center justify-center gap-4">
+                    <button className="w-full bg-black text-white h-20 rounded-4xl font-black uppercase tracking-[0.5em] text-[10px] shadow-2xl hover:scale-[0.98] transition-all flex items-center justify-center gap-4">
                         <Sparkles size={18} className="text-[#00A8E8] animate-pulse" />
                         Inquire Piece
                     </button>

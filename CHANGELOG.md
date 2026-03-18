@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.17.1 — 2026-03-18
+### Fixed
+- **Artifact Framing [ui]:** Corrected image scaling to `object-contain` within a white-filled frame, ensuring artifacts are never cropped and fit perfectly on all devices.
+- **UI Minimalization [ui]:** Removed redundant status badges and internal IDs (`AUTHENTIC`, `Verified Piece`, `ITEM ID`) for a cleaner, unified title experience.
+- **Standalone Artifacts [feat]:** Removed back-navigation to the main application for public artifact links, creating a truly standalone verification experience.
+
 ## v1.17.0 — 2026-03-18
 ### Added
 - **Online Artifact Experience [ui]:** Completely redesigned the public digital tag view with a high-contrast, minimalist light theme.
