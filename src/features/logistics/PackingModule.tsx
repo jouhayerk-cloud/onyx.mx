@@ -223,6 +223,8 @@ export const PackingModule: React.FC = () => {
                 const retailStr = String(c.bookRetail || '0').padStart(4, '0');
                 const combinedRetail = `${c.bookAqCode}-${bookv}${retailStr}`;
                 
+                const qrUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`;
+                
                 return [
                     c.bookBardcode,
                     combinedDesc,
@@ -231,14 +233,15 @@ export const PackingModule: React.FC = () => {
                     d.quantity || 1,
                     c.bookLandCode,
                     c.bookAqCode,
-                    combinedRetail
+                    combinedRetail,
+                    qrUrl
                 ];
             });
 
             const sheets = [{
                 name: 'Packing List',
                 data: [
-                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL'],
+                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'],
                     ...rows
                 ]
             }];
