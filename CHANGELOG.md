@@ -13,6 +13,22 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.17.0 — 2026-03-18
+### Added
+- **Online Artifact Experience [ui]:** Completely redesigned the public digital tag view with a high-contrast, minimalist light theme.
+- **Edge-to-Edge Hero Gallery [ui]:** Implemented a fullscreen zero-padding hero section with dynamic image navigation and gallery support for items with multiple artifacts.
+- **Vendor-Coded Identity [ui]**: Interactive Tag ID badges that maintain local vendor branding colors.
+- **Technical Specs Grid [ui]**: Redesigned metadata display for dimensions, weight, and internal traceability codes (AQC/LC).
+- **MSRP Certification [ui]**: Bold, high-contrast valuation section for authorized retail verification.
+- **Floating Action Bar [ui]**: Minimalist floating contact bar for quick piece inquiries.
+
+## v1.16.0 — 2026-03-18
+### Fixed
+- **Packing Label Proportions [ui]**: Barcode now occupies the bottom half of the sticker for high-visibility industrial scanning.
+- **Combined Description [ui]**: Correctly integrated Shape + Description logic across all logistics modules and PNG labels.
+- **Sidebar Clarity [ui]**: Resized the "MADE IN MEXICO" side tag to ensure zero overlap with the primary artifact metadata.
+- **Logistics Export Refinement [feat]**: Added combined Shape/Type descriptions and a direct QR URL column to the XLSX packing list.
+
 ## v1.15.2 — 2026-03-18
 ### Added
 - **Logistics QR Link [feat]:** Added a dedicated `QR URL` column to the XLSX export for immediate digital artifact access.
