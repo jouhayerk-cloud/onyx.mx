@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { ai } from "../../lib/ai";
 
 import * as JSZip from 'jszip';
 

@@ -22,6 +22,7 @@
 - **CSS Design Utilities [infra]:** Added global `.skeleton` shimmer and `.optimistic-revert` flash animation utilities to `index.css`, supporting all 6 application themes automatically.
 ### Fixed
 - **Payments View [fix]:** Resolved a pre-existing broken atom import (`isPaymentsFilterBarVisibleAtom` → `paymentFilterBarModeAtom`) and corrected `LoadingIndicator` usage after skeleton implementation.
+- **TypeScript Errors [fix]:** Resolved multiple TypeScript errors (TS2339, TS2367) in AI-driven features and Logistics module.
 
 ## v1.13.5 — 2026-03-17
 ### Fixed

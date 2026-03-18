@@ -1,6 +1,7 @@
 
 
 import { GoogleGenAI, Modality } from "@google/genai";
+import { ai } from "../../lib/ai";
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
