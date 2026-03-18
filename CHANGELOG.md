@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.13.5 — 2026-03-17
+### Fixed
+- **Supabase signup redirect [fix]:** `signUp` now passes `emailRedirectTo: 'https://jouhayerk-cloud.github.io/onyx.mx/'` so activation email links correctly land on the app instead of the GitHub root (which 404s).
+- **Custom 404 page [fix]:** Replaced the empty `404.html` with a full Onyx.mx–branded dark page (inline SVG logo, animated, glassmorphic). When Supabase auth params (`type=signup`, `access_token`, etc.) are detected in the URL hash or query string, the page automatically redirects to the app within 800ms so the token is preserved and processed.
+
 ## v1.13.4 — 2026-03-17
 ### Fixed
 - **Float precision [fix]:** Prices stored as whole MXN pesos now correctly round at each calculation step (`round2 = Math.round(x * 100) / 100`) inside `calculateCodesAndPrices`, preventing IEEE 754 drift from producing long decimal tails in USD conversions, cypher codes, and retail prices.
