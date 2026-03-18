@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
+import { UserRegistrySkeleton } from './UserRegistrySkeleton';
 
 type UserRole = 'Developer' | 'Admin' | 'Client' | 'Vendor';
 
@@ -82,14 +84,27 @@ export function UserRegistryPanel() {
     };
 
     const handleToggleActive = async (user: AppUser) => {
-        await supabase.from('app_users').update({ is_active: !user.is_active }).eq('id', user.id);
-        fetchUsers();
+        // Optimistic: flip locally first
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+        const { error } = await supabase.from('app_users').update({ is_active: !user.is_active }).eq('id', user.id);
+        if (error) {
+            // Revert on failure
+            setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: user.is_active } : u));
+            toast.error('Failed to update status');
+        }
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('Remove this user from app access? This cannot be undone.')) return;
-        await supabase.from('app_users').delete().eq('id', id);
-        fetchUsers();
+        const snapshot = users.find(u => u.id === id);
+        // Optimistic: remove from list immediately
+        setUsers(prev => prev.filter(u => u.id !== id));
+        const { error } = await supabase.from('app_users').delete().eq('id', id);
+        if (error) {
+            // Restore on failure
+            if (snapshot) setUsers(prev => [snapshot, ...prev.filter(u => u.id !== id)]);
+            toast.error('Failed to delete user');
+        }
     };
 
     const sendInvite = (user: AppUser) => {
@@ -183,12 +198,7 @@ ${appUrl}`
 
             {/* Users Table */}
             {loading ? (
-                <div className="flex items-center justify-center h-40 text-(--text-color-secondary)">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="w-6 h-6 border-2 border-(--main-color) border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm uppercase font-black tracking-widest">Loading…</span>
-                    </div>
-                </div>
+                <UserRegistrySkeleton />
             ) : users.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 gap-3 text-(--text-color-secondary)">
                     <svg className="w-10 h-10 opacity-30"><use href="#users" /></svg>

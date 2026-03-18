@@ -8,10 +8,10 @@ import { useDatabase, useTranslation } from '../../lib/hooks';
 import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import {
-    Activity, LayoutDashboard, Database, RefreshCcw, DollarSign, Wallet, Store,
-    ShoppingCart, CreditCard, Package, ArrowRight, User, ChevronDown, ChevronUp
+    RefreshCcw, DollarSign, Wallet,
+    ShoppingCart, CreditCard, Package, ArrowUpRight, ChevronDown, ChevronUp,
+    TrendingUp, AlertCircle
 } from 'lucide-react';
-import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { pendingCardIcon } from './paymentsIcons.svg';
 import { PaymentDestination } from '../../lib/Types';
@@ -28,45 +28,49 @@ interface ClientVendorSummary {
     totalAcqUsd: number;
 }
 
-const SummaryTile = ({ icon: Icon, title, stats, actionLabel, onAction, color = 'var(--main-color)' }: {
-    icon: React.FC<any>; title: string; stats: { label: string; value: string; subValue?: string }[]; actionLabel: string; onAction: () => void; color?: string;
+// ── Compact KPI Stat ─────────────────────────────────────────────
+const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
+    label: string; value: string; sub?: string; accent?: string; onClick?: () => void;
 }) => (
     <div
-        onClick={onAction}
-        className="bg-(--glass-bg) border border-(--border-color) rounded-4xl p-5 flex flex-col gap-4 hover:translate-y-[-4px] active:scale-[0.98] cursor-pointer transition-all duration-300 shadow-xl relative overflow-hidden group"
+        onClick={onClick}
+        className={`flex flex-col gap-1 p-3 rounded-2xl border border-white/5 bg-white/3 ${onClick ? 'cursor-pointer hover:bg-white/5 hover:border-white/10 transition-all' : ''}`}
     >
-        <div className="absolute top-[-20%] right-[-10%] w-32 h-32 rounded-full blur-[50px] opacity-10 z-0" style={{ background: color }} />
-        <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl border border-white/5 shadow-md flex items-center justify-center bg-white/5">
-                    <Icon size={20} strokeWidth={1.75} style={{ color }} />
-                </div>
-                <h3 className="text-[14px] font-black text-(--text-color) tracking-tight uppercase leading-none">{title}</h3>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 group-hover:bg-(--main-color)/20 text-[9px] font-black uppercase tracking-widest text-(--text-color) transition-all">
-                {actionLabel} <ArrowRight size={10} strokeWidth={2.5} />
-            </div>
-        </div>
-        <div className="relative z-10 mt-1">
-            <div className="space-y-2">
-                {stats.map((s, i) => (
-                    <div key={i} className="flex justify-between items-end">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-60">{s.label}</span>
-                        <div className="text-right flex flex-col items-end">
-                            <span className="text-base font-mono font-black text-(--text-color) leading-none">{s.value}</span>
-                            {s.subValue && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-50 mt-1 leading-none">{s.subValue}</span>}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-50 leading-none">{label}</span>
+        <span className="text-[15px] font-mono font-black text-(--text-color) leading-none" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-40 leading-none">{sub}</span>}
     </div>
 );
 
+// ── Section Header ───────────────────────────────────────────────
+const SectionHeader = ({ icon: Icon, title, badge, color = '#00AEEF', right }: {
+    icon: React.FC<any>; title: string; badge?: string; color?: string; right?: React.ReactNode;
+}) => (
+    <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+            <Icon size={14} strokeWidth={2} style={{ color }} />
+            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color)">{title}</h2>
+            {badge && (
+                <span className="px-2 py-0.5 rounded-full bg-white/8 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
+            )}
+        </div>
+        {right}
+    </div>
+);
+
+// ── Vendor Dot ───────────────────────────────────────────────────
+const VendorDot = ({ vendorId, color }: { vendorId: string; color: string }) => (
+    <span
+        className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[8px] font-black text-black shadow-sm border border-black/20 shrink-0"
+        style={{ backgroundColor: color }}
+        title={vendorId}
+    >
+        {String(vendorId).slice(0, 2).toUpperCase()}
+    </span>
+);
+
 export const ClientOverview: React.FC = () => {
-    const t = useTranslation();
     const db = useDatabase();
-    const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const currentExchangeRate = liveExchangeRate || exchangeRate;
@@ -83,28 +87,27 @@ export const ClientOverview: React.FC = () => {
 
     const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
-
     useEffect(() => {
         if (!db) return;
         setIsLoading(true);
         const subs = [
-            db.inventory.find().$.subscribe(d => {
-                const all = d.map(x => ({ ...x.toJSON(), source: 'inventory', data: normalizeInventoryData(x.toJSON()) }));
-                const store = all.filter(x => ['Available', 'Avaiable', 'Catalog'].includes(x.data.status));
-                const inventory = all.filter(x => !['Available', 'Avaiable', 'Catalog'].includes(x.data.status) && x.data.status !== 'Pending Deletion');
+            db.inventory.find().$.subscribe((d: any[]) => {
+                const all = d.map((x: any) => ({ ...x.toJSON(), source: 'inventory', data: normalizeInventoryData(x.toJSON()) }));
+                const store = all.filter((x: any) => ['Available', 'Avaiable', 'Catalog'].includes(x.data.status));
+                const inventory = all.filter((x: any) => !['Available', 'Avaiable', 'Catalog'].includes(x.data.status) && x.data.status !== 'Pending Deletion');
                 setItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...inventory]);
                 setStoreItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...store]);
             }),
-            db.production.find().$.subscribe(d => {
-                const mapped = d.map(x => ({ ...x.toJSON(), source: 'production', data: normalizeInventoryData(x.toJSON()) }));
+            db.production.find().$.subscribe((d: any[]) => {
+                const mapped = d.map((x: any) => ({ ...x.toJSON(), source: 'production', data: normalizeInventoryData(x.toJSON()) }));
                 setItems(prev => [...prev.filter(p => p.source !== 'production'), ...mapped]);
             }),
-            db.finance.find().$.subscribe(d => {
-                setFinanceData(d.map(x => x.toJSON()));
+            db.finance.find().$.subscribe((d: any[]) => {
+                setFinanceData(d.map((x: any) => x.toJSON()));
             }),
         ];
-        setTimeout(() => setIsLoading(false), 800);
-        return () => subs.forEach(s => s.unsubscribe());
+        setTimeout(() => setIsLoading(false), 600);
+        return () => subs.forEach((s: any) => s.unsubscribe());
     }, [db]);
 
     const vendorSummaries = useMemo<ClientVendorSummary[]>(() => {
@@ -112,346 +115,352 @@ export const ClientOverview: React.FC = () => {
         for (const item of items) {
             const norm = item.data;
             const vid = String(norm?.itemId || '').split('-')[0] || '?';
-            if (!map[vid]) {
-                map[vid] = { vendorId: vid, color: (vendors as any)[vid]?.color || '#888', itemCount: 0, totalAcqMxn: 0, totalAcqUsd: 0 };
-            }
+            if (!map[vid]) map[vid] = { vendorId: vid, color: (vendors as any)[vid]?.color || '#888', itemCount: 0, totalAcqMxn: 0, totalAcqUsd: 0 };
             const price = parseFloat(norm?.price || 0);
             const qty = parseInt(norm?.quantity || 1) || 1;
             const totalPrice = price * qty;
-            const usd = totalPrice / currentExchangeRate;
             map[vid].itemCount += qty;
             map[vid].totalAcqMxn += totalPrice;
-            map[vid].totalAcqUsd += usd;
+            map[vid].totalAcqUsd += totalPrice / currentExchangeRate;
         }
         return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
     }, [items, currentExchangeRate]);
 
-    const activeDestPendingRecords = useMemo(() => {
-        return financeData.filter(d => (d.status === 'Requested' || !d.status) && d.destination);
-    }, [financeData]);
+    const activeDestPendingRecords = useMemo(() =>
+        financeData.filter(d => (d.status === 'Requested' || !d.status) && d.destination),
+        [financeData]);
 
-    const activeDestReqNetMXN = useMemo(() => {
-        return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-    }, [activeDestPendingRecords]);
+    const activeDestReqNetMXN = useMemo(() =>
+        activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0),
+        [activeDestPendingRecords]);
 
-    const pendingItems = useMemo(() => {
-        return items.filter(i => {
-            const status = (i.data?.status || '').toLowerCase();
-            const payReqStr = String(i.data?.payReq || (i.data as any)?.pay_req || '').toLowerCase();
-            const isAcq = ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status);
-            const isPaid = payReqStr === 'true' || payReqStr === 'paid';
-            return isAcq && !isPaid;
-        });
-    }, [items]);
+    const pendingItems = useMemo(() => items.filter(i => {
+        const status = (i.data?.status || '').toLowerCase();
+        const payReqStr = String(i.data?.payReq || (i.data as any)?.pay_req || '').toLowerCase();
+        return ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status)
+            && payReqStr !== 'true' && payReqStr !== 'paid';
+    }), [items]);
 
     const comingPaymentsByVendor = useMemo(() => {
-        const groups: Record<string, { total: number, partials: string[] }> = {};
+        const groups: Record<string, { total: number; partials: string[] }> = {};
         for (const item of pendingItems) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
             if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
             if (!vid) vid = 'Unknown';
-
             if (!groups[vid]) groups[vid] = { total: 0, partials: [] };
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
-
             let ratio = 1;
             const payReqStr = String(data.payReq || data.pay_req || '').toLowerCase();
             if (payReqStr.includes('%')) {
                 const match = payReqStr.match(/(\d+)%/);
-                if (match) {
-                    const percPaid = parseInt(match[1]);
-                    ratio = Math.max(0, (100 - percPaid) / 100);
-                    groups[vid].partials.push(`${percPaid}% paid on lot ${itemIdStr}`);
-                }
+                if (match) { ratio = Math.max(0, (100 - parseInt(match[1])) / 100); groups[vid].partials.push(`${match[1]}% paid on ${itemIdStr}`); }
             }
-
-            groups[vid].total += (price * ratio * qty);
+            groups[vid].total += price * ratio * qty;
         }
-        return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, total: data.total, partials: data.partials })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
+        return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, ...data })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
 
     const globalTotals = useMemo(() => {
-        const totalItemsCount = vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0);
         const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
-
-        // Requested Unpaid (from finance records)
         const requestedUnpaidMxn = activeDestReqNetMXN;
-        const requestedUnpaidUsd = requestedUnpaidMxn / currentExchangeRate;
-
-        // Pending to be Requested (the "Coming" part)
         const pendingToRequestMxn = comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0);
-        const pendingToRequestUsd = pendingToRequestMxn / currentExchangeRate;
-
-        // Total Unpaid = Requested + To be requested
-        const totalUnpaidMxn = requestedUnpaidMxn + pendingToRequestMxn;
-        const totalUnpaidUsd = requestedUnpaidUsd + pendingToRequestUsd;
-
         return {
-            totalItems: totalItemsCount,
+            totalItems: vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0),
             totalAcqValueUsd,
-            requestedUnpaidUsd,
+            requestedUnpaidUsd: requestedUnpaidMxn / currentExchangeRate,
             requestedUnpaidMxn,
-            pendingToRequestUsd,
+            pendingToRequestUsd: pendingToRequestMxn / currentExchangeRate,
             pendingToRequestMxn,
-            totalUnpaidUsd,
-            totalUnpaidMxn,
+            totalUnpaidUsd: (requestedUnpaidMxn + pendingToRequestMxn) / currentExchangeRate,
+            totalUnpaidMxn: requestedUnpaidMxn + pendingToRequestMxn,
             storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
-            newStoreCount: storeItems.filter(x => {
-                const updated = new Date(x.data.updatedAt || 0).getTime();
-                return Date.now() - updated < 7 * 24 * 60 * 60 * 1000; // last 7 days
-            }).length
+            newStoreCount: storeItems.filter(x => Date.now() - new Date(x.data.updatedAt || 0).getTime() < 7 * 864e5).length,
         };
     }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor]);
 
-    const fmtMXN = (val: number) => showFinancials ? '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
-    const fmtUSD = (val: number) => {
-        if (!showFinancials) return '***';
-        return '$' + val.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }) + ' USD';
-    };
+    const fmtMXN = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
+    const fmtUSD = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD' : '***';
+    const fmtUSDCompact = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***';
 
     const vendorChartOption = useMemo<EChartsOption>(() => ({
-        tooltip: { trigger: 'item', formatter: (params: any) => `${params.name}: ${params.value.toFixed(2)} units (${params.percent}%)` },
-        series: [
-            {
-                name: 'Units by Vendor',
-                type: 'pie',
-                radius: ['40%', '70%'],
-                center: ['50%', '50%'],
-                data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.itemCount })),
-                label: { show: false },
-                itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 1 }
+        tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: ${p.value} units (${p.percent}%)` },
+        legend: {
+            orient: 'vertical', right: '0%', top: 'center',
+            textStyle: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'inherit' },
+            itemWidth: 8, itemHeight: 8,
+            formatter: (name: string) => {
+                const v = vendorSummaries.find(x => x.vendorId === name);
+                return `${name}  ${v?.itemCount ?? ''}`;
             }
-        ],
+        },
+        series: [{
+            name: 'Units by Vendor', type: 'pie',
+            radius: ['40%', '68%'], center: ['35%', '50%'],
+            data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.itemCount })),
+            label: { show: false },
+            itemStyle: { borderRadius: 6, borderColor: 'rgba(0,0,0,0.4)', borderWidth: 1 }
+        }],
         color: vendorSummaries.map(v => v.color),
         backgroundColor: 'transparent',
     }), [vendorSummaries]);
 
-    const pieChartOption = useMemo<EChartsOption>(() => {
-        const data = vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd }));
-        return {
-            tooltip: { trigger: 'item', formatter: (params: any) => `${params.name}: $${params.value.toFixed(2)} (${params.percent}%)` },
-            series: [
-                {
-                    name: 'Acquisition',
-                    type: 'pie',
-                    radius: ['50%', '80%'],
-                    center: ['50%', '50%'],
-                    data,
-                    label: { show: false },
-                    itemStyle: { borderRadius: 10, borderColor: 'rgba(0,0,0,0.5)', borderWidth: 2 }
-                }
-            ],
-            color: vendorSummaries.map(v => v.color),
-            backgroundColor: 'transparent'
-        };
-    }, [vendorSummaries]);
+    const pieChartOption = useMemo<EChartsOption>(() => ({
+        tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: $${p.value.toFixed(0)} USD (${p.percent}%)` },
+        legend: {
+            orient: 'vertical', right: '0%', top: 'center',
+            textStyle: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'inherit' },
+            itemWidth: 8, itemHeight: 8,
+        },
+        series: [{
+            name: 'Acq Value', type: 'pie',
+            radius: ['45%', '72%'], center: ['35%', '50%'],
+            data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd })),
+            label: { show: false },
+            itemStyle: { borderRadius: 6, borderColor: 'rgba(0,0,0,0.4)', borderWidth: 1 }
+        }],
+        color: vendorSummaries.map(v => v.color),
+        backgroundColor: 'transparent',
+    }), [vendorSummaries]);
 
     const handleMarkAsPaid = async (destId: string, destReqMXN: number, destDocs: any[]) => {
         const toastId = toast.loading(`Marking ${fmtMXN(destReqMXN)} as Paid...`);
         try {
             const docIds = destDocs.map(d => d.id);
-            if (docIds.length === 0) return;
-
+            if (!docIds.length) return;
             const { error: finErr } = await supabase.from('finance').update({ status: 'Paid' }).in('id', docIds);
             if (finErr) throw finErr;
-
             for (const id of docIds) {
                 const localDoc = await db?.finance.findOne({ selector: { id } }).exec();
                 if (localDoc) await localDoc.patch({ status: 'Paid' });
             }
-
             for (const req of destDocs) {
                 const ids = req.related_ids || req.related_inventory_ids?.split(',') || [];
                 if (ids.length > 0) {
-                    if (req.description?.includes('%')) {
-                        const perc = req.description.match(/(\d+)%/)?.[1];
-                        await supabase.from('inventory').update({ pay_req: `paid ${perc || 'partial'}%` }).in('id', ids);
-                    } else {
-                        await supabase.from('inventory').update({ pay_req: true }).in('id', ids);
-                    }
+                    const perc = req.description?.match(/(\d+)%/)?.[1];
+                    await supabase.from('inventory').update({ pay_req: perc ? `paid ${perc}%` : true }).in('id', ids);
                 }
             }
-
-            toast.success('Payment successfully finalized.', { id: toastId });
-        } catch (error) {
-            console.error(error);
+            toast.success('Payment finalized.', { id: toastId });
+        } catch (err) {
+            console.error(err);
             toast.error('Failed to mark as paid', { id: toastId });
         }
     };
 
-    if (isLoading) return <LoadingIndicator />;
+    // ── Skeleton ─────────────────────────────────────────────────
+    if (isLoading) return (
+        <div className="flex flex-col gap-4 p-4 animate-pulse">
+            <div className="grid grid-cols-3 gap-3">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-20 rounded-2xl bg-white/5 skeleton" />)}
+            </div>
+            <div className="h-40 rounded-2xl bg-white/5 skeleton" />
+            <div className="grid grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-white/5 skeleton" />)}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-4 gap-6 animate-in fade-in duration-500">
-            <div className="grow min-h-0 overflow-y-auto m-2 mt-0 relative z-20 custom-scrollbar pr-2 space-y-10 pb-20 pt-4">
+        <div className="flex flex-col h-full overflow-hidden relative">
+            <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-4 pb-20">
 
-                {/* Split layout for pending requests destinations */}
-                <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <div className="flex items-center gap-3">
-                            <RefreshCcw size={18} className="text-[#00AEEF]" />
-                            <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Priority Payment Requisitions</h2>
-                        </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-(--main-color)/10 border border-(--main-color)/20 w-fit shrink-0">
-                            <DollarSign size={12} className="text-(--main-color)" />
-                            <span className="text-[9px] font-black text-(--text-color) uppercase tracking-[0.15em]">Rate: {currentExchangeRate.toFixed(2)} MXN/USD</span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                            const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
-                            const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                            if (destReqMXN <= 0) return null;
-
-                            const vendorIdsForDest = Array.from(new Set(destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1]))).filter(Boolean);
-                            const isExpanded = !!expandedDests[key];
-
-                            return (
-                                <div key={key} className="flex flex-col p-6 bg-white/5 border border-white/5 hover:border-[#00AEEF]/40 transition-all rounded-4xl group gap-4 relative overflow-hidden">
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 w-full">
-                                        <div className="flex items-center gap-5 cursor-pointer" onClick={() => toggleDest(key)}>
-                                            <div className="relative shrink-0">
-                                                <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-                                                    <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply relative z-0" />
-                                                </div>
-                                                {vendorIdsForDest.length > 0 && (
-                                                    <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
-                                                        {vendorIdsForDest.map((vid: any) => {
-                                                            const color = (vendors as any)[vid]?.color || '#888';
-                                                            const shortCode = String(vid).slice(0, 2).toUpperCase();
-                                                            return (
-                                                                <span key={vid} className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={vid}>
-                                                                    {shortCode}
-                                                                </span>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1.5">
-                                                    <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none">{cfg.name}</p>
-                                                    {isExpanded ? <ChevronUp size={14} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-60" /> : <ChevronDown size={14} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-60" />}
-                                                </div>
-                                                <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Ready for Dispersal</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <div className="text-right mb-2">
-                                                <p className="text-xl font-mono font-black text-(--text-color) group-hover:text-[#00AEEF] transition-colors leading-none">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => handleMarkAsPaid(key, destReqMXN, destDocs)}
-                                                className="px-6 py-2.5 rounded-xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all w-full md:w-auto">
-                                                Report Payment
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Payment Details Accordion */}
-                                    {isExpanded && (
-                                        <div className="mt-2 pt-4 border-t border-white/10 space-y-2 animate-in fade-in slide-in-from-top-2 relative z-10 w-full">
-                                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) mb-2 opacity-60 flex items-center justify-between">
-                                                <span>Payment Records</span>
-                                                <span>Details</span>
-                                            </div>
-                                            {destDocs.map(d => (
-                                                <div key={d.id} className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 text-xs text-white/70 bg-black/20 p-4 rounded-3xl border border-white/5 shadow-inner hover:bg-black/30 transition-colors">
-                                                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                                                        <span className="font-black text-(--text-color) tracking-wide truncate" title={d.description || 'Payment Request'}>{d.description || 'Payment Request'}</span>
-                                                        {d.vendor_id && (
-                                                            <span className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1 opacity-70">
-                                                                VENDOR: <span style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-right flex flex-col font-mono text-[10px] items-end shrink-0">
-                                                        <div className="flex gap-4 mb-1">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="uppercase text-[8px] opacity-50 tracking-widest">Base</span>
-                                                                <span>{fmtMXN(d.amount || 0)}</span>
-                                                            </div>
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="uppercase text-[8px] opacity-50 tracking-widest">Fee/Tax</span>
-                                                                <span>{fmtMXN(d.commission || 0)}</span>
-                                                            </div>
-                                                        </div>
-                                                        <span className="font-bold text-white text-[12px] bg-(--glass-bg) px-2 py-0.5 rounded-md mt-1 border border-white/10">Total: {fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-
-                        {activeDestPendingRecords.length === 0 && (
-                            <div className="col-span-full p-12 text-center text-(--text-color-secondary) text-[11px] font-black tracking-[0.3em] uppercase border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30">
-                                No Pending Requisitions found
-                            </div>
-                        )}
-                    </div>
+                {/* ── KPI Strip ──────────────────────────────────────────── */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    <KpiStat
+                        label="Units"
+                        value={globalTotals.totalItems.toLocaleString()}
+                        accent="#6BCEBB"
+                        onClick={() => setActiveView('inventory')}
+                    />
+                    <KpiStat
+                        label="Acq Value"
+                        value={fmtUSDCompact(globalTotals.totalAcqValueUsd)}
+                        sub={showFinancials ? '$' + globalTotals.totalAcqValueUsd.toFixed(0) + ' USD' : undefined}
+                        accent="#6BCEBB"
+                    />
+                    <KpiStat
+                        label="Catalog"
+                        value={globalTotals.storeCount.toLocaleString()}
+                        sub={globalTotals.newStoreCount > 0 ? `+${globalTotals.newStoreCount} new` : undefined}
+                        accent="#34D399"
+                        onClick={() => setActiveView('store')}
+                    />
+                    <KpiStat
+                        label="Requested"
+                        value={fmtUSDCompact(globalTotals.requestedUnpaidUsd)}
+                        sub={showFinancials ? fmtMXN(globalTotals.requestedUnpaidMxn) : undefined}
+                        accent="#FBBF24"
+                    />
+                    <KpiStat
+                        label="Pending Req"
+                        value={fmtUSDCompact(globalTotals.pendingToRequestUsd)}
+                        sub={showFinancials ? fmtMXN(globalTotals.pendingToRequestMxn) : undefined}
+                        accent="#F97316"
+                    />
+                    <KpiStat
+                        label="Total Unpaid"
+                        value={fmtUSDCompact(globalTotals.totalUnpaidUsd)}
+                        sub={showFinancials ? fmtMXN(globalTotals.totalUnpaidMxn) : undefined}
+                        accent="#EF4444"
+                        onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
+                    />
                 </div>
 
-                {comingPaymentsByVendor.length > 0 && (
-                    <div className="bg-(--glass-bg) rounded-[2.5rem] border border-(--border-color) p-8 shadow-sm transition-all duration-300">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group" onClick={() => setIsComingExpanded(!isComingExpanded)}>
-                            <div className="flex items-center gap-3">
-                                <Wallet size={18} className="text-[#00AEEF]" />
-                                <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#00AEEF] transition-colors">To be paid soon</h2>
+                {/* ── Priority Requisitions ───────────────────────────────── */}
+                <div>
+                    <SectionHeader
+                        icon={RefreshCcw}
+                        title="Priority Requisitions"
+                        badge={activeDestPendingRecords.length > 0 ? `${Object.values(
+                            activeDestPendingRecords.reduce((acc: any, d) => { 
+                                if (d.destination) acc[d.destination] = true; 
+                                return acc; 
+                            }, {})
+                        ).length} destinations` : undefined}
+                        right={
+                            <div className="flex items-center gap-1 text-[9px] font-black text-(--text-color-secondary) opacity-50">
+                                <DollarSign size={10} />
+                                {currentExchangeRate.toFixed(2)} MXN/USD
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest opacity-60 bg-white/5 px-2 py-1 rounded-md">{comingPaymentsByVendor.length} Pending Records</span>
-                                {isComingExpanded ? <ChevronUp size={16} className="text-(--text-color-secondary)" /> : <ChevronDown size={16} className="text-(--text-color-secondary)" />}
+                        }
+                    />
+
+                    {activeDestPendingRecords.length === 0 ? (
+                        <div className="flex items-center justify-center gap-2 py-6 text-(--text-color-secondary) opacity-30">
+                            <AlertCircle size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">No Pending Requisitions</span>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                                const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
+                                const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+                                if (destReqMXN <= 0) return null;
+                                const vendorIdsForDest = Array.from(new Set(
+                                    destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
+                                )).filter(Boolean);
+                                const isExpanded = !!expandedDests[key];
+
+                                return (
+                                    <div key={key} className="rounded-2xl border border-white/6 bg-white/3 overflow-hidden">
+                                        {/* Row header */}
+                                        <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/3 transition-colors" onClick={() => toggleDest(key)}>
+                                            {/* Bank logo */}
+                                            <div className="w-10 h-7 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
+                                            </div>
+
+                                            {/* Vendor dots */}
+                                            <div className="flex gap-1 shrink-0">
+                                                {vendorIdsForDest.slice(0, 4).map((vid: any) => (
+                                                    <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} />
+                                                ))}
+                                                {vendorIdsForDest.length > 4 && (
+                                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 self-center">+{vendorIdsForDest.length - 4}</span>
+                                                )}
+                                            </div>
+
+                                            {/* Name */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate">{cfg.name}</p>
+                                                <p className="text-[9px] font-bold text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">{destDocs.length} record{destDocs.length !== 1 ? 's' : ''}</p>
+                                            </div>
+
+                                            {/* Amounts */}
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[13px] font-mono font-black text-(--text-color) leading-none">{fmtMXN(destReqMXN)}</p>
+                                                <p className="text-[10px] font-mono font-bold text-[#00AEEF] opacity-80 mt-0.5">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
+                                            </div>
+
+                                            {/* Expand + pay */}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); handleMarkAsPaid(key, destReqMXN, destDocs); }}
+                                                    className="px-3 py-1.5 rounded-xl bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-sm"
+                                                >
+                                                    Paid
+                                                </button>
+                                                {isExpanded
+                                                    ? <ChevronUp size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
+                                                    : <ChevronDown size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
+                                                }
+                                            </div>
+                                        </div>
+
+                                        {/* Accordion detail rows */}
+                                        {isExpanded && (
+                                            <div className="border-t border-white/6 px-3 py-2 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div className="grid grid-cols-2 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 px-1 mb-1">
+                                                    <span>Description</span><span className="text-right">Base · Fee · Total</span>
+                                                </div>
+                                                {destDocs.map(d => (
+                                                    <div key={d.id} className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-xl bg-black/20 border border-white/4">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[10px] font-bold text-(--text-color) truncate">{d.description || 'Payment Request'}</p>
+                                                            {d.vendor_id && (
+                                                                <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-[9px] font-mono shrink-0">
+                                                            <span className="text-(--text-color-secondary) opacity-50">{fmtMXN(d.amount || 0)}</span>
+                                                            <span className="text-(--text-color-secondary) opacity-40">+{fmtMXN(d.commission || 0)}</span>
+                                                            <span className="font-black text-(--text-color)">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Coming Payments ─────────────────────────────────────── */}
+                {comingPaymentsByVendor.length > 0 && (
+                    <div>
+                        <div
+                            className="flex items-center justify-between mb-3 cursor-pointer group"
+                            onClick={() => setIsComingExpanded(!isComingExpanded)}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Wallet size={14} strokeWidth={2} className="text-[#F97316]" />
+                                <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#F97316] transition-colors">
+                                    To Be Requested
+                                </h2>
+                                <span className="px-2 py-0.5 rounded-full bg-white/8 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{comingPaymentsByVendor.length}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-mono font-black text-[#F97316]">{fmtUSDCompact(globalTotals.pendingToRequestUsd)}</span>
+                                {isComingExpanded
+                                    ? <ChevronUp size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
+                                    : <ChevronDown size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
+                                }
                             </div>
                         </div>
 
                         {isComingExpanded && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                                {/* Render coming payments */}
+                            <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                                 {comingPaymentsByVendor.map(group => {
                                     const color = (vendors as any)[group.vendorId]?.color || '#888';
                                     return (
-                                        <div key={`coming-${group.vendorId}`} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white/5 border border-white/5 hover:border-(--main-color)/40 transition-all rounded-4xl group gap-4 opacity-70 hover:opacity-100">
-                                            <div className="flex items-center gap-5 w-full md:w-auto">
-                                                <div className="relative shrink-0">
-                                                    <div className="w-16 h-12 p-1.5 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-white/10" style={{ borderColor: `${color}80` }}>
-                                                        <img src={pendingCardIcon} alt="Pending" className="w-full h-full object-contain mix-blend-multiply relative z-0" />
-                                                    </div>
-                                                    <div className="absolute -top-2 -right-2 flex flex-wrap gap-1 z-10 justify-end max-w-[80px]">
-                                                        <span className="w-5 h-5 flex items-center justify-center rounded-md text-[9px] font-black text-white leading-none shadow-md border border-white/20" style={{ backgroundColor: color }} title={group.vendorId}>
-                                                            {String(group.vendorId).slice(0, 2).toUpperCase()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1.5">
-                                                        <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate w-full max-w-[150px]">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
-                                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-black bg-(--main-color) shrink-0">Coming</span>
-                                                    </div>
-                                                    <p className="text-[9px] font-bold text-(--text-color-secondary) uppercase tracking-widest opacity-40">Auto-Generated</p>
-                                                    {group.partials.length > 0 && (
-                                                        <div className="mt-2 flex flex-col gap-1">
-                                                            {group.partials.slice(0, 2).map((p, idx) => <span key={idx} className="text-[8px] font-bold text-[#f7d666] uppercase bg-[#f7d666]/10 px-1.5 py-0.5 rounded w-fit leading-none">{p}</span>)}
-                                                            {group.partials.length > 2 && <span className="text-[8px] font-bold text-[#f7d666] uppercase bg-[#f7d666]/10 px-1.5 py-0.5 rounded w-fit leading-none">+{group.partials.length - 2} more partials</span>}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                        <div key={group.vendorId} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl border border-white/6 bg-white/3 hover:bg-white/5 transition-colors">
+                                            <VendorDot vendorId={group.vendorId} color={color} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate">
+                                                    {(vendors as any)[group.vendorId]?.name || group.vendorId}
+                                                </p>
+                                                {group.partials.length > 0 && (
+                                                    <p className="text-[8px] font-bold text-[#f7d666] mt-0.5 truncate opacity-70">{group.partials[0]}{group.partials.length > 1 ? ` +${group.partials.length - 1}` : ''}</p>
+                                                )}
                                             </div>
-                                            <div className="flex flex-col items-end justify-center shrink-0">
-                                                <div className="text-right">
-                                                    <p className="text-xl font-mono font-black text-(--text-color-secondary) group-hover:text-(--text-color) transition-colors leading-none">{fmtMXN(group.total)}</p>
-                                                    <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
-                                                </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-[12px] font-mono font-black text-(--text-color-secondary) leading-none">{fmtMXN(group.total)}</p>
+                                                <p className="text-[9px] font-mono text-[#F97316] mt-0.5">{fmtUSD(group.total / currentExchangeRate)}</p>
                                             </div>
                                         </div>
                                     );
@@ -461,68 +470,79 @@ export const ClientOverview: React.FC = () => {
                     </div>
                 )}
 
-                {/* Summary Tiles */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <SummaryTile
-                        icon={ShoppingCart}
-                        title="Retail Market"
-                        stats={[
-                            { label: 'Total Catalog Units', value: globalTotals.storeCount.toLocaleString() },
-                            { label: 'New Arrivals (7d)', value: globalTotals.newStoreCount.toString() }
-                        ]}
-                        actionLabel="Go to Store"
-                        onAction={() => setActiveView('store')}
-                        color="#34D399"
-                    />
-                    <SummaryTile
-                        icon={Package}
-                        title="Acquisitions"
-                        stats={[
-                            { label: 'Units Registered', value: globalTotals.totalItems.toLocaleString() },
-                            { label: 'Total Acq. Value', value: fmtUSD(globalTotals.totalAcqValueUsd), subValue: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate) }
-                        ]}
-                        actionLabel="Inventory"
-                        onAction={() => setActiveView('inventory')}
-                        color="#6BCEBB"
-                    />
-                    <SummaryTile
-                        icon={CreditCard}
-                        title="Dispersals"
-                        stats={[
-                            { label: 'Requested Unpaid', value: fmtUSD(globalTotals.requestedUnpaidUsd), subValue: fmtMXN(globalTotals.requestedUnpaidMxn) },
-                            { label: 'Pending to Request', value: fmtUSD(globalTotals.pendingToRequestUsd), subValue: fmtMXN(globalTotals.pendingToRequestMxn) },
-                            { label: 'Total Unpaid Balance', value: fmtUSD(globalTotals.totalUnpaidUsd), subValue: fmtMXN(globalTotals.totalUnpaidMxn) }
-                        ]}
-                        actionLabel="Go to Payments"
-                        onAction={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
-                        color="#FBBF24"
-                    />
-                </div>
-
-                {/* ── Visual Analytics ────────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Units by Vendor Chart */}
-                    <div className="lg:col-span-2 bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Activity size={18} className="text-(--main-color)" />
-                                <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Acquisition Flow by Vendor</h3>
-                            </div>
-                        </div>
-                        <EChart option={vendorChartOption} style={{ height: '350px' }} />
+                {/* ── Charts ─────────────────────────────────────────────── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Units by Vendor */}
+                    <div className="rounded-2xl border border-white/6 bg-white/3 p-4">
+                        <SectionHeader icon={TrendingUp} title="Units by Vendor" color="var(--main-color)" />
+                        <EChart option={vendorChartOption} style={{ height: '200px' }} />
                     </div>
 
-                    {/* Value Distribution */}
-                    <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8 flex flex-col items-center justify-center space-y-6">
-                        <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) text-center">Value Concentration</h3>
-                        <EChart option={pieChartOption} style={{ height: '250px' }} />
-                        <div className="text-center">
-                            <p className="text-[9px] font-black uppercase tracking-widest text-(--main-color) mb-1">Total Acquisitions Value</p>
-                            <p className="text-2xl font-black text-(--text-color) tracking-tighter">{fmtUSD(globalTotals.totalAcqValueUsd)}</p>
+                    {/* Value Concentration */}
+                    <div className="rounded-2xl border border-white/6 bg-white/3 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <SectionHeader icon={TrendingUp} title="Acquisition Value" color="#FBBF24" />
+                        </div>
+                        <EChart option={pieChartOption} style={{ height: '160px' }} />
+                        <div className="mt-2 pt-2 border-t border-white/6 flex justify-between items-center">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40">Total</span>
+                            <span className="text-[13px] font-mono font-black text-(--text-color)">{fmtUSD(globalTotals.totalAcqValueUsd)}</span>
                         </div>
                     </div>
                 </div>
 
+                {/* ── Vendor Table ────────────────────────────────────────── */}
+                {vendorSummaries.length > 0 && (
+                    <div className="rounded-2xl border border-white/6 bg-white/3 overflow-hidden">
+                        <div className="px-3 pt-3 pb-2">
+                            <SectionHeader icon={Package} title="Vendor Breakdown" color="#6BCEBB" />
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-t border-white/6">
+                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40">Vendor</th>
+                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Units</th>
+                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Acq MXN</th>
+                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Acq USD</th>
+                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Share</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {vendorSummaries.map(v => {
+                                        const totalItems = globalTotals.totalItems || 1;
+                                        const share = ((v.itemCount / totalItems) * 100).toFixed(1);
+                                        return (
+                                            <tr key={v.vendorId} className="border-t border-white/4 hover:bg-white/3 transition-colors group">
+                                                <td className="px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <VendorDot vendorId={v.vendorId} color={v.color} />
+                                                        <span className="text-[11px] font-black text-(--text-color) uppercase">{v.vendorId}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-2 text-right text-[11px] font-mono font-black text-(--text-color)">{v.itemCount.toLocaleString()}</td>
+                                                <td className="px-3 py-2 text-right text-[10px] font-mono text-(--text-color-secondary) opacity-60">
+                                                    {showFinancials ? '$' + v.totalAcqMxn.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}
+                                                </td>
+                                                <td className="px-3 py-2 text-right text-[11px] font-mono font-black text-[#6BCEBB]">
+                                                    {showFinancials ? '$' + v.totalAcqUsd.toFixed(0) : '***'}
+                                                </td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <div className="h-1 w-16 rounded-full bg-white/10 overflow-hidden hidden sm:block">
+                                                            <div className="h-full rounded-full transition-all" style={{ width: `${share}%`, backgroundColor: v.color }} />
+                                                        </div>
+                                                        <span className="text-[10px] font-mono font-black text-(--text-color-secondary)">{share}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>

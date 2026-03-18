@@ -5,8 +5,9 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, isPaymentsFilterBarVisibleAtom } from '../../lib/atoms';
-import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, paymentFilterBarModeAtom } from '../../lib/atoms';
+import { SkeletonBox, SkeletonText, SkeletonBadge } from '../../components/Skeleton';
+
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg } from '../../lib/utils';
@@ -253,7 +254,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const user = useAtomValue(userAtom);
     const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
     const overviewMode = useAtomValue(paymentsOverviewModeAtom);
-    const isFilterBarVisible = useAtomValue(isPaymentsFilterBarVisibleAtom);
+    const isFilterBarVisible = useAtomValue(paymentFilterBarModeAtom) !== 'off';
 
     const fetchData = useCallback(async () => {
         if (!db) {
@@ -391,7 +392,27 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     }, [expenses, destinationFilter, vendorFilter, search]);
 
     if (isLoading) {
-        return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
+        return (
+            <div role="status" aria-busy="true" aria-label="Loading payments" className="h-full flex flex-col gap-3 p-4">
+                {/* Stat cards */}
+                <div className="flex gap-3">
+                    <div className="skeleton h-16 rounded-2xl flex-1" />
+                    <div className="skeleton h-16 rounded-2xl flex-1" />
+                </div>
+                {/* Payment rows */}
+                {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/3 border border-white/5">
+                        <div className="skeleton w-8 h-8 rounded-xl shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <SkeletonText lines={2} lastLineWidth="45%" />
+                        </div>
+                        <SkeletonBox className="h-3 w-20 hidden sm:block" />
+                        <SkeletonBadge width={56} />
+                    </div>
+                ))}
+                <span className="sr-only">Loading payments…</span>
+            </div>
+        );
     }
 
     return (
