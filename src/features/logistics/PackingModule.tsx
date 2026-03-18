@@ -92,34 +92,41 @@ export const PackingModule: React.FC = () => {
     }, [db, setInventory]);
 
     const processedItems = useMemo(() => {
-        return inventory.filter(item => {
-            const data = normalizeInventoryData(item.data);
-            const codes = calculateCodesAndPrices(data, exchangeRate, workbookPrefix);
+        const searchTerm = String(globalSearchTerm || '').toLowerCase().trim();
+
+        return inventory.map(item => {
+            const normData = normalizeInventoryData(item.data);
+            const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
+            const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
+            
+            return { 
+                ...item, 
+                codes, 
+                normData, 
+                imageUrl: getCleanImageUrl(baseImg) 
+            };
+        }).filter(item => {
+            const { normData, codes } = item;
             
             // Search filter
-            if (globalSearchTerm) {
-                const term = globalSearchTerm.toLowerCase().trim();
-                const matchSearch = (
-                    (data.itemId || '').toLowerCase().includes(term) ||
-                    (data.itemNumber || '').toLowerCase().includes(term) ||
-                    (data.description || '').toLowerCase().includes(term) ||
-                    (codes.bookBardcode || '').toLowerCase().includes(term)
-                );
-                if (!matchSearch) return false;
+            if (searchTerm) {
+                const searchStr = [
+                    normData.itemId,
+                    normData.itemNumber,
+                    normData.description,
+                    codes.bookBardcode
+                ].map(v => String(v || '').toLowerCase()).join(' ');
+
+                if (!searchStr.includes(searchTerm)) return false;
             }
 
             // Vendor filter
             if (vendorFilter) {
-                const vendorCode = (codes.bookBardcode || '').substring(0, 2);
+                const vendorCode = String(codes.bookBardcode || '').substring(0, 2);
                 if (vendorCode !== vendorFilter) return false;
             }
 
             return true;
-        }).map(item => {
-            const codes = calculateCodesAndPrices(item.data, exchangeRate, workbookPrefix);
-            const normData = normalizeInventoryData(item.data);
-            const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-            return { ...item, codes, normData, imageUrl: getCleanImageUrl(baseImg) };
         });
     }, [inventory, globalSearchTerm, exchangeRate, workbookPrefix, vendorFilter]);
 
@@ -127,7 +134,7 @@ export const PackingModule: React.FC = () => {
         const vendorSet = new Set<string>();
         inventory.forEach(item => {
             const codes = calculateCodesAndPrices(normalizeInventoryData(item.data), exchangeRate, workbookPrefix);
-            const code = (codes.bookBardcode || '').split('-')[0];
+            const code = String(codes.bookBardcode || '').substring(0, 2);
             if (code && (vendors as any)[code]) vendorSet.add(code);
         });
         return Array.from(vendorSet).sort();
