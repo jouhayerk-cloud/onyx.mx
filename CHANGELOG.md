@@ -13,6 +13,15 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.15.2 — 2026-03-18
+### Added
+- **Logistics QR Link [feat]:** Added a dedicated `QR URL` column to the XLSX export for immediate digital artifact access.
+- **Combined Branding [ui]:** Correctly integrated the `SHAPE TYPE` title logic across the entire Packing module and PNG label generation system.
+- **Label Redesign [ui]:** Completely redesigned the PNG label layout to prevent text cut-off. Adjusted heights, margins, and font sizes to eliminate overlap with the barcode and provide a clean, modern aesthetic.
+
+### Fixed
+- **TagID Resolver [fix]:** Enhanced `TagView` to handle workbooks stored with a `V` prefix (e.g., `V326`), ensuring scans like `EM3265EOX` find the correct record in Supabase.
+
 ## v1.15.1 — 2026-03-18
 ### Added
 - **XLSX Column Consistency [feat]:** Refined the logistics export columns: `DESCRIPTION` now combines `SHAPE` + `TYPE`, and `BOOK RETAIL` uses a composite tag (`{ACQCODE}-BOOKv{RETAIL_USD}`).
