@@ -20,6 +20,17 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+    // Unlock body scroll for standalone view
+    useEffect(() => {
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'auto';
+        document.documentElement.style.overflow = 'auto';
+        return () => {
+            document.body.style.overflow = originalStyle;
+            document.documentElement.style.overflow = originalStyle;
+        };
+    }, []);
+
     useEffect(() => {
         const fetchStandalone = async () => {
             if (!tagId) return;
@@ -87,7 +98,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const hasMultipleImages = item.images.length > 1;
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#FDFDFD] text-black overflow-y-auto overflow-x-hidden selection:bg-black selection:text-white pb-32">
+        <div className="absolute inset-x-0 top-0 min-h-screen bg-[#FDFDFD] text-black overflow-x-hidden selection:bg-black selection:text-white">
             {/* Fullscreen Hero Gallery */}
             <div className="relative w-screen max-w-full aspect-square md:aspect-video bg-white overflow-hidden group border-b border-black/5">
                 {item.images.length > 0 ? (
@@ -141,7 +152,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
             </div>
 
             {/* Content Section */}
-            <div className="flex-1 max-w-2xl mx-auto w-full p-8 md:p-16 flex flex-col gap-12">
+            <div className="flex-1 max-w-2xl mx-auto w-full p-8 md:p-16 flex flex-col gap-12 pb-24">
                 {/* Elegant Combined Title */}
                 <div className="flex flex-col gap-6">
                     <h1 className="text-4xl md:text-5xl font-black text-black uppercase tracking-tighter leading-tight italic">
@@ -183,7 +194,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
 
                     <div className="flex flex-col gap-6">
                         <h3 className="text-[9px] font-black uppercase tracking-[0.5em] opacity-20">Internal Traceability</h3>
-                        <div className="bg-black text-white p-8 rounded-[2.5rem] flex flex-col gap-10 shadow-2xl shadow-black/10">
+                        <div className="bg-black text-white p-8 rounded-4xl flex flex-col gap-10 shadow-2xl shadow-black/10">
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30">Acquisition Profile</span>
                                 <span className="text-3xl font-black font-mono tracking-widest">{item.codes.bookAqCode}</span>
@@ -207,16 +218,6 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                         <p className="text-[9px] font-medium opacity-30 uppercase tracking-[0.3em] font-mono leading-relaxed max-w-xs mx-auto">Verified Traceability and Global Valuation Certification</p>
                    </div>
                 )}
-            </div>
-
-            {/* Inquire Bar */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none">
-                <div className="max-w-md mx-auto pointer-events-auto">
-                    <button className="w-full bg-black text-white h-20 rounded-4xl font-black uppercase tracking-[0.5em] text-[10px] shadow-2xl hover:scale-[0.98] transition-all flex items-center justify-center gap-4">
-                        <Sparkles size={18} className="text-[#00A8E8] animate-pulse" />
-                        Inquire Piece
-                    </button>
-                </div>
             </div>
 
             <style>{`

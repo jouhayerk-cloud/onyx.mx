@@ -5,18 +5,18 @@ import Barcode from 'react-barcode';
 import html2canvas from 'html2canvas';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
-import { 
-    Package, 
-    CheckCircle2, 
-    Printer, 
-    Grid, 
-    List, 
-    ChevronRight, 
-    QrCode, 
-    ClipboardList, 
-    Info, 
-    Settings2, 
-    Download, 
+import {
+    Package,
+    CheckCircle2,
+    Printer,
+    Grid,
+    List,
+    ChevronRight,
+    QrCode,
+    ClipboardList,
+    Info,
+    Settings2,
+    Download,
     Layers,
     Bluetooth,
     Activity,
@@ -100,17 +100,17 @@ export const PackingModule: React.FC = () => {
                 const normData = normalizeInventoryData(item?.data || {});
                 const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
                 const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-                
-                return { 
-                    ...item, 
-                    codes, 
-                    normData, 
-                    imageUrl: getCleanImageUrl(baseImg) 
+
+                return {
+                    ...item,
+                    codes,
+                    normData,
+                    imageUrl: getCleanImageUrl(baseImg)
                 };
             }).filter(item => {
                 const { normData, codes } = item;
                 if (!normData || !codes) return false;
-                
+
                 // Search filter
                 if (searchTerm) {
                     const searchStr = [
@@ -201,30 +201,30 @@ export const PackingModule: React.FC = () => {
         if (isExportingXLSX || selectedIds.size === 0) return;
         setIsExportingXLSX(true);
         const tid = toast.loading('Generating Export Artifact...');
-        
+
         try {
             const itemsToExport = processedItems.filter(item => selectedIds.has(String(item.row)));
-            
+
             const rows = itemsToExport.map(item => {
                 const d = item.normData;
                 const c = item.codes;
-                
+
                 // Combined Description: SHAPE TYPE (shape description)
                 const combinedDesc = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
-                
+
                 // Combined Material Color
                 const combinedMatColor = `${d.material || 'ONYX'} ${d.color || ''}`.trim();
-                
+
                 // Combined Sizes: W*L*H CM
                 const combinedSizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
-                
+
                 // Book Retail (Combined): ACQCODE-BOOKv(326)RETAIL_USD (Example: HX-3260389)
                 const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
                 const retailStr = String(c.bookRetail || '0').padStart(4, '0');
                 const combinedRetail = `${c.bookAqCode}-${bookv}${retailStr}`;
-                
+
                 const qrUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`;
-                
+
                 return [
                     c.bookBardcode,
                     combinedDesc,
@@ -268,14 +268,14 @@ export const PackingModule: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => setIsReviewMode(!isReviewMode)} 
+                    <button
+                        onClick={() => setIsReviewMode(!isReviewMode)}
                         className={`hidden md:flex px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isReviewMode ? 'bg-white text-black shadow-2xl scale-105' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white'}`}
                     >
                         {isReviewMode ? 'Exit Review' : 'Label Preview'}
                     </button>
-                    
-                    <button 
+
+                    <button
                         onClick={() => setIsConfigExpanded(!isConfigExpanded)}
                         className={`p-3 rounded-2xl transition-all ${isConfigExpanded ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 border border-white/10 text-white/40 hover:text-white'}`}
                     >
@@ -286,7 +286,7 @@ export const PackingModule: React.FC = () => {
 
             {/* Config Drawer / Filters */}
             <div className={`z-30 px-6 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/5 transition-all duration-500 overflow-hidden ${isConfigExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 py-0 border-none'}`}>
-                 <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6">
                     {/* Multi-Select & Selection Actions */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -298,7 +298,7 @@ export const PackingModule: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                             <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
+                            <button onClick={() => setViewMode('grid')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
                                 <Grid size={16} />
                             </button>
                             <button onClick={() => setViewMode('list')} className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/20 hover:text-white/40'}`}>
@@ -313,14 +313,14 @@ export const PackingModule: React.FC = () => {
                             <Filter size={10} /> Segment by Vendor
                         </span>
                         <div className="flex flex-wrap gap-2">
-                            <button 
+                            <button
                                 onClick={() => setVendorFilter(null)}
                                 className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${!vendorFilter ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white/40'}`}
                             >
                                 All Vendors
                             </button>
                             {availableVendors.map(v => (
-                                <button 
+                                <button
                                     key={v}
                                     onClick={() => setVendorFilter(v)}
                                     className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${vendorFilter === v ? 'bg-(--main-color) text-black border-(--main-color)' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
@@ -348,15 +348,15 @@ export const PackingModule: React.FC = () => {
                         </div>
 
                         <div className="flex grow gap-3 h-12">
-                            <button 
-                                onClick={handleBLEConnect} 
-                                className="aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40 transition-all"
+                            <button
+                                onClick={(navigator as any).bluetooth ? handleBLEConnect : () => toast.error('BLE requires HTTPS and browser support')}
+                                className={`aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all ${(navigator as any).bluetooth ? 'text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40' : 'text-white/5 opacity-50 cursor-not-allowed'}`}
                             >
                                 <Bluetooth size={16} className={isConnectingBLE ? 'animate-pulse text-(--main-color)' : ''} />
                             </button>
-                            
-                            <button 
-                                onClick={handleExportXLSX} 
+
+                            <button
+                                onClick={handleExportXLSX}
                                 disabled={selectedIds.size === 0 || isExportingXLSX}
                                 className="grow md:grow-0 px-6 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-20"
                             >
@@ -364,9 +364,9 @@ export const PackingModule: React.FC = () => {
                                 Export XLSX
                             </button>
 
-                            <button 
-                                onClick={downloadLabels} 
-                                disabled={selectedIds.size === 0 || isGenerating} 
+                            <button
+                                onClick={downloadLabels}
+                                disabled={selectedIds.size === 0 || isGenerating}
                                 className="grow md:grow-0 px-8 rounded-2xl bg-(--main-color) text-black font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 hover:scale-[1.02] transition-all shadow-xl shadow-(--main-color)/20 disabled:opacity-20"
                             >
                                 {isGenerating ? <Activity size={14} className="animate-spin" /> : <Printer size={16} />}
@@ -374,7 +374,7 @@ export const PackingModule: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                 </div>
+                </div>
             </div>
 
             {/* Scroll Area / Workspace */}
@@ -404,7 +404,7 @@ export const PackingModule: React.FC = () => {
                         )}
                     </div>
                 ) : (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6": "flex flex-col gap-3"}>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" : "flex flex-col gap-3"}>
                         {processedItems.length === 0 ? (
                             <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-30 gap-4 text-center">
                                 <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center">
@@ -417,9 +417,9 @@ export const PackingModule: React.FC = () => {
                             </div>
                         ) : (
                             processedItems.map(item => (
-                                viewMode === 'grid' ? 
-                                <LogisticsCard key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} /> :
-                                <LogisticsRow key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} />
+                                viewMode === 'grid' ?
+                                    <LogisticsCard key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} /> :
+                                    <LogisticsRow key={item.row} item={item} isSelected={selectedIds.has(String(item.row))} onToggle={(e: any) => toggleSelect(String(item.row), e)} />
                             ))
                         )}
                     </div>
@@ -464,7 +464,7 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                     <span className="text-[10px] font-black text-black mix-blend-difference">{vendorCode}</span>
                 </div>
             </div>
-            
+
             <div className="flex flex-col gap-3">
                 <div className="flex flex-col">
                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">{item.codes.bookBardcode}</span>
@@ -472,9 +472,9 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                         {item.normData.description || `${item.normData.shape || ''} ${item.normData.itemType || item.normData.type || ''}`.trim() || 'ONYX PIECE'}
                     </h3>
                 </div>
-                
+
                 <div className="w-full h-px bg-white/5" />
-                
+
                 <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter italic">{item.normData.widthCm}x{item.normData.heightCm}cm</span>
                     <span className="text-sm font-black text-white font-mono tracking-tighter">${item.codes.bookRetail}</span>
@@ -491,7 +491,7 @@ const LogisticsRow = ({ item, isSelected, onToggle }: any) => {
     return (
         <div onClick={onToggle} className={`flex items-center gap-6 p-3 rounded-2xl border transition-all cursor-pointer ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/2 border-white/5 hover:bg-white/5'}`}>
             <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'border-white/10'}`}>{isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3} />}</div>
-            
+
             <div className="w-12 h-12 rounded-xl bg-black/40 shrink-0 overflow-hidden border border-white/10 relative">
                 {item.imageUrl ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" /> : <Package className="w-full h-full p-3 opacity-10" />}
                 <div className="absolute bottom-0 left-0 w-full h-1" style={{ backgroundColor: vendorColor }} />
@@ -527,7 +527,7 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
 
     const baseW = 600;
     const baseH = Math.round((heightMm / widthMm) * baseW);
-    
+
     // Vendor Theming
     const vendorCode = tagId.substring(0, 2);
     const vendorColor = (vendors as any)[vendorCode]?.color || '#000';
@@ -627,7 +627,7 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-end',
-                    marginBottom: '30px', 
+                    marginBottom: '30px',
                     height: '140px'
                 }}>
                     <div style={{ flex: 1, paddingRight: '10px' }}>
@@ -638,7 +638,7 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                             MASS: {d.weightKg || '--'}KG
                         </div>
                     </div>
-                    
+
                     {/* Online Tag QR */}
                     <div style={{
                         width: '120px',
@@ -691,7 +691,7 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     </div>
                 </div>
             </div>
-            
+
             <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet" />
         </div>
     );
