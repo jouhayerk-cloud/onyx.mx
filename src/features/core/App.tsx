@@ -139,13 +139,7 @@ export default function App() {
   return (
     <>
       {tagId ? (
-         <TagView 
-            tagId={tagId} 
-            onBack={() => {
-                window.history.replaceState(null, '', window.location.pathname);
-                window.location.reload(); 
-            }} 
-         />
+         <TagView tagId={tagId} />
       ) : (
         <>
           <DataSyncProvider />
