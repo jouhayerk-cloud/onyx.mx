@@ -37,32 +37,51 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
 
         // Standalone Fetch from Supabase
         const fetchStandalone = async () => {
+            if (!tagId) return;
             setLoading(true);
             try {
-                // Since tagId (barcode) is composite, we first query by prefix or guess the ID
-                // Better approach: query inventory table where book_barcode matches tagId
-                // Note: book_barcode might not be stored, so we might need to search or reconstruct
-                // Actually, let's try searching for the barcode in the database if possible
-                // OR search by item_id (which is part of the barcode)
-                
-                const { data, error } = await supabase
+                // 1. Direct match by column if it exists
+                const { data: directData } = await supabase
                     .from('inventory')
                     .select('*')
                     .eq('book_barcode', tagId)
                     .maybeSingle();
 
-                if (data) {
-                    setFetchedItem({ data });
-                } else {
-                    // Try production if not in inventory
-                    const { data: prodData } = await supabase
-                        .from('production')
-                        .select('*')
-                        .eq('tag_id', tagId)
-                        .maybeSingle();
-                    
-                    if (prodData) setFetchedItem({ data: prodData, source: 'production' });
+                if (directData) {
+                    setFetchedItem({ data: directData });
+                    return;
                 }
+
+                // 2. Parse TagID fallback (Pattern: {VENDOR}{WORKBOOK}{COUNT}{CYPHER})
+                // Example: EM3265EOX -> EM, 326, 5, EOX
+                const match = tagId.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
+                if (match) {
+                    const [_, vendorPrefix, wbStr, itemNumStr] = match;
+                    const { data: parsedData } = await supabase
+                        .from('inventory')
+                        .select('*')
+                        .eq('workbook', wbStr)
+                        .eq('item_number', parseInt(itemNumStr, 10));
+
+                    // Filter by vendor prefix locally to be sure
+                    const found = parsedData?.find(d => 
+                        String(d.item_id || d.itemId || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
+                    );
+                    
+                    if (found) {
+                        setFetchedItem({ data: found });
+                        return;
+                    }
+                }
+
+                // 3. Fallback to production table
+                const { data: prodData } = await supabase
+                    .from('production')
+                    .select('*')
+                    .eq('tag_id', tagId)
+                    .maybeSingle();
+                
+                if (prodData) setFetchedItem({ data: prodData, source: 'production' });
             } catch (err) {
                 console.error("Standalone fetch failed", err);
             } finally {
