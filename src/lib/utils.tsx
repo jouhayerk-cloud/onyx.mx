@@ -713,7 +713,7 @@ export const numberToCypher = (num: number): string => {
 };
 
 export const normalizeInventoryData = (data: any): any => {
-  if (!data) return data;
+  if (!data) return {};
   return {
     ...data,
     itemId: data.itemId || data.item_id,

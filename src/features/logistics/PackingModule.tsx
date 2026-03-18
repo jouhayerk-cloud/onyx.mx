@@ -189,31 +189,50 @@ export const PackingModule: React.FC = () => {
     };
 
     const handleExportXLSX = async () => {
-        if (selectedIds.size === 0) return toast.error('Select items first');
+        if (isExportingXLSX || selectedIds.size === 0) return;
         setIsExportingXLSX(true);
         const tid = toast.loading('Generating Export Artifact...');
+        
         try {
-            const items = processedItems.filter(d => selectedIds.has(String(d.row)));
-            const data = [
-                ['TAG ID', 'ITEM ID', 'DESCRIPTION', 'MATERIAL', 'COLOR', 'WIDTH CM', 'LENGTH CM', 'HEIGHT CM', 'WEIGHT KG', 'RETAIL USD'],
-                ...items.map(i => [
-                    i.codes.bookBardcode,
-                    i.normData.itemId,
-                    i.normData.description,
-                    i.normData.material,
-                    i.normData.color,
-                    i.normData.widthCm,
-                    i.normData.lengthCm,
-                    i.normData.heightCm,
-                    i.normData.weightKg,
-                    i.codes.bookRetail
-                ])
-            ];
+            const itemsToExport = processedItems.filter(item => selectedIds.has(String(item.row)));
+            
+            const rows = itemsToExport.map(item => {
+                const d = item.normData;
+                const c = item.codes;
+                
+                // Combined Description: SHAPE TYPE
+                const combinedDesc = `${d.shape || ''} ${d.itemType || d.type || ''}`.trim() || d.description || 'ONYX PIECE';
+                
+                // Combined Material Color
+                const combinedMatColor = `${d.material || 'ONYX'} ${d.color || ''}`.trim();
+                
+                // Combined Sizes: W*L*H CM
+                const combinedSizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
+                
+                return [
+                    c.bookBardcode,
+                    combinedDesc,
+                    combinedMatColor,
+                    combinedSizes,
+                    c.bookLandCode,
+                    c.bookAqCode,
+                    c.bookRetail
+                ];
+            });
 
-            await exportToXLSX(`Packing_List_${new Date().toISOString().split('T')[0]}`, [{ name: 'Packing List', data }]);
-            toast.success("XLSX Export Complete", { id: tid });
-        } catch (e) {
-            toast.error("XLSX Export failed", { id: tid });
+            const sheets = [{
+                name: 'Packing List',
+                data: [
+                    ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL'],
+                    ...rows
+                ]
+            }];
+
+            await exportToXLSX(`Packing_List_${new Date().toISOString().split('T')[0]}`, sheets);
+            toast.success('XLSX generated successfully', { id: tid });
+        } catch (error: any) {
+            console.error(error);
+            toast.error(`Export failed: ${error.message}`, { id: tid });
         } finally {
             setIsExportingXLSX(false);
         }
