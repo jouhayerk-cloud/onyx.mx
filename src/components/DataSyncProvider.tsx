@@ -4,7 +4,8 @@ import { useSetAtom } from 'jotai';
 import { 
     inventoryAtom, 
     financeDataAtom, 
-    logisticsDataAtom 
+    logisticsDataAtom,
+    isSyncingAtom
 } from '../lib/atoms';
 import { useDatabase } from '../lib/hooks';
 import { normalizeInventoryData } from '../lib/utils';
@@ -19,6 +20,7 @@ export const DataSyncProvider: React.FC = () => {
     const setInventory = useSetAtom(inventoryAtom);
     const setFinance = useSetAtom(financeDataAtom);
     const setLogistics = useSetAtom(logisticsDataAtom);
+    const setIsSyncing = useSetAtom(isSyncingAtom);
 
     const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
 
@@ -60,6 +62,7 @@ export const DataSyncProvider: React.FC = () => {
                 currentInventoryDocs = docs.map(d => d.toJSON());
                 updateInventoryAtom();
                 setIsInitialSyncComplete(true);
+                setIsSyncing(false);
             })
         );
 

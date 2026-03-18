@@ -26,7 +26,7 @@ import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
-import { LoadingIndicator } from '../../components/LoadingIndicator';
+import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2 } from 'lucide-react';
 
@@ -646,8 +646,10 @@ export const UnifiedInventoryView = () => {
                 <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
                         {isLoading ? (
-                            <div className="col-span-full h-64 flex items-center justify-center opacity-40">
-                                <LoadingIndicator />
+                            <div className="col-span-full">
+                                {viewMode === 'grid'
+                                    ? <InventorySkeletonGrid />
+                                    : <InventorySkeletonList />}
                             </div>
                         ) : filteredItems.length === 0 ? (
                             <div className="col-span-full h-64 flex items-center justify-center text-[10px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary) opacity-40">

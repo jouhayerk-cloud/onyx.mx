@@ -257,6 +257,11 @@ export const workbookPayLogDataAtom = atom([] as any[]);
 export const financeDataAtom = atom([] as any[]);
 export const logisticsDataAtom = atom([] as any[]);
 
+/** True until the first inventory batch arrives from DataSyncProvider.
+ *  Modules can use this instead of local isLoading state for initial skeletons. */
+export const isSyncingAtom = atom<boolean>(true);
+
+
 export const shippingViewModeAtom = atom<'warehouse' | 'truck'>('warehouse');
 export const shippingCameraViewAtom = atom<CameraView>('perspective');
 export const shippingTruckDimsAtom = atom({ length: 13.6, width: 2.45, height: 2.7 });
