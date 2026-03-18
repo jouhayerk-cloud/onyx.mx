@@ -601,21 +601,25 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     </div>
                 </div>
 
-                {/* Meta Specs & QR Link */}
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ 
-                            fontSize: '36px', 
-                            fontWeight: 700, 
-                            textTransform: 'uppercase', 
-                            letterSpacing: '0.02em',
-                            color: '#000',
-                            lineHeight: 1,
-                            marginBottom: '6px'
-                        }}>
+
+                {/* Product Metadata (Shape, Type, Specs) */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginTop: 'auto', // Push to bottom
+                    height: '110px'
+                }}>
+                    <div style={{ flex: 1, paddingRight: '20px' }}>
+                        <div style={{ fontSize: '32px', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1.1, color: '#000', marginBottom: '4px' }}>
+                            {d.shape || ''} {d.itemType || d.type || ''}
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, textTransform: 'uppercase', color: '#000', opacity: 0.6 }}>
                             {d.material || 'ONYX'} • {d.color || 'NATURAL'}
                         </div>
-                        <div style={{ fontSize: '22px', fontWeight: 800, opacity: 0.4 }}>WEIGHT: {d.weightKg || '--'}KG</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#000', opacity: 0.4, marginTop: '8px' }}>
+                            WEIGHT: {d.weightKg || '--'}KG
+                        </div>
                     </div>
                     
                     {/* Online Tag QR */}
