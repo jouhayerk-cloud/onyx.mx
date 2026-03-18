@@ -13,6 +13,19 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.15.0 — 2026-03-18
+### Added
+- **Public Online Tags [feat]:** Scanned QR codes now correctly resolve to the GitHub Pages deployment (`https://jouhayerk-cloud.github.io/onyx.mx/?tagid={ID}`).
+- **Artifact Detail Certificates [ui]:** New `TagView` component for public access. Features standalone fast-fetch, vendor color-theming, and comprehensive metadata (Mass, Dims, AQC, LC, Retail USD).
+- **Logistics Export Overhaul [feat]:** Completely redesigned the Packing module XLSX export. Columns now include combined fields: `TAGID`, `DESCRIPTION` (Shape + Type), `MATERIAL COLOR`, `SIZES` (W*L*H CM), `LANDED CODE`, `ACQ CODE`, and `BOOK RETAIL`.
+- **Typographic Tag Refinement [ui]:** Removed high-contrast industrial black blocks for a cleaner "High-End Artifact" certificate look. Adjusted title and ID dimensions for better hierarchy.
+
+### Fixed
+- **Packing Search Stability [fix]:** Resolved a critical null-pointer crash in the Packing Module search bar by hardening `normalizeInventoryData` and adding defensive string serialization in the filtering memo.
+- **TagID Resolver [fix]:** Implemented a robust multi-stage lookup in `TagView`. If direct barcode matching fails, the app parses the TagID into Vendor/Workbook/ItemNum components to locate the record in Supabase.
+- **XLSX Dependency [fix]:** Corrected `JSZip` import for Vite compatibility, resolving the "XLSX Export failed" issue reported by users.
+- **Tailwind Syntax [ui]:** Cleaned up multiple lint warnings for modern standard syntax (opacity, linear gradients).
+
 ## v1.14.0 — 2026-03-18
 ### Added
 - **Overview Module Redesign [ui]:** Redesigned the Client Overview module for maximum data density. Removed nested frame containers and heavy padding. Added a compact 6-stat KPI strip at the top. Condensed payment requisition rows to a single-line layout. Replaced large "SummaryTile" cards with an inline "Vendor Breakdown" data table featuring visual progress bars.
