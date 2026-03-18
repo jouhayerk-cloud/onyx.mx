@@ -58,6 +58,7 @@ export const PackingModule: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
     const globalSearchTerm = useAtomValue(TOP_BAR_SEARCH_ATOM);
+    const deferredSearch = React.useDeferredValue(globalSearchTerm);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isGenerating, setIsGenerating] = useState(false);
@@ -92,43 +93,51 @@ export const PackingModule: React.FC = () => {
     }, [db, setInventory]);
 
     const processedItems = useMemo(() => {
-        const searchTerm = String(globalSearchTerm || '').toLowerCase().trim();
+        try {
+            const searchTerm = String(deferredSearch || '').toLowerCase().trim();
 
-        return inventory.map(item => {
-            const normData = normalizeInventoryData(item.data);
-            const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
-            const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
-            
-            return { 
-                ...item, 
-                codes, 
-                normData, 
-                imageUrl: getCleanImageUrl(baseImg) 
-            };
-        }).filter(item => {
-            const { normData, codes } = item;
-            
-            // Search filter
-            if (searchTerm) {
-                const searchStr = [
-                    normData.itemId,
-                    normData.itemNumber,
-                    normData.description,
-                    codes.bookBardcode
-                ].map(v => String(v || '').toLowerCase()).join(' ');
+            return inventory.map(item => {
+                const normData = normalizeInventoryData(item?.data || {});
+                const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
+                const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
+                
+                return { 
+                    ...item, 
+                    codes, 
+                    normData, 
+                    imageUrl: getCleanImageUrl(baseImg) 
+                };
+            }).filter(item => {
+                const { normData, codes } = item;
+                if (!normData || !codes) return false;
+                
+                // Search filter
+                if (searchTerm) {
+                    const searchStr = [
+                        normData.itemId,
+                        normData.itemNumber,
+                        normData.description,
+                        normData.shape,
+                        normData.itemType,
+                        codes.bookBardcode
+                    ].map(v => String(v || '').toLowerCase()).join(' ');
 
-                if (!searchStr.includes(searchTerm)) return false;
-            }
+                    if (!searchStr.includes(searchTerm)) return false;
+                }
 
-            // Vendor filter
-            if (vendorFilter) {
-                const vendorCode = String(codes.bookBardcode || '').substring(0, 2);
-                if (vendorCode !== vendorFilter) return false;
-            }
+                // Vendor filter
+                if (vendorFilter) {
+                    const vendorCode = String(codes.bookBardcode || '').substring(0, 2);
+                    if (vendorCode !== vendorFilter) return false;
+                }
 
-            return true;
-        });
-    }, [inventory, globalSearchTerm, exchangeRate, workbookPrefix, vendorFilter]);
+                return true;
+            });
+        } catch (e) {
+            console.error("Critical processedItems error:", e);
+            return [];
+        }
+    }, [inventory, deferredSearch, exchangeRate, workbookPrefix, vendorFilter]);
 
     const availableVendors = useMemo(() => {
         const vendorSet = new Set<string>();
@@ -456,7 +465,9 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
             <div className="flex flex-col gap-3">
                 <div className="flex flex-col">
                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">{item.codes.bookBardcode}</span>
-                    <h3 className="text-[11px] font-black text-white/70 uppercase tracking-widest line-clamp-1 group-hover:text-white transition-colors">{item.normData.description || 'UNNAMED PIECE'}</h3>
+                    <h3 className="text-[11px] font-black text-white/70 uppercase tracking-widest line-clamp-1 group-hover:text-white transition-colors">
+                        {item.normData.description || `${item.normData.shape || ''} ${item.normData.itemType || item.normData.type || ''}`.trim() || 'ONYX PIECE'}
+                    </h3>
                 </div>
                 
                 <div className="w-full h-px bg-white/5" />
