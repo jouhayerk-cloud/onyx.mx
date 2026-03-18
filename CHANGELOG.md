@@ -13,6 +13,16 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.14.0 — 2026-03-18
+### Added
+- **Overview Module Redesign [ui]:** Redesigned the Client Overview module for maximum data density. Removed nested frame containers and heavy padding. Added a compact 6-stat KPI strip at the top. Condensed payment requisition rows to a single-line layout. Replaced large "SummaryTile" cards with an inline "Vendor Breakdown" data table featuring visual progress bars.
+- **Skeleton Screens [ui]:** Replaced the generic global loading spinner with high-fidelity skeleton screens tailored for each module (Inventory Grid/List, User Registry, Payments). Skeletons match real layout geometry to prevent layout shifts.
+- **Optimistic UI [feat]:** Implemented optimistic updates for User Registry (toggling status, deletion) and Payments (marking as paid). The UI updates instantly upon user interaction, with automatic rollback and error notifications if the server/Supabase request fails.
+- **Global Sync State [infra]:** Introduced `isSyncingAtom` to centralize the initial data loading state, allowing components to react to the overall synchronization status rather than managing individual loading flags.
+- **CSS Design Utilities [infra]:** Added global `.skeleton` shimmer and `.optimistic-revert` flash animation utilities to `index.css`, supporting all 6 application themes automatically.
+### Fixed
+- **Payments View [fix]:** Resolved a pre-existing broken atom import (`isPaymentsFilterBarVisibleAtom` → `paymentFilterBarModeAtom`) and corrected `LoadingIndicator` usage after skeleton implementation.
+
 ## v1.13.5 — 2026-03-17
 ### Fixed
 - **Supabase signup redirect [fix]:** `signUp` now passes `emailRedirectTo: 'https://jouhayerk-cloud.github.io/onyx.mx/'` so activation email links correctly land on the app instead of the GitHub root (which 404s).
