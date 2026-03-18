@@ -57,15 +57,17 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                 const match = tagId.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
                 if (match) {
                     const [_, vendorPrefix, wbStr, itemNumStr] = match;
+                    
+                    // Try with/without V prefix for workbook
                     const { data: parsedData } = await supabase
                         .from('inventory')
                         .select('*')
-                        .eq('workbook', wbStr)
+                        .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
                         .eq('item_number', parseInt(itemNumStr, 10));
 
                     // Filter by vendor prefix locally to be sure
                     const found = parsedData?.find(d => 
-                        String(d.item_id || d.itemId || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
+                        String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
                     );
                     
                     if (found) {
