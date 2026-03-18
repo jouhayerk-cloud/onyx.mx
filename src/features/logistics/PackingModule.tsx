@@ -34,6 +34,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
+import { M110Driver } from '../../utils/PhomemoM110';
 
 /* ─── Premium Components ─── */
 
@@ -70,6 +71,8 @@ export const PackingModule: React.FC = () => {
     const [vendorFilter, setVendorFilter] = useState<string | null>(null);
 
     const [isConnectingBLE, setIsConnectingBLE] = useState(false);
+    const m110Driver = useRef<M110Driver>(new M110Driver());
+    const [isConnectedBLE, setIsConnectedBLE] = useState(false);
 
     useEffect(() => {
         if (!db) return;
@@ -165,28 +168,44 @@ export const PackingModule: React.FC = () => {
     };
 
     const handleBLEConnect = async () => {
-        if (!(navigator as any).bluetooth) {
-            return toast.error("BLE requires HTTPS and browser support.");
-        }
-
         setIsConnectingBLE(true);
-        const tid = toast.loading('Searching for BLE Printer...');
         try {
-            const device = await (navigator as any).bluetooth.requestDevice({
-                acceptAllDevices: true,
-                optionalServices: ['0000ff00-0000-1000-8000-00805f9b34fb'] // Common Phomemo service
-            });
-            
-            toast.success(`Connected to ${device.name || 'Printer'}`, { id: tid });
-            // Logic for actual buffer writing would go here or in a separate utility
+            const name = await m110Driver.current.connect();
+            setIsConnectedBLE(true);
+            toast.success(`Connected to ${name}`);
         } catch (e: any) {
-            if (e.name === 'NotFoundError') {
-                toast.dismiss(tid); // User cancelled
-            } else {
-                toast.error(`BLE Connection Failed: ${e.message}`, { id: tid });
+            setIsConnectedBLE(false);
+            if (e.name !== 'NotFoundError') {
+                toast.error(`BLE Connection Failed: ${e.message}`);
             }
         } finally {
             setIsConnectingBLE(false);
+        }
+    };
+
+    const handlePrintBLE = async () => {
+        if (!isConnectedBLE || !m110Driver.current.isConnected()) {
+            return toast.error('Printer not connected. Connect via Bluetooth first.');
+        }
+        if (selectedIds.size === 0) return toast.error('Select items first');
+
+        setIsGenerating(true);
+        const tid = toast.loading(`Printing ${selectedIds.size} labels...`);
+        try {
+            const items = processedItems.filter(d => selectedIds.has(String(d.row)));
+            for (const item of items) {
+                const element = document.getElementById(`phomemo-sheet-${item.row}`);
+                if (element) {
+                    const canvas = await html2canvas(element, { scale: 3, useCORS: true, backgroundColor: '#fff' });
+                    await m110Driver.current.printCanvas(canvas);
+                    toast.loading(`Printing ${item.codes.bookBardcode}...`, { id: tid });
+                }
+            }
+            toast.success('Batch Print Complete!', { id: tid });
+        } catch (e: any) {
+            toast.error(`Print Error: ${e.message}`, { id: tid });
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -365,9 +384,26 @@ export const PackingModule: React.FC = () => {
                         <div className="flex grow gap-3 h-12">
                             <button
                                 onClick={(navigator as any).bluetooth ? handleBLEConnect : () => toast.error('BLE requires HTTPS and browser support')}
-                                className={`aspect-square rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all ${(navigator as any).bluetooth ? 'text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40' : 'text-white/5 opacity-50 cursor-not-allowed'}`}
+                                className={`aspect-square rounded-2xl bg-white/5 border flex items-center justify-center transition-all
+                                    ${(navigator as any).bluetooth
+                                        ? isConnectedBLE
+                                            ? 'border-blue-500/50 text-blue-400'
+                                            : 'border-white/10 text-white/30 hover:text-(--main-color) hover:border-(--main-color)/40'
+                                        : 'text-white/5 opacity-50 cursor-not-allowed'}`}
                             >
                                 <Bluetooth size={16} className={isConnectingBLE ? 'animate-pulse text-(--main-color)' : ''} />
+                            </button>
+
+                            <button
+                                onClick={handlePrintBLE}
+                                disabled={isGenerating || !isConnectedBLE}
+                                className={`w-full py-2.5 rounded-2xl flex items-center justify-center gap-2 font-black tracking-widest text-[10px] transition-all duration-500 border
+                                    ${isConnectedBLE
+                                        ? 'bg-blue-600/20 border-blue-500/50 text-blue-400 hover:bg-blue-600/30'
+                                        : 'bg-white/5 border-white/10 text-white/20'}`}
+                            >
+                                <Bluetooth size={14} className={isGenerating ? "animate-spin" : ""} />
+                                {isGenerating ? "PRINTING..." : "PRINT (M110 BLE)"}
                             </button>
 
                             <button
