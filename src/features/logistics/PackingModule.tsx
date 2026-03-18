@@ -209,8 +209,8 @@ export const PackingModule: React.FC = () => {
                 const d = item.normData;
                 const c = item.codes;
                 
-                // Combined Description: SHAPE TYPE
-                const combinedDesc = `${d.shape || ''} ${d.itemType || d.type || ''}`.trim() || d.description || 'ONYX PIECE';
+                // Combined Description: SHAPE TYPE (shape description)
+                const combinedDesc = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
                 
                 // Combined Material Color
                 const combinedMatColor = `${d.material || 'ONYX'} ${d.color || ''}`.trim();
@@ -550,22 +550,23 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                 WebkitFontSmoothing: 'antialiased'
             }}
         >
-            {/* Sidebar: Vendor Indent & Industrial Trace */}
+            {/* Sidebar (Made in Mexico branding) */}
             <div style={{
-                width: `${sidebarWidth}px`,
+                width: '60px',
                 height: '100%',
-                backgroundColor: vendorColor,
+                backgroundColor: '#00A8E8',
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                flexShrink: 0
+                overflow: 'hidden'
             }}>
                 <div style={{
                     transform: 'rotate(-90deg)',
                     whiteSpace: 'nowrap',
-                    fontSize: '34px',
+                    fontSize: '28px',
                     fontWeight: 900,
-                    letterSpacing: '0.45em',
+                    letterSpacing: '0.4em',
                     color: '#FFF',
                     mixBlendMode: 'difference',
                     display: 'flex',
@@ -595,17 +596,17 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     <span style={{ fontSize: '28px', fontWeight: 800, opacity: 0.8, letterSpacing: '0.05em' }}>{dims}</span>
                 </div>
 
-                {/* Primary Description Title (Combines Shape/Type if Description is missing) */}
+                {/* Primary Description Title (Combines Shape/Type/ShortDesc) */}
                 <div style={{
                     width: '100%',
-                    marginBottom: '8px',
-                    minHeight: '100px',
+                    marginBottom: '10px',
+                    height: '160px', // Fixed height for middle section
                     display: 'flex',
                     alignItems: 'center'
                 }}>
                     <div style={{
                         color: '#000',
-                        fontSize: '48px', // Slightly smaller to prevent cut-off
+                        fontSize: '44px', // Optimized size
                         fontWeight: 900,
                         textTransform: 'uppercase',
                         lineHeight: 1.1,
@@ -613,11 +614,11 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                         width: '100%',
                         wordBreak: 'break-word',
                         display: '-webkit-box',
-                        WebkitLineClamp: '2',
+                        WebkitLineClamp: '3', // Allow up to 3 lines
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden'
                     }}>
-                        {d.description || `${d.shape || ''} ${d.itemType || d.type || ''}`.trim() || 'ONYX PIECE'}
+                        {`${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE'}
                     </div>
                 </div>
 
@@ -625,13 +626,13 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                 <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'flex-end', // Align to bottom of this slot
-                    marginBottom: '20px',    // Space before barcode
-                    minHeight: '120px'
+                    alignItems: 'flex-end',
+                    marginBottom: '30px', 
+                    height: '140px'
                 }}>
-                    <div style={{ flex: 1, paddingRight: '20px' }}>
-                        <div style={{ fontSize: '28px', fontWeight: 800, textTransform: 'uppercase', color: '#000', marginBottom: '8px' }}>
-                            {d.material || 'ONYX'} • {d.color || 'NATURAL'}
+                    <div style={{ flex: 1, paddingRight: '10px' }}>
+                        <div style={{ fontSize: '26px', fontWeight: 800, textTransform: 'uppercase', color: '#000', marginBottom: '6px', lineHeight: 1.2 }}>
+                            {d.material || 'ONYX'} · {d.color || 'NATURAL'}
                         </div>
                         <div style={{ fontSize: '22px', fontWeight: 800, color: '#000', opacity: 0.5 }}>
                             MASS: {d.weightKg || '--'}KG
@@ -640,45 +641,49 @@ const PhomemoSheetTemplate: React.FC<{ item: any, size: string }> = ({ item, siz
                     
                     {/* Online Tag QR */}
                     <div style={{
-                        width: '110px',
-                        height: '110px',
-                        padding: '6px',
-                        border: '3px solid #000',
-                        borderRadius: '16px',
+                        width: '120px',
+                        height: '120px',
+                        padding: '8px',
+                        border: '4px solid #000',
+                        borderRadius: '20px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: '#FFF'
                     }}>
-                        <QRCodeSVG value={tagUrl} size={100} level="H" />
+                        <QRCodeSVG value={tagUrl} size={104} level="H" />
                     </div>
                 </div>
 
-                {/* Industrial Barcode & Trace Code */}
+                {/* Industrial Barcode & Trace Code (Bottom Half Focus) */}
                 <div style={{
-                    marginTop: 'auto',
+                    flex: 1,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    width: '100%'
+                    justifyContent: 'center',
+                    width: '100%',
+                    borderTop: '2px dashed #000',
+                    paddingTop: '40px'
                 }}>
-                    <Barcode
-                        value={tagId}
-                        width={2.8}
-                        height={60}
-                        displayValue={false}
-                        margin={0}
-                        background="transparent"
-                        lineColor="#000"
-                    />
+                    <div style={{ transform: 'scale(1.4)', marginBottom: '40px' }}>
+                        <Barcode
+                            value={tagId}
+                            width={2.2}
+                            height={120} // Increased height for bottom-half focus
+                            displayValue={false}
+                            margin={0}
+                            background="transparent"
+                            lineColor="#000"
+                        />
+                    </div>
                     <div style={{
-                        fontSize: '28px',
+                        fontSize: '34px',
                         fontWeight: 900,
-                        marginTop: '10px',
-                        letterSpacing: '0.4em',
+                        letterSpacing: '0.45em',
                         textTransform: 'uppercase',
-                        borderTop: '3px solid #000',
-                        paddingTop: '6px',
+                        borderTop: '5px solid #000',
+                        paddingTop: '12px',
                         width: '100%',
                         textAlign: 'center'
                     }}>
