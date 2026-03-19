@@ -13,6 +13,18 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.19.2 — 2026-03-19
+### Changed
+- **Process Module Refinement [ui/ux]:** Polished the **Stitch Aesthetic** in the AI Segmentation Studio. Corrected UI tokens (colors, radii, spacing) to match the main application's dark mode.
+- **Batch Pipeline [feat]:** Finalized the **Execution Queue** logic, enabling high-fidelity vectorization and PNG generation for bulk Onyx artifacts.
+- **Top Bar Branding [ui]:** Removed experimental liquid-glass filters in favor of the clean, unified top-bar architecture preferred for the v1.19 series.
+
+## v1.19.1 — 2026-03-19
+### Added
+- **AI Segmentation Studio [feat]:** Introduced the **Process View**, a high-end visual workspace for batch item processing.
+- **Intelligent Masks:** Integrated specialized logic for Onyx materials, including mirror/glass separation and irregular stone edge tracing.
+- **GSAP Orchestration:** Added smooth layout transitions and vault animations for a premium studio feel.
+
 ## v1.18.9 — 2026-03-18
 ### Fixed
 - **Integration Reliability [bug]:** Fixed issue where the **"Print"** button was hidden in embedded editor mode.

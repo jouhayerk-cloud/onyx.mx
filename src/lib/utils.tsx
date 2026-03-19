@@ -434,21 +434,25 @@ export function simplifyContour(
 }
 
 export function createCurvePath(points: { x: number; y: number }[]): string {
-  if (points.length < 2) {
-    return '';
+  if (points.length < 3) {
+    if (points.length < 1) return '';
+    let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+    for (let i = 1; i < points.length; i++) {
+      d += ` L ${points[i].x.toFixed(2)} ${points[i].y.toFixed(2)}`;
+    }
+    return d + ' Z';
   }
-  let d = `M${points[0].x},${points[0].y}`;
+
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+
   for (let i = 0; i < points.length; i++) {
     const p1 = points[i];
     const p2 = points[(i + 1) % points.length];
-    const midPoint = {
-      x: (p1.x + p2.x) / 2,
-      y: (p1.y + p2.y) / 2,
-    };
-    d += ` Q${p1.x},${p1.y} ${midPoint.x},${midPoint.y}`;
+    const midPoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    path += ` Q ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}, ${midPoint.x.toFixed(2)} ${midPoint.y.toFixed(2)}`;
   }
-  d += ' Z';
-  return d;
+  path += ' Z';
+  return path;
 }
 
 export const readFileAsDataURL = (file: File, type: 'image' | 'video', forAI = false) =>
