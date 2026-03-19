@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2 } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
@@ -41,8 +41,10 @@ const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
 const inpNum = inp + " font-mono text-center";
 
-const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
-    const isVideo = isVideoFile(src);
+const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
+    const [currentIdx, setCurrentIdx] = useState(initialIdx);
+    const activeSrc = mediaUrls.length > 0 ? mediaUrls[currentIdx] : src;
+    const isVideo = isVideoFile(activeSrc);
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -85,15 +87,36 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
     const handleTouchEnd = () => setLastTouchDist(null);
     const handleDoubleClick = () => { if (isVideo) return; setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
 
+    const nav = (dir: number) => {
+        if (mediaUrls.length === 0) return;
+        setCurrentIdx(p => (p + dir + mediaUrls.length) % mediaUrls.length);
+        setScale(1); setPosition({ x: 0, y: 0 });
+    };
+
     return createPortal(
         <div className="fixed inset-0 z-10000 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300 overflow-hidden"
             onClick={onClose} onWheel={handleWheel}>
             <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X className="w-5 h-5" />
             </button>
+
+            {mediaUrls.length > 1 && (
+                <div className="absolute inset-0 flex items-center justify-between px-8 pointer-events-none">
+                    <button onClick={(e) => { e.stopPropagation(); nav(-1); }} className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all pointer-events-auto">
+                        <ChevronLeft className="w-8 h-8" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); nav(1); }} className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all pointer-events-auto">
+                        <ChevronRight className="w-8 h-8" />
+                    </button>
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black tracking-widest text-white/30 uppercase">
+                        Artifact {currentIdx + 1} / {mediaUrls.length}
+                    </div>
+                </div>
+            )}
+
             {!isVideo && (
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
-                    <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">âˆ’</button>
+                    <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">−</button>
                     <span className="text-[10px] font-mono text-white/40 w-12 text-center">{Math.round(scale * 100)}%</span>
                     <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">+</button>
                 </div>
@@ -101,14 +124,14 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
             
             {isVideo ? (
                 <video 
-                    src={src} 
+                    src={getCleanImageUrl(activeSrc)} 
                     controls 
                     autoPlay 
                     className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl"
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : (
-                <img src={src} alt="" draggable={false}
+                <img src={getCleanImageUrl(activeSrc)} alt="" draggable={false}
                     className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform duration-100"
                     style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
                     onClick={(e) => e.stopPropagation()}
@@ -140,8 +163,9 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     }, [norm.mediaUrls, norm.generatedPngUrl]);
 
     const [activeIdx, setActiveIdx] = useState(0);
-    const imageUrl = mediaUrls[activeIdx] || null;
-    const isVideo = imageUrl ? isVideoFile(imageUrl) : false;
+    const rawImageUrl = mediaUrls[activeIdx] || null;
+    const imageUrl = getCleanImageUrl(rawImageUrl);
+    const isVideo = rawImageUrl ? isVideoFile(rawImageUrl) : false;
 
     const handleNextMedia = (e: React.MouseEvent) => { e.stopPropagation(); setActiveIdx(prev => (prev + 1) % mediaUrls.length); };
     const handlePrevMedia = (e: React.MouseEvent) => { e.stopPropagation(); setActiveIdx(prev => (prev - 1 + mediaUrls.length) % mediaUrls.length); };
@@ -198,7 +222,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-1">
-                {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
+                {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
                 <div className={`flex items-center p-3.5 bg-(--stitch-card-bg) border border-white/5 rounded-xl hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
                     <div className={`w-[60px] h-[60px] rounded-lg overflow-hidden bg-black/40 shrink-0 mr-5 border border-white/5 relative group/img ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
@@ -212,8 +236,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         
                         {mediaUrls.length > 1 && (
                             <div className="absolute inset-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-                                <button onClick={handlePrevMedia} className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white pointer-events-auto">â‹¹</button>
-                                <button onClick={handleNextMedia} className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white pointer-events-auto">â‹º</button>
+                                <button onClick={handlePrevMedia} className="w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto shadow-lg border border-white/10">
+                                    <ChevronLeft className="w-3 h-3" />
+                                </button>
+                                <button onClick={handleNextMedia} className="w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto shadow-lg border border-white/10">
+                                    <ChevronRight className="w-3 h-3" />
+                                </button>
                             </div>
                         )}
                     </div>
@@ -269,15 +297,28 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 </div>
                 {isExpanded && (
                     <div className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
+                        {/* Summary Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 mb-6">
                             <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
                             <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono font-bold text-white/70">{dimensionsStr || '—'}</p></div>
                             <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono font-bold text-white/70">{weightStr || '—'}</p></div>
-                            <div><p className={lbl}>Quantity</p><p className="text-[11px] font-bold text-white/70">{norm.quantity || 1}</p></div>
                             <div><p className={lbl}>Status</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.status}</p></div>
                             <div className="flex flex-col"><span className={lbl}>Landed USD</span><span className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</span></div>
                             <div className="flex flex-col"><span className={lbl}>Retail USD</span><span className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</span></div>
                         </div>
+                        
+                        {/* Mini Gallery Strip in Expanded View */}
+                        {mediaUrls.length > 1 && (
+                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                {mediaUrls.map((url, i) => (
+                                    <div key={i} 
+                                        onClick={() => { setActiveIdx(i); setShowViewer(true); }}
+                                        className={`w-16 h-16 rounded-lg overflow-hidden shrink-0 border-2 cursor-pointer transition-all ${i === activeIdx ? 'border-(--main-color) scale-105 shadow-lg' : 'border-white/5 opacity-40 hover:opacity-80'}`}>
+                                        <img src={getCleanImageUrl(url)} className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -289,7 +330,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/5 border border-white/10 hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
             onClick={onToggleExpand}
         >
-            {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
+            {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
 
             {/* Image section */}
             <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30 group/img">
@@ -299,21 +340,25 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {isVideo && (
                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
                                <div className="p-3 bg-white/20 backdrop-blur-md rounded-full border border-white/30 text-white scale-110 group-hover/img:scale-125 transition-transform duration-500 shadow-2xl">
-                                   <Video className="w-8 h-8 fill-white/20" />
+                                   <Video className="w-10 h-10 fill-white/20" />
                                </div>
                            </div>
                         )}
                         {mediaUrls.length > 1 && (
                             <>
                                 <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
-                                    <button onClick={handlePrevMedia} className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-lg">â‹¹</button>
+                                    <button onClick={handlePrevMedia} className="w-9 h-9 rounded-full bg-black/80 hover:bg-black flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-xl transition-all hover:scale-110">
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
                                 </div>
                                 <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
-                                    <button onClick={handleNextMedia} className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-lg">â‹º</button>
+                                    <button onClick={handleNextMedia} className="w-9 h-9 rounded-full bg-black/80 hover:bg-black flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-xl transition-all hover:scale-110">
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20 group-hover/img:translate-y-[-4px] transition-transform duration-300">
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 group-hover:translate-y-[-4px] transition-transform duration-300">
                                     {mediaUrls.map((_, i) => (
-                                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === activeIdx ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/30'}`} />
+                                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === activeIdx ? 'w-5 bg-(--main-color)' : 'w-1 bg-white/40'}`} />
                                     ))}
                                 </div>
                             </>
@@ -409,9 +454,52 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
 
                         {/* Modal Image Header — landscape strip */}
-                        <div className="h-[35vh] relative shrink-0">
+                        <div className="h-[38vh] relative shrink-0 group/modalimg bg-black/40">
                             {imageUrl ? (
-                                <img src={imageUrl} onClick={() => setShowViewer(true)} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                                <>
+                                    {isVideo ? (
+                                        <div className="w-full h-full relative cursor-pointer group" onClick={() => setShowViewer(true)}>
+                                            <img src={imageUrl} className="w-full h-full object-cover opacity-60" />
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white scale-110 group-hover:scale-125 transition-transform duration-500 shadow-2xl">
+                                                    <Video className="w-10 h-10 fill-white" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <img src={imageUrl} onClick={() => setShowViewer(true)} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                                    )}
+                                    
+                                    {mediaUrls.length > 1 && (
+                                        <>
+                                            <div className="absolute inset-y-0 left-0 w-20 flex items-center justify-center opacity-0 group-hover/modalimg:opacity-100 transition-opacity z-20 pointer-events-none">
+                                                <button onClick={handlePrevMedia} className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-2xl transition-all hover:scale-110">
+                                                    <ChevronLeft className="w-8 h-8" />
+                                                </button>
+                                            </div>
+                                            <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center opacity-0 group-hover/modalimg:opacity-100 transition-opacity z-20 pointer-events-none">
+                                                <button onClick={handleNextMedia} className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-2xl transition-all hover:scale-110">
+                                                    <ChevronRight className="w-8 h-8" />
+                                                </button>
+                                            </div>
+
+                                            {/* Mini Thumbnail Strip for Modal */}
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 p-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl z-20 shadow-2xl scale-90 group-hover/modalimg:scale-100 transition-transform duration-500">
+                                                {mediaUrls.map((url, i) => {
+                                                    const clean = getCleanImageUrl(url);
+                                                    const isVid = isVideoFile(url);
+                                                    return (
+                                                        <div key={i} 
+                                                            onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
+                                                            className={`w-12 h-12 rounded-xl border-2 transition-all cursor-pointer overflow-hidden leading-none flex items-center justify-center bg-black/20 ${i === activeIdx ? 'border-(--main-color) scale-110 ring-4 ring-(--main-color)/20 shadow-lg' : 'border-white/10 opacity-40 hover:opacity-100'}`}>
+                                                            {isVid ? <Video className="w-6 h-6 text-white" /> : <img src={clean} className="w-full h-full object-cover" />}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    )}
+                                </>
                             ) : (
                                 <div className="w-full h-full bg-black/40 flex items-center justify-center">
                                     <OnyxMiniLogo className="w-32 h-32 opacity-20" />
@@ -424,7 +512,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
                                 )}
                             </div>
-                            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                            <div className="absolute inset-0 bg-linear-to-t from-black via-transparent pointer-events-none" />
                         </div>
 
                         {/* Modal Content */}
@@ -508,7 +596,8 @@ export const UnifiedInventoryView = () => {
 
     const [editData, setEditData] = useState<any>(null);
     const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
-    const imageUrl = itemData?.generatedPngUrl || (itemData?.mediaUrls ? itemData.mediaUrls.split(',')[0].trim() : null);
+    const rawImageUrl = itemData?.generatedPngUrl || (itemData?.mediaUrls ? itemData.mediaUrls.split(',')[0].trim() : null);
+    const imageUrl = getCleanImageUrl(rawImageUrl);
 
     // Auto-cycling media gallery for bg of edit panel
     const bgMediaUrls = useMemo(() => {
@@ -517,7 +606,7 @@ export const UnifiedInventoryView = () => {
             const media: string[] = (item.data as any)._allMedia || [];
             media.filter((u: string) => !u.match(/\.(mp4|webm|ogg|mov)$/i)).forEach((u: string) => urls.push(u));
         });
-        return urls.filter(Boolean).slice(0, 25);
+        return urls.filter(Boolean).map(u => getCleanImageUrl(u)).slice(0, 25);
     }, [items]);
     const [bgIdx, setBgIdx] = useState(0);
     useEffect(() => {
