@@ -281,7 +281,7 @@ export const ProcessView: React.FC = () => {
             for (const modelId of modelsToTry) {
                 try {
                     addLog(`Requesting Trace: ${modelId}...`, 'info');
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
+                    const url = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent?key=${API_KEY}`;
                     
                     const response = await fetch(url, {
                         method: 'POST',
@@ -414,9 +414,21 @@ export const ProcessView: React.FC = () => {
     };
 
     useEffect(() => {
-        addLog(`Inventory Processing Engine v1.24.0 Initialized`, 'success');
-        addLog(`API Key Detect: ${API_KEY ? 'ACTIVE (Verified)' : 'MISSING (Check .env.local)'}`, API_KEY ? 'info' : 'error');
-        addLog(`Stability Mode: gemini-1.5-flash (Standard)`, 'info');
+        addLog(`Inventory Processing Engine v1.26.2 Initialized`, 'success');
+        addLog(`API Key Detect: ${API_KEY ? 'ACTIVE' : 'MISSING'}`, API_KEY ? 'info' : 'error');
+        
+        // Auto-Discovery Call
+        const discoverModels = async () => {
+             try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`);
+                const data = await res.json();
+                const modelNames = data.models?.map((m: any) => m.name.replace('models/', '')) || [];
+                addLog(`Engine Library Discovered: ${modelNames.slice(0, 4).join(', ')}...`, 'info');
+             } catch (e) {
+                addLog(`Library scan skipped.`, 'warn');
+             }
+        };
+        discoverModels();
     }, []);
 
     useEffect(() => {
@@ -511,7 +523,7 @@ export const ProcessView: React.FC = () => {
                     </button>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 relative overflow-hidden">
+                <div className="flex-1 min-w-0 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                     <canvas
                         ref={canvasRef} 
@@ -553,7 +565,7 @@ export const ProcessView: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <aside className="w-72 flex flex-col gap-4 relative">
+                <aside className="w-80 flex-shrink-0 flex flex-col gap-4 relative overflow-hidden pr-2">
                     <StitchCard className="shrink-0 flex flex-col gap-3 min-h-[90px] bg-black/40 border-(--main-color)/10 overflow-hidden relative group">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-(--main-color)/10 flex items-center justify-center text-(--main-color)">
