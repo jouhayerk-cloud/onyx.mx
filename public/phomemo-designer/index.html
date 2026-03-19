@@ -2365,7 +2365,6 @@
       if (!batchProject || !batchProject.elements) return;
 
       // Use the designer's native LOAD_DESIGN message protocol
-      // This sets state.elements, state.labelSize, state.templateData and calls render()
       window.dispatchEvent(new MessageEvent('message', {
         data: {
           type: 'LOAD_DESIGN',
@@ -2390,6 +2389,23 @@
           // If in preview mode, automatically open the batch print dialog
           if (isPreview && typeof handleBatchPrint === 'function') {
             handleBatchPrint();
+            
+            // Integrate "EDIT LABELS" button into the modal header
+            const header = document.querySelector('#batch-preview-modal h3')?.parentElement;
+            if (header && !document.getElementById('onyx-edit-btn')) {
+              const editBtn = document.createElement('button');
+              editBtn.id = 'onyx-edit-btn';
+              editBtn.className = 'ml-4 px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-[10px] font-black uppercase text-white/60 hover:text-white transition-all';
+              editBtn.innerHTML = 'EDIT LABELS';
+              editBtn.onclick = () => {
+                // Remove preview mode classes to show full applet
+                document.body.classList.remove('is-embedded');
+                document.querySelectorAll('.is-embedded').forEach(el => el.classList.remove('is-embedded'));
+                const modal = document.getElementById('batch-preview-modal');
+                if (modal) modal.classList.add('hidden');
+              };
+              header.insertBefore(editBtn, header.children[1]);
+            }
           }
         }, 300);
       }
@@ -2398,6 +2414,16 @@
     window.addEventListener('DOMContentLoaded', () => {
       // Apply embedded mode
       if (isMini) document.body.classList.add('is-embedded');
+
+      // Listen for print button click to notifying parent
+      const printBtn = document.getElementById('preview-print-selected');
+      if (printBtn) {
+        const originalClick = printBtn.onclick;
+        printBtn.addEventListener('click', () => {
+          // Notify parent that printing started (will be used for timestamps)
+          window.parent.postMessage({ type: 'ONYX_PRINT_JOB_STARTED', timestamp: new Date().toISOString() }, '*');
+        });
+      }
 
       // Load from localStorage if data was pre-populated
       const raw = localStorage.getItem('onyx_packing_batch');

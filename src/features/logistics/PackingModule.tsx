@@ -15,12 +15,16 @@ import {
     FileJson,
     Maximize2,
     Send,
+    Eye,
+    Download,
+    X,
+    Edit,
+    Printer
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
-import { Eye, Download, X, Edit } from 'lucide-react';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -111,12 +115,12 @@ const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
 });
 
 /* ─── JSON Project Generator (V3 Batch) ─── */
-const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: string) => {
+const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: string, multiplier: number = 1) => {
     const [wStr, hStr] = activeLabelSize.split('x');
     const width = parseInt(wStr) || 50;
     const height = parseInt(hStr) || 30;
 
-    // Build one record per item, then expand by QUANTITY for print batch
+    // Build one record per item, then expand by (QUANTITY * multiplier) for print batch
     const baseRecords = items.map(item => {
         const d = item.normData;
         const c = item.codes;
@@ -135,9 +139,9 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         };
     });
 
-    // Expand by QUANTITY — designer prints one label per templateData record
+    // Expand by QUANTITY * multiplier — designer prints one label per templateData record
     const templateData = baseRecords.flatMap(r =>
-        Array.from({ length: Number(r["QUANTITY"]) || 1 }, () => ({ ...r }))
+        Array.from({ length: (Number(r["QUANTITY"]) || 1) * multiplier }, () => ({ ...r }))
     );
 
     return {
@@ -166,6 +170,7 @@ export const PackingModule: React.FC = () => {
     const [isConfigExpanded, setIsConfigExpanded] = useState(false);
     const [vendorFilter, setVendorFilter] = useState<string | null>(null);
     const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
+    const [lastPrintedIds, setLastPrintedIds] = useState<string[]>([]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
 
@@ -324,40 +329,62 @@ export const PackingModule: React.FC = () => {
         toast.success(`JSON exported — ${selectedItems.length} items`);
     };
 
-    /* ── Send to Designer ── */
-    const handleSendToDesigner = async () => {
+    /* ── Print Labels (The Wizard) ── */
+    const handlePrintLabels = async () => {
         if (selectedIds.size === 0) return toast.error('Select items first');
-        setIsSendingToDesigner(true);
-        const tid = toast.loading('Preparing batch for OnyxLabels...');
+        
+        const timestamp = new Date().toISOString();
+        const ids = Array.from(selectedIds);
+        setLastPrintedIds(ids);
+
+        const tid = toast.loading('Initializing Multi-Step Print Wizard...');
         try {
-            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
-
-            // 1. Store in localStorage so the designer can read on load
-            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
-
-            // 2. Send to embedded iframe using native LOAD_DESIGN protocol
-            const iframe = iframeRef.current;
-            if (iframe?.contentWindow) {
-                iframe.contentWindow.postMessage({
-                    type: 'LOAD_DESIGN',
-                    payload: {
-                        elements: batchProject.elements,
-                        labelSize: batchProject.labelSize,
-                        templateData: batchProject.templateData
-                    }
-                }, '*');
-            }
-
-            // 3. Also export XLSX simultaneously
+            // STEP 1: Generate XLSX (tracks filePrintDate)
             await handleExportXLSX();
-
-            toast.success(`${selectedItems.length} items sent to OnyxLabels`, { id: tid });
+            
+            // STEP 2: Build JSON Project (Multiplier = 2)
+            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 2);
+            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            
+            // STEP 3: Open Overlay PREVIEW
+            setShowPreviewOverlay(true);
+            
+            toast.success('Wizard Step 1 Complete: XLSX generated. Step 2: Verification Ready.', { id: tid });
         } catch (e: any) {
-            toast.error(`Send failed: ${e.message}`, { id: tid });
-        } finally {
-            setIsSendingToDesigner(false);
+            toast.error(`Wizard Failed: ${e.message}`, { id: tid });
         }
     };
+
+    /* ── Handle Print Result (Message from iframe) ── */
+    useEffect(() => {
+        const handleMessage = async (event: MessageEvent) => {
+            const { type, timestamp } = event.data || {};
+            if (type === 'ONYX_PRINT_JOB_STARTED' && lastPrintedIds.length > 0 && db) {
+                const toastId = toast.loading('Recording Print Event...');
+                try {
+                    // Update all items in the batch
+                    const updatePromises = lastPrintedIds.map(async (id) => {
+                        const doc = await db.inventory.findOne(id).exec();
+                        if (doc) {
+                            await doc.patch({
+                                filePrintDate: new Date().toISOString(), // The XLSX date is roughly now
+                                labelPrintDate: timestamp || new Date().toISOString()
+                            });
+                        }
+                    });
+                    
+                    await Promise.all(updatePromises);
+                    toast.success('Print dates recorded to database', { id: toastId });
+                } catch (e: any) {
+                    console.error('Failed to update print dates:', e);
+                    toast.error('Failed to save print tracking data', { id: toastId });
+                }
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [db, lastPrintedIds]);
 
     /* ── Open Designer full screen with batch ── */
     const openDesignerFullscreen = () => {
@@ -394,48 +421,36 @@ export const PackingModule: React.FC = () => {
 
                 {/* Controls */}
                 <div className="flex items-center gap-4">
-                    {/* Primary Actions Cluster */}
+                    {/* Main Wizard Trigger */}
                     <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8 mr-2">
                         <button
-                            onClick={() => setShowPreviewOverlay(true)}
+                            onClick={handlePrintLabels}
                             disabled={selectedIds.size === 0}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${selectedIds.size > 0 ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/10 cursor-not-allowed'}`}
+                            className={`flex items-center gap-3 px-5 py-2 rounded-lg transition-all ${selectedIds.size > 0 ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/10 cursor-not-allowed'}`}
                         >
-                            <Eye size={13} strokeWidth={2.5} />
-                            <span className="text-[9px] font-black uppercase tracking-widest">Preview Labels</span>
+                            <Printer size={14} strokeWidth={2.5} />
+                            <span className="text-[10px] font-black uppercase tracking-widest leading-none">Print Labels</span>
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Send to OnyxLabels */}
+                    {/* Export XLSX/JSON */}
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8">
                         <button
-                            onClick={handleSendToDesigner}
-                            disabled={selectedIds.size === 0 || isSendingToDesigner}
-                            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-20 shadow-md"
+                            onClick={handleExportXLSX}
+                            disabled={selectedIds.size === 0 || isExportingXLSX}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
+                            title="Export XLSX"
                         >
-                            <Send size={12} strokeWidth={2.5} />
-                            {isSendingToDesigner ? '...' : 'Send to OnyxLabels'}
+                            <FileSpreadsheet size={14} />
                         </button>
-
-                        {/* Export XLSX/JSON */}
-                        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8">
-                            <button
-                                onClick={handleExportXLSX}
-                                disabled={selectedIds.size === 0 || isExportingXLSX}
-                                className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
-                                title="Export XLSX"
-                            >
-                                <FileSpreadsheet size={14} />
-                            </button>
-                            <button
-                                onClick={handleExportJSON}
-                                disabled={selectedIds.size === 0}
-                                className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
-                                title="Export JSON"
-                            >
-                                <FileJson size={14} />
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleExportJSON}
+                            disabled={selectedIds.size === 0}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
+                            title="Export JSON"
+                        >
+                            <FileJson size={14} />
+                        </button>
                     </div>
 
                     <div className="w-px h-6 bg-white/10 mx-2" />
@@ -562,10 +577,17 @@ export const PackingModule: React.FC = () => {
 
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={openDesignerFullscreen}
+                                    onClick={() => {
+                                        const iframe = iframeRef.current;
+                                        if (iframe) {
+                                            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1); // Default Qty for editing
+                                            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+                                            iframe.src = `/phomemo-designer/index.html?mini=true&v=${Date.now()}`;
+                                        }
+                                    }}
                                     className="flex items-center gap-2.5 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-white/60 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) transition-all"
                                 >
-                                    <Edit size={14} /> Edit Template
+                                    <Edit size={14} /> Edit Labels
                                 </button>
                                 <button
                                     onClick={() => setShowPreviewOverlay(false)}
