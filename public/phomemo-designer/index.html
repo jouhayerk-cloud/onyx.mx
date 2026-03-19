@@ -2417,12 +2417,23 @@
       updateDesigner();
     }
 
-    // 1. Initial Load
+    // 1. Initial Load & Mini Mode detection
     window.addEventListener('DOMContentLoaded', () => {
-      initBatchUI();
+      // Check for mini/embedded mode via URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const isMini = urlParams.get('mini') === 'true';
+      if (isMini) {
+        document.body.classList.add('is-embedded');
+      }
+
       const batch = localStorage.getItem('onyx_packing_batch');
       if (batch) {
-        try { handleOnyxData(JSON.parse(batch)); } catch(e) {}
+        try {
+          const data = JSON.parse(batch);
+          handleOnyxData(data);
+          // Only show batch navigation UI if NOT in mini/iframe mode
+          if (!isMini) initBatchUI();
+        } catch(e) {}
       }
     });
 
