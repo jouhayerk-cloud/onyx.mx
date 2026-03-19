@@ -28,7 +28,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2 } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2 } from 'lucide-react';
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
@@ -148,6 +148,24 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         setDetailsPanelMode('edit');
     };
 
+    const isInternalUser = user?.role === 'Developer' || user?.role === 'Admin';
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!window.confirm('Are you sure you want to mark this item for deletion? it will be hidden from the inventory.')) return;
+        const toastId = toast.loading('Hiding item...');
+        try {
+            const tableName = item.source === 'production' ? 'production' : 'inventory';
+            const { error } = await supabase.from(tableName).update({ is_hidden: true, hidden_reason: 'Marked by user' }).eq('id', item.row);
+            if (error) throw error;
+            toast.success('Item Hidden', { id: toastId });
+            setInventoryVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(`Error hiding item: ${err.message}`, { id: toastId });
+        }
+    };
+
     if (viewMode === 'list') {
         return (
             <div className="flex flex-col gap-1">
@@ -195,6 +213,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {isEditable && (
                             <button onClick={(e) => handleEdit(e)} className="p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
                                 <Pencil className="w-4 h-4 stroke-2" />
+                            </button>
+                        )}
+                        {isInternalUser && (
+                            <button onClick={(e) => handleDelete(e)} className="p-2 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Mark for Deletion">
+                                <Trash2 className="w-4 h-4 stroke-2" />
                             </button>
                         )}
                         <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors ${isExpanded ? 'text-(--main-color)' : ''}`}>
@@ -289,6 +312,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {isEditable && (
                             <button onClick={(e) => handleEdit(e)} className="p-1.5 bg-white/5 hover:bg-(--main-color)/20 border border-white/10 rounded-lg text-white/40 hover:text-(--main-color) transition-all" title="Edit Item">
                                 <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                        {isInternalUser && (
+                            <button onClick={(e) => handleDelete(e)} className="p-1.5 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-lg text-white/40 hover:text-red-500 transition-all" title="Delete Item">
+                                <Trash2 className="w-3.5 h-3.5" />
                             </button>
                         )}
                     </div>
@@ -439,7 +467,7 @@ export const UnifiedInventoryView = () => {
                 shape: itemData.shape || '',
                 material: itemData.material || '',
                 color: itemData.color || '',
-                itemType: itemData.shortDescription || '',
+                shortDescription: itemData.shortDescription || itemData.short_description || '',
                 description: itemData.description || '',
                 weightKg: itemData.weightKg || '',
                 widthCm: itemData.widthCm || '',
@@ -449,6 +477,9 @@ export const UnifiedInventoryView = () => {
                 quantity: itemData.quantity || '1',
                 status: itemData.status || 'Available',
                 workbook: itemData.workbook || '326',
+                itemId: itemData.itemId || itemData.item_id || '',
+                generatedDescription: itemData.generatedDescription || '',
+                detailedDescription: itemData.detailedDescription || '',
             });
             setNewFiles([]);
         } else {
@@ -501,12 +532,12 @@ export const UnifiedInventoryView = () => {
             const existingPhotos = itemData?.mediaUrls ? itemData.mediaUrls.split(',').map((u: string) => u.trim()).filter(Boolean) : [];
             const mediaUrlsStr = [...existingPhotos, ...uploadedUrls].join(',');
 
-            const dbRow = {
+            let dbRow: any = {
                 item_number: editData.itemNumber,
                 shape: editData.shape,
                 material: editData.material,
                 color: editData.color,
-                short_description: editData.itemType,
+                short_description: editData.shortDescription,
                 description: editData.description,
                 weight_kg: editData.weightKg ? Number(editData.weightKg) : null,
                 height_cm: editData.heightCm ? Number(editData.heightCm) : null,
@@ -521,6 +552,24 @@ export const UnifiedInventoryView = () => {
             };
 
             const tableName = (itemData as any)?.source === 'production' ? 'production' : 'inventory';
+
+            if (tableName === 'inventory') {
+                dbRow.item_id = editData.itemId;
+                dbRow.generated_description = editData.generatedDescription;
+                dbRow.detailed_description = editData.detailedDescription;
+            } else {
+                // Production specific fields if needed, like vendor_id vs item_id
+                dbRow.vendor_id = editData.itemId;
+                // remove fields not likely in production table
+                delete dbRow.short_description;
+                delete dbRow.shape;
+                delete dbRow.material;
+                delete dbRow.color;
+                delete dbRow.weight_kg;
+                delete dbRow.height_cm;
+                delete dbRow.width_cm;
+                delete dbRow.length_cm;
+            }
             const { error } = await supabase.from(tableName).update(dbRow).eq('id', itemRow);
             if (error) throw error;
             toast.success('Saved Successfully', { id: toastId });
@@ -767,7 +816,14 @@ export const UnifiedInventoryView = () => {
                                     <option value="Packed">Packed</option>
                                     <option value="Shipped">Shipped</option>
                                 </select></div>
+                                <div><label className={lbl}>Vendor ID</label><select name="itemId" value={editData.itemId} onChange={handleEditChange} className={inp}>
+                                    <option value="" disabled>Select Vendor...</option>
+                                    {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
+                                </select></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
                                 <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
+                                <div><label className={lbl}>Workbook</label><input type="text" name="workbook" value={editData.workbook} onChange={handleEditChange} className={inpNum} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-8">
                                 <div><label className={lbl}>Quantity</label><input type="number" min="1" step="1" name="quantity" value={editData.quantity} onChange={handleEditChange} className={inpNum} /></div>
@@ -779,9 +835,11 @@ export const UnifiedInventoryView = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-8">
                                 <div><label className={lbl}>Geometric Shape</label><input type="text" name="shape" value={editData.shape} onChange={handleEditChange} className={inp} /></div>
-                                <div><label className={lbl}>Product Category</label><input type="text" name="itemType" value={editData.itemType} onChange={handleEditChange} className={inp} /></div>
+                                <div><label className={lbl}>Product Category</label><input type="text" name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp} /></div>
                             </div>
-                            <div><label className={lbl}>Technical Notes</label><textarea name="description" value={editData.description} onChange={handleEditChange} rows={4} className={inp + " resize-none leading-relaxed"} /></div>
+                            <div><label className={lbl}>Manual Description</label><textarea name="description" value={editData.description} onChange={handleEditChange} rows={3} className={inp + " resize-none leading-relaxed"} /></div>
+                            <div><label className={lbl}>Generated Description (Gemini)</label><textarea name="generatedDescription" value={editData.generatedDescription} onChange={handleEditChange} rows={4} className={inp + " resize-none text-[12px] leading-relaxed"} /></div>
+                            <div><label className={lbl}>Detailed Description (HTML)</label><textarea name="detailedDescription" value={editData.detailedDescription} onChange={handleEditChange} rows={6} className={inp + " resize-none font-mono text-[11px] leading-relaxed"} /></div>
                             <div className="grid grid-cols-4 gap-6">
                                 <div><label className={lbl}>Mass (kg)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
                                 <div><label className={lbl}>W (cm)</label><input type="number" step="0.1" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>

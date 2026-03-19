@@ -1,5 +1,4 @@
 
-
 export type DetectTypes =
   | '2D bounding boxes'
   | 'Segmentation masks'
@@ -66,6 +65,18 @@ export interface InventoryItemData {
   shortDescription?: string;
   generatedDescription?: string;
   detailedDescription?: string;
+  short_description?: string;
+  generated_description?: string;
+  detailed_description?: string;
+  item_id?: string;
+  item_number?: string;
+  price_mxn?: number | string;
+  is_hidden?: boolean;
+  hidden_reason?: string;
+  updated_at?: string;
+  requested_by?: string;
+  workbook?: string;
+  vendor_id?: string;
   generatedImageUrls?: string;
   image_urls?: string[];
   drive_ids?: string[];
@@ -86,19 +97,11 @@ export interface InventoryItemData {
   bookAqCode?: string;
   box_land_code?: string;
   crate_id?: string;
-  workbook?: string;
   dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   bank_account?: string;
   acquired_by?: string;
   id?: string;
   rating?: number;
-  is_hidden?: boolean;
-  hidden_reason?: string;
-  updated_at?: string;
-  requested_by?: string;
-  item_id?: string;
-  vendor_id?: string;
-  price_mxn?: number | string;
 }
 
 export interface InventoryItem {
