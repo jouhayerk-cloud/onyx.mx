@@ -319,6 +319,222 @@
     .is-embedded .flex-1.flex.items-center.justify-center {
       padding: 0 !important;
     }
+
+    /* ═══════════════════════════════════════════════
+       ONYX.MX THEME OVERRIDE — Dark Glassmorphism
+       Matches main application aesthetic
+    ═══════════════════════════════════════════════ */
+    :root {
+      --onyx-accent: #7dd3fc;   /* sky-300 — matches --main-color */
+      --onyx-bg: #080808;
+      --onyx-surface: rgba(255,255,255,0.03);
+      --onyx-surface-2: rgba(255,255,255,0.06);
+      --onyx-border: rgba(255,255,255,0.07);
+      --onyx-text: rgba(255,255,255,0.85);
+      --onyx-text-muted: rgba(255,255,255,0.25);
+      --onyx-radius: 1rem;
+    }
+
+    /* ─── Base ─── */
+    html, body {
+      background: var(--onyx-bg) !important;
+      color: var(--onyx-text) !important;
+    }
+    body.bg-gray-100 { background: var(--onyx-bg) !important; }
+
+    /* ─── Headers / Toolbars ─── */
+    header,
+    .desktop-only.bg-white,
+    .desktop-only.bg-white.border-b,
+    .bg-white.border-b.border-gray-200,
+    [class*="bg-white"][class*="border-b"] {
+      background: rgba(8,8,8,0.85) !important;
+      backdrop-filter: blur(24px) !important;
+      border-bottom: 1px solid var(--onyx-border) !important;
+      border-color: var(--onyx-border) !important;
+    }
+
+    /* ─── Sidebar / Panels ─── */
+    #props-panel,
+    .mobile-props-panel,
+    [id*="panel"],
+    .bg-gray-50,
+    .bg-white {
+      background: rgba(255,255,255,0.03) !important;
+      border-color: var(--onyx-border) !important;
+      backdrop-filter: blur(20px) !important;
+    }
+    #props-panel {
+      border-left: 1px solid var(--onyx-border) !important;
+    }
+
+    /* ─── Canvas area ─── */
+    .flex-1.flex.items-center.justify-center,
+    main > .flex-1 {
+      background: rgba(255,255,255,0.01) !important;
+    }
+    .canvas-bg {
+      background-image:
+        linear-gradient(45deg, rgba(255,255,255,0.025) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.025) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.025) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.025) 75%) !important;
+      background-size: 12px 12px !important;
+      background-color: #0d0d0d !important;
+    }
+
+    /* ─── Toolbar buttons ─── */
+    .toolbar-btn {
+      background: rgba(255,255,255,0.04) !important;
+      border: 1px solid var(--onyx-border) !important;
+      color: var(--onyx-text-muted) !important;
+      border-radius: 0.625rem !important;
+      font-weight: 700 !important;
+      font-size: 0.6875rem !important;
+      letter-spacing: 0.05em !important;
+      text-transform: uppercase !important;
+      transition: all 0.2s ease !important;
+    }
+    .toolbar-btn:hover {
+      background: rgba(255,255,255,0.08) !important;
+      border-color: rgba(255,255,255,0.15) !important;
+      color: rgba(255,255,255,0.9) !important;
+    }
+    .toolbar-btn:active {
+      background: var(--onyx-accent) !important;
+      color: #000 !important;
+      border-color: var(--onyx-accent) !important;
+    }
+    .toolbar-divider { background: var(--onyx-border) !important; }
+
+    /* ─── Inputs in properties panel ─── */
+    .prop-label {
+      color: var(--onyx-text-muted) !important;
+      font-weight: 800 !important;
+      font-size: 0.65rem !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+    }
+    .prop-input,
+    input[type="text"], input[type="number"], input[type="range"],
+    select, textarea {
+      background: rgba(255,255,255,0.04) !important;
+      border: 1px solid var(--onyx-border) !important;
+      color: var(--onyx-text) !important;
+      border-radius: 0.625rem !important;
+    }
+    .prop-input:focus,
+    input:focus, select:focus, textarea:focus {
+      outline: none !important;
+      box-shadow: 0 0 0 2px rgba(125,211,252,0.4) !important;
+      border-color: var(--onyx-accent) !important;
+      background: rgba(255,255,255,0.07) !important;
+    }
+    select option {
+      background: #111 !important;
+      color: var(--onyx-text) !important;
+    }
+
+    /* ─── Text in headers, titles, labels ─── */
+    h1, h2, h3, h4, h5, h6,
+    .text-gray-900, .text-gray-800, .text-gray-700,
+    .text-gray-600, .text-gray-500 {
+      color: var(--onyx-text) !important;
+    }
+    .text-gray-400, .text-gray-300 {
+      color: var(--onyx-text-muted) !important;
+    }
+
+    /* ─── Dividers ─── */
+    .border-gray-200, .border-gray-100, .border-gray-300 {
+      border-color: var(--onyx-border) !important;
+    }
+    [class*="divide-gray"] > * + * {
+      border-color: var(--onyx-border) !important;
+    }
+
+    /* ─── Mobile toolbar ─── */
+    .mobile-toolbar {
+      background: rgba(8,8,8,0.95) !important;
+      border-top: 1px solid var(--onyx-border) !important;
+      backdrop-filter: blur(24px) !important;
+    }
+    .mobile-props-panel {
+      background: rgba(10,10,10,0.97) !important;
+      border-top: 1px solid var(--onyx-border) !important;
+    }
+    .mobile-props-header {
+      border-bottom: 1px solid var(--onyx-border) !important;
+    }
+
+    /* ─── Primary / accent buttons (print, connect) ─── */
+    button.bg-gray-900,
+    button.bg-blue-500,
+    button.bg-blue-600,
+    .bg-blue-500, .bg-blue-600 {
+      background: var(--onyx-accent) !important;
+      color: #000 !important;
+      font-weight: 800 !important;
+      border-radius: 0.75rem !important;
+    }
+    button.bg-gray-900:hover,
+    button.bg-blue-500:hover,
+    button.bg-blue-600:hover {
+      background: rgba(125,211,252,0.85) !important;
+    }
+
+    /* ─── Focus rings ─── */
+    *:focus-visible {
+      outline: 2px solid var(--onyx-accent) !important;
+      outline-offset: 2px !important;
+    }
+
+    /* ─── Scrollbars ─── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--onyx-accent); }
+
+    /* ─── Active tool / element highlight ─── */
+    [class*="ring-blue"], [class*="border-blue"] {
+      --tw-ring-color: var(--onyx-accent) !important;
+      border-color: var(--onyx-accent) !important;
+    }
+    [class*="text-blue"], [class*="bg-blue-50"] {
+      color: var(--onyx-accent) !important;
+      background: rgba(125,211,252,0.08) !important;
+    }
+    .bg-blue-100 { background: rgba(125,211,252,0.1) !important; }
+
+    /* ─── Gray backgrounds (element list, sidebars) ─── */
+    .bg-gray-100 { background: rgba(255,255,255,0.02) !important; }
+    .bg-gray-200 { background: rgba(255,255,255,0.04) !important; }
+    .bg-gray-700, .bg-gray-800 { background: rgba(255,255,255,0.06) !important; }
+    .hover\:bg-gray-100:hover { background: rgba(255,255,255,0.05) !important; }
+    .hover\:bg-gray-200:hover { background: rgba(255,255,255,0.07) !important; }
+
+    /* ─── Dialogs / modals ─── */
+    [class*="fixed"][class*="bg-white"],
+    [class*="absolute"][class*="bg-white"] {
+      background: rgba(10,10,10,0.97) !important;
+      border: 1px solid var(--onyx-border) !important;
+      backdrop-filter: blur(32px) !important;
+    }
+    /* Print preview / dialog overlay */
+    [class*="bg-black/50"], [class*="bg-black\/50"] {
+      background: rgba(0,0,0,0.6) !important;
+      backdrop-filter: blur(8px) !important;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      background: rgba(8,8,8,0.9) !important;
+      border-top: 1px solid var(--onyx-border) !important;
+      color: var(--onyx-text-muted) !important;
+    }
+    footer a { color: var(--onyx-text-muted) !important; }
+    footer a:hover { color: var(--onyx-accent) !important; }
+
   </style>
 </head>
 <body class="bg-gray-100 h-screen flex flex-col overflow-hidden">
