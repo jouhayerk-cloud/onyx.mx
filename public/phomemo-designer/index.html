@@ -304,20 +304,39 @@
     .is-embedded .desktop-only.bg-white.border-b,
     .is-embedded .mobile-toolbar,
     .is-embedded #zoom-controls,
+    .is-embedded #props-panel,
+    .is-embedded #toolbar-left,
     .is-embedded footer {
       display: none !important;
     }
     .is-embedded main {
       height: 100vh !important;
-    }
-    .is-embedded #props-panel {
-      display: none !important;
+      padding: 0 !important;
+      background: transparent !important;
     }
     .is-embedded #canvas-container {
       box-shadow: none !important;
+      opacity: 0.1; /* Fade out canvas in preview mode */
+      pointer-events: none;
     }
     .is-embedded .flex-1.flex.items-center.justify-center {
       padding: 0 !important;
+    }
+
+    /* Force dialog to be full screen in embedded mode */
+    .is-embedded .fixed.inset-0.z-50.flex.items-center.justify-center {
+      background-color: transparent !important;
+      backdrop-filter: none !important;
+    }
+    .is-embedded div[class*="max-w-4xl"] {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
 
     /* ═══════════════════════════════════════════════
@@ -2337,8 +2356,10 @@
      Uses native LOAD_DESIGN + UPDATE_DATA protocol
   ═══════════════════════════════════════════════ */
   (function() {
-    // Check for embedded/mini mode via URL param
-    const isMini = new URLSearchParams(window.location.search).get('mini') === 'true';
+    // Check for embedded/mini mode via URL params
+    const params = new URLSearchParams(window.location.search);
+    const isMini = params.get('mini') === 'true';
+    const isPreview = params.get('preview') === 'true';
 
     function handleOnyxData(batchProject) {
       if (!batchProject || !batchProject.elements) return;
@@ -2365,6 +2386,11 @@
               payload: { templateData: batchProject.templateData }
             }
           }));
+
+          // If in preview mode, automatically open the batch print dialog
+          if (isPreview && typeof handleBatchPrint === 'function') {
+            handleBatchPrint();
+          }
         }, 300);
       }
     }

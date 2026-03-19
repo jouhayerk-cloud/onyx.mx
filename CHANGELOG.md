@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.5 — 2026-03-18
+### Changed
+- **UX Redesign [layout]:** Overhauled the Packing Module workflow to prioritize batch verification. Moved the **Export Pipeline** (Send to OnyxLabels, XLSX, JSON) into a consolidated top toolbar.
+- **Label Integration [feat]:** Redesigned the right sidebar as a dedicated **Live Preview Sidebar**. It now utilizes a specialized 'preview mode' in the embedded designer to display a high-fidelity grid of all selected labels.
+- **Designer Applet [fix]:** Added `preview=true` parameter handling to automatically trigger batch print previews while suppressing all design-time UI elements (toolbars, zoom, properties) for a cleaner integrated look.
+
 ## v1.18.4 — 2026-03-18
 ### Changed
 - **Label Template [ui/core]:** Implemented a high-contrast label design with a black-background description field and optimized typography for enhanced legibility.
