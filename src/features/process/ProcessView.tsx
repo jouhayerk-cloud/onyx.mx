@@ -139,6 +139,7 @@ export const ProcessView: React.FC = () => {
     const batchTrigger = useAtomValue(processTriggerBatchAtom);
     const [activeStepLabel, setActiveStepLabel] = useAtom(processActiveStepLabelAtom);
     const [isProcessingGlobal, setIsProcessingGlobal] = useAtom(processIsProcessingAtom);
+    const [engineStatus, setEngineStatus] = useState<'idle' | 'analyzing' | 'vectorizing' | 'committing' | 'completed' | 'error'>('idle');
     
     // System Console Logs
     const [logs, setLogs] = useAtom(processLogsAtom);
@@ -269,21 +270,40 @@ export const ProcessView: React.FC = () => {
             const base64 = aiDataUrl.split(',')[1];
 
             updateOp({ progress: 30, stepLabel: 'Analyzing...' });
+            setEngineStatus('analyzing');
             const instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
             
             const genAI = new GoogleGenerativeAI(API_KEY);
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash"
-            });
+            let result = null;
+            let usedModelName = '';
 
-            updateOp({ progress: 40, stepLabel: 'Processing AI...' });
-            const result = await model.generateContent([
-                instruction,
-                { inlineData: { mimeType: 'image/jpeg', data: base64 } }
-            ]);
+            // Dynamic Model Routing (Sequential Fallback for 404/403 errors)
+            const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
+            
+            for (const modelName of modelsToTry) {
+                try {
+                    addLog(`Connecting to ${modelName}...`, 'info');
+                    const model = genAI.getGenerativeModel({ model: modelName });
+                    result = await model.generateContent([
+                        instruction,
+                        { inlineData: { mimeType: 'image/jpeg', data: base64 } }
+                    ]);
+                    usedModelName = modelName;
+                    break;
+                } catch (err: any) {
+                    if (err.message?.includes('404') || err.message?.includes('403')) {
+                        addLog(`${modelName} routing error. Diverting to fallback...`, 'warn');
+                        continue;
+                    }
+                    throw err; // Real errors throw up
+                }
+            }
+
+            if (!result) throw new Error("All AI conduits failed (404/403). Contact support.");
+            addLog(`Stability achieved on ${usedModelName}. Parsing trace...`, 'success');
 
             const rawOutput = result.response.text();
-            if (!rawOutput) throw new Error("Empty response from Flash Engine");
+            if (!rawOutput) throw new Error("Empty response from Engine");
             
             // Handle markdown-wrapped JSON if present
             let cleanedJson = rawOutput.trim();
@@ -297,6 +317,7 @@ export const ProcessView: React.FC = () => {
             addLog(`Engine found ${processed.length} segmentation layers.`, 'success');
 
             updateOp({ progress: 60, stepLabel: 'Vectorizing...' });
+            setEngineStatus('vectorizing');
             const masks: any[] = await Promise.all(processed.map(async (m: any, idx: number) => {
                 const maskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
                 const maskImg = await loadImage(maskData);
@@ -326,6 +347,7 @@ export const ProcessView: React.FC = () => {
             const colorsResult = await extractGradientFromMask(imageUrl, masks[0], { width: img.width, height: img.height });
 
             updateOp({ progress: 95, stepLabel: 'Committing...' });
+            setEngineStatus('committing');
             
             // Push to Supabase Persistence
             try {
@@ -351,11 +373,13 @@ export const ProcessView: React.FC = () => {
                 stepLabel: 'Success',
                 result: { pngData, svgData, masks, colors: colorsResult }
             });
+            setEngineStatus('completed');
             addLog(`Full Engine Trace Complete for ${item.itemId}. Asset generated.`, 'success');
             if (opId === 'single') updateProgress('DEPLOYMENT SUCCESS', false);
             setInventoryVersion(v => v + 1);
 
         } catch (e: any) {
+            setEngineStatus('error');
             updateOp({ status: 'failed', error: e.message, stepLabel: 'Error' });
             if (opId === 'single') updateProgress('ENGINE ERROR', false);
             toast.error(`Processing Error`);
@@ -492,6 +516,27 @@ export const ProcessView: React.FC = () => {
                         style={{ width: 'min(76vh, 76vw)', height: 'min(76vh, 76vw)' }}
                         className="bg-black/40 rounded-xl shadow-2xl z-10"
                     />
+
+                    {/* Engine Telemetry Overlay */}
+                    {isProcessingGlobal && (
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none bg-black/20 backdrop-blur-[2px] animate-in fade-in duration-500">
+                             <div className="relative">
+                                 <div className="w-32 h-32 rounded-full border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin" />
+                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-full backdrop-blur-md border border-white/5 shadow-2xl">
+                                     <Activity size={24} className="text-(--main-color) animate-pulse mb-1" />
+                                     <span className="text-[8px] font-black uppercase text-white tracking-[0.2em]">{engineStatus}</span>
+                                 </div>
+                             </div>
+                             <div className="mt-8 px-6 py-2 bg-black/60 rounded-full border border-white/5 backdrop-blur-xl shadow-2xl flex flex-col items-center gap-1">
+                                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-(--main-color)">{activeStepLabel}</span>
+                                 <div className="w-32 h-0.5 bg-white/5 rounded-full overflow-hidden">
+                                     <div className="h-full bg-(--main-color) transition-all duration-500" style={{ 
+                                         width: engineStatus === 'analyzing' ? '30%' : engineStatus === 'vectorizing' ? '70%' : engineStatus === 'committing' ? '90%' : '5%' 
+                                     }} />
+                                 </div>
+                             </div>
+                        </div>
+                    )}
                 </div>
                 <aside className="w-72 flex flex-col gap-4 relative">
                     <StitchCard className="shrink-0 flex flex-col gap-3 min-h-[90px] bg-black/40 border-(--main-color)/10 overflow-hidden relative group">
@@ -661,24 +706,41 @@ export const ProcessView: React.FC = () => {
                                 return (
                                     <div 
                                         key={item.id} 
-                                        onClick={() => toggleSelection(item.row)}
                                         className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${isSelected ? 'border-(--main-color) ring-4 ring-(--main-color)/20 shadow-xl' : 'border-white/5 hover:border-white/20'}`}
                                     >
-                                        <img 
-                                            src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} 
-                                            className={`w-full h-full object-cover transition-all duration-500 ${isSelected ? 'scale-110' : 'grayscale group-hover:grayscale-0 group-hover:scale-105 opacity-40 group-hover:opacity-100'}`} 
-                                        />
-                                        
-                                        {/* Tag Overlay */}
-                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2">
-                                            <span className={`text-[8px] font-black uppercase tracking-tighter truncate block ${isSelected ? 'text-(--main-color)' : 'text-white/40 group-hover:text-white'}`}>
-                                                {item.itemId || `ID-${item.row}`}
-                                            </span>
+                                        <div 
+                                            className="w-full h-full"
+                                            onClick={() => {
+                                                handleSelectItem(item);
+                                                processItem('single');
+                                            }}
+                                        >
+                                            <img 
+                                                src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} 
+                                                className={`w-full h-full object-cover transition-all duration-500 ${isSelected ? 'scale-110' : 'grayscale group-hover:grayscale-0 group-hover:scale-105 opacity-40 group-hover:opacity-100'}`} 
+                                            />
+                                            
+                                            {/* Tag Overlay */}
+                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+                                                <span className={`text-[8px] font-black uppercase tracking-tighter truncate block ${isSelected ? 'text-(--main-color)' : 'text-white/40 group-hover:text-white'}`}>
+                                                    {item.itemId || `ID-${item.row}`}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {/* Selection Indicator */}
-                                        <div className={`absolute top-2 right-2 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/20 opacity-0 group-hover:opacity-100'}`}>
-                                            {isSelected && <Check size={12} className="text-black font-black" />}
+                                        {/* Selection Indicator Area (Top Right) */}
+                                        <div 
+                                            onClick={(e) => { e.stopPropagation(); toggleSelection(item.row); }}
+                                            className={`absolute top-2 right-2 w-6 h-6 rounded-full border flex items-center justify-center transition-all z-10 ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/20 opacity-0 group-hover:opacity-100'}`}
+                                        >
+                                            {isSelected ? <Check size={12} className="text-black font-black" /> : <Box size={10} className="text-white/20" />}
+                                        </div>
+
+                                        {/* Quick Action Zap (Bottom Left) -- Only on Hover */}
+                                        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-all">
+                                            <div className="bg-(--main-color) text-black p-1 rounded-md shadow-lg">
+                                                <Zap size={10} fill="black" />
+                                            </div>
                                         </div>
                                     </div>
                                 );
