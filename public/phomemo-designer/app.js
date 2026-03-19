@@ -7821,11 +7821,16 @@ function init() {
   });
 
   console.log('OnyxLabels Engine initialized');
+
+  // Signal to parent frame that the designer is ready to receive data
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'DESIGNER_READY' }, '*');
+  }
 }
 
 // External Messaging Interface
 window.addEventListener('message', (event) => {
-  const { type, payload } = event.data;
+  const { type, payload } = event.data || {};
 
   if (type === 'LOAD_DESIGN') {
     if (payload.elements) state.elements = payload.elements;
@@ -7844,6 +7849,29 @@ window.addEventListener('message', (event) => {
     setStatus('Design loaded from application');
   }
 
+  // BATCH PREVIEW — load design + auto-open preview grid
+  if (type === 'LOAD_BATCH_PREVIEW') {
+    if (payload.elements) state.elements = payload.elements;
+    if (payload.labelSize) {
+      state.labelSize = payload.labelSize;
+      state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
+    }
+    if (payload.templateData) state.templateData = payload.templateData;
+
+    resetHistory();
+    state.renderer.clearCache();
+    detectTemplateFields();
+    render();
+    updatePropertiesPanel();
+    updateToolbarState();
+    setStatus(`Batch loaded — ${state.templateData.length} labels`);
+
+    // Open the preview grid immediately
+    if (state.templateData.length > 0) {
+      setTimeout(() => showPreviewDialog(), 150);
+    }
+  }
+
   if (type === 'UPDATE_DATA') {
     if (payload.templateData) {
       state.templateData = payload.templateData;
@@ -7855,7 +7883,6 @@ window.addEventListener('message', (event) => {
 
   if (type === 'GET_RASTER') {
     // Parent wants the current raster data for printing
-    // implementation could return current canvas as dataURL or raw bytes
   }
 });
 
