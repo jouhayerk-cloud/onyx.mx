@@ -13,6 +13,11 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.8 — 2026-03-18
+### Removed
+- **Branding & Info [ui/clean]:** Completely removed the "About" information modal and its associated trigger buttons from both desktop and mobile views.
+- **Project Metadata [cleanup]:** Removed external project links (GitHub, Affordable Magic) and descriptive "Phomymo" marketing text to provide a cleaner, exclusively Onyx-branded designer experience.
+
 ## v1.18.7 — 2026-03-18
 ### Added
 - **OnyxLabels Print Wizard [feat/ux]:** Implemented a multi-step wizard triggered by the **"Print Labels"** action.
