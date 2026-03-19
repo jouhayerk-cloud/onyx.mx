@@ -309,3 +309,13 @@ export const paymentsSearchTermAtom = atom<string>('');
 export const isStoreBagOpenAtom = atom<boolean>(false);
 export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('controlPanel', 'users');
 export const TOP_BAR_SEARCH_ATOM = atom<string>('');
+
+// Process Module Atoms
+export const processToolAtom = atom<'move' | 'mask'>('move');
+export const processShowTerminalAtom = atom<boolean>(false);
+export const processShowVaultAtom = atom<boolean>(false);
+export const processShowBatchListAtom = atom<boolean>(false);
+export const processTriggerAnalyzeAtom = atom<number>(0);
+export const processTriggerBatchAtom = atom<number>(0);
+export const processActiveStepLabelAtom = atom<string>('ENGINE READY');
+export const processIsProcessingAtom = atom<boolean>(false);
