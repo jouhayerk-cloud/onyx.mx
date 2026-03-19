@@ -104,13 +104,12 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
     const width = parseInt(wStr) || 50;
     const height = parseInt(hStr) || 30;
 
-    const records = items.map(item => {
+    // Build one record per item, then expand by QUANTITY for print batch
+    const baseRecords = items.map(item => {
         const d = item.normData;
         const c = item.codes;
         const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
         const retailStr = String(c.bookRetail || '0').padStart(4, '0');
-        
-        // Match XLSX columns exactly as keys
         return {
             "TAG ID": c.bookBardcode || '',
             "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || ''}`.trim().toUpperCase(),
@@ -124,11 +123,16 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         };
     });
 
+    // Expand by QUANTITY — designer prints one label per templateData record
+    const templateData = baseRecords.flatMap(r =>
+        Array.from({ length: Number(r["QUANTITY"]) || 1 }, () => ({ ...r }))
+    );
+
     return {
         ...ONYX_MASTER_TEMPLATE(width, height),
         name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
         exportedAt: new Date().toISOString(),
-        records
+        templateData   // ← 'templateData' is the key importDesign() reads
     };
 };
 
@@ -240,7 +244,7 @@ export const PackingModule: React.FC = () => {
                 payload: {
                     elements: batch.elements,
                     labelSize: batch.labelSize,
-                    templateData: batch.records
+                    templateData: batch.templateData
                 }
             }, '*');
         }, 500);
@@ -327,7 +331,7 @@ export const PackingModule: React.FC = () => {
                     payload: {
                         elements: batchProject.elements,
                         labelSize: batchProject.labelSize,
-                        templateData: batchProject.records
+                        templateData: batchProject.templateData
                     }
                 }, '*');
             }
