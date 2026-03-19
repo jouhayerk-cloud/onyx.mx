@@ -134,7 +134,10 @@ export function MainAppView() {
     const isEditingMask = useAtomValue(isEditingMaskAtom);
     const is3DViewerOpen = useAtomValue(is3DViewerOpenAtom);
     const [is3DWorkspaceOpen, setIs3DWorkspaceOpen] = useAtom(is3DWorkspaceOpenAtom);
-    const [sidebarState, setSidebarState] = useAtom(sidebarStateAtom);
+    const sidebarState = useAtomValue(sidebarStateAtom);
+    const setSidebarState = useSetAtom(sidebarStateAtom);
+    const isProcessing = useAtomValue(processIsProcessingAtom);
+    const activeStepLabel = useAtomValue(processActiveStepLabelAtom);
     const setWorkflowStep = useSetAtom(workflowStepAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
@@ -374,11 +377,11 @@ export function MainAppView() {
 
                     {/* Branding & Global Progress at bottom of sidebar */}
                     <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) shrink-0 relative overflow-hidden">
-                        {(useAtomValue(processIsProcessingAtom)) && (
+                        {isProcessing && (
                             <div className="flex flex-col items-center gap-1 mb-4 animate-in fade-in slide-in-from-bottom-2">
                                 <Zap size={14} className="text-(--main-color) animate-pulse" />
                                 <span className="text-[7px] font-black uppercase text-(--main-color)/60 tracking-widest text-center px-2">
-                                    {useAtomValue(processActiveStepLabelAtom)}
+                                    {activeStepLabel}
                                 </span>
                             </div>
                         )}

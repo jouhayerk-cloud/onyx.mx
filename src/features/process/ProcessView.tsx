@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
     userAtom,
     inventoryAtom,
@@ -241,21 +242,22 @@ export const ProcessView: React.FC = () => {
             const base64 = aiDataUrl.split(',')[1];
 
             updateOp({ progress: 30, stepLabel: 'Analyzing...' });
-            const prompt = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
+            const instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
             
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: base64 } }] }],
-                    generationConfig: { responseMimeType: 'application/json' }
-                })
+            const genAI = new GoogleGenerativeAI(API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-2.0-flash", 
+                generationConfig: { responseMimeType: "application/json" }
             });
 
-            if (!response.ok) throw new Error(`AI Gateway Error: ${response.status}`);
-            const resData = await response.json();
-            const rawOutput = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!rawOutput) throw new Error("Empty response from AI engine");
+            updateOp({ progress: 40, stepLabel: 'Processing AI...' });
+            const result = await model.generateContent([
+                instruction,
+                { inlineData: { mimeType: 'image/jpeg', data: base64 } }
+            ]);
+
+            const rawOutput = result.response.text();
+            if (!rawOutput) throw new Error("Empty response from Flash Engine");
             
             // Handle markdown-wrapped JSON if present
             let cleanedJson = rawOutput.trim();
