@@ -569,71 +569,76 @@ export const PackingModule: React.FC = () => {
                 </div>
             </div>
 
-            {/* ── LABEL PREVIEW OVERLAY ── */}
+            {/* ── LABEL PREVIEW OVERLAY — Fullscreen Glass Panel ── */}
             {showPreviewOverlay && (
-                <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in zoom-in duration-300">
-                    <div className="w-full max-w-6xl h-full bg-[#0a0a0a] rounded-[40px] border border-white/10 shadow-2xl flex flex-col overflow-hidden relative">
-                        {/* Overlay Header */}
-                        <div className="px-10 py-6 flex items-center justify-between border-b border-white/5 bg-white/2">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20">
-                                    <Eye size={18} strokeWidth={2.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] italic mb-0.5">OnyxLabels Engine</span>
-                                    <span className="text-sm font-black text-white uppercase tracking-widest leading-none">
-                                        Batch Preview — <span className="text-(--main-color)">{selectedIds.size} Labels</span>
-                                    </span>
-                                </div>
-                            </div>
+                <div className="absolute inset-0 z-[100] flex flex-col animate-in fade-in duration-200">
 
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={() => {
-                                        // Send edit-mode design to already-loaded iframe via postMessage
-                                        const editProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1);
-                                        iframeRef.current?.contentWindow?.postMessage(
-                                            { type: 'LOAD_DESIGN', payload: editProject },
-                                            '*'
-                                        );
-                                    }}
-                                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-white/60 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) transition-all"
-                                >
-                                    <Edit size={14} /> Edit Labels
-                                </button>
-                                <button
-                                    onClick={() => setShowPreviewOverlay(false)}
-                                    className="p-3 rounded-2xl bg-white text-black hover:bg-white/90 active:scale-90 transition-all shadow-xl shadow-black/40"
-                                >
-                                    <X size={20} strokeWidth={3} />
-                                </button>
+                    {/* ━━ Floating glass top bar ━━ */}
+                    <div className="relative z-10 flex items-center justify-between px-6 py-3 bg-black/70 backdrop-blur-2xl border-b border-white/8">
+                        {/* Left: mode label */}
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-(--main-color)/15 border border-(--main-color)/20">
+                                <Eye size={15} strokeWidth={2.5} className="text-(--main-color)" />
+                            </div>
+                            <div>
+                                <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] leading-none mb-0.5">OnyxLabels Engine</p>
+                                <p className="text-xs font-black text-white uppercase tracking-widest leading-none">
+                                    Batch Preview
+                                    <span className="text-(--main-color) ml-1.5">— {selectedIds.size} Labels</span>
+                                </p>
                             </div>
                         </div>
 
-                        {/* iframe container */}
-                        <div className="flex-1 bg-black/40 relative">
-                            <iframe
-                                ref={iframeRef}
-                                src={`/phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
-                                className="w-full h-full border-none"
-                                title="OnyxLabels Designer"
-                                allow="bluetooth"
-                                onLoad={handleIframeLoad}
-                            />
-                        </div>
-
-                        {/* Footer / Instructions */}
-                        <div className="px-10 py-5 bg-white/2 border-t border-white/5 flex items-center justify-between">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
-                                Rendering high-fidelity batch grid...
-                            </span>
-                            <div className="flex items-center gap-6">
-                                <span className="text-[9px] font-medium text-white/40 italic">
-                                    Click "Print" inside the preview to generate final documents.
-                                </span>
-                            </div>
+                        {/* Right: actions */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const editProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1);
+                                    iframeRef.current?.contentWindow?.postMessage(
+                                        { type: 'SHOW_EDITOR', payload: editProject },
+                                        '*'
+                                    );
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/50 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) hover:border-(--main-color)/30 transition-all"
+                            >
+                                <Edit size={13} /> Edit Labels
+                            </button>
+                            <button
+                                onClick={() => {
+                                    // Re-send batch to re-open preview grid
+                                    const batch = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 2);
+                                    iframeRef.current?.contentWindow?.postMessage(
+                                        { type: 'LOAD_BATCH_PREVIEW', payload: batch },
+                                        '*'
+                                    );
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/50 uppercase tracking-widest hover:bg-white/10 hover:text-white hover:border-white/20 transition-all"
+                                title="Back to Preview Grid"
+                            >
+                                <Eye size={13} /> Preview
+                            </button>
+                            <div className="w-px h-5 bg-white/10 mx-1" />
+                            <button
+                                onClick={() => setShowPreviewOverlay(false)}
+                                className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/8 transition-all"
+                            >
+                                <X size={18} strokeWidth={2.5} />
+                            </button>
                         </div>
                     </div>
+
+                    {/* ━━ Full-height iframe (no border, no padding) ━━ */}
+                    <div className="flex-1 relative">
+                        <iframe
+                            ref={iframeRef}
+                            src={`/phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
+                            className="w-full h-full border-none"
+                            title="OnyxLabels Designer"
+                            allow="bluetooth"
+                            onLoad={handleIframeLoad}
+                        />
+                    </div>
+
                 </div>
             )}
 
