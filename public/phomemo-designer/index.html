@@ -2331,6 +2331,46 @@
         document.body.classList.add('ready');
       });
     });
-  </script>
+  
+  /* ═══════════════════════════════════════════════
+     ONYX.MX INTEGRATION — Auto-Import Logic
+  ═══════════════════════════════════════════════ */
+  (function() {
+    function loadOnyxProject(data) {
+      if (!data) return;
+      console.log('ONYX: Loading project...', data);
+      
+      // If it's a batch, we load the first one or handle batch logic
+      const project = Array.isArray(data.items) ? data.items[0] : (data.elements ? data : null);
+      if (!project) return;
+
+      // Use the existing designer's load function
+      // Assuming 'loadProjectData' is the global function in app.js
+      if (window.loadProjectData) {
+        window.loadProjectData(project);
+      } else {
+        // Fallback: store in localStorage and trigger reload if necessary
+        localStorage.setItem('phomymo_project', JSON.stringify(project));
+      }
+    }
+
+    // 1. Initial Load from LocalStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const batch = localStorage.getItem('onyx_packing_batch');
+      if (batch) {
+        try { loadOnyxProject(JSON.parse(batch)); } catch(e) {}
+      }
+    });
+
+    // 2. Listen for postMessage updates
+    window.addEventListener('message', (event) => {
+      // Security: Add origin check if needed
+      const { type, payload } = event.data;
+      if (type === 'ONYX_LOAD_ITEM' || type === 'ONYX_LOAD_BATCH') {
+        loadOnyxProject(payload);
+      }
+    });
+  })();
+</script>
 </body>
 </html>
