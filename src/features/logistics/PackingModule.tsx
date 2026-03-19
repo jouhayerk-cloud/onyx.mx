@@ -20,7 +20,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
-import { Eye, Download } from 'lucide-react';
+import { Eye, Download, X, Edit } from 'lucide-react';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -539,8 +539,6 @@ export const PackingModule: React.FC = () => {
                             ))}
                         </div>
                     )}
-                </div>
-
                 </div>
             </div>
 
