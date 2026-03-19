@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.9 — 2026-03-18
+### Fixed
+- **Integration Reliability [bug]:** Fixed issue where the **"Print"** button was hidden in embedded editor mode.
+- **Batch Preview Generation [fix]:** Implemented automatic layout and data loading from `localStorage` within the designer, ensuring the **Batch Preview Grid** displays rendered labels instead of placeholders.
+- **Workflow State Management [feat]:** Introduced distinct `is-preview` and `is-mini` UI states to handle the transition between the high-fidelity preview overlay and the full-editor bridge.
+
 ## v1.18.8 — 2026-03-18
 ### Removed
 - **Branding & Info [ui/clean]:** Completely removed the "About" information modal and its associated trigger buttons from both desktop and mobile views.

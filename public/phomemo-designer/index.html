@@ -300,14 +300,17 @@
     }
 
     /* Embedded Mode Overrides */
-    .is-embedded header,
-    .is-embedded .desktop-only.bg-white.border-b,
-    .is-embedded .mobile-toolbar,
-    .is-embedded #zoom-controls,
-    .is-embedded #props-panel,
-    .is-embedded #toolbar-left,
-    .is-embedded footer {
+    .is-preview header,
+    .is-preview .desktop-only.bg-white.border-b,
+    .is-preview .mobile-toolbar,
+    .is-preview #zoom-controls,
+    .is-preview #props-panel,
+    .is-preview #toolbar-left,
+    .is-preview footer {
       display: none !important;
+    }
+    .is-mini footer {
+       display: none !important;
     }
     .is-embedded main {
       height: 100vh !important;

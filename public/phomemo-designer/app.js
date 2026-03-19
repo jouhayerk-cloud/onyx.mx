@@ -145,6 +145,12 @@ const isPreviewMode = urlParams.has('preview') || urlParams.get('mode') === 'pre
 if (isMiniMode || isPreviewMode) {
   document.documentElement.classList.add('is-embedded');
 }
+if (isPreviewMode) {
+  document.documentElement.classList.add('is-preview');
+}
+if (isMiniMode) {
+  document.documentElement.classList.add('is-mini');
+}
 
 // App state
 const state = {
@@ -7774,9 +7780,33 @@ function init() {
   // Initial render
   render();
 
-  // Detect template fields on load
-  detectTemplateFields();
+  // Show info dialog on first visit
+  // [DEBRANDED] - removed info on first visit
 
+  // Handle Onyx Packing Batch
+  const packingBatch = localStorage.getItem('onyx_packing_batch');
+  if (packingBatch) {
+    try {
+      const batch = JSON.parse(packingBatch);
+      if (batch.elements) state.elements = batch.elements;
+      if (batch.labelSize) {
+        state.labelSize = batch.labelSize;
+        state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
+      }
+      if (batch.templateData) state.templateData = batch.templateData;
+      
+      detectTemplateFields();
+      render();
+      updatePropertiesPanel();
+      
+      // If preview mode is requested in URL, jump straight to grid
+      if (isPreviewMode && state.templateData.length > 0) {
+        setTimeout(() => showPreviewDialog(), 200);
+      }
+    } catch (e) {
+      console.error('Failed to load onyx_packing_batch:', e);
+    }
+  }
 
   // Initialize mobile UI
   initMobileUI();
@@ -7786,17 +7816,11 @@ function init() {
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
-    // Destroy renderer to clean up caches
-    if (state.renderer) {
-      state.renderer.destroy();
-    }
-    // Disconnect transport if connected
-    if (state.transport && state.transport.connected) {
-      state.transport.disconnect();
-    }
+    if (state.renderer) state.renderer.destroy();
+    if (state.transport?.connected) state.transport.disconnect();
   });
 
-  console.log('Phomymo Label Designer initialized');
+  console.log('OnyxLabels Engine initialized');
 }
 
 // External Messaging Interface
