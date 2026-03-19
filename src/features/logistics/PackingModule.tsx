@@ -173,6 +173,7 @@ export const PackingModule: React.FC = () => {
     const [lastPrintedIds, setLastPrintedIds] = useState<string[]>([]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
+    const pendingBatchRef = useRef<any>(null); // holds batch until DESIGNER_READY
 
     useEffect(() => {
         if (!db) return;
@@ -345,6 +346,7 @@ export const PackingModule: React.FC = () => {
             // STEP 2: Build JSON Project (Multiplier = 2)
             const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 2);
             localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
+            pendingBatchRef.current = batchProject; // stash for postMessage after DESIGNER_READY
             
             // STEP 3: Open Overlay PREVIEW
             setShowPreviewOverlay(true);
@@ -355,24 +357,33 @@ export const PackingModule: React.FC = () => {
         }
     };
 
-    /* ── Handle Print Result (Message from iframe) ── */
+    /* ── Handle Messages from iframe ── */
     useEffect(() => {
         const handleMessage = async (event: MessageEvent) => {
             const { type, timestamp } = event.data || {};
+
+            // Designer signals it has initialized — send batch data now
+            if (type === 'DESIGNER_READY' && pendingBatchRef.current && iframeRef.current?.contentWindow) {
+                const batch = pendingBatchRef.current;
+                iframeRef.current.contentWindow.postMessage(
+                    { type: 'LOAD_BATCH_PREVIEW', payload: batch },
+                    '*'
+                );
+                pendingBatchRef.current = null;
+            }
+
             if (type === 'ONYX_PRINT_JOB_STARTED' && lastPrintedIds.length > 0 && db) {
                 const toastId = toast.loading('Recording Print Event...');
                 try {
-                    // Update all items in the batch
                     const updatePromises = lastPrintedIds.map(async (id) => {
                         const doc = await db.inventory.findOne(id).exec();
                         if (doc) {
                             await doc.patch({
-                                filePrintDate: new Date().toISOString(), // The XLSX date is roughly now
+                                filePrintDate: new Date().toISOString(),
                                 labelPrintDate: timestamp || new Date().toISOString()
                             });
                         }
                     });
-                    
                     await Promise.all(updatePromises);
                     toast.success('Print dates recorded to database', { id: toastId });
                 } catch (e: any) {
@@ -578,12 +589,12 @@ export const PackingModule: React.FC = () => {
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => {
-                                        const iframe = iframeRef.current;
-                                        if (iframe) {
-                                            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1); // Default Qty for editing
-                                            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
-                                            iframe.src = `/phomemo-designer/index.html?mini=true&v=${Date.now()}`;
-                                        }
+                                        // Send edit-mode design to already-loaded iframe via postMessage
+                                        const editProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize, 1);
+                                        iframeRef.current?.contentWindow?.postMessage(
+                                            { type: 'LOAD_DESIGN', payload: editProject },
+                                            '*'
+                                        );
                                     }}
                                     className="flex items-center gap-2.5 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-white/60 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) transition-all"
                                 >
