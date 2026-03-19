@@ -89,7 +89,7 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 /* --- Aesthetic Components --- */
 
 const StitchCard = ({ children, className = "", noPadding = false }: { children: React.ReactNode, className?: string, noPadding?: boolean }) => (
-    <div className={`bg-(--stitch-card-bg) border border-white/5 rounded-xl shadow-lg ${noPadding ? '' : 'p-4'} ${className}`}>
+    <div className={`bg-(--stitch-card-bg)/40 backdrop-blur-xl border border-white/5 rounded-xl ${noPadding ? '' : 'p-4'} ${className}`}>
         {children}
     </div>
 );
@@ -97,11 +97,11 @@ const StitchCard = ({ children, className = "", noPadding = false }: { children:
 const SectionTitle = ({ title, icon: Icon }: { title: string, icon?: any }) => (
     <div className="flex items-center gap-3">
         {Icon && (
-            <div className="w-9 h-9 rounded-lg bg-(--main-color)/10 border border-(--main-color)/20 flex items-center justify-center text-(--main-color)">
+            <div className="text-(--main-color)">
                 <Icon size={18} />
             </div>
         )}
-        <h2 className="text-base font-bold text-white uppercase tracking-tight leading-none">{title}</h2>
+        <h3 className="text-[12px] font-black uppercase tracking-[0.2em]">{title}</h3>
     </div>
 );
 
@@ -300,16 +300,32 @@ export const ProcessView: React.FC = () => {
             const colorsResult = await extractGradientFromMask(imageUrl, masks[0], { width: img.width, height: img.height });
 
             updateOp({ progress: 95, stepLabel: 'Committing...' });
-            const tableName = item.source === 'production' ? 'production' : 'inventory';
-            await supabase.from(tableName).update({
-                generated_png_url: pngData,
-                vector_svg: svgData,
-                spatial_masks: JSON.stringify(masks),
-                dominant_color: colorsResult
-            }).eq('id', item.row);
             
-            updateOp({ status: 'completed', progress: 100, stepLabel: 'Success' });
-            addLog(`Deployment finalized for ${item.itemId}`, 'success');
+            // Push to Supabase Persistence
+            try {
+                const { error } = await supabase
+                    .from('inventory')
+                    .update({
+                        vector_data: JSON.stringify(masks),
+                        svg_path: svgData,
+                        processed_image_url: pngData,
+                        mask_segments: JSON.stringify({ colors: colorsResult })
+                    })
+                    .eq('row', item.row);
+                
+                if (error) throw error;
+                addLog(`Item ${item.itemId} persisted to Inventory DB.`, 'success');
+            } catch (dbErr: any) {
+                addLog(`Database Sync Error: ${dbErr.message}`, 'warn');
+            }
+
+            updateOp({ 
+                status: 'completed', 
+                progress: 100, 
+                stepLabel: 'Success',
+                result: { pngData, svgData, masks, colors: colorsResult }
+            });
+            addLog(`Full Engine Trace Complete for ${item.itemId}. Asset generated.`, 'success');
             if (opId === 'single') updateProgress('DEPLOYMENT SUCCESS', false);
             setInventoryVersion(v => v + 1);
 
@@ -363,54 +379,66 @@ export const ProcessView: React.FC = () => {
     return (
         <div className="flex flex-col w-full h-full bg-transparent gap-4 overflow-hidden font-sans">
             {/* Autonomous Internal Header */}
-            <header className="h-20 shrink-0 bg-(--stitch-card-bg)/80 backdrop-blur-xl border border-white/5 rounded-2xl px-6 flex items-center justify-between shadow-2xl">
-                <div className="flex items-center gap-6">
-                    <SectionTitle title="Aesthetic AI Studio" icon={Sparkles} />
-                    <div className="h-8 w-px bg-white/5" />
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setShowVault(true)} className="h-10 px-4 rounded-xl bg-white/5 border border-white/5 hover:border-(--main-color)/40 text-white/60 hover:text-white flex items-center gap-2 transition-all">
-                            <Library size={16} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Artifact Vault</span>
-                        </button>
-                    </div>
+            <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-8 bg-black/20">
+                <div className="flex flex-col">
+                    <h1 className="text-[14px] font-black uppercase tracking-[0.4em]">Inventory Processing Engine</h1>
+                    <span className="text-[8px] font-bold text-white/20 tracking-[0.2em]">STABLE GEN V1.2.9 · LOW LATENCY PIPELINE</span>
                 </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                        <Activity size={14} className={isProcessingGlobal ? "text-(--main-color) animate-pulse" : "text-white/10"} />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 truncate max-w-[140px]">
-                            {activeStepLabel || "ENGINE READY"}
-                        </span>
-                    </div>
-
-                    <div className="h-8 w-px bg-white/5" />
-
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={() => processItem('single')} 
-                            disabled={isProcessingGlobal || !selectedItem}
-                            className="h-10 px-5 rounded-xl bg-(--main-color) text-black flex items-center gap-2 font-black uppercase tracking-widest text-[10px] shadow-lg shadow-(--main-color)/20 active:scale-95 disabled:opacity-20 disabled:grayscale transition-all"
-                        >
-                            <Zap size={14} />
-                            Analyze
-                        </button>
-                        <button 
-                            onClick={() => setShowBatchList(true)}
-                            className="h-10 w-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all"
-                        >
-                            <FolderKanban size={18} />
-                        </button>
-                        <button 
-                            onClick={() => setShowTerminal(!showTerminal)}
-                            className={`h-10 w-10 rounded-xl border flex items-center justify-center transition-all ${showTerminal ? 'bg-(--main-color)/10 border-(--main-color)/40 text-(--main-color)' : 'bg-white/5 border-white/5 text-white/40'}`}
-                        >
-                            <Terminal size={18} />
-                        </button>
-                    </div>
+                
+                <div className="flex items-center gap-6">
+                    <button onClick={() => setShowVault(true)} className="flex items-center gap-2 group transition-all">
+                        <Library size={18} className="text-white/40 group-hover:text-(--main-color)" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/20 group-hover:text-white">Inventory Vault</span>
+                    </button>
+                    <button onClick={() => setShowBatchList(true)} className="flex items-center gap-2 group transition-all">
+                        <FolderKanban size={18} className="text-white/40 group-hover:text-amber-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/20 group-hover:text-white">Batch Engine</span>
+                    </button>
                 </div>
             </header>
 
             <main className="flex-1 flex gap-4 overflow-hidden relative">
+                {/* Free-Floating Vertical Toolbar */}
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col gap-8 z-20">
+                    <button 
+                        onClick={() => processItem('single')} 
+                        disabled={!selectedItem || isProcessingGlobal}
+                        className={`transition-all duration-500 ${isProcessingGlobal ? 'text-amber-400 animate-pulse' : 'text-(--main-color) hover:scale-125 hover:drop-shadow-[0_0_15px_var(--main-color)] active:scale-95'}`}
+                        title="Analyze Artifact"
+                    >
+                        <Sparkles size={28} />
+                    </button>
+                    <button 
+                        onClick={() => setTool('move')} 
+                        className={`transition-all duration-300 ${tool === 'move' ? 'text-white drop-shadow-[0_0_10px_white]' : 'text-white/20 hover:text-white'}`}
+                        title="Move Workspace"
+                    >
+                        <MousePointer2 size={24} />
+                    </button>
+                    <button 
+                        onClick={() => setTool('mask')} 
+                        className={`transition-all duration-300 ${tool === 'mask' ? 'text-white drop-shadow-[0_0_10px_white]' : 'text-white/20 hover:text-white'}`}
+                        title="Segmentation Mask"
+                    >
+                        <Scissors size={24} />
+                    </button>
+                    <div className="h-10 w-px bg-white/5 mx-auto" />
+                    <button 
+                        onClick={() => setLayers([])} 
+                        className="text-rose-500/30 hover:text-rose-500 hover:scale-110 transition-all"
+                        title="Clear Workspace"
+                    >
+                        <Trash2 size={24} />
+                    </button>
+                    <button 
+                        onClick={() => setShowTerminal(!showTerminal)}
+                        className={`transition-all duration-300 ${showTerminal ? 'text-emerald-400 drop-shadow-[0_0_10px_emerald-400]' : 'text-white/20 hover:text-white'}`}
+                        title="Engine Terminal"
+                    >
+                        <Terminal size={24} />
+                    </button>
+                </div>
+
                 <div className="flex-1 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                     <canvas
@@ -462,8 +490,19 @@ export const ProcessView: React.FC = () => {
                                     <span className="text-[10px] font-black uppercase tracking-widest">Engine Console</span>
                                     <button onClick={() => setShowTerminal(false)}><X size={14} /></button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-2 text-[9px] font-mono">
-                                    {logs.map(log => <div key={log.id} className="opacity-60">[{log.time}] {log.msg}</div>)}
+                                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-2 text-[11px] font-mono leading-relaxed">
+                                    {logs.map(log => (
+                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0">
+                                            <span className="text-white/10 group-hover:text-white/30 mr-2 text-[9px]">[{log.time}]</span>
+                                            <span className={
+                                                log.type === 'error' ? 'text-rose-400 font-bold' : 
+                                                log.type === 'success' ? 'text-emerald-400 font-bold' : 
+                                                log.type === 'warn' ? 'text-amber-400' : 'text-white/60'
+                                            }>
+                                                {log.msg}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </StitchCard>
                         </div>
@@ -544,8 +583,8 @@ export const ProcessView: React.FC = () => {
                 <div className="fixed inset-0 z-100 p-8 bg-(--app-bg)/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
                     <div className="w-full max-w-6xl flex flex-col h-full bg-(--stitch-card-bg) border border-white/5 rounded-2xl p-8">
                         <div className="flex items-center justify-between mb-8">
-                            <SectionTitle title="Artifact Vault" icon={Library} />
-                            <button onClick={() => setShowVault(false)} className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center"><X size={24} /></button>
+                            <SectionTitle title="Inventory Vault" icon={Library} />
+                            <button onClick={() => setShowVault(false)} className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-white transition-all"><X size={24} /></button>
                         </div>
                         <div className="grid grid-cols-8 gap-4 overflow-y-auto pr-2">
                             {filteredItems.map(item => (
