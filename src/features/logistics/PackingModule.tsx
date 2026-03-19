@@ -33,67 +33,73 @@ const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
             id: "el_barcode",
             type: "barcode",
             zone: 0,
-            x: 27.5, y: 119.2, width: 282.1, height: 120.7,
+            x: 25.35, y: 87.93, width: 367.9, height: 143.9,
             rotation: 0,
             barcodeData: "{{TAG ID}}",
             barcodeFormat: "CODE39",
-            textFontSize: 21,
+            textFontSize: 24,
             textBold: true
         },
         {
             id: "el_desc",
             type: "text",
             zone: 0,
-            x: 24.4, y: 46.1, width: 288.1, height: 32.7,
+            x: 25.35, y: 31.25, width: 374.6, height: 32.7,
             rotation: 0,
             text: "{{DESCRIPTION}}",
-            fontSize: 24,
+            fontSize: 25,
             fontFamily: "Inter, sans-serif",
-            fontWeight: "normal"
+            fontWeight: "bold",
+            align: "left"
         },
         {
             id: "el_sizes",
             type: "text",
             zone: 0,
-            x: 221.8, y: 5.8, width: 89.6, height: 37.8,
+            x: 217.1, y: 2.18, width: 176.1, height: 33.4,
             rotation: 0,
             text: "{{SIZES}}",
-            fontSize: 18,
-            fontFamily: "Inter, sans-serif"
+            fontSize: 20,
+            fontFamily: "Inter, sans-serif",
+            align: "right"
         },
         {
             id: "el_retail",
             type: "text",
             zone: 0,
-            x: 23.0, y: 5.8, width: 173.2, height: 24.7,
+            x: 29.55, y: 6.55, width: 173.2, height: 24.7,
             rotation: 0,
             text: "{{BOOK RETAIL}}",
-            fontSize: 18,
-            fontFamily: "Inter, sans-serif"
+            fontSize: 20,
+            fontFamily: "Inter, sans-serif",
+            align: "left"
         },
         {
             id: "el_mat",
             type: "text",
             zone: 0,
-            x: 23.0, y: 78.9, width: 291.0, height: 29.8,
+            x: 29.72, y: 63.95, width: 370.2, height: 29.8,
             rotation: 0,
             text: "{{MATERIAL COLOR}}",
-            fontSize: 18,
-            fontFamily: "Inter, sans-serif"
+            fontSize: 20,
+            fontFamily: "Inter, sans-serif",
+            align: "left"
         },
         {
             id: "el_side",
             type: "text",
             zone: 0,
-            x: -111.6, y: 107.2, width: 244.5, height: 25.4,
+            x: -108.6, y: 107.3, width: 244.5, height: 25.4,
             rotation: 270,
             text: "MADE IN MEXICO",
-            fontSize: 15,
-            color: "white",
-            background: "black",
+            fontSize: 21,
+            color: "black",
+            background: "transparent",
             align: "center",
             fontWeight: "bold",
-            autoScale: true
+            autoScale: false,
+            clipOverflow: true,
+            noWrap: true
         }
     ]
 });
@@ -112,7 +118,7 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         const retailStr = String(c.bookRetail || '0').padStart(4, '0');
         return {
             "TAG ID": c.bookBardcode || '',
-            "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || ''}`.trim().toUpperCase(),
+            "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim().toUpperCase() || 'ONYX PIECE',
             "MATERIAL COLOR": `${d.material || 'ONYX'} ${d.color || ''}`.trim().toUpperCase(),
             "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`,
             "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,

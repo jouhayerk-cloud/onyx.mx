@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.3 — 2026-03-18
+### Changed
+- **Label Template [ui/core]:** Updated the master label template with a new layout featuring optimized coordinates, updated font sizes, and bold typography for descriptions.
+- **Data Logic [fix]:** Synchronized the `DESCRIPTION` field logic in the batch generator with the XLSX export format, ensuring Shape, Item Type, Type, and Short Description are correctly combined.
+- **Branding [ui]:** Corrected the label "MADE IN MEXICO" element properties (black on transparent) and fixed its center alignment and orientation.
+
 ## v1.18.2 — 2026-03-18
 ### Changed
 - **Branding [ui/core]:** Full rebrand to **OnyxLabels**. Updated all UI strings, button labels, and internal template names to reflect the new identity.
