@@ -2333,41 +2333,107 @@
     });
   
   /* ═══════════════════════════════════════════════
-     ONYX.MX INTEGRATION — Auto-Import Logic
+     ONYX.MX BATCH CONTROLLER — Multi-Label Logic
   ═══════════════════════════════════════════════ */
   (function() {
-    function loadOnyxProject(data) {
-      if (!data) return;
-      console.log('ONYX: Loading project...', data);
-      
-      // If it's a batch, we load the first one or handle batch logic
-      const project = Array.isArray(data.items) ? data.items[0] : (data.elements ? data : null);
-      if (!project) return;
+    let currentBatch = null;
+    let currentIndex = 0;
 
-      // Use the existing designer's load function
-      // Assuming 'loadProjectData' is the global function in app.js
+    function mergeTemplate(template, record) {
+      const merged = JSON.parse(JSON.stringify(template));
+      merged.elements.forEach(el => {
+        for (const key in el) {
+          if (typeof el[key] === 'string') {
+            el[key] = el[key].replace(/\{\{(.+?)\}\}/g, (match, p1) => {
+              const field = p1.trim();
+              return record[field] !== undefined ? record[field] : match;
+            });
+          }
+        }
+      });
+      return merged;
+    }
+
+    function updateDesigner() {
+      if (!currentBatch || !currentBatch.records) return;
+      const record = currentBatch.records[currentIndex];
+      const project = mergeTemplate(currentBatch, record);
+      
+      console.log(`ONYX: Loading record ${currentIndex + 1}/${currentBatch.records.length}`, record);
+      
       if (window.loadProjectData) {
         window.loadProjectData(project);
       } else {
-        // Fallback: store in localStorage and trigger reload if necessary
         localStorage.setItem('phomymo_project', JSON.stringify(project));
+      }
+      
+      updateUI();
+    }
+
+    function updateUI() {
+      const ui = document.getElementById('onyx-batch-ui');
+      if (!ui) return;
+      if (currentBatch && currentBatch.records && currentBatch.records.length > 1) {
+        ui.style.display = 'flex';
+        ui.querySelector('#batch-index').innerText = `LABEL ${currentIndex + 1} / ${currentBatch.records.length}`;
+        ui.querySelector('#batch-name').innerText = currentBatch.records[currentIndex]["TAG ID"];
+      } else {
+        ui.style.display = 'none';
       }
     }
 
-    // 1. Initial Load from LocalStorage
+    function initBatchUI() {
+      if (document.getElementById('onyx-batch-ui')) return;
+      const div = document.createElement('div');
+      div.id = 'onyx-batch-ui';
+      div.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-2xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 transition-all duration-500';
+      div.style.display = 'none';
+      div.innerHTML = `
+        <div class="flex flex-col">
+          <span id="batch-index" class="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5">LABEL — / —</span>
+          <span id="batch-name" class="text-[10px] font-black text-(--onyx-accent) uppercase tracking-widest">NONE</span>
+        </div>
+        <div class="w-px h-6 bg-white/10" />
+        <div class="flex items-center gap-2">
+          <button id="batch-prev" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <button id="batch-next" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      `;
+      document.body.appendChild(div);
+
+      div.querySelector('#batch-prev').onclick = () => { if (currentIndex > 0) { currentIndex--; updateDesigner(); } };
+      div.querySelector('#batch-next').onclick = () => { if (currentIndex < currentBatch.records.length - 1) { currentIndex++; updateDesigner(); } };
+    }
+
+    function handleOnyxData(data) {
+      if (!data) return;
+      currentBatch = data;
+      currentIndex = 0;
+      initBatchUI();
+      updateDesigner();
+    }
+
+    // 1. Initial Load
     window.addEventListener('DOMContentLoaded', () => {
+      initBatchUI();
       const batch = localStorage.getItem('onyx_packing_batch');
       if (batch) {
-        try { loadOnyxProject(JSON.parse(batch)); } catch(e) {}
+        try { handleOnyxData(JSON.parse(batch)); } catch(e) {}
       }
     });
 
-    // 2. Listen for postMessage updates
+    // 2. Message Listener
     window.addEventListener('message', (event) => {
-      // Security: Add origin check if needed
       const { type, payload } = event.data;
-      if (type === 'ONYX_LOAD_ITEM' || type === 'ONYX_LOAD_BATCH') {
-        loadOnyxProject(payload);
+      if (type === 'ONYX_LOAD_BATCH') {
+        handleOnyxData(payload);
+      } else if (type === 'ONYX_LOAD_ITEM') {
+        // Single item project handling
+        if (window.loadProjectData) window.loadProjectData(payload);
       }
     });
   })();

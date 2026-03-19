@@ -21,122 +21,115 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } fro
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 
-/* ─── JSON Project Generator (V3) ─── */
+/* ─── ONYX MASTER TEMPLATE (V3) ─── */
+const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
+    name: "OnyxTAGID",
+    version: 3,
+    isTemplate: true,
+    labelSize: { width, height },
+    templateFields: ["TAG ID", "DESCRIPTION", "SIZES", "BOOK RETAIL", "MATERIAL COLOR"],
+    elements: [
+        {
+            id: "el_barcode",
+            type: "barcode",
+            zone: 0,
+            x: 27.5, y: 119.2, width: 282.1, height: 120.7,
+            rotation: 0,
+            barcodeData: "{{TAG ID}}",
+            barcodeFormat: "CODE39",
+            textFontSize: 21,
+            textBold: true
+        },
+        {
+            id: "el_desc",
+            type: "text",
+            zone: 0,
+            x: 24.4, y: 46.1, width: 288.1, height: 32.7,
+            rotation: 0,
+            text: "{{DESCRIPTION}}",
+            fontSize: 24,
+            fontFamily: "Inter, sans-serif",
+            fontWeight: "normal"
+        },
+        {
+            id: "el_sizes",
+            type: "text",
+            zone: 0,
+            x: 221.8, y: 5.8, width: 89.6, height: 37.8,
+            rotation: 0,
+            text: "{{SIZES}}",
+            fontSize: 18,
+            fontFamily: "Inter, sans-serif"
+        },
+        {
+            id: "el_retail",
+            type: "text",
+            zone: 0,
+            x: 23.0, y: 5.8, width: 173.2, height: 24.7,
+            rotation: 0,
+            text: "{{BOOK RETAIL}}",
+            fontSize: 18,
+            fontFamily: "Inter, sans-serif"
+        },
+        {
+            id: "el_mat",
+            type: "text",
+            zone: 0,
+            x: 23.0, y: 78.9, width: 291.0, height: 29.8,
+            rotation: 0,
+            text: "{{MATERIAL COLOR}}",
+            fontSize: 18,
+            fontFamily: "Inter, sans-serif"
+        },
+        {
+            id: "el_side",
+            type: "text",
+            zone: 0,
+            x: -111.6, y: 107.2, width: 244.5, height: 25.4,
+            rotation: 270,
+            text: "MADE IN MEXICO",
+            fontSize: 15,
+            color: "white",
+            background: "black",
+            align: "center",
+            fontWeight: "bold",
+            autoScale: true
+        }
+    ]
+});
+
+/* ─── JSON Project Generator (V3 Batch) ─── */
 const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: string) => {
     const [wStr, hStr] = activeLabelSize.split('x');
     const width = parseInt(wStr) || 50;
     const height = parseInt(hStr) || 30;
 
-    return items.map(item => {
+    const records = items.map(item => {
         const d = item.normData;
         const c = item.codes;
         const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
         const retailStr = String(c.bookRetail || '0').padStart(4, '0');
-        const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
-        const tagId = c.bookBardcode || 'ONYX-VOID';
-        const description = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
-        const sizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
-        const matColor = `${d.material || 'ONYX'} ${d.color || 'NATURAL'}`.trim();
-
+        
+        // Match XLSX columns exactly as keys
         return {
-            name: `Onyx_${tagId}`,
-            version: 3,
-            labelSize: { width, height },
-            exportedAt: new Date().toISOString(),
-            isTemplate: false, // This is a specific instance
-            elements: [
-                {
-                    id: `bc_${tagId}`,
-                    type: "barcode",
-                    zone: 0,
-                    x: width * 0.1, // Dynamic positioning based on 40x30 scale
-                    y: height * 0.6,
-                    width: width * 0.8,
-                    height: height * 0.3,
-                    rotation: 0,
-                    barcodeData: tagId,
-                    barcodeFormat: "CODE128",
-                    textFontSize: 10,
-                    textBold: true
-                },
-                {
-                    id: `desc_${tagId}`,
-                    type: "text",
-                    zone: 0,
-                    x: width * 0.08,
-                    y: height * 0.25,
-                    width: width * 0.85,
-                    height: height * 0.15,
-                    rotation: 0,
-                    text: description.toUpperCase(),
-                    fontSize: 10,
-                    color: "black",
-                    align: "left",
-                    verticalAlign: "middle",
-                    fontFamily: "Inter, sans-serif",
-                    fontWeight: "bold"
-                },
-                {
-                    id: `retail_${tagId}`,
-                    type: "text",
-                    zone: 0,
-                    x: width * 0.08,
-                    y: height * 0.05,
-                    width: width * 0.45,
-                    height: height * 0.1,
-                    rotation: 0,
-                    text: bookRetailTag,
-                    fontSize: 8,
-                    color: "black",
-                    fontWeight: "bold"
-                },
-                {
-                    id: `sizes_${tagId}`,
-                    type: "text",
-                    zone: 0,
-                    x: width * 0.55,
-                    y: height * 0.05,
-                    width: width * 0.38,
-                    height: height * 0.1,
-                    rotation: 0,
-                    text: sizes,
-                    fontSize: 7,
-                    color: "black",
-                    align: "right"
-                },
-                {
-                    id: `mat_${tagId}`,
-                    type: "text",
-                    zone: 0,
-                    x: width * 0.08,
-                    y: height * 0.45,
-                    width: width * 0.85,
-                    height: height * 0.1,
-                    rotation: 0,
-                    text: matColor,
-                    fontSize: 7,
-                    color: "black",
-                    align: "left",
-                    fontStyle: "italic"
-                },
-                {
-                    id: `side_tag_${tagId}`,
-                    type: "text",
-                    zone: 0,
-                    x: -height * 0.1, // Fixed rotation positioning
-                    y: height * 0.35,
-                    width: height * 0.8,
-                    height: 12,
-                    rotation: 270,
-                    text: "ONYX.MX · MADE IN MEXICO",
-                    fontSize: 5,
-                    color: "white",
-                    background: "black",
-                    align: "center"
-                }
-            ]
+            "TAG ID": c.bookBardcode || '',
+            "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || ''}`.trim().toUpperCase(),
+            "MATERIAL COLOR": `${d.material || 'ONYX'} ${d.color || ''}`.trim().toUpperCase(),
+            "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`,
+            "BOOK RETAIL": `${c.bookAqCode}-${bookv}${retailStr}`,
+            "QUANTITY": d.quantity || 1,
+            "LANDED CODE": c.bookLandCode,
+            "ACQ CODE": c.bookAqCode,
+            "QR URL": `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`
         };
     });
+
+    return {
+        ...ONYX_MASTER_TEMPLATE(width, height),
+        name: `Onyx_Batch_${new Date().toISOString().split('T')[0]}`,
+        exportedAt: new Date().toISOString(),
+        records
+    };
 };
 
 /* ─── Main Module ─── */
