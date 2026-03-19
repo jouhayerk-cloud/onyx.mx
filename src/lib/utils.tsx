@@ -114,7 +114,9 @@ export function getCleanImageUrl(url: string | null | undefined): string | null 
 
   const fileId = extractFileId(clean);
   if (fileId && clean.toLowerCase().includes('drive.google.com')) {
-    // If it's a known video extension, we might prefer a direct link or thumb
+    if (isVideoFile(clean)) {
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
     return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
 
