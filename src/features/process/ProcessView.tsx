@@ -46,7 +46,9 @@ import {
     Settings2,
     ChevronDown,
     Activity,
-    FolderKanban
+    FolderKanban,
+    Terminal,
+    Bug
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { gsap } from 'gsap';
@@ -123,10 +125,18 @@ export const ProcessView: React.FC = () => {
     const [isProcessingBatch, setIsProcessingBatch] = useState(false);
     const [showVault, setShowVault] = useState(false);
     
+    // Debug Logs
+    const [logs, setLogs] = useState<{ id: string, msg: string, time: string, type: 'info' | 'error' | 'success' | 'warn' }[]>([]);
+    const addLog = useCallback((msg: string, type: 'info' | 'error' | 'success' | 'warn' = 'info') => {
+        setLogs(prev => [{ id: Math.random().toString(), msg, time: new Date().toLocaleTimeString(), type }, ...prev.slice(0, 49)]);
+        console.log(`[AI-Process] ${msg}`);
+    }, []);
+
     // UI State
     const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
     const [tool, setTool] = useState<'move' | 'mask'>('move');
     const [showBatchList, setShowBatchList] = useState(false);
+    const [showTerminal, setShowTerminal] = useState(false);
     
     // Canvas State
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -151,6 +161,7 @@ export const ProcessView: React.FC = () => {
         setShowVault(false);
         const imageUrl = getCleanImageUrl(item.generatedPngUrl || (item.mediaUrls ? item.mediaUrls.split(',')[0].trim() : null));
         if (imageUrl) {
+            addLog(`Loading artifact image into workspace: ${item.itemId}`, 'info');
             loadImage(imageUrl).then(img => {
                 const newLayer: ProcessLayer = {
                     id: `L-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
@@ -163,12 +174,16 @@ export const ProcessView: React.FC = () => {
                 };
                 setLayers([newLayer]);
                 setActiveLayerId(newLayer.id);
+                addLog(`Layer ${newLayer.id} initialized at 1:1 scale.`, 'success');
+            }).catch(err => {
+                addLog(`Workspace load error: ${err.message}`, 'error');
             });
         }
-    }, []);
+    }, [addLog]);
 
     const addToBatch = useCallback((item: any) => {
         if (batchQueue.some(op => op.item.id === item.id)) return;
+        addLog(`Item ${item.itemId} added to deployment queue.`, 'info');
         setBatchQueue(prev => [...prev, {
             id: `OP-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
             item: item,
@@ -176,7 +191,7 @@ export const ProcessView: React.FC = () => {
             progress: 0,
             stepLabel: 'Ready'
         }]);
-    }, [batchQueue]);
+    }, [batchQueue, addLog]);
 
     /* ─── AI Pipeline ─── */
 
@@ -186,19 +201,35 @@ export const ProcessView: React.FC = () => {
         };
 
         const currentOp = batchQueue.find(o => o.id === opId);
-        if (!currentOp) return;
+        if (!currentOp) {
+            addLog(`Error: Operation ${opId} not found in state.`, 'error');
+            return;
+        }
 
         try {
-            updateOp({ status: 'processing', progress: 10, stepLabel: 'Initalizing AI...' });
             const item = currentOp.item;
+            addLog(`Pipeline started for artifact: ${item.itemId}`, 'info');
+            updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
+            
+            if (!API_KEY) {
+                addLog("Gemini API Key missing! Check VITE_GEMINI_API_KEY environment variable.", "error");
+                throw new Error("API Key missing");
+            }
+
             const imageUrl = getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
 
-            const img = await loadImage(imageUrl);
+            addLog(`Image Source: ${imageUrl.substring(0, 60)}...`, 'info');
+            
+            // 1. Image Pre-processing
+            updateOp({ progress: 15, stepLabel: 'Resizing Image...' });
+            addLog("Resizing image for AI compliance (1024px limit)...", "info");
             const aiDataUrl = await resizeImage(imageUrl, 1024);
             const base64 = aiDataUrl.split(',')[1];
+            addLog(`Encoded image size: ${Math.round(base64.length / 1024)} KB`, "info");
 
-            updateOp({ progress: 40, stepLabel: 'Analyzing...' });
+            updateOp({ progress: 30, stepLabel: 'Analyzing...' });
+            addLog(`Requesting segmentation from Gemini 1.5 Flash...`, 'info');
             
             const prompt = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Remove background completely. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
             
@@ -214,11 +245,16 @@ export const ProcessView: React.FC = () => {
             if (!response.ok) throw new Error(`AI Gateway Error: ${response.status}`);
             const resData = await response.json();
             const rawOutput = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!rawOutput) throw new Error("Empty response from AI engine");
             const processed = JSON.parse(rawOutput);
+            addLog(`Engine found ${processed.length} segmentation layers.`, 'success');
 
-            updateOp({ progress: 80, stepLabel: 'Vectorizing...' });
+            updateOp({ progress: 60, stepLabel: 'Tracing Contours...' });
+            addLog(`Simplifying polygons and finding contours...`, 'info');
 
-            const masks: any[] = await Promise.all(processed.map(async (m: any) => {
+            const masks: any[] = await Promise.all(processed.map(async (m: any, idx: number) => {
+                addLog(`Vectorizing component ${idx+1}: ${m.label}`, 'info');
                 const maskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
                 const maskImg = await loadImage(maskData);
                 const cv = document.createElement('canvas');
@@ -241,35 +277,47 @@ export const ProcessView: React.FC = () => {
                 };
             }));
 
+            updateOp({ progress: 85, stepLabel: 'Generating Assets...' });
+            addLog(`Rendering final PNG composition and SVG paths...`, 'info');
+
+            const img = await loadImage(imageUrl);
             const { pngData, svgData } = await generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, masks);
             const colors = await extractGradientFromMask(imageUrl, masks[0], { width: img.width, height: img.height });
 
-            updateOp({ status: 'completed', progress: 100, stepLabel: 'Success', result: { pngData, svgData, masks, colors } });
+            updateOp({ progress: 95, stepLabel: 'Committing to Cloud...' });
+            addLog(`Saving binary assets to Supabase registry...`, 'info');
 
             const tableName = item.source === 'production' ? 'production' : 'inventory';
-            await supabase.from(tableName).update({
+            const { error: dbError } = await supabase.from(tableName).update({
                 generated_png_url: pngData,
                 vector_svg: svgData,
                 spatial_masks: JSON.stringify(masks),
                 dominant_color: colors
             }).eq('id', item.row);
             
+            if (dbError) throw dbError;
+
+            updateOp({ status: 'completed', progress: 100, stepLabel: 'Success', result: { pngData, svgData, masks, colors } });
+            addLog(`Deployment finalized for ${item.itemId}`, 'success');
             setInventoryVersion(v => v + 1);
 
         } catch (e: any) {
             updateOp({ status: 'failed', error: e.message, stepLabel: 'Error' });
-            toast.error(`Failed ${currentOp.item.itemId}`);
+            addLog(`CRITICAL ERROR during ${opId}: ${e.message}`, 'error');
+            toast.error(`Processing Error: ${currentOp.item.itemId}`);
         }
     };
 
     const runBatchSequence = async () => {
         setIsProcessingBatch(true);
+        addLog("Batch Execution triggered.", "warn");
         const queue = batchQueue.filter(op => op.status !== 'completed');
         for (const op of queue) {
             await processItem(op.id);
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 800));
         }
         setIsProcessingBatch(false);
+        addLog("Batch Sequence reached end-of-queue.", "success");
         toast.success("Batch Sequence Finalized");
     };
 
@@ -360,12 +408,20 @@ export const ProcessView: React.FC = () => {
                         <Play size={14} /> Run Batch
                     </button>
 
-                    <button 
-                        onClick={() => setShowBatchList(!showBatchList)}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showBatchList ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
-                    >
-                        <FolderKanban size={18} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button 
+                            onClick={() => setShowTerminal(!showTerminal)}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showTerminal ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
+                        >
+                            <Terminal size={18} />
+                        </button>
+                        <button 
+                            onClick={() => setShowBatchList(!showBatchList)}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showBatchList ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
+                        >
+                            <FolderKanban size={18} />
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -420,8 +476,9 @@ export const ProcessView: React.FC = () => {
                     )}
                 </div>
 
-                {/* Properties & Layer Sidebar (Compact) */}
-                <aside className="w-72 flex flex-col gap-4">
+                {/* Sub-Panels (Right) */}
+                <aside className="w-72 flex flex-col gap-4 relative">
+                    {/* Layer Explorer */}
                     <StitchCard className="flex-1 flex flex-col gap-4 overflow-hidden">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Layers</span>
@@ -440,14 +497,41 @@ export const ProcessView: React.FC = () => {
                                     {activeLayerId === l.id && <div className="w-1.5 h-1.5 rounded-full bg-(--main-color)" />}
                                 </div>
                             ))}
-                            {layers.length === 0 && (
-                                <div className="flex-1 flex flex-col items-center justify-center opacity-10 gap-2">
-                                    <Layers size={32} />
-                                    <span className="text-[10px] uppercase font-bold tracking-widest text-center">Empty Canvas</span>
-                                </div>
-                            )}
                         </div>
                     </StitchCard>
+                    
+                    {/* Terminal Window (Conditional Overlay in Sandbox Mode) */}
+                    {showTerminal && (
+                        <div className="absolute inset-0 z-10 flex flex-col">
+                            <StitchCard className="flex-1 bg-black/90 backdrop-blur-3xl border-(--main-color)/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">Live Engine Console</span>
+                                    </div>
+                                    <button onClick={() => setShowTerminal(false)} className="text-white/20 hover:text-white">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-2 pr-1">
+                                    {logs.map(log => (
+                                        <div key={log.id} className="text-[9px] font-mono leading-relaxed border-l-2 pl-2 flex flex-col gap-0.5" style={{ 
+                                            borderColor: log.type === 'error' ? '#fb7185' : log.type === 'success' ? '#34d399' : log.type === 'warn' ? '#fbbf24' : '#ffffff20',
+                                            color: log.type === 'error' ? '#fee2e2' : log.type === 'success' ? '#d1fae5' : log.type === 'warn' ? '#fef3c7' : '#ffffff60'
+                                        }}>
+                                            <div className="flex items-center gap-2 opacity-40">
+                                                <span>[{log.time}]</span>
+                                                <span className="uppercase">{log.type}</span>
+                                            </div>
+                                            <p className="font-semibold">{log.msg}</p>
+                                        </div>
+                                    ))}
+                                    {logs.length === 0 && <span className="text-[9px] text-white/10 italic text-center py-10 uppercase tracking-widest">Listening for events...</span>}
+                                </div>
+                                <button onClick={() => setLogs([])} className="mt-4 w-full py-2 bg-white/5 rounded-lg text-[8px] font-bold uppercase tracking-widest text-white/30 hover:bg-white/10 transition-all">Clear Terminal</button>
+                            </StitchCard>
+                        </div>
+                    )}
                     
                     {selectedItem && (
                         <StitchCard className="h-44 flex flex-col gap-3">
@@ -465,14 +549,11 @@ export const ProcessView: React.FC = () => {
                                     <span className="text-[10px] text-white font-medium truncate uppercase">{selectedItem.material}</span>
                                 </div>
                             </div>
-                            <button className="mt-auto w-full h-10 rounded-lg bg-white/3 border border-white/5 text-[9px] font-bold uppercase tracking-widest text-white/30 hover:text-white transition-all">
-                                View Full Metrics
-                            </button>
                         </StitchCard>
                     )}
                 </aside>
 
-                {/* Batch Drawer (Bottom) */}
+                {/* Batch Drawer (Bottom Layer) */}
                 {showBatchList && (
                     <div className="absolute inset-x-0 bottom-0 top-0 bg-(--app-bg)/60 backdrop-blur-md flex flex-col p-4 animate-in slide-in-from-bottom-full duration-500 z-60">
                          <StitchCard className="w-full max-w-4xl mx-auto flex-1 flex flex-col gap-6 shadow-3xl">
@@ -487,27 +568,30 @@ export const ProcessView: React.FC = () => {
                                  {batchQueue.map(op => (
                                      <div key={op.id} className="p-3 bg-black/20 rounded-xl border border-white/5 flex flex-col gap-3 group relative hover:border-white/10 transition-all">
                                          <div className="aspect-square rounded-lg bg-black overflow-hidden border border-white/5">
-                                             <img src={getCleanImageUrl(op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                                             <img src={getCleanImageUrl(op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-30 group-hover:opacity-100 transition-opacity" />
+                                             {op.status === 'processing' && (
+                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                                                     <div className="flex flex-col items-center gap-2">
+                                                         <div className="w-8 h-8 rounded-full border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin" />
+                                                         <span className="text-[8px] font-black uppercase text-(--main-color) animate-pulse">{op.progress}%</span>
+                                                     </div>
+                                                 </div>
+                                             )}
                                          </div>
                                          <div className="flex flex-col gap-1">
                                               <span className="text-[10px] font-black text-white italic truncate uppercase">{op.item.itemId}</span>
                                               <div className="flex items-center justify-between text-[8px] font-bold text-white/30 uppercase">
-                                                   <span>{op.status}</span>
+                                                   <span className={op.status === 'processing' ? 'text-(--main-color)' : ''}>{op.stepLabel}</span>
                                                    <span>{op.progress}%</span>
                                               </div>
                                               <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                                   <div className={`h-full transition-all duration-300 ${op.status === 'completed' ? 'bg-emerald-400' : 'bg-(--main-color)'}`} style={{ width: `${op.progress}%` }} />
+                                                   <div className={`h-full transition-all duration-300 ${op.status === 'completed' ? 'bg-emerald-400' : op.status === 'failed' ? 'bg-rose-500' : 'bg-(--main-color)'}`} style={{ width: `${op.progress}%` }} />
                                               </div>
                                          </div>
                                          {op.status === 'completed' && <CheckCircle2 size={16} className="absolute top-4 right-4 text-emerald-400 drop-shadow-lg" />}
+                                         {op.status === 'failed' && <AlertCircle size={16} className="absolute top-4 right-4 text-rose-500 drop-shadow-lg" />}
                                      </div>
                                  ))}
-                                 {batchQueue.length === 0 && (
-                                     <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl text-white/10 gap-3">
-                                         <Box size={40} />
-                                         <p className="text-xs uppercase font-black tracking-widest">Queue Empty</p>
-                                     </div>
-                                 )}
                              </div>
 
                              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
@@ -576,9 +660,6 @@ export const ProcessView: React.FC = () => {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.04); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #60a5fa); }
-                
-                @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-                .animate-shimmer { animation: shimmer 1.5s infinite linear; }
             `}</style>
         </div>
     );
