@@ -4764,24 +4764,7 @@ async function handlePrint() {
 /**
  * Show info dialog
  */
-function showInfoDialog() {
-  $('#info-dialog').classList.remove('hidden');
-}
 
-/**
- * Hide info dialog and mark as seen
- */
-function hideInfoDialog() {
-  $('#info-dialog').classList.add('hidden');
-  safeStorageSet('phomymo_info_seen', 'true');
-}
-
-/**
- * Check if info dialog should show on first visit
- */
-function shouldShowInfoOnLoad() {
-  return !safeStorageGet('phomymo_info_seen');
-}
 
 /**
  * Show save dialog
@@ -5762,10 +5745,6 @@ function initMobileUI() {
     closeMobileMenu();
     $('#print-settings-dialog')?.classList.remove('hidden');
     $('#print-settings-dialog')?.classList.add('flex');
-  });
-  $('#mobile-info-btn')?.addEventListener('click', () => {
-    closeMobileMenu();
-    showInfoDialog();
   });
   $('#mobile-print-btn')?.addEventListener('click', handlePrint);
 
@@ -6789,12 +6768,6 @@ function init() {
     updateLengthAdjustButtons();
   });
 
-  // Info dialog
-  $('#info-btn').addEventListener('click', showInfoDialog);
-  $('#info-close').addEventListener('click', hideInfoDialog);
-  $('#info-dialog').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) hideInfoDialog();
-  });
 
   // Keyboard shortcuts modal
   $('#shortcuts-close').addEventListener('click', hideShortcutsModal);
@@ -7804,10 +7777,6 @@ function init() {
   // Detect template fields on load
   detectTemplateFields();
 
-  // Show info dialog on first visit
-  if (shouldShowInfoOnLoad()) {
-    showInfoDialog();
-  }
 
   // Initialize mobile UI
   initMobileUI();
