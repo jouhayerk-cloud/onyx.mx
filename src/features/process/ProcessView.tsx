@@ -273,36 +273,51 @@ export const ProcessView: React.FC = () => {
             setEngineStatus('analyzing');
             const instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
             
-            const genAI = new GoogleGenerativeAI(API_KEY);
-            let result = null;
+            // Raw Fetch Diagnostic Conduit (to unmask 400 errors)
+            let resultText = '';
             let usedModelName = '';
+            const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
 
-            // Dynamic Model Routing (Sequential Fallback for 404/403 errors)
-            const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-flash-8b"];
-            
-            for (const modelName of modelsToTry) {
+            for (const modelId of modelsToTry) {
                 try {
-                    addLog(`Connecting to ${modelName}...`, 'info');
-                    const model = genAI.getGenerativeModel({ model: modelName });
-                    result = await model.generateContent([
-                        instruction,
-                        { inlineData: { mimeType: 'image/jpeg', data: base64 } }
-                    ]);
-                    usedModelName = modelName;
-                    break;
-                } catch (err: any) {
-                    if (err.message?.includes('404') || err.message?.includes('403')) {
-                        addLog(`${modelName} routing error. Diverting to fallback...`, 'warn');
+                    addLog(`Requesting Trace: ${modelId}...`, 'info');
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${API_KEY}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: instruction },
+                                    { inlineData: { mimeType: 'image/jpeg', data: base64 } }
+                                ]
+                            }]
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        const errReason = data.error?.message || response.statusText;
+                        addLog(`${modelId} Rejected: ${response.status} (${errReason})`, 'warn');
                         continue;
                     }
-                    throw err; // Real errors throw up
+
+                    resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (resultText) {
+                        usedModelName = modelId;
+                        break;
+                    }
+                } catch (err: any) {
+                    addLog(`Connection Fault: ${err.message}`, 'error');
                 }
             }
 
-            if (!result) throw new Error("All AI conduits failed (404/403). Contact support.");
-            addLog(`Stability achieved on ${usedModelName}. Parsing trace...`, 'success');
+            if (!resultText) throw new Error("All AI conduits rejected the payload. Check console for exact reasons.");
+            addLog(`Success via ${usedModelName}. Unpacking layers...`, 'success');
 
-            const rawOutput = result.response.text();
+            const rawOutput = resultText;
             if (!rawOutput) throw new Error("Empty response from Engine");
             
             // Handle markdown-wrapped JSON if present
