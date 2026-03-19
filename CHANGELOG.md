@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.4 — 2026-03-18
+### Changed
+- **Label Template [ui/core]:** Implemented a high-contrast label design with a black-background description field and optimized typography for enhanced legibility.
+- **Label Elements [feat]:** Updated the sideline "MADE IN MEXICO" rotation to 90 degrees and adjusted the barcode element to display human-readable text by default.
+- **Workflow [fix]:** Refined element coordinates and sizing across the entire master template to match the latest designer applet specifications.
+
 ## v1.18.3 — 2026-03-18
 ### Changed
 - **Label Template [ui/core]:** Updated the master label template with a new layout featuring optimized coordinates, updated font sizes, and bold typography for descriptions.
