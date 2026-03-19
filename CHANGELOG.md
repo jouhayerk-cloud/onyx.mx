@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.6 — 2026-03-18
+### Changed
+- **UX Refinement [overlay]:** Replaced the preview sidebar with a high-fidelity **Full-Screen Overlay**. This provides a focused environment for batch verification and document generation (printing).
+- **Navigation [feat]:** Added an **"EDIT labels"** (Edit Template) action directly within the preview overlay, allowing users to transition to the full designer only when template modifications are needed.
+- **UI Logic [core]:** Integrated the preview overlay as an absolute-positioned layer within the Packing Module, ensuring a smooth, single-page application feel with simplified main navigation.
+
 ## v1.18.5 — 2026-03-18
 ### Changed
 - **UX Redesign [layout]:** Overhauled the Packing Module workflow to prioritize batch verification. Moved the **Export Pipeline** (Send to OnyxLabels, XLSX, JSON) into a consolidated top toolbar.
