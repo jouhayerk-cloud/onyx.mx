@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Phomymo - Free Label Designer for Phomemo Thermal Printers</title>
+  <title>OnyxLabels — Label Designer</title>
 
   <!-- SEO Meta Tags -->
   <meta name="description" content="Free browser-based label designer for Phomemo thermal printers. Create custom labels with text, barcodes, QR codes, and images. No drivers needed - connects via Bluetooth. Works with M02, M03, M110, M120, M200, M220, M260, D30, D35, D50, Q30 and more.">
@@ -34,7 +34,7 @@
 
   <!-- Additional SEO -->
   <meta name="application-name" content="Phomymo Label Designer">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#7dd3fc">
 
   <!-- Structured Data for Rich Snippets -->
   <script type="application/ld+json">
@@ -583,7 +583,7 @@
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
         <div class="flex items-center gap-1 sm:gap-2">
-          <h1 class="text-base sm:text-lg font-semibold text-gray-900">Phomymo</h1>
+          <h1 class="text-base sm:text-lg font-semibold text-gray-900">OnyxLabels</h1>
           <button id="info-btn" class="text-gray-400 hover:text-gray-600 transition-colors" title="About this project">
             <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </button>
@@ -2333,119 +2333,63 @@
     });
   
   /* ═══════════════════════════════════════════════
-     ONYX.MX BATCH CONTROLLER — Multi-Label Logic
+     ONYX LABELS — Batch Integration Controller
+     Uses native LOAD_DESIGN + UPDATE_DATA protocol
   ═══════════════════════════════════════════════ */
   (function() {
-    let currentBatch = null;
-    let currentIndex = 0;
+    // Check for embedded/mini mode via URL param
+    const isMini = new URLSearchParams(window.location.search).get('mini') === 'true';
 
-    function mergeTemplate(template, record) {
-      const merged = JSON.parse(JSON.stringify(template));
-      merged.elements.forEach(el => {
-        for (const key in el) {
-          if (typeof el[key] === 'string') {
-            el[key] = el[key].replace(/\{\{(.+?)\}\}/g, (match, p1) => {
-              const field = p1.trim();
-              return record[field] !== undefined ? record[field] : match;
-            });
+    function handleOnyxData(batchProject) {
+      if (!batchProject || !batchProject.elements) return;
+
+      // Use the designer's native LOAD_DESIGN message protocol
+      // This sets state.elements, state.labelSize, state.templateData and calls render()
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: 'LOAD_DESIGN',
+          payload: {
+            elements: batchProject.elements,
+            labelSize: batchProject.labelSize,
+            templateData: batchProject.records || []
           }
         }
-      });
-      return merged;
-    }
+      }));
 
-    function updateDesigner() {
-      if (!currentBatch || !currentBatch.records) return;
-      const record = currentBatch.records[currentIndex];
-      const project = mergeTemplate(currentBatch, record);
-      
-      console.log(`ONYX: Loading record ${currentIndex + 1}/${currentBatch.records.length}`, record);
-      
-      if (window.loadProjectData) {
-        window.loadProjectData(project);
-      } else {
-        localStorage.setItem('phomymo_project', JSON.stringify(project));
-      }
-      
-      updateUI();
-    }
-
-    function updateUI() {
-      const ui = document.getElementById('onyx-batch-ui');
-      if (!ui) return;
-      if (currentBatch && currentBatch.records && currentBatch.records.length > 1) {
-        ui.style.display = 'flex';
-        ui.querySelector('#batch-index').innerText = `LABEL ${currentIndex + 1} / ${currentBatch.records.length}`;
-        ui.querySelector('#batch-name').innerText = currentBatch.records[currentIndex]["TAG ID"];
-      } else {
-        ui.style.display = 'none';
+      // If we have records, also trigger UPDATE_DATA to ensure template fields are active
+      if (batchProject.records && batchProject.records.length > 0) {
+        setTimeout(() => {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: 'UPDATE_DATA',
+              payload: { templateData: batchProject.records }
+            }
+          }));
+        }, 300);
       }
     }
 
-    function initBatchUI() {
-      if (document.getElementById('onyx-batch-ui')) return;
-      const div = document.createElement('div');
-      div.id = 'onyx-batch-ui';
-      div.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] bg-black/80 backdrop-blur-2xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-6 transition-all duration-500';
-      div.style.display = 'none';
-      div.innerHTML = `
-        <div class="flex flex-col">
-          <span id="batch-index" class="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5">LABEL — / —</span>
-          <span id="batch-name" class="text-[10px] font-black text-(--onyx-accent) uppercase tracking-widest">NONE</span>
-        </div>
-        <div class="w-px h-6 bg-white/10" />
-        <div class="flex items-center gap-2">
-          <button id="batch-prev" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <button id="batch-next" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
-        </div>
-      `;
-      document.body.appendChild(div);
-
-      div.querySelector('#batch-prev').onclick = () => { if (currentIndex > 0) { currentIndex--; updateDesigner(); } };
-      div.querySelector('#batch-next').onclick = () => { if (currentIndex < currentBatch.records.length - 1) { currentIndex++; updateDesigner(); } };
-    }
-
-    function handleOnyxData(data) {
-      if (!data) return;
-      currentBatch = data;
-      currentIndex = 0;
-      initBatchUI();
-      updateDesigner();
-    }
-
-    // 1. Initial Load & Mini Mode detection
     window.addEventListener('DOMContentLoaded', () => {
-      // Check for mini/embedded mode via URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const isMini = urlParams.get('mini') === 'true';
-      if (isMini) {
-        document.body.classList.add('is-embedded');
-      }
+      // Apply embedded mode
+      if (isMini) document.body.classList.add('is-embedded');
 
-      const batch = localStorage.getItem('onyx_packing_batch');
-      if (batch) {
+      // Load from localStorage if data was pre-populated
+      const raw = localStorage.getItem('onyx_packing_batch');
+      if (raw) {
         try {
-          const data = JSON.parse(batch);
-          handleOnyxData(data);
-          // Only show batch navigation UI if NOT in mini/iframe mode
-          if (!isMini) initBatchUI();
-        } catch(e) {}
+          // Delay to let the designer fully initialize first
+          setTimeout(() => handleOnyxData(JSON.parse(raw)), 800);
+        } catch(e) { console.warn('OnyxLabels: failed to parse batch', e); }
       }
     });
 
-    // 2. Message Listener
+    // Listen for postMessage from parent app (iframe mode)
     window.addEventListener('message', (event) => {
-      const { type, payload } = event.data;
-      if (type === 'ONYX_LOAD_BATCH') {
+      const { type, payload } = event.data || {};
+      if (type === 'ONYX_LOAD_BATCH' && payload) {
         handleOnyxData(payload);
-      } else if (type === 'ONYX_LOAD_ITEM') {
-        // Single item project handling
-        if (window.loadProjectData) window.loadProjectData(payload);
       }
+      // LOAD_DESIGN and UPDATE_DATA are handled natively by app.js below
     });
   })();
 </script>

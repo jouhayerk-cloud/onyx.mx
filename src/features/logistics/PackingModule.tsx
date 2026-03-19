@@ -234,10 +234,14 @@ export const PackingModule: React.FC = () => {
         const iframe = iframeRef.current;
         if (!iframe || !activeItem) return;
         const timer = setTimeout(() => {
-            const batchProject = buildBatchJSON([activeItem], workbookPrefix, labelSize);
+            const batch = buildBatchJSON([activeItem], workbookPrefix, labelSize);
             iframe.contentWindow?.postMessage({
-                type: 'ONYX_LOAD_BATCH', // Use LOAD_BATCH to trigger the merge logic even for single items
-                payload: batchProject
+                type: 'LOAD_DESIGN',
+                payload: {
+                    elements: batch.elements,
+                    labelSize: batch.labelSize,
+                    templateData: batch.records
+                }
             }, '*');
         }, 500);
         return () => clearTimeout(timer);
@@ -315,12 +319,16 @@ export const PackingModule: React.FC = () => {
             // 1. Store in localStorage so the designer can read on load
             localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
 
-            // 2. Send to embedded iframe
+            // 2. Send to embedded iframe using native LOAD_DESIGN protocol
             const iframe = iframeRef.current;
             if (iframe?.contentWindow) {
                 iframe.contentWindow.postMessage({
-                    type: 'ONYX_LOAD_BATCH',
-                    payload: batchProject
+                    type: 'LOAD_DESIGN',
+                    payload: {
+                        elements: batchProject.elements,
+                        labelSize: batchProject.labelSize,
+                        templateData: batchProject.records
+                    }
                 }, '*');
             }
 
@@ -507,7 +515,7 @@ export const PackingModule: React.FC = () => {
                                         ref={iframeRef}
                                         src="https://jouhayerk-cloud.github.io/phomemo-designer/index.html?mini=true"
                                         className="w-full h-full border-none"
-                                        title="Phomymo Label Designer"
+                                        title="OnyxLabels Designer"
                                         allow="bluetooth"
                                     />
                                 ) : (
