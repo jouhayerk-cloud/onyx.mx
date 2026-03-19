@@ -23,7 +23,7 @@ import { useDatabase } from '../../lib/hooks';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
-    name: "OnyxTAGID",
+    name: "OnyxLabels",
     version: 3,
     isTemplate: true,
     labelSize: { width, height },
@@ -316,7 +316,7 @@ export const PackingModule: React.FC = () => {
     const handleSendToDesigner = async () => {
         if (selectedIds.size === 0) return toast.error('Select items first');
         setIsSendingToDesigner(true);
-        const tid = toast.loading('Preparing batch for designer...');
+        const tid = toast.loading('Preparing batch for OnyxLabels...');
         try {
             const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
 
@@ -339,7 +339,7 @@ export const PackingModule: React.FC = () => {
             // 3. Also export XLSX simultaneously
             await handleExportXLSX();
 
-            toast.success(`${selectedItems.length} items sent to Designer`, { id: tid });
+            toast.success(`${selectedItems.length} items sent to OnyxLabels`, { id: tid });
         } catch (e: any) {
             toast.error(`Send failed: ${e.message}`, { id: tid });
         } finally {
@@ -517,7 +517,7 @@ export const PackingModule: React.FC = () => {
                                 {activeItem ? (
                                     <iframe
                                         ref={iframeRef}
-                                        src="https://jouhayerk-cloud.github.io/phomemo-designer/index.html?mini=true"
+                                        src="/phomemo-designer/index.html?mini=true"
                                         className="w-full h-full border-none"
                                         title="OnyxLabels Designer"
                                         allow="bluetooth"
@@ -560,10 +560,10 @@ export const PackingModule: React.FC = () => {
                                 className="w-full group relative flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.25em] hover:bg-white/95 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
                             >
                                 <Send size={15} strokeWidth={2.5} />
-                                {isSendingToDesigner ? 'Sending...' : `Send ${selectedIds.size > 0 ? selectedIds.size + ' items' : ''} to Designer`}
+                                {isSendingToDesigner ? 'Sending...' : `Send ${selectedIds.size > 0 ? selectedIds.size + ' items' : ''} to OnyxLabels`}
                             </button>
                             <p className="text-[7px] font-black text-white/15 uppercase tracking-widest text-center">
-                                Generates XLSX + JSON · Loads batch into Designer
+                                Generates XLSX + JSON · Loads batch into OnyxLabels
                             </p>
 
                             {/* Secondary: individual exports */}
