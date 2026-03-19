@@ -317,10 +317,17 @@
       padding: 0 !important;
       background: transparent !important;
     }
-    .is-embedded #canvas-container {
+    /* Only fade canvas in pure preview mode — not in edit/mini mode */
+    .is-preview #canvas-container {
       box-shadow: none !important;
-      opacity: 0.1; /* Fade out canvas in preview mode */
+      opacity: 0.15;
       pointer-events: none;
+    }
+    .is-mini #canvas-container,
+    .is-embedded:not(.is-preview) #canvas-container {
+      box-shadow: none !important;
+      opacity: 1;
+      pointer-events: auto;
     }
     .is-embedded .flex-1.flex.items-center.justify-center {
       padding: 0 !important;

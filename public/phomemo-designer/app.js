@@ -7881,8 +7881,34 @@ window.addEventListener('message', (event) => {
     }
   }
 
-  if (type === 'GET_RASTER') {
-    // Parent wants the current raster data for printing
+  // SHOW_EDITOR — close preview dialogs, switch to interactive edit mode
+  if (type === 'SHOW_EDITOR') {
+    // Close preview dialogs if open
+    const previewDialog = document.getElementById('preview-dialog');
+    const fullPreviewDialog = document.getElementById('full-preview-dialog');
+    if (previewDialog) previewDialog.classList.add('hidden');
+    if (fullPreviewDialog) fullPreviewDialog.classList.add('hidden');
+
+    // Switch CSS mode: remove is-preview, add is-mini for edit mode
+    document.documentElement.classList.remove('is-preview');
+    document.documentElement.classList.add('is-mini');
+
+    // If design was passed, load it
+    if (payload?.elements) {
+      state.elements = payload.elements;
+      if (payload.labelSize) {
+        state.labelSize = payload.labelSize;
+        state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
+      }
+      if (payload.templateData) state.templateData = payload.templateData;
+      resetHistory();
+      state.renderer.clearCache();
+      detectTemplateFields();
+    }
+    render();
+    updatePropertiesPanel();
+    updateToolbarState();
+    setStatus('Editor ready');
   }
 });
 
