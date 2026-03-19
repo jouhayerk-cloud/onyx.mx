@@ -362,16 +362,6 @@ export const PackingModule: React.FC = () => {
         const handleMessage = async (event: MessageEvent) => {
             const { type, timestamp } = event.data || {};
 
-            // Designer signals it has initialized — send batch data now
-            if (type === 'DESIGNER_READY' && pendingBatchRef.current && iframeRef.current?.contentWindow) {
-                const batch = pendingBatchRef.current;
-                iframeRef.current.contentWindow.postMessage(
-                    { type: 'LOAD_BATCH_PREVIEW', payload: batch },
-                    '*'
-                );
-                pendingBatchRef.current = null;
-            }
-
             if (type === 'ONYX_PRINT_JOB_STARTED' && lastPrintedIds.length > 0 && db) {
                 const toastId = toast.loading('Recording Print Event...');
                 try {
@@ -396,6 +386,17 @@ export const PackingModule: React.FC = () => {
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, [db, lastPrintedIds]);
+
+    /* ── Called when iframe fully loads — post batch data ── */
+    const handleIframeLoad = () => {
+        if (pendingBatchRef.current && iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+                { type: 'LOAD_BATCH_PREVIEW', payload: pendingBatchRef.current },
+                '*'
+            );
+            pendingBatchRef.current = null;
+        }
+    };
 
     /* ── Open Designer full screen with batch ── */
     const openDesignerFullscreen = () => {
@@ -613,10 +614,11 @@ export const PackingModule: React.FC = () => {
                         <div className="flex-1 bg-black/40 relative">
                             <iframe
                                 ref={iframeRef}
-                                src={`/phomemo-designer/index.html?mini=true&preview=true&v=${selectedIds.size}`}
+                                src={`/phomemo-designer/index.html?mini=true&v=${selectedIds.size}`}
                                 className="w-full h-full border-none"
                                 title="OnyxLabels Designer"
                                 allow="bluetooth"
+                                onLoad={handleIframeLoad}
                             />
                         </div>
 
