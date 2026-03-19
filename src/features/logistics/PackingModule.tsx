@@ -234,13 +234,14 @@ export const PackingModule: React.FC = () => {
         const iframe = iframeRef.current;
         if (!iframe || !activeItem) return;
         const timer = setTimeout(() => {
+            const batchProject = buildBatchJSON([activeItem], workbookPrefix, labelSize);
             iframe.contentWindow?.postMessage({
-                type: 'ONYX_LOAD_ITEM',
-                payload: buildBatchJSON([activeItem], workbookPrefix, labelSize)[0]
+                type: 'ONYX_LOAD_BATCH', // Use LOAD_BATCH to trigger the merge logic even for single items
+                payload: batchProject
             }, '*');
         }, 500);
         return () => clearTimeout(timer);
-    }, [activeItem, activeItemIndex, workbookPrefix]);
+    }, [activeItem, activeItemIndex, workbookPrefix, labelSize]);
 
     const toggleSelect = (id: string) => {
         const newSet = new Set(selectedIds);
@@ -290,17 +291,15 @@ export const PackingModule: React.FC = () => {
     /* ── Export JSON ── */
     const handleExportJSON = () => {
         if (selectedIds.size === 0) return toast.error('Select items first');
-        const payload = {
-            exportedAt: new Date().toISOString(),
-            labelSize,
-            items: buildBatchJSON(selectedItems, workbookPrefix)
-        };
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
+        const blob = new Blob([JSON.stringify(batchProject, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Packing_Batch_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `Onyx_Batch_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
         toast.success(`JSON exported — ${selectedItems.length} items`);
     };
@@ -311,21 +310,17 @@ export const PackingModule: React.FC = () => {
         setIsSendingToDesigner(true);
         const tid = toast.loading('Preparing batch for designer...');
         try {
-            const batchData = {
-                exportedAt: new Date().toISOString(),
-                labelSize,
-                items: buildBatchJSON(selectedItems, workbookPrefix, labelSize)
-            };
+            const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
 
             // 1. Store in localStorage so the designer can read on load
-            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchData));
+            localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
 
             // 2. Send to embedded iframe
             const iframe = iframeRef.current;
             if (iframe?.contentWindow) {
                 iframe.contentWindow.postMessage({
                     type: 'ONYX_LOAD_BATCH',
-                    payload: batchData
+                    payload: batchProject
                 }, '*');
             }
 
@@ -342,12 +337,8 @@ export const PackingModule: React.FC = () => {
 
     /* ── Open Designer full screen with batch ── */
     const openDesignerFullscreen = () => {
-        const batchData = {
-            exportedAt: new Date().toISOString(),
-            labelSize,
-            items: buildBatchJSON(selectedItems, workbookPrefix, labelSize)
-        };
-        localStorage.setItem('onyx_packing_batch', JSON.stringify(batchData));
+        const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
+        localStorage.setItem('onyx_packing_batch', JSON.stringify(batchProject));
         window.open('https://jouhayerk-cloud.github.io/phomemo-designer/index.html', '_blank');
     };
 
