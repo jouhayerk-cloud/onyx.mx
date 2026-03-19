@@ -237,6 +237,12 @@ const createDatabase = async () => {
                     try {
                         while (true) {
                             let query = supabase.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                            
+                            // Filter out hidden items for main app sync
+                            if (['inventory', 'production'].includes(table)) {
+                                query = query.or('is_hidden.is.null,is_hidden.eq.false');
+                            }
+
                             if (filterField && filterVal !== undefined) {
                                 query = query.eq(filterField, filterVal);
                             }

@@ -105,29 +105,41 @@ export function DatabaseStatsPanel() {
     const [isActing, setIsActing] = useState<string | null>(null);
 
     const fetchDelRequests = useCallback(async () => {
-        const { data, error } = await supabase
+        const { data: invData, error: invError } = await supabase
             .from('inventory')
             .select('*')
-            .eq('status', 'Pending Deletion');
-        if (!error) setDelRequests(data || []);
+            .eq('is_hidden', true);
+        
+        const { data: prodData, error: prodError } = await supabase
+            .from('production')
+            .select('*')
+            .eq('is_hidden', true);
+
+        const all = [...(invData || []), ...(prodData || [])].map(item => ({
+            ...item,
+            source: invData?.find(i => i.id === item.id) ? 'inventory' : 'production'
+        }));
+        
+        if (!invError && !prodError) setDelRequests(all);
     }, []);
 
-    const handleAuthorize = async (id: string) => {
-        if (!confirm("Hard delete this item permanently?")) return;
+    const handleAuthorize = async (id: string, source: string) => {
+        if (!confirm("Hard delete this item permanently from " + source + "?")) return;
         setIsActing(id);
         try {
-            const { error } = await supabase.from('inventory').delete().eq('id', id);
+            const { error } = await supabase.from(source).delete().eq('id', id);
             if (error) throw error;
             fetchDelRequests();
             fetchStats();
         } catch (err: any) { alert(err.message); }
-        setIsActing(null);
+        setIsActing(id + 'done'); // simple way to clear acting state
+        setTimeout(() => setIsActing(null), 500);
     };
 
-    const handleRestore = async (id: string) => {
+    const handleRestore = async (id: string, source: string) => {
         setIsActing(id);
         try {
-            const { error } = await supabase.from('inventory').update({ status: 'Catalog' }).eq('id', id);
+            const { error } = await supabase.from(source).update({ is_hidden: false, hidden_reason: null }).eq('id', id);
             if (error) throw error;
             fetchDelRequests();
             fetchStats();
@@ -212,27 +224,27 @@ export function DatabaseStatsPanel() {
                                 <tr className="border-b border-white/5 text-white/30 uppercase tracking-tighter">
                                     <th className="pb-2 font-black">ID</th>
                                     <th className="pb-2 font-black">Shape</th>
-                                    <th className="pb-2 font-black">User</th>
+                                    <th className="pb-2 font-black">Table</th>
                                     <th className="pb-2 font-black text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {delRequests.map(req => (
                                     <tr key={req.id} className="hover:bg-white/5">
-                                        <td className="py-2 text-white/80 font-mono">{req.item_id}</td>
+                                        <td className="py-2 text-white/80 font-mono">{req.item_id || req.itemId}</td>
                                         <td className="py-2 text-white/60">{req.shape}</td>
-                                        <td className="py-2 text-white/40">{req.marked_by || 'Unknown'}</td>
+                                        <td className="py-2 text-white/40 uppercase text-[9px] font-black">{req.source}</td>
                                         <td className="py-2 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
-                                                    onClick={() => handleRestore(req.id)}
+                                                    onClick={() => handleRestore(req.id, req.source)}
                                                     className="bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-1 rounded text-[10px] hover:bg-green-500/40"
                                                     disabled={!!isActing}
                                                 >
                                                     BACK
                                                 </button>
                                                 <button
-                                                    onClick={() => handleAuthorize(req.id)}
+                                                    onClick={() => handleAuthorize(req.id, req.source)}
                                                     className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-1 rounded text-[10px] hover:bg-red-600 hover:text-white"
                                                     disabled={!!isActing}
                                                 >
