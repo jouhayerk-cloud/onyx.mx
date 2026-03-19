@@ -21,7 +21,7 @@ import {
     inventoryAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -42,6 +42,7 @@ const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 p
 const inpNum = inp + " font-mono text-center";
 
 const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => void }) => {
+    const isVideo = isVideoFile(src);
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -49,21 +50,24 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
     const [lastTouchDist, setLastTouchDist] = useState<number | null>(null);
 
     const handleWheel = useCallback((e: React.WheelEvent) => {
+        if (isVideo) return;
         e.preventDefault();
         setScale(s => Math.min(5, Math.max(0.5, s - e.deltaY * 0.002)));
-    }, []);
+    }, [isVideo]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
+        if (isVideo) return;
         setIsDragging(true);
         setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     };
     const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
+        if (!isDragging || isVideo) return;
         setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
     };
     const handleMouseUp = () => setIsDragging(false);
 
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (isVideo) return;
         if (e.touches.length === 2) {
             const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             if (lastTouchDist !== null) {
@@ -76,10 +80,10 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
             setPosition(p => ({ x: p.x + touch.clientX - (dragStart.x || touch.clientX), y: p.y + touch.clientY - (dragStart.y || touch.clientY) }));
             setDragStart({ x: touch.clientX, y: touch.clientY });
         }
-    }, [lastTouchDist, scale, dragStart]);
+    }, [lastTouchDist, scale, dragStart, isVideo]);
 
     const handleTouchEnd = () => setLastTouchDist(null);
-    const handleDoubleClick = () => { setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
+    const handleDoubleClick = () => { if (isVideo) return; setScale(s => s > 1 ? 1 : 3); setPosition({ x: 0, y: 0 }); };
 
     return createPortal(
         <div className="fixed inset-0 z-10000 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-300 overflow-hidden"
@@ -87,23 +91,36 @@ const FullscreenImageViewer = ({ src, onClose }: { src: string; onClose: () => v
             <button onClick={onClose} className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all">
                 <X className="w-5 h-5" />
             </button>
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
-                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">âˆ’</button>
-                <span className="text-[10px] font-mono text-white/40 w-12 text-center">{Math.round(scale * 100)}%</span>
-                <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">+</button>
-            </div>
-            <img src={src} alt="" draggable={false}
-                className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform duration-100"
-                style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
-                onClick={(e) => e.stopPropagation()}
-                onDoubleClick={handleDoubleClick}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-            />
+            {!isVideo && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/5 backdrop-blur-md rounded-full px-4 py-2 border border-white/10">
+                    <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.max(0.5, s - 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">âˆ’</button>
+                    <span className="text-[10px] font-mono text-white/40 w-12 text-center">{Math.round(scale * 100)}%</span>
+                    <button onClick={(e) => { e.stopPropagation(); setScale(s => Math.min(5, s + 0.5)); }} className="text-white/50 hover:text-white text-lg font-bold">+</button>
+                </div>
+            )}
+            
+            {isVideo ? (
+                <video 
+                    src={src} 
+                    controls 
+                    autoPlay 
+                    className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                />
+            ) : (
+                <img src={src} alt="" draggable={false}
+                    className="max-w-[90vw] max-h-[90vh] object-contain select-none transition-transform duration-100"
+                    style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, cursor: scale > 1 ? 'grab' : 'zoom-in' }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={handleDoubleClick}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                />
+            )}
         </div>,
         document.body
     );
@@ -114,6 +131,20 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
     const [showViewer, setShowViewer] = useState(false);
+
+    const mediaUrls = useMemo(() => {
+        const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+        const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
+        const others = raw.filter(u => u !== main);
+        return [main, ...others].filter(Boolean) as string[];
+    }, [norm.mediaUrls, norm.generatedPngUrl]);
+
+    const [activeIdx, setActiveIdx] = useState(0);
+    const imageUrl = mediaUrls[activeIdx] || null;
+    const isVideo = imageUrl ? isVideoFile(imageUrl) : false;
+
+    const handleNextMedia = (e: React.MouseEvent) => { e.stopPropagation(); setActiveIdx(prev => (prev + 1) % mediaUrls.length); };
+    const handlePrevMedia = (e: React.MouseEvent) => { e.stopPropagation(); setActiveIdx(prev => (prev - 1 + mediaUrls.length) % mediaUrls.length); };
 
     const wInch = norm.widthCm ? (parseFloat(String(norm.widthCm)) * 0.393701).toFixed(1) : '';
     const hInch = norm.heightCm ? (parseFloat(String(norm.heightCm)) * 0.393701).toFixed(1) : '';
@@ -128,8 +159,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm);
-    const baseImg = norm?.generatedPngUrl || (norm?.mediaUrls ? String(norm.mediaUrls).split(',')[0].trim() : null);
-    const imageUrl = getCleanImageUrl(baseImg);
 
     const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);
     const setSelectedItemData = useSetAtom(SelectedItemDataAtom);
@@ -171,9 +200,22 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             <div className="flex flex-col gap-1">
                 {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
                 <div className={`flex items-center p-3.5 bg-(--stitch-card-bg) border border-white/5 rounded-xl hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
-                    <div className={`w-[60px] h-[60px] rounded-lg overflow-hidden bg-black/40 shrink-0 mr-5 border border-white/5 ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
+                    <div className={`w-[60px] h-[60px] rounded-lg overflow-hidden bg-black/40 shrink-0 mr-5 border border-white/5 relative group/img ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full p-2.5 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        {imageUrl ? (
+                            <>
+                                <img src={imageUrl} className="w-full h-full object-cover" />
+                                {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-6 h-6" /></div>}
+                                {mediaUrls.length > 1 && <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20"><div className="h-full bg-(--main-color)/60 transition-all duration-300" style={{ width: `${((activeIdx + 1) / mediaUrls.length) * 100}%` }} /></div>}
+                            </>
+                        ) : <div className="w-full h-full p-2.5 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        
+                        {mediaUrls.length > 1 && (
+                            <div className="absolute inset-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                                <button onClick={handlePrevMedia} className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white pointer-events-auto">â‹¹</button>
+                                <button onClick={handleNextMedia} className="w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white pointer-events-auto">â‹º</button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grow min-w-0 flex flex-col justify-center">
@@ -250,9 +292,33 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             {showViewer && imageUrl && <FullscreenImageViewer src={imageUrl} onClose={() => setShowViewer(false)} />}
 
             {/* Image section */}
-            <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30">
+            <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30 group/img">
                 {imageUrl ? (
-                    <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                    <>
+                        <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                        {isVideo && (
+                           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
+                               <div className="p-3 bg-white/20 backdrop-blur-md rounded-full border border-white/30 text-white scale-110 group-hover/img:scale-125 transition-transform duration-500 shadow-2xl">
+                                   <Video className="w-8 h-8 fill-white/20" />
+                               </div>
+                           </div>
+                        )}
+                        {mediaUrls.length > 1 && (
+                            <>
+                                <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
+                                    <button onClick={handlePrevMedia} className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-lg">â‹¹</button>
+                                </div>
+                                <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
+                                    <button onClick={handleNextMedia} className="w-8 h-8 rounded-full bg-black/40 hover:bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-lg">â‹º</button>
+                                </div>
+                                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20 group-hover/img:translate-y-[-4px] transition-transform duration-300">
+                                    {mediaUrls.map((_, i) => (
+                                        <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === activeIdx ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/30'}`} />
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
                         <OnyxMiniLogo className="w-16 h-16 opacity-10 object-contain" />
@@ -480,6 +546,8 @@ export const UnifiedInventoryView = () => {
                 itemId: itemData.itemId || itemData.item_id || '',
                 generatedDescription: itemData.generatedDescription || '',
                 detailedDescription: itemData.detailedDescription || '',
+                generatedPngUrl: itemData.generatedPngUrl || '',
+                mediaUrls: itemData.mediaUrls || '',
             });
             setNewFiles([]);
         } else {
@@ -511,6 +579,16 @@ export const UnifiedInventoryView = () => {
         setNewFiles(prev => prev.filter((_, idx) => idx !== i));
     };
 
+    const removeExistingMedia = (index: number) => {
+        const currentExtras = editData.mediaUrls ? editData.mediaUrls.split(',').map((u:any) => u.trim()).filter(Boolean) : [];
+        const newExtras = currentExtras.filter((_:any, i:number) => i !== index);
+        setEditData((prev: any) => ({ ...prev, mediaUrls: newExtras.join(',') }));
+    };
+
+    const removeMainImage = () => {
+        setEditData((prev: any) => ({ ...prev, generatedPngUrl: '' }));
+    };
+
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!itemRow || !editData) return;
@@ -529,8 +607,7 @@ export const UnifiedInventoryView = () => {
                     }
                 }
             }
-            const existingPhotos = itemData?.mediaUrls ? itemData.mediaUrls.split(',').map((u: string) => u.trim()).filter(Boolean) : [];
-            const mediaUrlsStr = [...existingPhotos, ...uploadedUrls].join(',');
+            const mediaUrlsStr = [editData.mediaUrls || '', ...uploadedUrls].filter(Boolean).join(',');
 
             let dbRow: any = {
                 item_number: editData.itemNumber,
@@ -548,6 +625,7 @@ export const UnifiedInventoryView = () => {
                 status: editData.status,
                 workbook: editData.workbook,
                 media_urls: mediaUrlsStr,
+                generated_png_url: editData.generatedPngUrl,
                 updated_at: new Date().toISOString()
             };
 
@@ -743,7 +821,48 @@ export const UnifiedInventoryView = () => {
                             <button onClick={() => setMode('view')} className="text-4xl text-(--text-color)/20 hover:text-(--text-color) transition-all hover:rotate-90">&times;</button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="overflow-y-auto grow pr-6 custom-scrollbar space-y-10 pb-12">
-                            {/* â”€â”€ Attach Media Section (Moved to Top) â”€â”€ */}
+                            {/* â”€â”€ Gallery Management â”€â”€ */}
+                            <div className="bg-white/2 border border-white/6 rounded-2xl p-6 space-y-6">
+                                <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest leading-none">Manage Gallery</h3>
+                                
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {/* Main Image */}
+                                    {editData.generatedPngUrl && (
+                                        <div className="aspect-square rounded-xl bg-black/40 border-2 border-(--main-color)/30 p-2 relative group overflow-hidden">
+                                            <img src={getCleanImageUrl(editData.generatedPngUrl)} className="w-full h-full object-contain" />
+                                            <div className="absolute top-1 left-1 bg-(--main-color) text-black text-[7px] font-black px-1.5 py-0.5 rounded leading-none">MAIN</div>
+                                            <button type="button" onClick={removeMainImage} className="absolute top-1 right-1 p-1 bg-red-500/80 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Existing Additional Media */}
+                                    {(editData.mediaUrls ? editData.mediaUrls.split(',').map((u:any)=>u.trim()).filter(Boolean) : []).map((url: string, idx: number) => {
+                                        const clean = getCleanImageUrl(url);
+                                        const isVid = isVideoFile(url);
+                                        return (
+                                            <div key={idx} className="aspect-square rounded-xl bg-black/40 border border-white/10 p-2 relative group overflow-hidden">
+                                                {isVid ? (
+                                                    <div className="w-full h-full flex flex-col items-center justify-center opacity-40">
+                                                        <Video className="w-8 h-8 text-white" />
+                                                        <span className="text-[8px] font-black text-white/40 mt-1">MOV/MP4</span>
+                                                    </div>
+                                                ) : (
+                                                    <img src={clean} className="w-full h-full object-cover" />
+                                                )}
+                                                <button type="button" onClick={() => removeExistingMedia(idx)} className="absolute top-1 right-1 p-1 bg-red-500/80 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="h-px bg-white/5 mx-2" />
+                            </div>
+
+                            {/* â”€â”€ Attach Media Section â”€â”€ */}
                             <div className="bg-white/2 border border-white/6 rounded-2xl p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-[10px] font-black uppercase text-white/20 tracking-widest">Attach Media</h3>
