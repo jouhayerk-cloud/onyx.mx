@@ -13,6 +13,18 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.1 — 2026-03-18
+### Changed
+- **Packing Nav [ui]:** Removed redundant internal title, brand pill, and search bar from the Packing module — the global top bar handles both. Replaced the full nav with a slim status toolbar (artifact count · selected count · active vendor filter chip).
+- **Packing Sidebar [ui]:** Removed Est. Value auto-sum card. Sidebar now shows Batch count only.
+- **Packing Pipeline [feat]:** Removed all PNG generation (`html2canvas`, `PhomemoSheetTemplate`, hidden scratchpad, BLE print). Export pipeline is now XLSX + JSON only.
+- **JSON Export [feat]:** Added structured `Packing_Batch_{date}.json` download with full item metadata (tagId, tagUrl, description, dimensions, codes, imageUrl) for downstream Designer import.
+- **Send to Designer [feat]:** Primary CTA button — generates XLSX simultaneously, stores full batch JSON in `localStorage` (`onyx_packing_batch`), sends `ONYX_LOAD_BATCH` postMessage to the embedded designer iframe, and auto-opens standalone designer with pre-loaded batch.
+- **Designer Theme [ui]:** Injected comprehensive Onyx.mx dark glassmorphism theme override into the Phomemo Designer. All toolbars, panels, inputs, buttons, dialogs, and scrollbars now match the main app's dark aesthetic with sky-300 accent (#7dd3fc).
+
+### Fixed
+- **Packing postMessage [fix]:** Active item now sends `ONYX_LOAD_ITEM` message type with clean normalized payload instead of raw normData dump.
+
 ## v1.18.0 — 2026-03-18
 ### Added
 - **Phomymo Designer Integration [feat]:** Replaced the static label preview with a live-embedded Phomymo Designer iframe in the packing sidebar. The designer receives the active item's data via `postMessage` for real-time label population and preview.
