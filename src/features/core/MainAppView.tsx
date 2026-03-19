@@ -1,6 +1,5 @@
 
-import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
-import {
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
     activeViewAtom,
     createViewActiveTabAtom,
     logisticsSubTabAtom,
@@ -17,6 +16,8 @@ import {
     languageAtom,
     sidebarStateAtom,
     SidebarState,
+    processIsProcessingAtom,
+    processActiveStepLabelAtom
 } from '../../lib/atoms';
 import React, { useEffect } from 'react';
 import {
@@ -371,8 +372,16 @@ export function MainAppView() {
                         )}
                     </ul>
 
-                    {/* Branding at bottom of sidebar */}
-                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) opacity-60 shrink-0 relative overflow-hidden">
+                    {/* Branding & Global Progress at bottom of sidebar */}
+                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) shrink-0 relative overflow-hidden">
+                        {(useAtomValue(processIsProcessingAtom)) && (
+                            <div className="flex flex-col items-center gap-1 mb-4 animate-in fade-in slide-in-from-bottom-2">
+                                <Zap size={14} className="text-(--main-color) animate-pulse" />
+                                <span className="text-[7px] font-black uppercase text-(--main-color)/60 tracking-widest text-center px-2">
+                                    {useAtomValue(processActiveStepLabelAtom)}
+                                </span>
+                            </div>
+                        )}
                         {sidebarState === 'expanded' && (
                             <>
                                 <OnyxMiniLogo className="w-7 h-7 mb-2" />

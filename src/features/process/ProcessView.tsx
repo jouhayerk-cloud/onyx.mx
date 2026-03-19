@@ -13,6 +13,7 @@ import {
     processTriggerBatchAtom,
     processActiveStepLabelAtom,
     processIsProcessingAtom,
+    processLogsAtom,
     SelectedItemDataAtom
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
@@ -137,11 +138,11 @@ export const ProcessView: React.FC = () => {
     const [activeStepLabel, setActiveStepLabel] = useAtom(processActiveStepLabelAtom);
     const [isProcessingGlobal, setIsProcessingGlobal] = useAtom(processIsProcessingAtom);
     
-    // Debug Logs
-    const [logs, setLogs] = useState<{ id: string, msg: string, time: string, type: 'info' | 'error' | 'success' | 'warn' }[]>([]);
+    // System Console Logs
+    const [logs, setLogs] = useAtom(processLogsAtom);
     const addLog = useCallback((msg: string, type: 'info' | 'error' | 'success' | 'warn' = 'info') => {
         setLogs(prev => [{ id: Math.random().toString(), msg, time: new Date().toLocaleTimeString(), type }, ...prev.slice(0, 49)]);
-    }, []);
+    }, [setLogs]);
 
     const updateProgress = (step: string, processing = true) => {
         setActiveStepLabel(step);
@@ -468,27 +469,71 @@ export const ProcessView: React.FC = () => {
                 </aside>
 
                 {showBatchList && (
-                    <div className="absolute inset-x-0 bottom-0 top-0 bg-(--app-bg)/60 backdrop-blur-md flex flex-col p-4 z-60 animate-in slide-in-from-bottom-full">
-                         <StitchCard className="w-full max-w-4xl mx-auto flex-1 flex flex-col gap-6">
-                             <div className="flex items-center justify-between">
-                                 <SectionTitle title="Batch Pipeline" icon={FolderKanban} />
-                                 <button onClick={() => setShowBatchList(false)}><X size={20} /></button>
-                             </div>
-                             <div className="grid grid-cols-4 gap-4 overflow-y-auto">
-                                 {batchQueue.map(op => (
-                                     <div key={op.id} className="p-3 bg-black/20 rounded-xl border border-white/5 flex flex-col gap-3">
-                                         <div className="aspect-square bg-gray-900 rounded-lg overflow-hidden">
-                                             <img src={getCleanImageUrl(op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-50" />
-                                         </div>
-                                         <span className="text-[10px] font-black text-white italic truncate uppercase">{op.item.itemId}</span>
-                                         <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                                              <div className="h-full bg-(--main-color)" style={{ width: `${op.progress}%` }} />
-                                         </div>
+                    <div className="absolute inset-x-0 bottom-0 top-0 bg-(--app-bg)/60 backdrop-blur-md flex p-4 z-60 animate-in slide-in-from-bottom-full overflow-hidden">
+                         <div className="flex gap-4 w-full max-w-7xl mx-auto flex-1 h-full">
+                             <StitchCard className="flex-1 flex flex-col gap-6 overflow-hidden">
+                                 <div className="flex items-center justify-between">
+                                     <SectionTitle title="Batch Pipeline" icon={FolderKanban} />
+                                     <div className="flex items-center gap-3">
+                                         <button onClick={() => setBatchQueue([])} className="px-4 py-2 border border-white/5 rounded-lg text-[10px] font-bold text-white/30 hover:text-red-400">Clear Queue</button>
+                                         <button onClick={() => setShowBatchList(false)} className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white">
+                                              <X size={20} />
+                                         </button>
                                      </div>
-                                 ))}
-                             </div>
-                             <button onClick={runBatchSequence} className="w-full py-4 bg-(--main-color) text-black font-black uppercase tracking-widest rounded-xl">Execute Pipeline</button>
-                         </StitchCard>
+                                 </div>
+                                 
+                                 <div className="grid grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto custom-scrollbar flex-1 pr-1">
+                                     {batchQueue.map(op => (
+                                         <div key={op.id} className="p-2 bg-black/20 rounded-xl border border-white/5 flex flex-col gap-2 relative group hover:border-white/10">
+                                             <div className="aspect-video rounded-lg bg-black overflow-hidden border border-white/5 relative">
+                                                 <img src={getCleanImageUrl(op.item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-opacity" />
+                                                 {op.status === 'processing' && (
+                                                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 shadow-inner">
+                                                         <div className="w-8 h-8 rounded-full border-2 border-(--main-color)/20 border-t-(--main-color) animate-spin" />
+                                                     </div>
+                                                 )}
+                                                 {op.status === 'completed' && <CheckCircle2 size={16} className="absolute top-2 right-2 text-emerald-400 drop-shadow-lg" />}
+                                                 {op.status === 'failed' && <AlertCircle size={16} className="absolute top-2 right-2 text-rose-500 drop-shadow-lg" />}
+                                             </div>
+                                             <div className="flex flex-col gap-1">
+                                                  <span className="text-[9px] font-black text-white italic truncate uppercase">{op.item.itemId}</span>
+                                                  <div className="flex items-center justify-between text-[7px] font-bold text-white/25 uppercase">
+                                                       <span>{op.stepLabel}</span>
+                                                       <span className={op.progress > 0 ? 'text-(--main-color)' : ''}>{op.progress}%</span>
+                                                  </div>
+                                                  <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
+                                                       <div className={`h-full transition-all duration-300 ${op.status === 'completed' ? 'bg-emerald-400' : 'bg-(--main-color)'}`} style={{ width: `${op.progress}%` }} />
+                                                  </div>
+                                             </div>
+                                         </div>
+                                     ))}
+                                     {batchQueue.length === 0 && <div className="col-span-full h-full flex items-center justify-center text-[10px] font-black uppercase text-white/10 tracking-[0.2em]">Queue Empty</div>}
+                                 </div>
+
+                                 <button onClick={runBatchSequence} disabled={isProcessingGlobal || batchQueue.length === 0} className="w-full py-5 rounded-2xl bg-(--main-color) text-black text-[12px] font-black uppercase tracking-[0.3em] shadow-xl shadow-(--main-color)/20 disabled:grayscale disabled:opacity-20 active:scale-[0.98] transition-all">Execute Batch Sequence</button>
+                             </StitchCard>
+
+                             {/* Shared Terminal in Sidebar */}
+                             <aside className="w-72 flex flex-col gap-4">
+                                 <StitchCard className="flex-1 bg-black/40 flex flex-col gap-4 overflow-hidden">
+                                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                         <div className="flex items-center gap-2 text-emerald-400">
+                                            <Terminal size={14} />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">Live Engine</span>
+                                         </div>
+                                         <button onClick={() => setLogs([])} className="text-[8px] font-black uppercase text-white/20 hover:text-white transition-colors">Clear</button>
+                                     </div>
+                                     <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-3 pr-1 text-[9px] font-mono">
+                                         {logs.map(log => (
+                                             <div key={log.id} className="opacity-60 flex gap-2">
+                                                 <span className="shrink-0 text-white/20">[{log.time}]</span>
+                                                 <span className={log.type === 'error' ? 'text-rose-400' : log.type === 'success' ? 'text-emerald-400' : 'text-white/60'}>{log.msg}</span>
+                                             </div>
+                                         ))}
+                                     </div>
+                                 </StitchCard>
+                             </aside>
+                         </div>
                     </div>
                 )}
             </main>
