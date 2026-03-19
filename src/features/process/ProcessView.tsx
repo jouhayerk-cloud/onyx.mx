@@ -466,8 +466,23 @@ export const ProcessView: React.FC = () => {
                         className="bg-black/40 rounded-xl shadow-2xl z-10"
                     />
                 </div>
-
                 <aside className="w-72 flex flex-col gap-4 relative">
+                    <StitchCard className="shrink-0 flex flex-col gap-3 min-h-[90px] bg-black/40 border-(--main-color)/10 overflow-hidden relative group">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-(--main-color)/10 flex items-center justify-center text-(--main-color)">
+                                <Activity size={14} className={isProcessingGlobal ? "animate-pulse" : "opacity-20"} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Telemetry</span>
+                                <span className={`text-[10px] font-bold truncate uppercase italic ${isProcessingGlobal ? 'text-(--main-color)' : 'text-white/10'}`}>
+                                    {activeStepLabel || "Standby"}
+                                </span>
+                            </div>
+                        </div>
+                        {isProcessingGlobal && (
+                            <div className="absolute bottom-0 left-0 h-0.5 bg-(--main-color) transition-all duration-300 animate-pulse w-full shadow-[0_0_10px_var(--main-color)]" />
+                        )}
+                    </StitchCard>
                     <StitchCard className="flex-1 flex flex-col gap-4 overflow-hidden">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Layers</span>
@@ -488,7 +503,7 @@ export const ProcessView: React.FC = () => {
                             ))}
                         </div>
                     </StitchCard>
-                    
+
                     {showTerminal && (
                         <div className="absolute inset-0 z-10 flex flex-col">
                             <StitchCard className="flex-1 bg-black/90 backdrop-blur-3xl border-(--main-color)/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col p-4">
