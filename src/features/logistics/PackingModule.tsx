@@ -20,6 +20,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
+import { Eye, Download } from 'lucide-react';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -164,7 +165,7 @@ export const PackingModule: React.FC = () => {
     const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('50x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(false);
     const [vendorFilter, setVendorFilter] = useState<string | null>(null);
-
+    const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
 
@@ -392,7 +393,53 @@ export const PackingModule: React.FC = () => {
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
+                    {/* Primary Actions Cluster */}
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8 mr-2">
+                        <button
+                            onClick={() => setShowPreviewOverlay(true)}
+                            disabled={selectedIds.size === 0}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${selectedIds.size > 0 ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/10 cursor-not-allowed'}`}
+                        >
+                            <Eye size={13} strokeWidth={2.5} />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Preview Labels</span>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Send to OnyxLabels */}
+                        <button
+                            onClick={handleSendToDesigner}
+                            disabled={selectedIds.size === 0 || isSendingToDesigner}
+                            className="group relative flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-widest hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-20 shadow-md"
+                        >
+                            <Send size={12} strokeWidth={2.5} />
+                            {isSendingToDesigner ? '...' : 'Send to OnyxLabels'}
+                        </button>
+
+                        {/* Export XLSX/JSON */}
+                        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8">
+                            <button
+                                onClick={handleExportXLSX}
+                                disabled={selectedIds.size === 0 || isExportingXLSX}
+                                className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
+                                title="Export XLSX"
+                            >
+                                <FileSpreadsheet size={14} />
+                            </button>
+                            <button
+                                onClick={handleExportJSON}
+                                disabled={selectedIds.size === 0}
+                                className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/5 transition-all"
+                                title="Export JSON"
+                            >
+                                <FileJson size={14} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="w-px h-6 bg-white/10 mx-2" />
+
                     <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/8">
                         <button
                             onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
@@ -494,111 +541,68 @@ export const PackingModule: React.FC = () => {
                     )}
                 </div>
 
-                {/* RIGHT: Glass Sidebar — Designer + Actions */}
-                <div className="hidden md:flex flex-col w-[400px] xl:w-[440px] shrink-0 border-l border-white/5 bg-black/40 backdrop-blur-3xl overflow-y-auto custom-scrollbar z-30">
-                    <div className="p-7 flex flex-col gap-6">
+                </div>
+            </div>
 
-                        {/* Batch stat */}
-                        <div className="bg-white/2 border border-white/5 rounded-3xl px-6 py-4 flex items-center justify-between relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-white/3 blur-3xl -mr-10 -mt-10 rounded-full" />
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Batch Selected</span>
-                            <span className="text-3xl font-black text-white italic tracking-tighter">{selectedIds.size}</span>
-                        </div>
-
-                        {/* ── LABEL DESIGNER ── */}
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em] italic">Label Designer</span>
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={openDesignerFullscreen}
-                                        className="text-[8px] font-black text-(--main-color)/50 hover:text-(--main-color) italic uppercase tracking-[0.2em] transition-colors flex items-center gap-1"
-                                        title="Open full designer with current batch"
-                                    >
-                                        <Maximize2 size={9} /> Full Screen
-                                    </button>
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">
-                                        {activeItem ? `${activeItemIndex + 1} / ${selectedItems.length}` : '— / —'}
+            {/* ── LABEL PREVIEW OVERLAY ── */}
+            {showPreviewOverlay && (
+                <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in zoom-in duration-300">
+                    <div className="w-full max-w-6xl h-full bg-[#0a0a0a] rounded-[40px] border border-white/10 shadow-2xl flex flex-col overflow-hidden relative">
+                        {/* Overlay Header */}
+                        <div className="px-10 py-6 flex items-center justify-between border-b border-white/5 bg-white/2">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 rounded-2xl bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20">
+                                    <Eye size={18} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.4em] italic mb-0.5">OnyxLabels Engine</span>
+                                    <span className="text-sm font-black text-white uppercase tracking-widest leading-none">
+                                        Batch Preview — <span className="text-(--main-color)">{selectedIds.size} Labels</span>
                                     </span>
                                 </div>
                             </div>
 
-                            {/* iframe */}
-                            <div className="aspect-video rounded-3xl bg-black/60 border border-white/8 overflow-hidden relative shadow-2xl">
-                                {activeItem ? (
-                                    <iframe
-                                        ref={iframeRef}
-                                        src="/phomemo-designer/index.html?mini=true"
-                                        className="w-full h-full border-none"
-                                        title="OnyxLabels Designer"
-                                        allow="bluetooth"
-                                    />
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full gap-4 text-white/8">
-                                        <Package size={56} strokeWidth={1} />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.5em] italic">Select artifacts to preview</span>
-                                    </div>
-                                )}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={openDesignerFullscreen}
+                                    className="flex items-center gap-2.5 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black text-white/60 uppercase tracking-widest hover:bg-white/10 hover:text-(--main-color) transition-all"
+                                >
+                                    <Edit size={14} /> Edit Template
+                                </button>
+                                <button
+                                    onClick={() => setShowPreviewOverlay(false)}
+                                    className="p-3 rounded-2xl bg-white text-black hover:bg-white/90 active:scale-90 transition-all shadow-xl shadow-black/40"
+                                >
+                                    <X size={20} strokeWidth={3} />
+                                </button>
                             </div>
-
-                            {/* Item navigator */}
-                            {selectedItems.length > 1 && (
-                                <div className="flex gap-2">
-                                    <button
-                                        disabled={activeItemIndex === 0}
-                                        onClick={() => setActiveItemIndex(i => Math.max(0, i - 1))}
-                                        className="flex-1 py-2.5 rounded-2xl bg-white/3 border border-white/5 text-[9px] font-black text-white/30 hover:text-white disabled:opacity-10 disabled:cursor-not-allowed transition-all"
-                                    >‹ Prev</button>
-                                    <button
-                                        disabled={activeItemIndex >= selectedItems.length - 1}
-                                        onClick={() => setActiveItemIndex(i => Math.min(selectedItems.length - 1, i + 1))}
-                                        className="flex-1 py-2.5 rounded-2xl bg-white/3 border border-white/5 text-[9px] font-black text-white/30 hover:text-white disabled:opacity-10 disabled:cursor-not-allowed transition-all"
-                                    >Next ›</button>
-                                </div>
-                            )}
                         </div>
 
-                        {/* ── SEND TO DESIGNER (primary CTA) ── */}
-                        <div className="flex flex-col gap-3">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] italic flex items-center gap-2">
-                                <Send size={10} /> Export Pipeline
+                        {/* iframe container */}
+                        <div className="flex-1 bg-black/40 relative">
+                            <iframe
+                                ref={iframeRef}
+                                src={`/phomemo-designer/index.html?mini=true&preview=true&v=${selectedIds.size}`}
+                                className="w-full h-full border-none"
+                                title="OnyxLabels Designer"
+                                allow="bluetooth"
+                            />
+                        </div>
+
+                        {/* Footer / Instructions */}
+                        <div className="px-10 py-5 bg-white/2 border-t border-white/5 flex items-center justify-between">
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+                                Rendering high-fidelity batch grid...
                             </span>
-
-                            {/* Primary: Send to Designer */}
-                            <button
-                                onClick={handleSendToDesigner}
-                                disabled={selectedIds.size === 0 || isSendingToDesigner}
-                                className="w-full group relative flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-[0.25em] hover:bg-white/95 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
-                            >
-                                <Send size={15} strokeWidth={2.5} />
-                                {isSendingToDesigner ? 'Sending...' : `Send ${selectedIds.size > 0 ? selectedIds.size + ' items' : ''} to OnyxLabels`}
-                            </button>
-                            <p className="text-[7px] font-black text-white/15 uppercase tracking-widest text-center">
-                                Generates XLSX + JSON · Loads batch into OnyxLabels
-                            </p>
-
-                            {/* Secondary: individual exports */}
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={handleExportXLSX}
-                                    disabled={selectedIds.size === 0 || isExportingXLSX}
-                                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/3 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest hover:bg-white/8 hover:text-white active:scale-95 transition-all disabled:opacity-20"
-                                >
-                                    <FileSpreadsheet size={13} />
-                                    {isExportingXLSX ? '...' : 'XLSX'}
-                                </button>
-                                <button
-                                    onClick={handleExportJSON}
-                                    disabled={selectedIds.size === 0}
-                                    className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/3 border border-white/5 text-[8px] font-black text-white/40 uppercase tracking-widest hover:bg-white/8 hover:text-white active:scale-95 transition-all disabled:opacity-20"
-                                >
-                                    <FileJson size={13} /> JSON
-                                </button>
+                            <div className="flex items-center gap-6">
+                                <span className="text-[9px] font-medium text-white/40 italic">
+                                    Click "Print" inside the preview to generate final documents.
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
