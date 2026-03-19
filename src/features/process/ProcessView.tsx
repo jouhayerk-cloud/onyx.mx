@@ -1,6 +1,19 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
-import { userAtom, inventoryAtom, InventoryVersionAtom } from '../../lib/atoms';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import {
+    userAtom,
+    inventoryAtom,
+    InventoryVersionAtom,
+    processToolAtom,
+    processShowTerminalAtom,
+    processShowVaultAtom,
+    processShowBatchListAtom,
+    processTriggerAnalyzeAtom,
+    processTriggerBatchAtom,
+    processActiveStepLabelAtom,
+    processIsProcessingAtom,
+    SelectedItemDataAtom
+} from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import {
     normalizeInventoryData,
@@ -48,7 +61,9 @@ import {
     Activity,
     FolderKanban,
     Terminal,
-    Bug
+    Bug,
+    LayoutGrid,
+    Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { gsap } from 'gsap';
@@ -119,24 +134,35 @@ export const ProcessView: React.FC = () => {
     const inventory = useAtomValue(inventoryAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+    const selectedItemData = useAtomValue(SelectedItemDataAtom);
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [batchQueue, setBatchQueue] = useState<BatchOperation[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isProcessingBatch, setIsProcessingBatch] = useState(false);
-    const [showVault, setShowVault] = useState(false);
+    
+    // Global Atoms
+    const [tool, setTool] = useAtom(processToolAtom);
+    const [showTerminal, setShowTerminal] = useAtom(processShowTerminalAtom);
+    const [showVault, setShowVault] = useAtom(processShowVaultAtom);
+    const [showBatchList, setShowBatchList] = useAtom(processShowBatchListAtom);
+    const analyzeTrigger = useAtomValue(processTriggerAnalyzeAtom);
+    const batchTrigger = useAtomValue(processTriggerBatchAtom);
+    const [activeStepLabel, setActiveStepLabel] = useAtom(processActiveStepLabelAtom);
+    const [isProcessingGlobal, setIsProcessingGlobal] = useAtom(processIsProcessingAtom);
     
     // Debug Logs
     const [logs, setLogs] = useState<{ id: string, msg: string, time: string, type: 'info' | 'error' | 'success' | 'warn' }[]>([]);
     const addLog = useCallback((msg: string, type: 'info' | 'error' | 'success' | 'warn' = 'info') => {
         setLogs(prev => [{ id: Math.random().toString(), msg, time: new Date().toLocaleTimeString(), type }, ...prev.slice(0, 49)]);
-        console.log(`[AI-Process] ${msg}`);
     }, []);
+
+    // Sync active step back to atom
+    const updateProgress = (step: string, processing = true) => {
+        setActiveStepLabel(step);
+        setIsProcessingGlobal(processing);
+    };
 
     // UI State
     const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
-    const [tool, setTool] = useState<'move' | 'mask'>('move');
-    const [showBatchList, setShowBatchList] = useState(false);
-    const [showTerminal, setShowTerminal] = useState(false);
     
     // Canvas State
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -195,19 +221,33 @@ export const ProcessView: React.FC = () => {
 
     /* ─── AI Pipeline ─── */
 
-    const processItem = async (opId: string) => {
+    const processItem = async (opId: string | 'single') => {
         const updateOp = (updates: Partial<BatchOperation>) => {
+            if (opId === 'single') {
+                if (updates.stepLabel) updateProgress(updates.stepLabel);
+                return;
+            }
             setBatchQueue(prev => prev.map(op => op.id === opId ? { ...op, ...updates } : op));
         };
 
-        const currentOp = batchQueue.find(o => o.id === opId);
-        if (!currentOp) {
-            addLog(`Error: Operation ${opId} not found in state.`, 'error');
+        let item = null;
+        if (opId === 'single') {
+            item = selectedItem;
+        } else {
+            const currentOp = batchQueue.find(o => o.id === opId);
+            if (!currentOp) {
+                addLog(`Error: Operation ${opId} not found in state.`, 'error');
+                return;
+            }
+            item = currentOp.item;
+        }
+
+        if (!item) {
+            addLog("Error: No item selected for processing.", "error");
             return;
         }
 
         try {
-            const item = currentOp.item;
             addLog(`Pipeline started for artifact: ${item.itemId}`, 'info');
             updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
             
@@ -299,27 +339,49 @@ export const ProcessView: React.FC = () => {
 
             updateOp({ status: 'completed', progress: 100, stepLabel: 'Success', result: { pngData, svgData, masks, colors } });
             addLog(`Deployment finalized for ${item.itemId}`, 'success');
+            updateProgress('DEPLOYMENT SUCCESS', false);
             setInventoryVersion(v => v + 1);
 
         } catch (e: any) {
             updateOp({ status: 'failed', error: e.message, stepLabel: 'Error' });
-            addLog(`CRITICAL ERROR during ${opId}: ${e.message}`, 'error');
-            toast.error(`Processing Error: ${currentOp.item.itemId}`);
+            addLog(`CRITICAL ERROR: ${e.message}`, 'error');
+            updateProgress('ENGINE ERROR', false);
+            toast.error(`Processing Error: ${opId === 'single' ? 'Current Item' : 'Queue Item'}`);
         }
     };
 
     const runBatchSequence = async () => {
-        setIsProcessingBatch(true);
+        updateProgress("BATCH STARTING");
         addLog("Batch Execution triggered.", "warn");
         const queue = batchQueue.filter(op => op.status !== 'completed');
         for (const op of queue) {
             await processItem(op.id);
             await new Promise(r => setTimeout(r, 800));
         }
-        setIsProcessingBatch(false);
+        updateProgress("BATCH COMPLETE", false);
         addLog("Batch Sequence reached end-of-queue.", "success");
         toast.success("Batch Sequence Finalized");
     };
+
+    // Watch for global triggers
+    useEffect(() => {
+        if (analyzeTrigger > 0 && selectedItem && !isProcessingGlobal) {
+            processItem('single');
+        }
+    }, [analyzeTrigger]);
+
+    useEffect(() => {
+        if (batchTrigger > 0 && batchQueue.length > 0 && !isProcessingGlobal) {
+            runBatchSequence();
+        }
+    }, [batchTrigger]);
+
+    // Handle initial selection from Unified Inventory or other sources
+    useEffect(() => {
+        if (selectedItemData && selectedItemData.itemId !== selectedItem?.itemId) {
+            handleSelectItem({ ...selectedItemData, id: (selectedItemData as any).id || (selectedItemData as any).row });
+        }
+    }, [selectedItemData]);
 
     /* ─── Canvas Render ─── */
 
@@ -355,81 +417,13 @@ export const ProcessView: React.FC = () => {
     const activeOp = useMemo(() => batchQueue.find(op => op.status === 'processing'), [batchQueue]);
 
     return (
-        <div className="flex flex-col w-full h-full bg-(--app-bg) p-4 gap-4 overflow-hidden font-sans">
+        <div className="flex flex-col w-full h-full bg-transparent gap-4 overflow-hidden font-sans">
             
-            {/* Main Aesthetic Top Bar */}
-            <header className="h-[72px] shrink-0 flex items-center justify-between px-6 bg-(--stitch-card-bg) border border-white/5 rounded-xl shadow-xl z-50">
-                <div className="flex items-center gap-6">
-                    <SectionTitle title="AI PROCESSOR" icon={Fingerprint} />
-                    
-                    <div className="h-8 w-px bg-white/5" />
-                    
-                    {/* Visual Tools */}
-                    <div className="flex items-center gap-1 bg-white/3 p-1 rounded-lg border border-white/5">
-                        <button onClick={() => setTool('move')} className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${tool === 'move' ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                            <MousePointer2 size={16} />
-                        </button>
-                        <button onClick={() => setTool('mask')} className={`w-9 h-9 rounded-md flex items-center justify-center transition-all ${tool === 'mask' ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                            <Scissors size={16} />
-                        </button>
-                    </div>
-
-                    {/* Hierarchy Action */}
-                    <button onClick={() => setShowVault(true)} className="flex items-center gap-2 h-10 px-4 rounded-lg bg-white/3 border border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/6 transition-all">
-                        <Library size={16} /> Artifact Vault
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {/* Live Pipeline Status */}
-                    <div className="flex items-center gap-3 bg-black/20 px-4 py-2 rounded-lg border border-white/5">
-                        <Activity size={14} className={activeOp ? 'text-emerald-400 animate-pulse' : 'text-white/10'} />
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 truncate max-w-[120px]">
-                            {activeOp ? activeOp.stepLabel : 'ENGINE READY'}
-                        </span>
-                    </div>
-
-                    <div className="h-8 w-px bg-white/5" />
-
-                    <button 
-                        onClick={() => selectedItem && processItem(batchQueue.find(op => op.item.id === selectedItem.id)?.id || 'single')} 
-                        disabled={!selectedItem || activeOp !== undefined}
-                        className="h-10 px-6 rounded-lg bg-white/5 border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2.5 hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-20"
-                    >
-                        {activeOp ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                        Analyze
-                    </button>
-                    
-                    <button 
-                        onClick={runBatchSequence} 
-                        disabled={isProcessingBatch || batchQueue.length === 0} 
-                        className="h-10 px-6 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest flex items-center gap-2.5 hover:shadow-lg hover:shadow-(--main-color)/20 active:scale-95 transition-all disabled:opacity-20"
-                    >
-                        <Play size={14} /> Run Batch
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                        <button 
-                            onClick={() => setShowTerminal(!showTerminal)}
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showTerminal ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
-                        >
-                            <Terminal size={18} />
-                        </button>
-                        <button 
-                            onClick={() => setShowBatchList(!showBatchList)}
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showBatchList ? 'bg-white/10 text-white' : 'text-white/30 hover:text-white'}`}
-                        >
-                            <FolderKanban size={18} />
-                        </button>
-                    </div>
-                </div>
-            </header>
-
             {/* Workplace Content Area */}
             <main className="flex-1 flex gap-4 overflow-hidden relative">
                 
                 {/* Visual Workspace (Center) */}
-                <div className="flex-1 flex items-center justify-center bg-black/40 rounded-2xl border border-white/5 relative overflow-hidden">
+                <div className="flex-1 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 relative overflow-hidden">
                     {/* Stitch Subtle Grid */}
                     <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
                     
@@ -453,22 +447,14 @@ export const ProcessView: React.FC = () => {
                         }}
                         onMouseUp={() => setIsDragging(false)}
                         style={{ width: 'min(76vh, 76vw)', height: 'min(76vh, 76vw)' }}
-                        className="bg-black/60 rounded-xl shadow-2xl z-10"
+                        className="bg-black/40 rounded-xl shadow-2xl z-10"
                     />
 
-                    {/* Floating Controls Overlay */}
+                    {/* Floating Controls Overlay — Simple */}
                     {activeLayerId && (
-                        <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-6 px-6 py-3 bg-(--stitch-card-bg)/80 backdrop-blur-md border border-white/10 rounded-xl z-20 shadow-2xl">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-bold uppercase text-white/30">Alpha</span>
-                                <input type="range" min="0" max="1" step="0.01" value={layers.find(l => l.id === activeLayerId)?.opacity || 0} onChange={e => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, opacity: parseFloat(e.target.value) } : l))} className="w-24 h-1 bg-white/10 rounded-full appearance-none accent-(--main-color)" />
-                            </div>
-                            <div className="w-px h-5 bg-white/10" />
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-bold uppercase text-white/30">Angle</span>
-                                <input type="range" min="0" max="360" value={layers.find(l => l.id === activeLayerId)?.rotation || 0} onChange={e => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, rotation: parseInt(e.target.value) } : l))} className="w-24 h-1 bg-white/10 rounded-full appearance-none accent-(--main-color)" />
-                            </div>
-                            <div className="w-px h-5 bg-white/10" />
+                        <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-2 bg-(--stitch-card-bg)/80 backdrop-blur-md border border-white/10 rounded-xl z-20 shadow-2xl">
+                            <span className="text-[10px] font-black uppercase text-white/40">{activeLayerId}</span>
+                            <div className="w-px h-4 bg-white/10" />
                             <button onClick={() => { setLayers(prev => prev.filter(x => x.id !== activeLayerId)); setActiveLayerId(null); }} className="text-white/20 hover:text-red-400 transition-colors">
                                 <Trash2 size={16} />
                             </button>
@@ -596,7 +582,7 @@ export const ProcessView: React.FC = () => {
 
                              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                                  <button onClick={() => setBatchQueue([])} className="h-10 px-6 rounded-lg bg-red-400/10 text-red-400 text-[10px] font-bold uppercase tracking-widest border border-red-400/20 hover:bg-red-400/20 transition-all">Clear All</button>
-                                 <button onClick={runBatchSequence} disabled={isProcessingBatch || batchQueue.length === 0} className="h-10 px-8 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Start Execution</button>
+                                 <button onClick={runBatchSequence} disabled={isProcessingGlobal || batchQueue.length === 0} className="h-10 px-8 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Start Execution</button>
                              </div>
                          </StitchCard>
                     </div>
@@ -610,14 +596,17 @@ export const ProcessView: React.FC = () => {
                 >
                     <div className="w-full max-w-6xl flex flex-col h-full bg-(--stitch-card-bg) border border-white/5 rounded-2xl p-8 shadow-3xl">
                         <div className="flex items-center justify-between mb-8">
-                            <SectionTitle title="Deployment Registry" icon={Library} />
                             <div className="flex items-center gap-4">
-                                <div className="relative w-72">
-                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                                    <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search ID..." className="w-full bg-black/40 border border-white/5 rounded-lg pl-10 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-(--main-color)/30" />
+                                <SectionTitle title="Deployment Registry" icon={Library} />
+                                <Badge color="blue">{filteredItems.length} ARTIFACTS</Badge>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-80">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                    <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search by Tag ID or Shape..." className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-(--main-color)/40 transition-all font-medium" />
                                 </div>
-                                <button onClick={() => setShowVault(false)} className="w-10 h-10 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all">
-                                    <X size={20} />
+                                <button onClick={() => setShowVault(false)} className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                                    <X size={24} />
                                 </button>
                             </div>
                         </div>
@@ -632,7 +621,7 @@ export const ProcessView: React.FC = () => {
                                         className={`group relative aspect-square rounded-xl overflow-hidden border transition-all cursor-pointer ${selectedItem?.id === item.id ? 'border-(--main-color) ring-4 ring-(--main-color)/10' : 'border-white/5 hover:border-white/20'}`}
                                     >
                                         <img src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" alt="" />
-                                        <div className="absolute inset-0 bg-linear-to-t from-black via-transparent opacity-60" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent opacity-60" />
                                         
                                         <div className="absolute top-2 right-2">
                                             <button 
