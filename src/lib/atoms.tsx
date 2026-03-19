@@ -319,3 +319,4 @@ export const processTriggerAnalyzeAtom = atom<number>(0);
 export const processTriggerBatchAtom = atom<number>(0);
 export const processActiveStepLabelAtom = atom<string>('ENGINE READY');
 export const processIsProcessingAtom = atom<boolean>(false);
+export const processLogsAtom = atom<{ id: string, msg: string, time: string, type: 'info' | 'error' | 'success' | 'warn' }[]>([]);
