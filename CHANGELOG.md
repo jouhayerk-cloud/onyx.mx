@@ -13,6 +13,15 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.7 — 2026-03-18
+### Added
+- **OnyxLabels Print Wizard [feat/ux]:** Implemented a multi-step wizard triggered by the **"Print Labels"** action.
+    1.  **Stage 1:** Automatically generates the technical XLSX export.
+    2.  **Stage 2:** Builds a doubled-quantity label batch (`QTY * 2`) for dual-tagging requirements.
+    3.  **Stage 3:** Launches the integrated preview overlay with a high-fidelity grid.
+- **Audit Tracking [data]:** The module now automatically captures `filePrintDate` (XLSX timestamp) and `labelPrintDate` (print job initiation) directly into the RxDB item records.
+- **Wizard Bridge [feat]:** Added an "EDIT labels" action within the wizard preview to allow non-destructive template tweaks before final printing.
+
 ## v1.18.6 — 2026-03-18
 ### Changed
 - **UX Refinement [overlay]:** Replaced the preview sidebar with a high-fidelity **Full-Screen Overlay**. This provides a focused environment for batch verification and document generation (printing).
@@ -38,7 +47,7 @@
 - **Branding [ui]:** Corrected the label "MADE IN MEXICO" element properties (black on transparent) and fixed its center alignment and orientation.
 
 ## v1.18.2 — 2026-03-18
-### Changed
+### Changlets ed
 - **Branding [ui/core]:** Full rebrand to **OnyxLabels**. Updated all UI strings, button labels, and internal template names to reflect the new identity.
 - **Label Pipeline [feat]:** Transitioned the label designer to an **in-app same-origin module** served directly from the main application. This resolves cross-origin messaging issues and simplifies data parsing.
 - **Export Data [fix]:** Renamed internal batch key to `templateData` and implemented automatic record expansion by `QUANTITY`. Manual JSON imports now correctly generate the intended number of labels for every batch item.
