@@ -82,7 +82,7 @@ interface BatchOperation {
     };
 }
 
-const API_KEY = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 /* --- Aesthetic Components --- */
 
@@ -227,6 +227,11 @@ export const ProcessView: React.FC = () => {
 
         try {
             updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
+            if (!API_KEY) {
+                addLog("Gemini API Key missing! Make sure VITE_GEMINI_API_KEY is in your .env.local", "error");
+                throw new Error("API Key missing");
+            }
+
             const imageUrl = getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
 
@@ -249,7 +254,18 @@ export const ProcessView: React.FC = () => {
             if (!response.ok) throw new Error(`AI Gateway Error: ${response.status}`);
             const resData = await response.json();
             const rawOutput = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-            const processed = JSON.parse(rawOutput);
+            if (!rawOutput) throw new Error("Empty response from AI engine");
+            
+            // Handle markdown-wrapped JSON if present
+            let cleanedJson = rawOutput.trim();
+            if (cleanedJson.includes('```')) {
+                const match = cleanedJson.match(/```(?:json)?([\s\S]*?)```/);
+                if (match) cleanedJson = match[1].trim();
+                else cleanedJson = cleanedJson.replace(/```(json)?|```/g, '').trim();
+            }
+            
+            const processed = JSON.parse(cleanedJson);
+            addLog(`Engine found ${processed.length} segmentation layers.`, 'success');
 
             updateOp({ progress: 60, stepLabel: 'Vectorizing...' });
             const masks: any[] = await Promise.all(processed.map(async (m: any, idx: number) => {
