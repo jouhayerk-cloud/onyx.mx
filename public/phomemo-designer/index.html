@@ -2351,18 +2351,18 @@
           payload: {
             elements: batchProject.elements,
             labelSize: batchProject.labelSize,
-            templateData: batchProject.records || []
+            templateData: batchProject.templateData || []
           }
         }
       }));
 
       // If we have records, also trigger UPDATE_DATA to ensure template fields are active
-      if (batchProject.records && batchProject.records.length > 0) {
+      if (batchProject.templateData && batchProject.templateData.length > 0) {
         setTimeout(() => {
           window.dispatchEvent(new MessageEvent('message', {
             data: {
               type: 'UPDATE_DATA',
-              payload: { templateData: batchProject.records }
+              payload: { templateData: batchProject.templateData }
             }
           }));
         }, 300);

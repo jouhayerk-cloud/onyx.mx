@@ -13,6 +13,12 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 -->
 
+## v1.18.2 — 2026-03-18
+### Changed
+- **Branding [ui/core]:** Full rebrand to **OnyxLabels**. Updated all UI strings, button labels, and internal template names to reflect the new identity.
+- **Label Pipeline [feat]:** Transitioned the label designer to an **in-app same-origin module** served directly from the main application. This resolves cross-origin messaging issues and simplifies data parsing.
+- **Export Data [fix]:** Renamed internal batch key to `templateData` and implemented automatic record expansion by `QUANTITY`. Manual JSON imports now correctly generate the intended number of labels for every batch item.
+
 ## v1.18.1 — 2026-03-18
 ### Changed
 - **Packing Nav [ui]:** Removed redundant internal title, brand pill, and search bar from the Packing module — the global top bar handles both. Replaced the full nav with a slim status toolbar (artifact count · selected count · active vendor filter chip).
