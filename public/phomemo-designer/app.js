@@ -145,12 +145,6 @@ const isPreviewMode = urlParams.has('preview') || urlParams.get('mode') === 'pre
 if (isMiniMode || isPreviewMode) {
   document.documentElement.classList.add('is-embedded');
 }
-if (isPreviewMode) {
-  document.documentElement.classList.add('is-preview');
-}
-if (isMiniMode) {
-  document.documentElement.classList.add('is-mini');
-}
 
 // App state
 const state = {
@@ -4770,7 +4764,24 @@ async function handlePrint() {
 /**
  * Show info dialog
  */
+function showInfoDialog() {
+  $('#info-dialog').classList.remove('hidden');
+}
 
+/**
+ * Hide info dialog and mark as seen
+ */
+function hideInfoDialog() {
+  $('#info-dialog').classList.add('hidden');
+  safeStorageSet('phomymo_info_seen', 'true');
+}
+
+/**
+ * Check if info dialog should show on first visit
+ */
+function shouldShowInfoOnLoad() {
+  return !safeStorageGet('phomymo_info_seen');
+}
 
 /**
  * Show save dialog
@@ -5751,6 +5762,10 @@ function initMobileUI() {
     closeMobileMenu();
     $('#print-settings-dialog')?.classList.remove('hidden');
     $('#print-settings-dialog')?.classList.add('flex');
+  });
+  $('#mobile-info-btn')?.addEventListener('click', () => {
+    closeMobileMenu();
+    showInfoDialog();
   });
   $('#mobile-print-btn')?.addEventListener('click', handlePrint);
 
@@ -6774,6 +6789,12 @@ function init() {
     updateLengthAdjustButtons();
   });
 
+  // Info dialog
+  $('#info-btn').addEventListener('click', showInfoDialog);
+  $('#info-close').addEventListener('click', hideInfoDialog);
+  $('#info-dialog').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) hideInfoDialog();
+  });
 
   // Keyboard shortcuts modal
   $('#shortcuts-close').addEventListener('click', hideShortcutsModal);
@@ -7780,32 +7801,12 @@ function init() {
   // Initial render
   render();
 
-  // Show info dialog on first visit
-  // [DEBRANDED] - removed info on first visit
+  // Detect template fields on load
+  detectTemplateFields();
 
-  // Handle Onyx Packing Batch
-  const packingBatch = localStorage.getItem('onyx_packing_batch');
-  if (packingBatch) {
-    try {
-      const batch = JSON.parse(packingBatch);
-      if (batch.elements) state.elements = batch.elements;
-      if (batch.labelSize) {
-        state.labelSize = batch.labelSize;
-        state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
-      }
-      if (batch.templateData) state.templateData = batch.templateData;
-      
-      detectTemplateFields();
-      render();
-      updatePropertiesPanel();
-      
-      // If preview mode is requested in URL, jump straight to grid
-      if (isPreviewMode && state.templateData.length > 0) {
-        setTimeout(() => showPreviewDialog(), 200);
-      }
-    } catch (e) {
-      console.error('Failed to load onyx_packing_batch:', e);
-    }
+  // Show info dialog on first visit
+  if (shouldShowInfoOnLoad()) {
+    showInfoDialog();
   }
 
   // Initialize mobile UI
@@ -7816,21 +7817,22 @@ function init() {
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
-    if (state.renderer) state.renderer.destroy();
-    if (state.transport?.connected) state.transport.disconnect();
+    // Destroy renderer to clean up caches
+    if (state.renderer) {
+      state.renderer.destroy();
+    }
+    // Disconnect transport if connected
+    if (state.transport && state.transport.connected) {
+      state.transport.disconnect();
+    }
   });
 
-  console.log('OnyxLabels Engine initialized');
-
-  // Signal to parent frame that the designer is ready to receive data
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'DESIGNER_READY' }, '*');
-  }
+  console.log('Phomymo Label Designer initialized');
 }
 
 // External Messaging Interface
 window.addEventListener('message', (event) => {
-  const { type, payload } = event.data || {};
+  const { type, payload } = event.data;
 
   if (type === 'LOAD_DESIGN') {
     if (payload.elements) state.elements = payload.elements;
@@ -7849,29 +7851,6 @@ window.addEventListener('message', (event) => {
     setStatus('Design loaded from application');
   }
 
-  // BATCH PREVIEW — load design + auto-open preview grid
-  if (type === 'LOAD_BATCH_PREVIEW') {
-    if (payload.elements) state.elements = payload.elements;
-    if (payload.labelSize) {
-      state.labelSize = payload.labelSize;
-      state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
-    }
-    if (payload.templateData) state.templateData = payload.templateData;
-
-    resetHistory();
-    state.renderer.clearCache();
-    detectTemplateFields();
-    render();
-    updatePropertiesPanel();
-    updateToolbarState();
-    setStatus(`Batch loaded — ${state.templateData.length} labels`);
-
-    // Open the preview grid immediately
-    if (state.templateData.length > 0) {
-      setTimeout(() => showPreviewDialog(), 150);
-    }
-  }
-
   if (type === 'UPDATE_DATA') {
     if (payload.templateData) {
       state.templateData = payload.templateData;
@@ -7881,34 +7860,9 @@ window.addEventListener('message', (event) => {
     }
   }
 
-  // SHOW_EDITOR — close preview dialogs, switch to interactive edit mode
-  if (type === 'SHOW_EDITOR') {
-    // Close preview dialogs if open
-    const previewDialog = document.getElementById('preview-dialog');
-    const fullPreviewDialog = document.getElementById('full-preview-dialog');
-    if (previewDialog) previewDialog.classList.add('hidden');
-    if (fullPreviewDialog) fullPreviewDialog.classList.add('hidden');
-
-    // Switch CSS mode: remove is-preview, add is-mini for edit mode
-    document.documentElement.classList.remove('is-preview');
-    document.documentElement.classList.add('is-mini');
-
-    // If design was passed, load it
-    if (payload?.elements) {
-      state.elements = payload.elements;
-      if (payload.labelSize) {
-        state.labelSize = payload.labelSize;
-        state.renderer.setDimensions(state.labelSize.width, state.labelSize.height, state.zoom, state.labelSize.round || false);
-      }
-      if (payload.templateData) state.templateData = payload.templateData;
-      resetHistory();
-      state.renderer.clearCache();
-      detectTemplateFields();
-    }
-    render();
-    updatePropertiesPanel();
-    updateToolbarState();
-    setStatus('Editor ready');
+  if (type === 'GET_RASTER') {
+    // Parent wants the current raster data for printing
+    // implementation could return current canvas as dataURL or raw bytes
   }
 });
 

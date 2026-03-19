@@ -3,9 +3,9 @@
   "name": "Onyx Logistics Dashboard",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "type": "image/svg+xml",
-      "sizes": "150x150"
+      "src": "/favicon.png",
+      "type": "image/png",
+      "sizes": "32x32"
     },
     {
       "src": "/icon-192.png",
@@ -20,6 +20,6 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#222222",
+  "theme_color": "#111111",
   "background_color": "#111111"
 }
