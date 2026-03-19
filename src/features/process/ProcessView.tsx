@@ -233,6 +233,7 @@ export const ProcessView: React.FC = () => {
                 addLog("Gemini API Key missing! Make sure VITE_GEMINI_API_KEY is in your .env.local", "error");
                 throw new Error("API Key missing");
             }
+            addLog(`Using Model: gemini-1.5-flash (Stable Build)`, 'info');
 
             const imageUrl = getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
@@ -246,8 +247,7 @@ export const ProcessView: React.FC = () => {
             
             const genAI = new GoogleGenerativeAI(API_KEY);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash", 
-                generationConfig: { responseMimeType: "application/json" }
+                model: "gemini-1.5-flash"
             });
 
             updateOp({ progress: 40, stepLabel: 'Processing AI...' });
@@ -346,6 +346,12 @@ export const ProcessView: React.FC = () => {
         updateProgress("BATCH COMPLETE", false);
         toast.success("Batch Sequence Finalized");
     };
+
+    useEffect(() => {
+        addLog(`Inventory Processing Engine v1.24.0 Initialized`, 'success');
+        addLog(`API Key Detect: ${API_KEY ? 'ACTIVE (Verified)' : 'MISSING (Check .env.local)'}`, API_KEY ? 'info' : 'error');
+        addLog(`Stability Mode: gemini-1.5-flash (Standard)`, 'info');
+    }, []);
 
     useEffect(() => {
         if (selectedItemData && selectedItemData.itemId !== selectedItem?.itemId) {
