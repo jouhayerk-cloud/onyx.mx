@@ -21,32 +21,120 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } fro
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 
-/* ─── JSON batch payload builder ─── */
-const buildBatchJSON = (items: any[], workbookPrefix: string) => {
+/* ─── JSON Project Generator (V3) ─── */
+const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: string) => {
+    const [wStr, hStr] = activeLabelSize.split('x');
+    const width = parseInt(wStr) || 50;
+    const height = parseInt(hStr) || 30;
+
     return items.map(item => {
         const d = item.normData;
         const c = item.codes;
-        const tagUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`;
         const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
         const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+        const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
+        const tagId = c.bookBardcode || 'ONYX-VOID';
+        const description = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
+        const sizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
+        const matColor = `${d.material || 'ONYX'} ${d.color || 'NATURAL'}`.trim();
+
         return {
-            tagId: c.bookBardcode,
-            tagUrl,
-            description: `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE',
-            material: d.material || 'ONYX',
-            color: d.color || 'NATURAL',
-            dimensions: { w: d.widthCm || 0, l: d.lengthCm || 0, h: d.heightCm || 0, unit: 'CM' },
-            weight: d.weightKg || null,
-            quantity: d.quantity || 1,
-            codes: {
-                acqCode: c.bookAqCode,
-                landCode: c.bookLandCode,
-                bookRetail: c.bookRetail,
-                bookRetailTag: `${c.bookAqCode}-${bookv}${retailStr}`,
-            },
-            imageUrl: item.imageUrl || null,
-            itemId: d.itemId,
-            workbook: bookv,
+            name: `Onyx_${tagId}`,
+            version: 3,
+            labelSize: { width, height },
+            exportedAt: new Date().toISOString(),
+            isTemplate: false, // This is a specific instance
+            elements: [
+                {
+                    id: `bc_${tagId}`,
+                    type: "barcode",
+                    zone: 0,
+                    x: width * 0.1, // Dynamic positioning based on 40x30 scale
+                    y: height * 0.6,
+                    width: width * 0.8,
+                    height: height * 0.3,
+                    rotation: 0,
+                    barcodeData: tagId,
+                    barcodeFormat: "CODE128",
+                    textFontSize: 10,
+                    textBold: true
+                },
+                {
+                    id: `desc_${tagId}`,
+                    type: "text",
+                    zone: 0,
+                    x: width * 0.08,
+                    y: height * 0.25,
+                    width: width * 0.85,
+                    height: height * 0.15,
+                    rotation: 0,
+                    text: description.toUpperCase(),
+                    fontSize: 10,
+                    color: "black",
+                    align: "left",
+                    verticalAlign: "middle",
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: "bold"
+                },
+                {
+                    id: `retail_${tagId}`,
+                    type: "text",
+                    zone: 0,
+                    x: width * 0.08,
+                    y: height * 0.05,
+                    width: width * 0.45,
+                    height: height * 0.1,
+                    rotation: 0,
+                    text: bookRetailTag,
+                    fontSize: 8,
+                    color: "black",
+                    fontWeight: "bold"
+                },
+                {
+                    id: `sizes_${tagId}`,
+                    type: "text",
+                    zone: 0,
+                    x: width * 0.55,
+                    y: height * 0.05,
+                    width: width * 0.38,
+                    height: height * 0.1,
+                    rotation: 0,
+                    text: sizes,
+                    fontSize: 7,
+                    color: "black",
+                    align: "right"
+                },
+                {
+                    id: `mat_${tagId}`,
+                    type: "text",
+                    zone: 0,
+                    x: width * 0.08,
+                    y: height * 0.45,
+                    width: width * 0.85,
+                    height: height * 0.1,
+                    rotation: 0,
+                    text: matColor,
+                    fontSize: 7,
+                    color: "black",
+                    align: "left",
+                    fontStyle: "italic"
+                },
+                {
+                    id: `side_tag_${tagId}`,
+                    type: "text",
+                    zone: 0,
+                    x: -height * 0.1, // Fixed rotation positioning
+                    y: height * 0.35,
+                    width: height * 0.8,
+                    height: 12,
+                    rotation: 270,
+                    text: "ONYX.MX · MADE IN MEXICO",
+                    fontSize: 5,
+                    color: "white",
+                    background: "black",
+                    align: "center"
+                }
+            ]
         };
     });
 };
@@ -155,7 +243,7 @@ export const PackingModule: React.FC = () => {
         const timer = setTimeout(() => {
             iframe.contentWindow?.postMessage({
                 type: 'ONYX_LOAD_ITEM',
-                payload: buildBatchJSON([activeItem], workbookPrefix)[0]
+                payload: buildBatchJSON([activeItem], workbookPrefix, labelSize)[0]
             }, '*');
         }, 500);
         return () => clearTimeout(timer);
@@ -233,7 +321,7 @@ export const PackingModule: React.FC = () => {
             const batchData = {
                 exportedAt: new Date().toISOString(),
                 labelSize,
-                items: buildBatchJSON(selectedItems, workbookPrefix)
+                items: buildBatchJSON(selectedItems, workbookPrefix, labelSize)
             };
 
             // 1. Store in localStorage so the designer can read on load
@@ -264,7 +352,7 @@ export const PackingModule: React.FC = () => {
         const batchData = {
             exportedAt: new Date().toISOString(),
             labelSize,
-            items: buildBatchJSON(selectedItems, workbookPrefix)
+            items: buildBatchJSON(selectedItems, workbookPrefix, labelSize)
         };
         localStorage.setItem('onyx_packing_batch', JSON.stringify(batchData));
         window.open('https://jouhayerk-cloud.github.io/phomemo-designer/index.html', '_blank');
