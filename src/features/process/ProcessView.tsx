@@ -48,6 +48,7 @@ import {
     X,
     Box,
     Play,
+    Check,
     CheckCircle2,
     AlertCircle,
     Zap,
@@ -128,7 +129,7 @@ export const ProcessView: React.FC = () => {
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [batchQueue, setBatchQueue] = useState<BatchOperation[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     // Global Atoms
     const [tool, setTool] = useAtom(processToolAtom);
     const [showTerminal, setShowTerminal] = useAtom(processShowTerminalAtom);
@@ -194,16 +195,41 @@ export const ProcessView: React.FC = () => {
     }, [addLog]);
 
     const addToBatch = useCallback((item: any) => {
-        if (batchQueue.some(op => op.item.id === item.id)) return;
-        addLog(`Item ${item.itemId} added to deployment queue.`, 'info');
-        setBatchQueue(prev => [...prev, {
-            id: `OP-${Math.random().toString(36).substr(2, 4).toUpperCase()}`,
-            item: item,
-            status: 'idle',
-            progress: 0,
-            stepLabel: 'Ready'
-        }]);
+        const urls = item.mediaUrls?.split(',').map((u: string) => u.trim()).filter(Boolean) || [];
+        const baseImageUrl = getCleanImageUrl(item.generatedPngUrl || (urls.length > 0 ? urls[0] : null));
+        
+        // If the item has multiple images, add EACH one to the batch
+        urls.forEach((url: string, idx: number) => {
+            const opId = `OP-${item.id}-${idx}-${Math.random().toString(36).substr(2, 2).toUpperCase()}`;
+            if (batchQueue.some(op => op.id === opId)) return;
+            
+            setBatchQueue(prev => [...prev, {
+                id: opId,
+                item: { ...item, activeImageUrl: getCleanImageUrl(url) },
+                status: 'idle',
+                progress: 0,
+                stepLabel: idx === 0 ? 'Primary' : `Image ${idx + 1}`
+            }]);
+        });
+        
+        addLog(`Vault sync: ${urls.length} images queued for ${item.itemId}.`, 'info');
     }, [batchQueue, addLog]);
+
+    const addSelectedToBatch = () => {
+        const selectedItems = inventoryItems.filter(item => selectedIds.has(item.row));
+        selectedItems.forEach(item => addToBatch(item));
+        setSelectedIds(new Set());
+        setShowVault(false);
+        setShowBatchList(true);
+        toast.success(`Enqueued ${selectedItems.length} items for processing`);
+    };
+
+    const toggleSelection = (id: number) => {
+        const next = new Set(selectedIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedIds(next);
+    };
 
     /* --- AI Pipeline --- */
 
@@ -235,7 +261,7 @@ export const ProcessView: React.FC = () => {
             }
             addLog(`Using Model: gemini-1.5-flash (Stable Build)`, 'info');
 
-            const imageUrl = getCleanImageUrl(item.mediaUrls?.split(',')[0]);
+            const imageUrl = item.activeImageUrl || getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
 
             updateOp({ progress: 15, stepLabel: 'Resizing...' });
@@ -341,7 +367,8 @@ export const ProcessView: React.FC = () => {
         const queue = batchQueue.filter(op => op.status !== 'completed');
         for (const op of queue) {
             await processItem(op.id);
-            await new Promise(r => setTimeout(r, 500));
+            addLog(`Engine Throttling: Waiting 2.5s for session stability...`, 'info');
+            await new Promise(r => setTimeout(r, 2500));
         }
         updateProgress("BATCH COMPLETE", false);
         toast.success("Batch Sequence Finalized");
@@ -603,16 +630,59 @@ export const ProcessView: React.FC = () => {
             {showVault && (
                 <div className="fixed inset-0 z-100 p-8 bg-(--app-bg)/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
                     <div className="w-full max-w-6xl flex flex-col h-full bg-(--stitch-card-bg) border border-white/5 rounded-2xl p-8">
-                        <div className="flex items-center justify-between mb-8">
-                            <SectionTitle title="Inventory Vault" icon={Library} />
+                        <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
+                            <div className="flex items-center gap-8">
+                                <SectionTitle title="Inventory Vault" icon={Library} />
+                                <div className="flex bg-black/40 rounded-xl border border-white/5 p-1 gap-1">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Filter by Tag ID or Shape..." 
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="bg-transparent text-[10px] font-bold text-white px-4 py-2 focus:outline-none w-64 uppercase tracking-widest placeholder:text-white/10"
+                                    />
+                                    {selectedIds.size > 0 && (
+                                        <button 
+                                            onClick={addSelectedToBatch}
+                                            className="bg-(--main-color) text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                        >
+                                            <Play size={10} fill="black" />
+                                            Add {selectedIds.size} to Batch
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                             <button onClick={() => setShowVault(false)} className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-white transition-all"><X size={24} /></button>
                         </div>
-                        <div className="grid grid-cols-8 gap-4 overflow-y-auto pr-2">
-                            {filteredItems.map(item => (
-                                <div key={item.id} onClick={() => handleSelectItem(item)} className="aspect-square rounded-xl overflow-hidden border border-white/5 hover:border-(--main-color) transition-all cursor-pointer">
-                                    <img src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} className="w-full h-full object-cover grayscale opacity-40 hover:grayscale-0 hover:opacity-100" />
-                                </div>
-                            ))}
+
+                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                            {filteredItems.map(item => {
+                                const isSelected = selectedIds.has(item.row);
+                                return (
+                                    <div 
+                                        key={item.id} 
+                                        onClick={() => toggleSelection(item.row)}
+                                        className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${isSelected ? 'border-(--main-color) ring-4 ring-(--main-color)/20 shadow-xl' : 'border-white/5 hover:border-white/20'}`}
+                                    >
+                                        <img 
+                                            src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} 
+                                            className={`w-full h-full object-cover transition-all duration-500 ${isSelected ? 'scale-110' : 'grayscale group-hover:grayscale-0 group-hover:scale-105 opacity-40 group-hover:opacity-100'}`} 
+                                        />
+                                        
+                                        {/* Tag Overlay */}
+                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+                                            <span className={`text-[8px] font-black uppercase tracking-tighter truncate block ${isSelected ? 'text-(--main-color)' : 'text-white/40 group-hover:text-white'}`}>
+                                                {item.itemId || `ID-${item.row}`}
+                                            </span>
+                                        </div>
+
+                                        {/* Selection Indicator */}
+                                        <div className={`absolute top-2 right-2 w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/20 opacity-0 group-hover:opacity-100'}`}>
+                                            {isSelected && <Check size={12} className="text-black font-black" />}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
