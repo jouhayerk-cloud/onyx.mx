@@ -279,27 +279,31 @@ export function resizeImage(
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      let { width, height } = img;
-
-      if (width > height) {
-        if (width > maxDimension) {
-          height = Math.round(height * (maxDimension / width));
-          width = maxDimension;
-        }
-      } else {
-        if (height > maxDimension) {
-          width = Math.round(width * (maxDimension / height));
-          height = maxDimension;
-        }
-      }
-
-      canvas.width = width;
-      canvas.height = height;
+      const { width, height } = img;
+      const targetSize = maxDimension;
+      canvas.width = targetSize;
+      canvas.height = targetSize;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         return reject(new Error('Could not get 2D context for image resize.'));
       }
-      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Black background for padding
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, targetSize, targetSize);
+
+      let drawW, drawH;
+      if (width > height) {
+        drawW = targetSize;
+        drawH = Math.round(height * (targetSize / width));
+      } else {
+        drawH = targetSize;
+        drawW = Math.round(width * (targetSize / height));
+      }
+
+      const offsetX = (targetSize - drawW) / 2;
+      const offsetY = (targetSize - drawH) / 2;
+      ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
@@ -307,6 +311,40 @@ export function resizeImage(
       reject(new Error('Failed to load image for resizing.'));
     };
     img.src = dataUrl;
+  });
+}
+
+export function cropImage(
+  src: string, 
+  x: number, y: number, w: number, h: number, 
+  targetSize: number = 1024
+): Promise<string> {
+  return new Promise(async (resolve) => {
+    const img = await loadImage(src);
+    const canvas = document.createElement('canvas');
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Calculate dimensions in original pixels
+    const sx = x * img.width;
+    const sy = y * img.height;
+    const sw = w * img.width;
+    const sh = h * img.height;
+    
+    // Add context padding (15%) to avoid edge artifacts
+    const px = sw * 0.15;
+    const py = sh * 0.15;
+    
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, targetSize, targetSize);
+    ctx.drawImage(
+      img, 
+      Math.max(0, sx - px), Math.max(0, sy - py), 
+      sw + (2 * px), sh + (2 * py), 
+      0, 0, targetSize, targetSize
+    );
+    resolve(canvas.toDataURL('image/jpeg', 0.9));
   });
 }
 
@@ -850,6 +888,7 @@ export async function generatePngAndSvgFromMasks(
     clippingPath.addPath(path, matrix);
   }
   ctx.clip(clippingPath);
+  ctx.filter = 'blur(0.5px)'; // Subtle edge softening
 
   ctx.drawImage(
     image,

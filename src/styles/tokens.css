@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
 /* Global Design Tokens */
 
 :root {
@@ -210,4 +212,5 @@ html.theme-stitch {
   --gradient-tehu: linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec);
   --gradient-cherry: linear-gradient(135deg, #f0f7ff, #ffdce0, #ffffff);
   --gradient-stitch: linear-gradient(135deg, #13171f, #1C212D, #1e3a5f);
+  --gradient-studio: linear-gradient(135deg, #000000, #18181B, #09090B);
 }

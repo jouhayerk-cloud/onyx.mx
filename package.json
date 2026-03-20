@@ -1,7 +1,7 @@
 {
-  "name": "onyx.mx-git",
+  "name": "onyx.mx",
   "private": true,
-  "version": "1.26.2",
+  "version": "1.27.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port 1001 --host",
@@ -30,6 +30,7 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-barcode": "^1.6.1",
+    "react-canvas-masker": "^1.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
     "react-resize-detector": "^12.3.0",
