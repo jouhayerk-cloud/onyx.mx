@@ -573,7 +573,7 @@ export const ProcessView: React.FC = () => {
 
     useEffect(() => {
         const key = getApiKey();
-        addLog(`Inventory Processing Engine v1.27.0 Initialized`, 'success');
+        addLog(`Inventory Processing Engine v1.27.1 Initialized`, 'success');
         addLog(`API Key Detect: ${key ? 'ACTIVE' : 'MISSING'}`, key ? 'info' : 'error');
         
         // Auto-Discovery Call
