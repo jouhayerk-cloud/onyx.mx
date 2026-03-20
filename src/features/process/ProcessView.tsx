@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { MaskEditor, toMask } from 'react-canvas-masker';
 import {
     userAtom,
     inventoryAtom,
@@ -27,7 +28,8 @@ import {
     findContour,
     simplifyContour,
     createCurvePath,
-    resizeImage
+    resizeImage,
+    cropImage
 } from '../../lib/utils';
 import {
     Pipette,
@@ -55,7 +57,8 @@ import {
     Activity,
     FolderKanban,
     Terminal,
-    Bug
+    Bug,
+    Target
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -67,7 +70,11 @@ interface ProcessLayer {
     visible: boolean;
     opacity: number;
     rotation: number;
+    scale: number;
+    zIndex: number;
     position: { x: number, y: number };
+    includeInOutput?: boolean;
+    maskData?: string; 
 }
 
 interface BatchOperation {
@@ -85,7 +92,11 @@ interface BatchOperation {
     };
 }
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const getApiKey = () => {
+    const key = localStorage.getItem('ONYX_GEMINI_KEY') || import.meta.env.VITE_GEMINI_API_KEY || '';
+    const clean = String(key).trim().replace(/['"]/g, '');
+    return (clean === 'null' || clean === 'undefined') ? '' : clean;
+};
 
 /* --- Aesthetic Components --- */
 
@@ -140,6 +151,8 @@ export const ProcessView: React.FC = () => {
     const [activeStepLabel, setActiveStepLabel] = useAtom(processActiveStepLabelAtom);
     const [isProcessingGlobal, setIsProcessingGlobal] = useAtom(processIsProcessingAtom);
     const [engineStatus, setEngineStatus] = useState<'idle' | 'analyzing' | 'vectorizing' | 'committing' | 'completed' | 'error'>('idle');
+    const [refiningLayerId, setRefiningLayerId] = useState<string | null>(null);
+    const maskEditorRef = useRef<any>(null);
     
     // System Console Logs
     const [logs, setLogs] = useAtom(processLogsAtom);
@@ -153,6 +166,7 @@ export const ProcessView: React.FC = () => {
     };
 
     const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
+    const [refinePoints, setRefinePoints] = useState<{ x: number, y: number, type: 'pos' | 'neg' }[]>([]);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [layers, setLayers] = useState<ProcessLayer[]>([]);
     const [currentPath, setCurrentPath] = useState<{ x: number, y: number }[]>([]);
@@ -160,7 +174,12 @@ export const ProcessView: React.FC = () => {
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
-        setInventoryItems(inventory.map(item => ({ ...normalizeInventoryData(item.data), id: item.row, row: item.row, source: item.source })));
+        setInventoryItems(inventory.map(item => ({ 
+            ...normalizeInventoryData(item.data), 
+            id: item.data.id || item.row, // Prefer Supabase UUID
+            row: item.row, 
+            source: item.source 
+        })));
     }, [inventory]);
 
     const filteredItems = useMemo(() => {
@@ -184,11 +203,29 @@ export const ProcessView: React.FC = () => {
                     visible: true,
                     opacity: 1,
                     rotation: 0,
-                    position: { x: 50, y: 50 }
+                    position: { x: 50, y: 50 },
+                    scale: 1,
+                    zIndex: 0
                 };
-                setLayers([newLayer]);
+                
+                // Parse existing spatial masks if they exist
+                const savedMasks = item.spatialMasks || item.spatial_masks || [];
+                const savedLayers: ProcessLayer[] = (Array.isArray(savedMasks) ? savedMasks : []).map((m: any, i: number) => ({
+                    id: `MASK-${i}-${m.label || 'layer'}`,
+                    type: 'mask',
+                    data: { mask: m, color: '#6BCEBB' },
+                    visible: true,
+                    includeInOutput: true,
+                    opacity: 0.8,
+                    rotation: 0,
+                    scale: 1,
+                    zIndex: i + 1,
+                    position: { x: 50, y: 50 }
+                }));
+
+                setLayers([newLayer, ...savedLayers]);
                 setActiveLayerId(newLayer.id);
-                addLog(`Layer ${newLayer.id} initialized.`, 'success');
+                addLog(`WORKSPACE LOAD: ${item.itemId} (${savedLayers.length} masks found)`, 'success');
             }).catch(err => {
                 addLog(`Workspace load error: ${err.message}`, 'error');
             });
@@ -232,9 +269,60 @@ export const ProcessView: React.FC = () => {
         setSelectedIds(next);
     };
 
+    const handleClearResult = async (item: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Clear all AI-generated masks and PNG assets for ${item.itemId}?`)) return;
+        try {
+            const { error } = await supabase
+                .from('inventory')
+                .update({ 
+                    spatial_masks: null, 
+                    generated_png_url: null, 
+                    description: `Resetted for re-processing.` 
+                })
+                .eq('id', item.id);
+            if (error) throw error;
+            addLog(`Purged assets for ${item.itemId}`, 'warn');
+            setInventoryVersion(v => v + 1);
+        } catch (err: any) {
+            addLog(`Database error on purge: ${err.message}`, 'error');
+        }
+    };
+
+    const handleManualCommit = async () => {
+        if (!selectedItem) return;
+        setEngineStatus('committing');
+        addLog(`Synchronizing selected layers to database...`, 'info');
+        try {
+            const selectedMasks = layers.filter(l => l.type === 'mask' && l.includeInOutput).map(l => l.data.mask);
+            const baseImg = layers.find(l => l.type === 'image');
+            if (selectedMasks.length === 0 || !baseImg) throw new Error("Nothing selected for build.");
+            
+            const imageUrl = baseImg.data.src;
+            const imgImg = await loadImage(imageUrl);
+            const { pngData, svgData } = await generatePngAndSvgFromMasks(imageUrl, { width: imgImg.width, height: imgImg.height }, selectedMasks);
+            
+            const { error } = await supabase.from('inventory').update({
+                spatial_masks: selectedMasks,
+                generated_png_url: pngData,
+                description: `Production Commit: ${selectedMasks.length} layers.`
+            }).eq('id', selectedItem.id);
+            
+            if (error) throw error;
+            addLog(`Success: Production data synced.`, 'success');
+            setInventoryVersion(v => v + 1);
+            setEngineStatus('completed');
+            toast.success("Database Updated");
+        } catch (e: any) {
+            addLog(`Sync error: ${e.message}`, 'error');
+            setEngineStatus('error');
+            toast.error(e.message);
+        }
+    };
+
     /* --- AI Pipeline --- */
 
-    const processItem = async (opId: string | 'single') => {
+    const processItem = async (opId: string | 'single', forcedPoints: any[] = []) => {
         const updateOp = (updates: Partial<BatchOperation>) => {
             if (opId === 'single') {
                 if (updates.stepLabel) updateProgress(updates.stepLabel || '');
@@ -256,11 +344,12 @@ export const ProcessView: React.FC = () => {
 
         try {
             updateOp({ status: 'processing', progress: 5, stepLabel: 'Initalizing AI...' });
+            const API_KEY = getApiKey();
             if (!API_KEY) {
-                addLog("Gemini API Key missing! Make sure VITE_GEMINI_API_KEY is in your .env.local", "error");
+                addLog("Gemini API Key missing! Set it in browser storage: localStorage.setItem('ONYX_GEMINI_KEY', 'YOUR_KEY')", "error");
                 throw new Error("API Key missing");
             }
-            addLog(`Using Model: gemini-1.5-flash (Stable Build)`, 'info');
+            addLog(`Using Model: gemini-3.1-flash (March 2026 Release)`, 'info');
 
             const imageUrl = item.activeImageUrl || getCleanImageUrl(item.mediaUrls?.split(',')[0]);
             if (!imageUrl) throw new Error("Missing source image");
@@ -271,46 +360,58 @@ export const ProcessView: React.FC = () => {
 
             updateOp({ progress: 30, stepLabel: 'Analyzing...' });
             setEngineStatus('analyzing');
-            const instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
+            let instruction = `Give the segmentation masks for this ${item.shape} Onyx artifact. Instructions: If it's a mirror, create separate masks for the 'frame' and 'glass'. Output a JSON list of objects: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "string"}]`;
+            
+            if (forcedPoints.length > 0) {
+                 const pStr = forcedPoints.map(p => `[${Math.round(p.y * 10)}, ${Math.round(p.x * 10)}, ${p.type === 'pos' ? 'POSITIVE' : 'NEGATIVE'}]`).join(', ');
+                 instruction = `REFINEMENT MODE: Use these guidance points: ${pStr}. Extract the mask for the object associated with POSITIVE points and EXCLUDE areas with NEGATIVE points. Output JSON: [{"box_2d": [ymin, xmin, ymax, xmax], "mask": "base64_png", "label": "refined"}]`;
+            }
             
             // Raw Fetch Diagnostic Conduit (to unmask 400 errors)
             let resultText = '';
             let usedModelName = '';
-            const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
+            const modelsToTry = [
+                "gemini-3.1-pro",
+                "gemini-3.1-flash",
+                "gemini-3.1-pro-001",
+                "gemini-3.1-flash-001",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash"
+            ];
+
+            const callGemini = async (modelId: string, prompt: string, imgData: string, timeoutMs: number = 20000) => {
+                for (const version of ['v1', 'v1beta']) {
+                    const url = `https://generativelanguage.googleapis.com/${version}/models/${modelId}:generateContent?key=${API_KEY}`;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                    try {
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            signal: controller.signal,
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: 'image/jpeg', data: imgData } }] }] })
+                        });
+                        clearTimeout(timeoutId);
+                        if (res.ok) return await res.json();
+                        // If 404, we'll try the next version
+                        if (res.status === 404) continue;
+                        const err = await res.json().catch(() => ({}));
+                        addLog(`${modelId} (${version}) Rejected: ${res.status} (${err.error?.message || ''})`, 'warn');
+                    } catch (e: any) {
+                        clearTimeout(timeoutId);
+                        if (e.name === 'AbortError') addLog(`${modelId} timed out after ${timeoutMs/1000}s.`, 'warn');
+                    }
+                }
+                return null;
+            };
 
             for (const modelId of modelsToTry) {
-                try {
-                    addLog(`Requesting Trace: ${modelId}...`, 'info');
-                    const url = `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent?key=${API_KEY}`;
-                    
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [
-                                    { text: instruction },
-                                    { inlineData: { mimeType: 'image/jpeg', data: base64 } }
-                                ]
-                            }]
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        const errReason = data.error?.message || response.statusText;
-                        addLog(`${modelId} Rejected: ${response.status} (${errReason})`, 'warn');
-                        continue;
-                    }
-
-                    resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (resultText) {
-                        usedModelName = modelId;
-                        break;
-                    }
-                } catch (err: any) {
-                    addLog(`Connection Fault: ${err.message}`, 'error');
+                addLog(`Requesting Trace: ${modelId}...`, 'info');
+                const data = await callGemini(modelId, instruction, base64);
+                if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    resultText = data.candidates[0].content.parts[0].text;
+                    usedModelName = modelId;
+                    break;
                 }
             }
 
@@ -331,33 +432,76 @@ export const ProcessView: React.FC = () => {
             const processed = JSON.parse(cleanedJson);
             addLog(`Engine found ${processed.length} segmentation layers.`, 'success');
 
-            updateOp({ progress: 60, stepLabel: 'Vectorizing...' });
+            updateOp({ progress: 60, stepLabel: 'Refining Piece Edges (High-Res)...' });
             setEngineStatus('vectorizing');
+
+            const img = await loadImage(imageUrl);
+            const originalWidth = img.width;
+            const originalHeight = img.height;
+            const targetSize = 1024;
+            
+            let drawW, drawH;
+            if (originalWidth > originalHeight) { drawW = targetSize; drawH = Math.round(originalHeight * (targetSize / originalWidth)); } 
+            else { drawH = targetSize; drawW = Math.round(originalWidth * (targetSize / originalHeight)); }
+            const offsetX = (targetSize - drawW) / 2;
+            const offsetY = (targetSize - drawH) / 2;
+
+            // --- DOUBLE PASS REFINEMENT ENGINE ---
             const masks: any[] = await Promise.all(processed.map(async (m: any, idx: number) => {
-                const maskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
-                const maskImg = await loadImage(maskData);
-                const cv = document.createElement('canvas');
-                cv.width = maskImg.width; cv.height = maskImg.height;
-                const ctx = cv.getContext('2d', { willReadFrequently: true })!;
-                ctx.drawImage(maskImg, 0, 0);
-                const iData = ctx.getImageData(0, 0, cv.width, cv.height);
+                const box = m.box_2d;
+                addLog(`Refining piece ${idx+1} [${m.label}] via high-res crop...`, 'info');
+                
+                const bx_x = box[1] / 1000; const bx_y = box[0] / 1000;
+                const bx_w = (box[3] - box[1]) / 1000; const bx_h = (box[2] - box[0]) / 1000;
+                
+                const cropUrl = await cropImage(imageUrl, bx_x, bx_y, bx_w, bx_h, 1024);
+                const cropBase64 = cropUrl.split(',')[1];
+                
+                const refInstruction = `Edge Segmenter: Extract a highly precise binary mask (grayscale PNG) for the artifact in this crop. Return JSON: {"mask": "base64_png"}`;
+                let refinedMaskData = '';
+                
+                const refData = await callGemini(usedModelName, refInstruction, cropBase64, 15000);
+                if (refData && refData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    let refContent = refData.candidates[0].content.parts[0].text.trim();
+                    if (refContent.includes('```')) refContent = refContent.match(/```(?:json)?([\s\S]*?)```/)?.[1] || refContent;
+                    try {
+                        const parsed = JSON.parse(refContent.trim());
+                        refinedMaskData = parsed.mask.startsWith('data:image') ? parsed.mask : `data:image/png;base64,${parsed.mask}`;
+                    } catch (e) {
+                         addLog(`Vectorization failed for piece ${idx+1}, using base mask.`, 'warn');
+                         refinedMaskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
+                    }
+                } else {
+                    addLog(`Refinement pass ${idx+1} failed, falling back to base mask.`, 'warn');
+                    refinedMaskData = m.mask.startsWith('data:image') ? m.mask : `data:image/png;base64,${m.mask}`;
+                }
+
+                const maskImg = await loadImage(refinedMaskData);
+                const rcv = document.createElement('canvas');
+                rcv.width = maskImg.width; rcv.height = maskImg.height;
+                const rctx = rcv.getContext('2d', { willReadFrequently: true })!;
+                rctx.drawImage(maskImg, 0, 0);
+                const iData = rctx.getImageData(0, 0, rcv.width, rcv.height);
                 const contour = findContour(iData);
-                const simplified = simplifyContour(contour, 1.2);
+                const simplified = simplifyContour(contour, 0.8);
+
+                const x_pad = (box[1] / 1000) * targetSize; const y_pad = (box[0] / 1000) * targetSize;
+                const w_pad = ((box[3] - box[1]) / 1000) * targetSize; const h_pad = ((box[2] - box[0]) / 1000) * targetSize;
+                const x_orig = (x_pad - offsetX) * (originalWidth / drawW);
+                const y_orig = (y_pad - offsetY) * (originalHeight / drawH);
+                const w_orig = w_pad * (originalWidth / drawW);
+                const h_orig = h_pad * (originalHeight / drawH);
+
                 return {
-                    x: m.box_2d[1] / 1000, 
-                    y: m.box_2d[0] / 1000, 
-                    width: (m.box_2d[3] - m.box_2d[1]) / 1000, 
-                    height: (m.box_2d[2] - m.box_2d[0]) / 1000,
+                    x: x_orig / originalWidth, y: y_orig / originalHeight, 
+                    width: w_orig / originalWidth, height: h_orig / originalHeight,
                     label: m.label,
-                    maskWidth: maskImg.width,
-                    maskHeight: maskImg.height,
-                    path: createCurvePath(simplified),
-                    points: simplified
+                    maskWidth: maskImg.width, maskHeight: maskImg.height,
+                    path: createCurvePath(simplified), points: simplified
                 };
             }));
-
-            updateOp({ progress: 85, stepLabel: 'Rendering...' });
-            const img = await loadImage(imageUrl);
+            
+            updateOp({ progress: 90, stepLabel: 'Finalizing...' });
             const { pngData, svgData } = await generatePngAndSvgFromMasks(imageUrl, { width: img.width, height: img.height }, masks);
             const colorsResult = await extractGradientFromMask(imageUrl, masks[0], { width: img.width, height: img.height });
 
@@ -369,12 +513,11 @@ export const ProcessView: React.FC = () => {
                 const { error } = await supabase
                     .from('inventory')
                     .update({
-                        vector_data: JSON.stringify(masks),
-                        svg_path: svgData,
-                        processed_image_url: pngData,
-                        mask_segments: JSON.stringify({ colors: colorsResult })
+                        spatial_masks: masks, 
+                        generated_png_url: pngData,
+                        description: `Auto-segmented via Gemini: ${masks.length} layers found.`
                     })
-                    .eq('row', item.row);
+                    .eq('id', item.id); // Use the UUID 'id' column for Supabase matching
                 
                 if (error) throw error;
                 addLog(`Item ${item.itemId} persisted to Inventory DB.`, 'success');
@@ -389,8 +532,23 @@ export const ProcessView: React.FC = () => {
                 result: { pngData, svgData, masks, colors: colorsResult }
             });
             setEngineStatus('completed');
-            addLog(`Full Engine Trace Complete for ${item.itemId}. Asset generated.`, 'success');
-            if (opId === 'single') updateProgress('DEPLOYMENT SUCCESS', false);
+            const newMaskLayers: ProcessLayer[] = masks.map((mask, i) => ({
+                id: `MASK-${i}-${Math.random().toString(36).substr(2, 2).toUpperCase()}`,
+                type: 'mask',
+                data: { mask, color: colorsResult || '#6BCEBB' },
+                visible: true,
+                opacity: 0.8, // Increased opacity for better overlay representation
+                rotation: 0,
+                position: { x: 50, y: 50 },
+                scale: 1,
+                zIndex: i + 1
+            }));
+            
+            if (opId === 'single') {
+                setLayers(prev => [...prev.filter(l => l.type === 'image'), ...newMaskLayers]);
+                addLog(`Engine found ${masks.length} segmentation layers. Applied to workspace center.`, 'success');
+            }
+
             setInventoryVersion(v => v + 1);
 
         } catch (e: any) {
@@ -414,21 +572,43 @@ export const ProcessView: React.FC = () => {
     };
 
     useEffect(() => {
-        addLog(`Inventory Processing Engine v1.26.2 Initialized`, 'success');
-        addLog(`API Key Detect: ${API_KEY ? 'ACTIVE' : 'MISSING'}`, API_KEY ? 'info' : 'error');
+        const key = getApiKey();
+        addLog(`Inventory Processing Engine v1.27.0 Initialized`, 'success');
+        addLog(`API Key Detect: ${key ? 'ACTIVE' : 'MISSING'}`, key ? 'info' : 'error');
         
         // Auto-Discovery Call
         const discoverModels = async () => {
+             const currentKey = getApiKey();
+             if (!currentKey || currentKey.length < 10) return;
+             if (currentKey.startsWith('Alza')) {
+                 addLog(`Security: API Key likely has a typo ('Alza' should be 'AIza'). Check capital 'I'.`, 'error');
+             }
              try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`);
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${currentKey}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    const msg = err.error?.message || 'Check Key Alignment';
+                    addLog(`Library scan: ${res.status} ${msg}`, 'warn');
+                    if (msg.includes('expired')) addLog(`Status: Your key is reported as EXPIRED. Re-generate in AI Studio.`, 'error');
+                    return;
+                }
                 const data = await res.json();
                 const modelNames = data.models?.map((m: any) => m.name.replace('models/', '')) || [];
-                addLog(`Engine Library Discovered: ${modelNames.slice(0, 4).join(', ')}...`, 'info');
+                if (modelNames.length) addLog(`Engine Library Discovered: ${modelNames.slice(0, 4).join(', ')}...`, 'info');
              } catch (e) {
-                addLog(`Library scan skipped.`, 'warn');
+                addLog(`Library scan offline.`, 'warn');
              }
         };
         discoverModels();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowVault(false);
+                setShowBatchList(false);
+                setShowTerminal(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     useEffect(() => {
@@ -443,22 +623,79 @@ export const ProcessView: React.FC = () => {
         const ctx = cv.getContext('2d');
         if (!ctx) return;
         ctx.clearRect(0, 0, cv.width, cv.height);
-        layers.forEach(l => {
+        // Sort by Z-Index
+        [...layers].sort((a, b) => a.zIndex - b.zIndex).forEach(l => {
             if (!l.visible) return;
             ctx.save();
-            ctx.globalAlpha = l.opacity;
-            ctx.translate((l.position.x / 100) * cv.width, (l.position.y / 100) * cv.height);
-            ctx.rotate((l.rotation * Math.PI) / 180);
+            ctx.translate(cv.width / 2, cv.height / 2);
+            ctx.rotate((l.rotation || 0) * Math.PI / 180);
+            
+            const tx = (l.position.x - 50) * (cv.width / 100);
+            const ty = (l.position.y - 50) * (cv.height / 100);
+            ctx.translate(tx, ty);
+            ctx.scale(l.scale || 1, l.scale || 1);
+
             if (l.type === 'image') {
                 const { img } = l.data;
                 const aspect = img.width / img.height;
                 const h = cv.height * 0.7;
                 const w = h * aspect;
+                ctx.globalAlpha = l.opacity;
                 ctx.drawImage(img, -w/2, -h/2, w, h);
+            } else if (l.type === 'mask') {
+                const { mask, color } = l.data;
+                const baseLayer = layers.find(pl => pl.type === 'image');
+                if (!baseLayer) { ctx.restore(); return; }
+                
+                const { img: baseImg } = baseLayer.data;
+                const imgAspect = baseImg.width / baseImg.height;
+                const h_display = cv.height * 0.7;
+                const w_display = h_display * imgAspect;
+                
+                const maskDisplayX = (mask.x * w_display) - (w_display / 2);
+                const maskDisplayY = (mask.y * h_display) - (h_display / 2);
+                
+                const path = new Path2D(mask.path);
+                const scaleX = (mask.width * w_display) / mask.maskWidth;
+                const scaleY = (mask.height * h_display) / mask.maskHeight;
+                
+                ctx.save();
+                ctx.globalAlpha = l.opacity;
+                ctx.translate(maskDisplayX, maskDisplayY);
+                ctx.scale(scaleX, scaleY);
+                ctx.fillStyle = color;
+                ctx.fill(path);
+                
+                // Active stroke
+                if (activeLayerId === l.id) {
+                    ctx.strokeStyle = '(---main-color)';
+                    ctx.lineWidth = 3 / scaleX;
+                    ctx.stroke(path);
+                } else {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1 / scaleX;
+                    ctx.stroke(path);
+                }
+                ctx.restore();
             }
             ctx.restore();
         });
-    }, [layers]);
+
+        // Render Refine Points
+        refinePoints.forEach(p => {
+             ctx.save();
+             const px = (p.x * cv.width) / 100;
+             const py = (p.y * cv.height) / 100;
+             ctx.beginPath();
+             ctx.arc(px, py, 6, 0, Math.PI * 2);
+             ctx.fillStyle = p.type === 'pos' ? '#10b981' : '#f43f5e';
+             ctx.fill();
+             ctx.strokeStyle = 'white';
+             ctx.lineWidth = 2;
+             ctx.stroke();
+             ctx.restore();
+        });
+    }, [layers, activeLayerId, refinePoints]);
 
     return (
         <div className="flex flex-col w-full h-full bg-transparent gap-4 overflow-hidden font-sans">
@@ -506,6 +743,13 @@ export const ProcessView: React.FC = () => {
                     >
                         <Scissors size={24} />
                     </button>
+                    <button 
+                        onClick={() => setTool('point')} 
+                        className={`transition-all duration-300 ${tool === 'point' ? 'text-(--main-color) drop-shadow-[0_0_10px_var(--main-color)]' : 'text-white/20 hover:text-white'}`}
+                        title="AI Point Refinement (Click: Pos, Right-Click: Neg)"
+                    >
+                        <Target size={24} />
+                    </button>
                     <div className="h-10 w-px bg-white/5 mx-auto" />
                     <button 
                         onClick={() => setLayers([])} 
@@ -529,9 +773,69 @@ export const ProcessView: React.FC = () => {
                         ref={canvasRef} 
                         width={1600} 
                         height={1600}
-                        onMouseDown={(e) => { if (tool === 'move' && activeLayerId) { setIsDragging(true); setDragStart({ x: e.clientX, y: e.clientY }); } }}
+                        onContextMenu={(e) => {
+                            if (tool === 'point') {
+                                e.preventDefault();
+                                const r = canvasRef.current?.getBoundingClientRect();
+                                if (r) {
+                                    setRefinePoints(prev => [...prev, { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100, type: 'neg' }]);
+                                }
+                            }
+                        }}
+                        onMouseDown={(e) => { 
+                            const r = canvasRef.current?.getBoundingClientRect();
+                            if (!r) return;
+                            const cx = ((e.clientX - r.left) / r.width) * 100;
+                            const cy = ((e.clientY - r.top) / r.height) * 100;
+
+                            if (tool === 'point') {
+                                setRefinePoints(prev => [...prev, { x: cx, y: cy, type: 'pos' }]);
+                                return;
+                            }
+
+                            if (tool === 'move') {
+                                // Hit detection for layers (Front to Back)
+                                const canvas = canvasRef.current!;
+                                const ctx = canvas.getContext('2d')!;
+                                const hitLayer = [...layers].sort((a,b) => b.zIndex - a.zIndex).find(l => {
+                                    if (!l.visible || l.type !== 'mask') return false;
+                                    const path = new Path2D(l.data.mask.path);
+                                    
+                                    // Translate coordinates to check hit in local space
+                                    const mx = (cx - 50) * (canvas.width / 100);
+                                    const my = (cy - 50) * (canvas.height / 100);
+                                    
+                                    const baseLayer = layers.find(pl => pl.type === 'image');
+                                    if (!baseLayer) return false;
+                                    const { img: baseImg } = baseLayer.data;
+                                    const imgAspect = baseImg.width / baseImg.height;
+                                    const h_disp = canvas.height * 0.7;
+                                    const w_disp = h_disp * imgAspect;
+                                    
+                                    const mX = (l.data.mask.x * w_disp) - (w_disp / 2);
+                                    const mY = (l.data.mask.y * h_disp) - (h_disp / 2);
+                                    
+                                    const sX = (l.data.mask.width * w_disp) / l.data.mask.maskWidth;
+                                    const sY = (l.data.mask.height * h_disp) / l.data.mask.maskHeight;
+                                    
+                                    const localX = (mx - mX) / (sX * l.scale);
+                                    const localY = (my - mY) / (sY * l.scale);
+                                    
+                                    return ctx.isPointInPath(path, localX, localY);
+                                });
+
+                                if (hitLayer) {
+                                    setActiveLayerId(hitLayer.id);
+                                }
+                                
+                                if (activeLayerId) {
+                                    setIsDragging(true); 
+                                    setDragStart({ x: e.clientX, y: e.clientY }); 
+                                }
+                            } 
+                        }}
                         onMouseMove={(e) => {
-                            if (!isDragging || !activeLayerId) return;
+                            if (!isDragging || !activeLayerId || tool !== 'move') return;
                             const r = canvasRef.current?.getBoundingClientRect();
                             if (!r) return;
                             const dx = ((e.clientX - dragStart.x) / r.width) * 100;
@@ -540,9 +844,46 @@ export const ProcessView: React.FC = () => {
                             setDragStart({ x: e.clientX, y: e.clientY });
                         }}
                         onMouseUp={() => setIsDragging(false)}
-                        style={{ width: 'min(76vh, 76vw)', height: 'min(76vh, 76vw)' }}
+                        style={{ width: 'min(76vh, 76vw)', height: 'min(76vh, 76vw)', display: refiningLayerId ? 'none' : 'block' }}
                         className="bg-black/40 rounded-xl shadow-2xl z-10"
                     />
+
+                    {refiningLayerId && (
+                        <div className="absolute inset-0 z-30 bg-black/80 flex flex-col items-center justify-center p-8 overflow-hidden">
+                             <div className="w-full max-w-4xl h-full flex flex-col gap-4">
+                                 <div className="flex items-center justify-between">
+                                     <SectionTitle title="Manual Edge Refinement" icon={Pipette} />
+                                     <div className="flex items-center gap-3">
+                                         <button 
+                                            onClick={() => setRefiningLayerId(null)}
+                                            className="px-4 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase hover:bg-white/10"
+                                         >Cancel</button>
+                                         <button 
+                                            onClick={() => {
+                                                if (maskEditorRef.current?.maskCanvas) {
+                                                    const mask = toMask(maskEditorRef.current.maskCanvas);
+                                                    setLayers(ls => ls.map(l => l.id === refiningLayerId ? { ...l, maskData: mask } : l));
+                                                    setRefiningLayerId(null);
+                                                    addLog(`Refined mask applied to layer ${refiningLayerId}`, 'success');
+                                                }
+                                            }}
+                                            className="px-6 py-2 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase"
+                                         >Apply Changes</button>
+                                     </div>
+                                 </div>
+                                 <div className="flex-1 bg-black rounded-2xl overflow-hidden border border-white/10 relative">
+                                    <MaskEditor 
+                                        src={layers.find(l => l.type === 'image')?.data.src || ''}
+                                        canvasRef={maskEditorRef}
+                                        initialMask={layers.find(l => l.id === refiningLayerId)?.maskData}
+                                        maskColor="#6BCEBB"
+                                        maskOpacity={0.6}
+                                        onDrawingChange={() => {}}
+                                    />
+                                 </div>
+                             </div>
+                        </div>
+                    )}
 
                     {/* Engine Telemetry Overlay */}
                     {isProcessingGlobal && (
@@ -565,23 +906,78 @@ export const ProcessView: React.FC = () => {
                         </div>
                     )}
                 </div>
-                <aside className="w-80 flex-shrink-0 flex flex-col gap-4 relative overflow-hidden pr-2">
-                    <StitchCard className="shrink-0 flex flex-col gap-3 min-h-[90px] bg-black/40 border-(--main-color)/10 overflow-hidden relative group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-(--main-color)/10 flex items-center justify-center text-(--main-color)">
-                                <Activity size={14} className={isProcessingGlobal ? "animate-pulse" : "opacity-20"} />
+                <aside className="w-80 h-full shrink-0 flex flex-col gap-4 relative overflow-hidden pr-2">
+                    {/* Layer Properties Panel (Conditional) */}
+                    {activeLayerId && (
+                        <StitchCard className="shrink-0 flex flex-col gap-3 p-3 bg-black/40 border-white/5 overflow-hidden">
+                            <SectionTitle title="Properties" icon={Palette} />
+                            <div className="flex flex-col gap-3 mt-1">
+                                {layers.find(l => l.id === activeLayerId)?.type === 'mask' && (
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Color</label>
+                                        <div className="flex gap-2">
+                                            {['#6BCEBB', '#F7941D', '#F36F21', '#a78bfa', '#FFFFFF'].map(c => (
+                                                <button 
+                                                    key={c}
+                                                    onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, data: { ...l.data, color: c } } : l))}
+                                                    className={`w-5 h-5 rounded-full border-2 ${layers.find(l => l.id === activeLayerId)?.data.color === c ? 'border-white' : 'border-transparent'}`}
+                                                    style={{ backgroundColor: c }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {refinePoints.length > 0 && (
+                                     <div className="flex flex-col gap-2 p-2 bg-black/40 rounded-lg border border-(--main-color)/20">
+                                         <button 
+                                             onClick={() => processItem('single', refinePoints)}
+                                             className="w-full py-2 bg-(--main-color) text-black text-[9px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-(--main-color)/20 active:scale-95 transition-all"
+                                         >Refine via {refinePoints.length} Points</button>
+                                         <button 
+                                             onClick={() => setRefinePoints([])}
+                                             className="w-full py-1 text-white/20 text-[8px] font-black uppercase hover:text-rose-400 transition-colors"
+                                         >Reset Points</button>
+                                     </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Opacity</label>
+                                        <input 
+                                            type="range" min="0" max="1" step="0.01" 
+                                            value={layers.find(l => l.id === activeLayerId)?.opacity || 0}
+                                            onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, opacity: parseFloat(e.target.value) } : l))}
+                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Scale</label>
+                                        <input 
+                                            type="range" min="0.1" max="3" step="0.01" 
+                                            value={layers.find(l => l.id === activeLayerId)?.scale || 1}
+                                            onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, scale: parseFloat(e.target.value) } : l))}
+                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Rotate</label>
+                                        <input 
+                                            type="range" min="-180" max="180" step="1" 
+                                            value={layers.find(l => l.id === activeLayerId)?.rotation || 0}
+                                            onChange={(e) => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, rotation: parseInt(e.target.value) } : l))}
+                                            className="w-full h-1 bg-white/5 rounded-full appearance-none accent-(--main-color)"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/20">Z-Order</label>
+                                        <div className="flex gap-2">
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: Math.max(0, l.zIndex - 1) } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">BACK</button>
+                                             <button onClick={() => setLayers(ls => ls.map(l => l.id === activeLayerId ? { ...l, zIndex: l.zIndex + 1 } : l))} className="flex-1 bg-white/5 hover:bg-white/10 rounded py-1 text-[8px] font-black">FRONT</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Telemetry</span>
-                                <span className={`text-[10px] font-bold truncate uppercase italic ${isProcessingGlobal ? 'text-(--main-color)' : 'text-white/10'}`}>
-                                    {activeStepLabel || "Standby"}
-                                </span>
-                            </div>
-                        </div>
-                        {isProcessingGlobal && (
-                            <div className="absolute bottom-0 left-0 h-0.5 bg-(--main-color) transition-all duration-300 animate-pulse w-full shadow-[0_0_10px_var(--main-color)]" />
-                        )}
-                    </StitchCard>
+                        </StitchCard>
+                    )}
                     <StitchCard className="flex-1 flex flex-col gap-4 overflow-hidden">
                         <div className="flex items-center justify-between border-b border-white/5 pb-3">
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Layers</span>
@@ -589,17 +985,59 @@ export const ProcessView: React.FC = () => {
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
                             {layers.map(l => (
-                                <div key={l.id} onClick={() => setActiveLayerId(l.id)} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all cursor-pointer ${activeLayerId === l.id ? 'bg-white/4 border-(--main-color)/40 shadow-inner' : 'bg-transparent border-transparent hover:bg-white/2'}`}>
-                                    <div className="w-10 h-10 rounded-md bg-black/40 flex-shrink-0 border border-white/5 overflow-hidden">
-                                        {l.type === 'image' && <img src={l.data.src} className="w-full h-full object-cover opacity-50" />}
+                                <div key={l.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${activeLayerId === l.id ? 'bg-white/5 border-(--main-color)/40 shadow-xl' : 'bg-transparent border-transparent hover:bg-white/2'}`}>
+                                    <div className="flex flex-col gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                        <button 
+                                            onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, visible: !layer.visible } : layer))}
+                                            className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.visible ? 'text-(--main-color)' : 'text-white/10'}`}
+                                            title="Toggle Visibility"
+                                        >
+                                            <Layers size={14} />
+                                        </button>
+                                        {l.type === 'mask' && (
+                                            <button 
+                                                onClick={() => setLayers(ls => ls.map(layer => layer.id === l.id ? { ...layer, includeInOutput: !layer.includeInOutput } : layer))}
+                                                className={`w-6 h-6 flex items-center justify-center rounded-md transition-colors ${l.includeInOutput ? 'text-amber-400' : 'text-white/10'}`}
+                                                title="Include in Output"
+                                            >
+                                                <Check size={14} />
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-bold text-white uppercase italic truncate tracking-tight">{l.id}</p>
-                                        <p className="text-[8px] text-white/30 uppercase mt-0.5">{l.type} layer</p>
+                                    <div onClick={() => setActiveLayerId(l.id)} className="flex-1 flex items-center gap-3 cursor-pointer min-w-0">
+                                        <div className="w-8 h-8 rounded-md bg-black/40 shrink-0 border border-white/5 overflow-hidden flex items-center justify-center relative">
+                                            {l.type === 'image' && <img src={l.data.src} className="w-full h-full object-cover opacity-60" />}
+                                            {l.type === 'mask' && <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ color: l.data.color }} />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[9px] font-black text-white/80 uppercase italic truncate tracking-widest">{l.id.split('-').pop()}</p>
+                                            <p className="text-[7px] text-white/20 uppercase font-bold">{l.type}</p>
+                                        </div>
                                     </div>
-                                    {activeLayerId === l.id && <div className="w-1.5 h-1.5 rounded-full bg-(--main-color)" />}
+                                    <div className="flex items-center gap-1">
+                                        {l.type === 'mask' && (
+                                            <button 
+                                                onClick={() => setRefiningLayerId(l.id)}
+                                                className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-white/20 hover:text-(--main-color) transition-all"
+                                                title="Refine Edges"
+                                            >
+                                                <Pipette size={14} />
+                                            </button>
+                                        )}
+                                        {activeLayerId === l.id && <div className="w-1 h-1 rounded-full bg-(--main-color) shadow-[0_0_5px_var(--main-color)]" />}
+                                    </div>
                                 </div>
                             ))}
+                        </div>
+                        <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+                            <button 
+                                onClick={handleManualCommit}
+                                disabled={isProcessingGlobal || layers.filter(l => l.type === 'mask' && l.includeInOutput).length === 0}
+                                className="w-full py-2.5 rounded-lg bg-(--main-color)/10 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+                            >
+                                <Save size={12} />
+                                Sync Selection
+                            </button>
                         </div>
                     </StitchCard>
 
@@ -607,12 +1045,40 @@ export const ProcessView: React.FC = () => {
                         <div className="absolute inset-0 z-10 flex flex-col">
                             <StitchCard className="flex-1 bg-black/90 backdrop-blur-3xl border-(--main-color)/20 shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col p-4">
                                 <div className="flex items-center justify-between mb-3 text-emerald-500">
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Engine Console</span>
-                                    <button onClick={() => setShowTerminal(false)}><X size={14} /></button>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Engine Console</span>
+                                            <button 
+                                                onClick={() => {
+                                                    const val = window.prompt("Enter Gemini API Key (Case-Sensitive):", getApiKey());
+                                                    if (val !== null) {
+                                                        localStorage.setItem('ONYX_GEMINI_KEY', val.trim());
+                                                        window.location.reload();
+                                                    }
+                                                }}
+                                                className="text-white/20 hover:text-(--main-color) transition-colors"
+                                                title="Configure API Key"
+                                            >
+                                                <Bug size={10} />
+                                            </button>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const text = logs.map(l => `[${l.time}] ${l.msg}`).join('\n');
+                                                navigator.clipboard.writeText(text);
+                                                toast.success("Logs copied to clipboard");
+                                            }}
+                                            className="w-6 h-6 flex items-center justify-center rounded-md bg-white/5 text-white/40 hover:text-white transition-all"
+                                            title="Copy Logs"
+                                        >
+                                            <Download size={12} />
+                                        </button>
+                                    </div>
+                                    <button onClick={() => setShowTerminal(false)} className="text-white/20 hover:text-white transition-all"><X size={14} /></button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col-reverse gap-2 text-[11px] font-mono leading-relaxed">
+                                <div className="flex-1 overflow-y-auto pr-1 flex flex-col-reverse gap-2 text-[11px] font-mono leading-relaxed scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                                     {logs.map(log => (
-                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0">
+                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0 break-words">
                                             <span className="text-white/10 group-hover:text-white/30 mr-2 text-[9px]">[{log.time}]</span>
                                             <span className={
                                                 log.type === 'error' ? 'text-rose-400 font-bold' : 
@@ -700,8 +1166,8 @@ export const ProcessView: React.FC = () => {
             </main>
 
             {showVault && (
-                <div className="fixed inset-0 z-100 p-8 bg-(--app-bg)/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
-                    <div className="w-full max-w-6xl flex flex-col h-full bg-(--stitch-card-bg) border border-white/5 rounded-2xl p-8">
+                <div className="fixed inset-0 z-100 p-8 bg-[--app-bg]/95 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in zoom-in-95">
+                    <div className="w-full max-w-6xl flex flex-col h-full bg-[--stitch-card-bg] border border-white/5 rounded-2xl p-8">
                         <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
                             <div className="flex items-center gap-8">
                                 <SectionTitle title="Inventory Vault" icon={Library} />
@@ -716,7 +1182,7 @@ export const ProcessView: React.FC = () => {
                                     {selectedIds.size > 0 && (
                                         <button 
                                             onClick={addSelectedToBatch}
-                                            className="bg-(--main-color) text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                            className="bg-[--main-color] text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                                         >
                                             <Play size={10} fill="black" />
                                             Add {selectedIds.size} to Batch
@@ -733,23 +1199,37 @@ export const ProcessView: React.FC = () => {
                                 return (
                                     <div 
                                         key={item.id} 
-                                        className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${isSelected ? 'border-(--main-color) ring-4 ring-(--main-color)/20 shadow-xl' : 'border-white/5 hover:border-white/20'}`}
+                                        className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${isSelected ? 'border-[--main-color] ring-4 ring-[--main-color]/20 shadow-xl' : 'border-white/5 hover:border-white/20'}`}
                                     >
                                         <div 
                                             className="w-full h-full"
                                             onClick={() => {
                                                 handleSelectItem(item);
-                                                processItem('single');
                                             }}
                                         >
                                             <img 
-                                                src={getCleanImageUrl(item.mediaUrls?.split(',')[0])!} 
+                                                src={getCleanImageUrl(item.generatedPngUrl || item.mediaUrls?.split(',')[0])!} 
                                                 className={`w-full h-full object-cover transition-all duration-500 ${isSelected ? 'scale-110' : 'grayscale group-hover:grayscale-0 group-hover:scale-105 opacity-40 group-hover:opacity-100'}`} 
                                             />
                                             
+                                            {/* Status Badge */}
+                                            {item.generatedPngUrl && (
+                                                <div className="absolute top-2 left-2 z-10 flex gap-1 items-center">
+                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse" />
+                                                    <button 
+                                                        onClick={(e) => handleClearResult(item, e)}
+                                                        className="w-5 h-5 rounded-md bg-rose-500/20 text-rose-400 flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 hover:text-white"
+                                                        title="Clear Result"
+                                                    >
+                                                        <Trash2 size={10} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            
                                             {/* Tag Overlay */}
-                                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2">
-                                                <span className={`text-[8px] font-black uppercase tracking-tighter truncate block ${isSelected ? 'text-(--main-color)' : 'text-white/40 group-hover:text-white'}`}>
+                                            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none group-hover:h-full transition-all duration-700" />
+                                            <div className="absolute inset-x-0 bottom-0 p-2">
+                                                <span className={`text-[8px] font-black uppercase tracking-tighter truncate block ${isSelected ? 'text-[--main-color]' : 'text-white/40 group-hover:text-white'}`}>
                                                     {item.itemId || `ID-${item.row}`}
                                                 </span>
                                             </div>

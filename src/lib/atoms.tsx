@@ -311,7 +311,7 @@ export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('contr
 export const TOP_BAR_SEARCH_ATOM = atom<string>('');
 
 // Process Module Atoms
-export const processToolAtom = atom<'move' | 'mask'>('move');
+export const processToolAtom = atom<'move' | 'mask' | 'point'>('move');
 export const processShowTerminalAtom = atom<boolean>(false);
 export const processShowVaultAtom = atom<boolean>(false);
 export const processShowBatchListAtom = atom<boolean>(false);
