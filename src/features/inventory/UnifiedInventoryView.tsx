@@ -18,6 +18,7 @@ import {
     filteredInventoryCountAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
+    isInventoryVendorFilterOpenAtom,
     inventoryAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
@@ -588,6 +589,7 @@ export const UnifiedInventoryView = () => {
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
+    const isVendorFilterOpen = useAtomValue(isInventoryVendorFilterOpenAtom);
     
     const toggleExpandCard = (id: string) => {
         setExpandedCards(prev => {
@@ -863,10 +865,10 @@ export const UnifiedInventoryView = () => {
     }, [filteredItems]);
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
+        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2 transition-all duration-300 ${isVendorFilterOpen ? 'pt-14' : ''}`}>
 
             {/* Stitch-inspired Sub-Header */}
-            <div className="flex items-end gap-8 px-4 py-6 mt-4 mx-2 shrink-0 z-30 relative">
+            <div className={`flex items-end gap-8 px-4 py-6 mt-4 mx-2 shrink-0 z-30 relative transition-transform duration-300 ${isVendorFilterOpen ? 'translate-y-2' : ''}`}>
                 <div>
                     <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
                         Types
