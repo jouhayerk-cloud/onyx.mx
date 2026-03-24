@@ -11,9 +11,16 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
--->
+## v1.27.2 — 2026-03-24
+### Changed
+- **Overview Module [ui]:** Redesigned the "Priority Requisitions" section with significantly larger UI components. Headers, bank logos, vendor dots, and expansion detail panels have been enlarged for better visibility and interactive density.
+- **Payment Split [feat]:** "Direct Wire" payments are now displayed independently per vendor instead of being grouped under a single destination. Other payment destinations (BoA, BBVA) continue to be grouped as usual.
+- **Payment detail list [ui]:** Expanded the accordion detail rows to show a clear breakdown of Net Amount, Commission Fee, and total value with improved typographic hierarchy.
 
-## v1.18.1 — 2026-03-18
+## v1.27.1 — 2026-03-20
+### Added
+- **Studio Overhaul [feat]:** Interactive Transforms, AI Point Refinement, and Spatial UI implementation.
+
 ### Changed
 - **Packing Nav [ui]:** Removed redundant internal title, brand pill, and search bar from the Packing module — the global top bar handles both. Replaced the full nav with a slim status toolbar (artifact count · selected count · active vendor filter chip).
 - **Packing Sidebar [ui]:** Removed Est. Value auto-sum card. Sidebar now shows Batch count only.
