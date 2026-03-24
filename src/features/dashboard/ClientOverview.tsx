@@ -59,9 +59,11 @@ const SectionHeader = ({ icon: Icon, title, badge, color = '#00AEEF', right }: {
 );
 
 // ── Vendor Dot ───────────────────────────────────────────────────
-const VendorDot = ({ vendorId, color }: { vendorId: string; color: string }) => (
+const VendorDot = ({ vendorId, color, size = 'w-5 h-5', textSize = 'text-[8px]' }: { 
+    vendorId: string; color: string; size?: string; textSize?: string;
+}) => (
     <span
-        className="inline-flex items-center justify-center w-5 h-5 rounded-md text-[8px] font-black text-black shadow-sm border border-black/20 shrink-0"
+        className={`inline-flex items-center justify-center ${size} rounded-md ${textSize} font-black text-black shadow-sm border border-black/20 shrink-0`}
         style={{ backgroundColor: color }}
         title={vendorId}
     >
@@ -133,6 +135,41 @@ export const ClientOverview: React.FC = () => {
     const activeDestReqNetMXN = useMemo(() =>
         activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0),
         [activeDestPendingRecords]);
+
+    const requisitions = useMemo(() => {
+        const groups: { key: string; cfg: any; docs: any[]; type: 'grouped' | 'independent'; vendorId?: string }[] = [];
+        
+        Object.entries(destinationsConfig).forEach(([key, cfg]) => {
+            const docs = activeDestPendingRecords.filter(d => d.destination === key);
+            if (docs.length === 0) return;
+
+            if (key === PaymentDestination.Fast_Cash_Wire) {
+                const byVendor: Record<string, any[]> = {};
+                docs.forEach(d => {
+                    const vid = d.vendor_id || d.description?.match(/from (\w+)$/)?.[1] || 'Unknown';
+                    if (!byVendor[vid]) byVendor[vid] = [];
+                    byVendor[vid].push(d);
+                });
+                Object.entries(byVendor).forEach(([vid, vDocs]) => {
+                    groups.push({
+                        key: `${key}-${vid}`,
+                        cfg: { ...cfg, name: `${cfg.name}` },
+                        docs: vDocs,
+                        type: 'independent',
+                        vendorId: vid
+                    });
+                });
+            } else {
+                groups.push({ key, cfg, docs, type: 'grouped' });
+            }
+        });
+        
+        return groups.sort((a,b) => {
+            const sumA = a.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+            const sumB = b.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+            return sumB - sumA;
+        });
+    }, [activeDestPendingRecords]);
 
     const pendingItems = useMemo(() => items.filter(i => {
         const status = (i.data?.status || '').toLowerCase();
@@ -314,12 +351,7 @@ export const ClientOverview: React.FC = () => {
                     <SectionHeader
                         icon={RefreshCcw}
                         title="Priority Requisitions"
-                        badge={activeDestPendingRecords.length > 0 ? `${Object.values(
-                            activeDestPendingRecords.reduce((acc: any, d) => { 
-                                if (d.destination) acc[d.destination] = true; 
-                                return acc; 
-                            }, {})
-                        ).length} destinations` : undefined}
+                        badge={requisitions.length > 0 ? `${requisitions.length} entities` : undefined}
                         right={
                             <div className="flex items-center gap-1 text-[9px] font-black text-(--text-color-secondary) opacity-50">
                                 <DollarSign size={10} />
@@ -328,86 +360,98 @@ export const ClientOverview: React.FC = () => {
                         }
                     />
 
-                    {activeDestPendingRecords.length === 0 ? (
+                    {requisitions.length === 0 ? (
                         <div className="flex items-center justify-center gap-2 py-6 text-(--text-color-secondary) opacity-30">
                             <AlertCircle size={14} />
                             <span className="text-[10px] font-black uppercase tracking-widest">No Pending Requisitions</span>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-2">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                const destDocs = activeDestPendingRecords.filter(d => d.destination === key);
+                        <div className="flex flex-col gap-3">
+                            {requisitions.map((req) => {
+                                const { key, cfg, docs: destDocs, type, vendorId } = req;
                                 const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                                if (destReqMXN <= 0) return null;
-                                const vendorIdsForDest = Array.from(new Set(
+                                const isExpanded = !!expandedDests[key];
+                                const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
                                     destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
                                 )).filter(Boolean);
-                                const isExpanded = !!expandedDests[key];
 
                                 return (
-                                    <div key={key} className="rounded-2xl border border-white/6 bg-white/3 overflow-hidden">
-                                        {/* Row header */}
-                                        <div className="flex items-center gap-3 p-3 cursor-pointer hover:bg-white/3 transition-colors" onClick={() => toggleDest(key)}>
+                                    <div key={key} className={`rounded-3xl border ${type === 'independent' ? 'border-(--main-color)/20 bg-(--main-color)/5 shadow-lg' : 'border-white/10 bg-white/4 shadow-sm'} overflow-hidden transition-all duration-300`}>
+                                        {/* Row header - Larger sizing */}
+                                        <div className="flex items-center gap-5 p-5 cursor-pointer hover:bg-white/5 transition-all" onClick={() => toggleDest(key)}>
                                             {/* Bank logo */}
-                                            <div className="w-10 h-7 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                                            <div className="w-14 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-md">
                                                 <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
                                             </div>
 
-                                            {/* Vendor dots */}
-                                            <div className="flex gap-1 shrink-0">
+                                            {/* Vendor dots - Larger sizing */}
+                                            <div className="flex gap-1.5 shrink-0">
                                                 {vendorIdsForDest.slice(0, 4).map((vid: any) => (
-                                                    <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} />
+                                                    <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} size="w-7 h-7" textSize="text-[11px]" />
                                                 ))}
                                                 {vendorIdsForDest.length > 4 && (
-                                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 self-center">+{vendorIdsForDest.length - 4}</span>
+                                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 self-center">+{vendorIdsForDest.length - 4}</span>
                                                 )}
                                             </div>
 
                                             {/* Name */}
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate">{cfg.name}</p>
-                                                <p className="text-[9px] font-bold text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">{destDocs.length} record{destDocs.length !== 1 ? 's' : ''}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[13px] font-black text-(--text-color) uppercase tracking-[0.1em] leading-none truncate">{cfg.name}</p>
+                                                    {type === 'independent' && <span className="text-[10px] font-black text-(--main-color) uppercase">{vendorId}</span>}
+                                                </div>
+                                                <p className="text-[10px] font-bold text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-1">{destDocs.length} unit{destDocs.length !== 1 ? 's' : ''} in request</p>
                                             </div>
 
                                             {/* Amounts */}
                                             <div className="text-right shrink-0">
-                                                <p className="text-[13px] font-mono font-black text-(--text-color) leading-none">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[10px] font-mono font-bold text-[#00AEEF] opacity-80 mt-0.5">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
+                                                <p className="text-[18px] font-mono font-black text-(--text-color) leading-none">{fmtMXN(destReqMXN)}</p>
+                                                <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
                                             </div>
 
                                             {/* Expand + pay */}
-                                            <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex items-center gap-3 shrink-0">
                                                 <button
                                                     onClick={e => { e.stopPropagation(); handleMarkAsPaid(key, destReqMXN, destDocs); }}
-                                                    className="px-3 py-1.5 rounded-xl bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-sm"
+                                                    className="px-5 py-2.5 rounded-2xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
                                                 >
-                                                    Paid
+                                                    Report Payment
                                                 </button>
                                                 {isExpanded
-                                                    ? <ChevronUp size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
-                                                    : <ChevronDown size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
+                                                    ? <ChevronUp size={20} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-40" />
+                                                    : <ChevronDown size={20} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-40" />
                                                 }
                                             </div>
                                         </div>
 
-                                        {/* Accordion detail rows */}
+                                        {/* Accordion detail rows - Larger sizing */}
                                         {isExpanded && (
-                                            <div className="border-t border-white/6 px-3 py-2 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                <div className="grid grid-cols-2 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 px-1 mb-1">
-                                                    <span>Description</span><span className="text-right">Base · Fee · Total</span>
+                                            <div className="border-t border-white/10 px-6 py-5 space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
+                                                <div className="grid grid-cols-2 text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) opacity-50 px-2 mb-2">
+                                                    <span>Documentation & Description</span><span className="text-right">Net · Commission · Total</span>
                                                 </div>
                                                 {destDocs.map(d => (
-                                                    <div key={d.id} className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-xl bg-black/20 border border-white/4">
+                                                    <div key={d.id} className="flex items-center justify-between gap-5 py-4 px-5 rounded-2xl bg-black/40 border border-white/5 hover:border-white/10 transition-colors shadow-inner">
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-[10px] font-bold text-(--text-color) truncate">{d.description || 'Payment Request'}</p>
-                                                            {d.vendor_id && (
-                                                                <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
-                                                            )}
+                                                            <p className="text-[13px] font-bold text-(--text-color) truncate mb-1">{d.description || 'Payment Request'}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <VendorDot vendorId={d.vendor_id || '?'} color={(vendors as any)[d.vendor_id]?.color || '#888'} size="w-5 h-5" textSize="text-[8px]" />
+                                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60" style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-3 text-[9px] font-mono shrink-0">
-                                                            <span className="text-(--text-color-secondary) opacity-50">{fmtMXN(d.amount || 0)}</span>
-                                                            <span className="text-(--text-color-secondary) opacity-40">+{fmtMXN(d.commission || 0)}</span>
-                                                            <span className="font-black text-(--text-color)">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
+                                                        <div className="flex items-center gap-6 text-[12px] font-mono shrink-0">
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-[8px] opacity-40 uppercase">Net</span>
+                                                                <span className="text-(--text-color-secondary) opacity-70">{fmtMXN(d.amount || 0)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-[8px] opacity-40 uppercase">Fee</span>
+                                                                <span className="text-(--text-color-secondary) opacity-50">+{fmtMXN(d.commission || 0)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col items-end pl-4 border-l border-white/5">
+                                                                <span className="text-[8px] opacity-40 uppercase">Total</span>
+                                                                <span className="font-bold text-(--text-color) text-[14px]">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}
