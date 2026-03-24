@@ -398,13 +398,12 @@ const InventoryBar: React.FC = () => {
                 </div>
             </div>
 
-            {/* Vendor Filter Bar — horizontal frame rendered outside header via portal */}
-            {isVendorFilterOpen && createPortal(
+            {/* Vendor Filter Bar — horizontal frame rendered below header */}
+            {isVendorFilterOpen && (
                 <div
-                    className="fixed left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
+                    className="absolute top-full left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
                     style={{
-                        top: '64px',
-                        background: 'color-mix(in srgb, var(--sidebar-bg) 90%, transparent)',
+                        background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)',
                         backdropFilter: 'blur(24px)',
                         borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
                     }}
@@ -443,8 +442,7 @@ const InventoryBar: React.FC = () => {
                     >
                         <X size={12} strokeWidth={2.5} />
                     </button>
-                </div>,
-                document.body
+                </div>
             )}
         </>
     );
