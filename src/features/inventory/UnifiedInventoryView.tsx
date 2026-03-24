@@ -220,78 +220,88 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     };
 
     if (viewMode === 'list') {
+        const itemPriceMXN = Math.ceil(Number(norm.price || 0));
+        const itemQuantity = Number(norm.quantity || 1);
+        const itemTotalMXN = itemPriceMXN * itemQuantity;
+
         return (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
                 {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-center p-3.5 bg-(--stitch-card-bg) border border-white/5 rounded-xl hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
-                    <div className={`w-[60px] h-[60px] rounded-lg overflow-hidden bg-black/40 shrink-0 mr-5 border border-white/5 relative group/img ${imageUrl ? 'cursor-pointer hover:ring-1 hover:ring-(--main-color)/40' : ''}`}
+                <div className={`flex items-stretch overflow-hidden bg-(--stitch-card-bg) border border-white/5 rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
+                    <div className={`w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative group/img ${imageUrl ? 'cursor-pointer' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
                         {imageUrl ? (
                             <>
                                 <img src={imageUrl} className="w-full h-full object-cover" />
-                                {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-6 h-6" /></div>}
+                                {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-4 h-4 sm:w-6 sm:h-6" /></div>}
                                 {mediaUrls.length > 1 && <div className="absolute bottom-0 inset-x-0 h-1 bg-white/20"><div className="h-full bg-(--main-color)/60 transition-all duration-300" style={{ width: `${((activeIdx + 1) / mediaUrls.length) * 100}%` }} /></div>}
                             </>
-                        ) : <div className="w-full h-full p-2.5 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        ) : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                         
                         {mediaUrls.length > 1 && (
-                            <div className="absolute inset-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-                                <button onClick={handlePrevMedia} className="w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto shadow-lg border border-white/10">
-                                    <ChevronLeft className="w-3 h-3" />
+                            <div className="absolute inset-0 flex items-center justify-between px-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                                <button onClick={handlePrevMedia} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10">
+                                    <ChevronLeft className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </button>
-                                <button onClick={handleNextMedia} className="w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto shadow-lg border border-white/10">
-                                    <ChevronRight className="w-3 h-3" />
+                                <button onClick={handleNextMedia} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10">
+                                    <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    <div className="grow min-w-0 flex flex-col justify-center">
-                        <h3 className="text-[15px] font-semibold text-white mb-1 truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
-                        <div className="flex items-center gap-4 text-[13px] text-white/40">
-                            <span>Qty: <span className="text-white/80">{norm.quantity || 1}</span></span>
-                            <span>Dim: <span className="text-white/80 shrink-0 truncate max-w-[120px]">{dimensionsStr || 'â€”'}</span></span>
-                            <span>Wgt: <span className="text-white/80">{weightStr || 'â€”'}</span></span>
+                    <div className="flex-1 overflow-x-auto no-scrollbar flex items-center px-2 sm:px-3 gap-3 min-w-0">
+                        <div className="flex flex-col justify-center min-w-[140px] max-w-[240px] shrink-0 border-r border-white/5 pr-3 h-full pb-1">
+                            <h3 className="text-xs sm:text-sm font-bold text-white truncate w-full pt-1.5 mt-auto">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/50 pb-1.5 mb-auto">
+                                <span className="truncate">Dim: <span className="text-white/80">{dimensionsStr || '—'}</span></span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-10 mr-4">
-                        <div className="flex flex-col w-32 shrink-0">
-                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">Tag ID</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-[0_0_10px_rgba(0,0,0,0.3)] w-fit" style={{ backgroundColor: vendorColor }}>
+                        <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Tag ID</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] sm:text-[11px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>
                                 {calculated.bookBardcode || 'N/A'}
                             </span>
                         </div>
 
-                        <div className="flex flex-col w-12 shrink-0">
-                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">AQ Code</span>
-                            <span className="text-[15px] text-white/80 font-mono">{calculated.bookAqCode || 'â€”'}</span>
+                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Price / Qty</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-xs sm:text-[13px] font-bold text-white">{showFinancials ? `$${itemPriceMXN}` : '***'}</span>
+                                <span className="text-[10px] text-white/50 font-mono">x{itemQuantity}</span>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col w-12 shrink-0">
-                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">LD Code</span>
-                            <span className="text-[15px] text-white/80 font-mono">{calculated.bookLandCode || 'â€”'}</span>
+                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Total MXN</span>
+                            <span className="text-xs sm:text-[14px] font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
                         </div>
 
-                        <div className="flex flex-col w-24 shrink-0">
-                            <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5 leading-none">Acq Cost</span>
-                            <span className="text-[15px] font-medium text-white">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
+                        <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">AQ Code</span>
+                            <span className="text-[11px] sm:text-[13px] text-white/80 font-mono">{calculated.bookAqCode || '—'}</span>
+                        </div>
+
+                        <div className="flex flex-col min-w-[60px] shrink-0 justify-center h-full gap-0.5">
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">LD Code</span>
+                            <span className="text-[11px] sm:text-[13px] text-white/80 font-mono">{calculated.bookLandCode || '—'}</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-2 text-white/40 shrink-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-2 shrink-0 bg-white/5 border-l border-white/5 backdrop-blur-md">
                         {isEditable && (
-                            <button onClick={(e) => handleEdit(e)} className="p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
-                                <Pencil className="w-4 h-4 stroke-2" />
+                            <button onClick={(e) => handleEdit(e)} className="p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-colors">
+                                <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2" />
                             </button>
                         )}
                         {isInternalUser && (
-                            <button onClick={(e) => handleDelete(e)} className="p-2 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Mark for Deletion">
-                                <Trash2 className="w-4 h-4 stroke-2" />
+                            <button onClick={(e) => handleDelete(e)} className="p-1.5 hover:text-red-400 hover:bg-red-400/15 rounded-md transition-colors" title="Mark for Deletion">
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2" />
                             </button>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-2 hover:text-white hover:bg-white/5 rounded-lg transition-colors ${isExpanded ? 'text-(--main-color)' : ''}`}>
-                            <Maximize2 className={`w-4 h-4 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : ''}`}>
+                            <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
                     </div>
                 </div>
@@ -347,13 +357,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {mediaUrls.length > 1 && (
                             <>
                                 <div className="absolute inset-y-0 left-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
-                                    <button onClick={handlePrevMedia} className="w-9 h-9 rounded-full bg-black/80 hover:bg-black flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-xl transition-all hover:scale-110">
-                                        <ChevronLeft className="w-5 h-5" />
+                                    <button onClick={handlePrevMedia} className="text-white drop-shadow-xl hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                        <ChevronLeft className="w-8 h-8" />
                                     </button>
                                 </div>
                                 <div className="absolute inset-y-0 right-0 w-12 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity z-20 pointer-events-none">
-                                    <button onClick={handleNextMedia} className="w-9 h-9 rounded-full bg-black/80 hover:bg-black flex items-center justify-center text-white pointer-events-auto border border-white/10 shadow-xl transition-all hover:scale-110">
-                                        <ChevronRight className="w-5 h-5" />
+                                    <button onClick={handleNextMedia} className="text-white drop-shadow-xl hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                        <ChevronRight className="w-8 h-8" />
                                     </button>
                                 </div>
                                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 group-hover:translate-y-[-4px] transition-transform duration-300">
@@ -575,9 +585,18 @@ export const UnifiedInventoryView = () => {
     const db = useDatabase();
     const items = useAtomValue(inventoryAtom);
     const [isLoading, setIsLoading] = useState(true);
-    const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+    const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
+    
+    const toggleExpandCard = (id: string) => {
+        setExpandedCards(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
@@ -835,6 +854,14 @@ export const UnifiedInventoryView = () => {
         return filteredItems.reduce((acc, item) => acc + (parseInt(item.data.quantity) || 1), 0);
     }, [filteredItems]);
 
+    const totalValueMXN = useMemo(() => {
+        return filteredItems.reduce((acc, item) => {
+            const price = Math.ceil(Number(item.data.price_mxn || item.data.price || 0));
+            const quantity = Number(item.data.quantity || 1);
+            return acc + (price * quantity);
+        }, 0);
+    }, [filteredItems]);
+
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2">
 
@@ -854,6 +881,14 @@ export const UnifiedInventoryView = () => {
                     </div>
                     <div className="text-[2.5rem] font-bold text-[#6BCEBB] leading-none tracking-tighter">
                         {totalCount.toLocaleString('en-US')}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+                        Total {showFinancials ? 'MXN' : ''}
+                    </div>
+                    <div className="text-[2.5rem] font-bold text-(--main-color) leading-none tracking-tighter">
+                        {showFinancials ? `$${totalValueMXN.toLocaleString('en-US')}` : '***'}
                     </div>
                 </div>
             </div>
@@ -876,8 +911,8 @@ export const UnifiedInventoryView = () => {
                                 <UnifiedInventoryCard
                                     key={item.row}
                                     item={item}
-                                    isExpanded={expandedCardId === item.row}
-                                    onToggleExpand={() => setExpandedCardId(prev => String(prev) === String(item.row) ? null : String(item.row))}
+                                    isExpanded={expandedCards.has(String(item.row))}
+                                    onToggleExpand={() => toggleExpandCard(String(item.row))}
                                     exchangeRate={exchangeRate}
                                     showFinancials={showFinancials}
                                     viewMode={viewMode}
