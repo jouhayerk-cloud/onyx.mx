@@ -11,11 +11,15 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
-## v1.29.1 — 2026-03-25
-
+## v1.29.3 — 2026-03-25
 ### Added
 - **Bank Commission & IVA Toggles:** Implemented a new mutually-exclusive 10% Bank Commission toggle under the existing 16% IVA boolean selector within the Add Payment and Request Payment workflows. This standardizes automatic fee calculations for transactions bound by fixed platform or international transfer percentages, keeping exact ledger balances without manually recalculating the base + fee aggregates.
 
+## v1.29.2 — 2026-03-25
+### Fixed
+- **Workflow Filtering Bug:** Corrected an isolated rendering issue where the auto-generated Crates payment request bubble was erroneously displayed under the Merchandise -> Acquisitions vendor list. The Crates vendor bubble has been actively filtered from Acquisitions and properly routed to display seamlessly when activating Operations -> Crates, deploying the exact, uniform vendor bubble UI.
+
+## v1.29.1 — 2026-03-25
 ### Changed
 - **Operations Workflow:** Integrated Crates tracking seamlessly into the Add Payment Operations sequence (Monthly Fixed · Crates · Other). Clicking Crates automatically aggregates all unpacked logistics crate shipments into a unified vendor group, calculating aggregate metrics (`W×L×D` physical dimensions, counts, combined total cost) and instantly populating the final checkout form.
 - **Categorization:** Upgraded default database sync tagging for crates from general Acquisition (`Acq`) to specific Logistics Packaging (`Packing`). Overrided the default internal subcategory `Pack` naming to `Packing` globally to resolve mapping inconsistency.
@@ -24,7 +28,6 @@
 - **Local Architecture Overwrite Bug:** Modified `WorkbookView`'s Developer query module to stream finance analytics strictly from the centralized Supabase `financeDataAtom` memory cache. This eliminates remaining dependencies on local RxDB storage which actively interrupted dataset sync logic.
 - **Logistics Form Synchronization Update:** Intercepted and rerouted logistics table mutation logic within the Add Payment Wizard tracking submission (`handleSubmit`) sequence to safely intercept empty references resulting from the pseudo-vendor array mapped from the `logisticsData` source.
 - **SVG Warning Artifacts:** Handled multiple console warnings emitted from `OnyxMiniLogo` and main inventory component mapping rendering by correcting microscopic syntax omissions (missing standard whitespace delimitation before the `a` path execution string identifier).
-- **Workflow Filtering Bug:** Corrected an isolated rendering issue where the auto-generated Crates payment request bubble was erroneously displayed under the Merchandise -> Acquisitions vendor list. The Crates vendor bubble has been actively filtered from Acquisitions and properly routed to display seamlessly when activating Operations -> Crates, deploying the exact, uniform vendor bubble UI.
 
 ## v1.29.0 — 2026-03-25
 ### Added
