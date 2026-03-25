@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtomValue, useAtom } from 'jotai/react';
-import { inventoryAtom, cratesVersionAtom, inventoryAtom as allInventoryAtom } from '../../lib/atoms';
+import { inventoryAtom, cratesVersionAtom, inventoryAtom as allInventoryAtom, TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import {
-    Search, Package, Box, ChevronRight, Check, X, Loader2,
-    PackagePlus, Filter, LayoutGrid, ListFilter, Inbox
+    Package, Box, ChevronRight, Check, X, Loader2,
+    PackagePlus, ListFilter, Inbox
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 
@@ -105,7 +105,7 @@ export const CratePackingManager: React.FC = () => {
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
 
     // Inventory filters
-    const [search, setSearch] = useState('');
+    const search = useAtomValue(TOP_BAR_SEARCH_ATOM);
     const [statusFilter, setStatusFilter] = useState<'All' | 'Acquisition' | 'Production' | 'Shipped'>('All');
     const [vendorFilter, setVendorFilter] = useState('All');
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
@@ -309,18 +309,6 @@ export const CratePackingManager: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* Search */}
-                        <div className="relative">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
-                            <input
-                                type="text"
-                                placeholder="SEARCH ARTIFACTS…"
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="bg-white/5 border border-white/8 rounded-xl pl-8 pr-3 py-2 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-white/20 transition w-44"
-                            />
-                        </div>
-
                         {/* Status filter */}
                         <select
                             value={statusFilter}

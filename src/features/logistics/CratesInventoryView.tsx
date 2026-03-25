@@ -41,6 +41,8 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 // --- Crate Card ---
 const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRecord) => void }) => {
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
+    const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
+    const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
     return (
         <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30">
             {/* Top accent line */}
@@ -64,6 +66,7 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                         {crate.width_cm}<span className="text-white/30 text-xs">×</span>{crate.length_cm}<span className="text-white/30 text-xs">×</span>{crate.height_cm}
                         <span className="text-[9px] text-white/30 font-black ml-1">CM</span>
                     </h3>
+                    <p className="text-[9px] font-mono text-white/20 mt-0.5">{vol} m³</p>
                     {crate.contents_summary && (
                         <p className="text-[10px] text-white/40 font-medium italic mt-1 line-clamp-1">{crate.contents_summary}</p>
                     )}
@@ -72,15 +75,17 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                     )}
                 </div>
 
-                {/* Stats row */}
+                {/* Stats row — Items + Net Weight */}
                 <div className="flex gap-3">
                     <div className="flex-1 bg-black/20 rounded-xl px-3 py-2 border border-white/5">
                         <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Items</p>
                         <p className="text-sm font-mono font-black text-white">{itemCount}</p>
                     </div>
                     <div className="flex-1 bg-black/20 rounded-xl px-3 py-2 border border-white/5">
-                        <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Cost</p>
-                        <p className="text-sm font-mono font-black text-(--main-color)">${(crate.cost_mxn || 0).toLocaleString()}</p>
+                        <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Net Weight</p>
+                        <p className="text-sm font-mono font-black text-(--main-color)">
+                            {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
+                        </p>
                     </div>
                 </div>
 
@@ -328,7 +333,7 @@ export const CratesInventoryView: React.FC = () => {
                 <div className="flex items-center gap-8">
                     <div>
                         <h2 className="text-lg font-black uppercase tracking-tight text-white">
-                            Logistics <span className="text-(--main-color) italic">Crates</span>
+                            Shipping <span className="text-(--main-color) italic">Crates</span>
                         </h2>
                         <div className="flex items-center gap-5 mt-1">
                             {[
