@@ -5,7 +5,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, ExpenseStatus, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, paymentFilterBarModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, financeDataAtom, InventoryVersionAtom, paymentDestinationFilterAtom, paymentVendorFilterAtom, financeSearchTermAtom, paymentsOverviewModeAtom, paymentCategoryFilterAtom, paymentFilterBarModeAtom } from '../../lib/atoms';
 import { SkeletonBox, SkeletonText, SkeletonBadge } from '../../components/Skeleton';
 
 import { useDatabase } from '../../lib/hooks';
@@ -240,11 +240,10 @@ interface PaymentsViewProps {
 
 export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const db = useDatabase();
-    const [inventory, setInventory] = useAtom(inventoryAtom);
-    const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
-    const [expenses, setExpenses] = useState<FinanceRecord[]>([]);
-    const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
-    const [isLoading, setIsLoading] = useState(true);
+    const inventory = useAtomValue(inventoryAtom);
+    const expenses = useAtomValue(financeDataAtom);
+    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
+    const setPaymentsVersion = useSetAtom(paymentsVersionAtom);
     const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
     const [requestingGroup, setRequestingGroup] = useState<VendorGroup | null>(null);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
@@ -255,36 +254,6 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
     const [selectedExpense, setSelectedExpense] = useState<FinanceRecord | null>(null);
     const overviewMode = useAtomValue(paymentsOverviewModeAtom);
     const isFilterBarVisible = useAtomValue(paymentFilterBarModeAtom) !== 'off';
-
-    const fetchData = useCallback(async () => {
-        if (!db) {
-
-            setIsLoading(false);
-            return;
-        }
-        setIsLoading(true);
-        try {
-            const [invDocs, expDocs] = await Promise.all([
-                db.inventory.find().exec(),
-                db.finance.find().exec()
-            ]);
-
-            setInventory(invDocs.map((doc: any) => ({
-                row: doc.id,
-                data: doc.toJSON()
-            })));
-
-            setExpenses(expDocs.map((doc: any) => doc.toJSON()));
-        } catch (error: any) {
-            toast.error(`Failed to load data: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [db, setInventory]);
-
-    useEffect(() => {
-        fetchData();
-    }, [inventoryVersion, paymentsVersion, fetchData, db]); // Added db to dependencies
 
     const itemsToRequest = useMemo<VendorGroup[]>(() => {
         const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production'];
@@ -391,29 +360,7 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [expenses, destinationFilter, vendorFilter, search]);
 
-    if (isLoading) {
-        return (
-            <div role="status" aria-busy="true" aria-label="Loading payments" className="h-full flex flex-col gap-3 p-4">
-                {/* Stat cards */}
-                <div className="flex gap-3">
-                    <div className="skeleton h-16 rounded-2xl flex-1" />
-                    <div className="skeleton h-16 rounded-2xl flex-1" />
-                </div>
-                {/* Payment rows */}
-                {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/3 border border-white/5">
-                        <div className="skeleton w-8 h-8 rounded-xl shrink-0" />
-                        <div className="flex-1 min-w-0">
-                            <SkeletonText lines={2} lastLineWidth="45%" />
-                        </div>
-                        <SkeletonBox className="h-3 w-20 hidden sm:block" />
-                        <SkeletonBadge width={56} />
-                    </div>
-                ))}
-                <span className="sr-only">Loading payments…</span>
-            </div>
-        );
-    }
+
 
     return (
         <div className="h-full flex flex-col gap-6">

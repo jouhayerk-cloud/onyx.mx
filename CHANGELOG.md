@@ -11,6 +11,17 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.1 — 2026-03-25
+
+### Changed
+- **Operations Workflow:** Integrated Crates tracking seamlessly into the Add Payment Operations sequence (Monthly Fixed · Crates · Other). Clicking Crates automatically aggregates all unpacked logistics crate shipments into a unified vendor group, calculating aggregate metrics (`W×L×D` physical dimensions, counts, combined total cost) and instantly populating the final checkout form.
+- **Categorization:** Upgraded default database sync tagging for crates from general Acquisition (`Acq`) to specific Logistics Packaging (`Packing`). Overrided the default internal subcategory `Pack` naming to `Packing` globally to resolve mapping inconsistency.
+
+### Fixed
+- **Local Architecture Overwrite Bug:** Modified `WorkbookView`'s Developer query module to stream finance analytics strictly from the centralized Supabase `financeDataAtom` memory cache. This eliminates remaining dependencies on local RxDB storage which actively interrupted dataset sync logic.
+- **Logistics Form Synchronization Update:** Intercepted and rerouted logistics table mutation logic within the Add Payment Wizard tracking submission (`handleSubmit`) sequence to safely intercept empty references resulting from the pseudo-vendor array mapped from the `logisticsData` source.
+- **SVG Warning Artifacts:** Handled multiple console warnings emitted from `OnyxMiniLogo` and main inventory component mapping rendering by correcting microscopic syntax omissions (missing standard whitespace delimitation before the `a` path execution string identifier).
+
 ## v1.29.0 — 2026-03-25
 ### Added
 - **Global Realtime Sync:** Augmented the RxDB local storage mechanism with a Live Supabase Real-Time Channel, allowing all clients to reflect dataset changes simultaneously across the application, achieving fully reactive multiplayer and optimistic UI updates.
