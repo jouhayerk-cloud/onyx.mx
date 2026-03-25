@@ -204,16 +204,16 @@ export function MainAppView() {
 
     const logisticsSubItems = [
         {
-            id: 'trucking', label: 'Trucking', icon: 'truck', isActive: activeView === 'logistics' && logisticsSubTab === 'trucking', action: () => {
+            id: 'crates', label: 'Crates', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'crates', action: () => {
                 setActiveView('logistics');
-                setLogisticsSubTab('trucking');
+                setLogisticsSubTab('crates');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
         {
-            id: 'shipping', label: 'Shipping', icon: 'map-pin', isActive: activeView === 'logistics' && logisticsSubTab === 'shipping', action: () => {
+            id: 'packing', label: 'Pack', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
                 setActiveView('logistics');
-                setLogisticsSubTab('shipping');
+                setLogisticsSubTab('packing');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
             }
         },
@@ -350,9 +350,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Truck size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Logistics</span>
+                                    <span className="sidebar-list-item-text">Shipping</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Logistics</span>
+                                <span className="sidebar-compact-tooltip">Shipping</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (

@@ -715,30 +715,47 @@ const FinanceBar: React.FC = () => {
 
 const LogisticsBar: React.FC = () => {
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
-    const docs = useAtomValue(financeDataAtom); // or logistics data if we had a dedicated atom, docs here for total count
-    
+    const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
+
     const tabs = [
-        { id: 'crates', label: 'CRATES', icon: 'truck' }, // box
+        { id: 'crates', label: 'CRATES', icon: 'truck' },
         { id: 'packing', label: 'PACK', icon: 'package' },
         { id: 'shipping', label: 'TRK', icon: 'map-pin' },
     ];
 
     return (
         <>
-            <ModuleBadge icon="truck" label="Logistics" color="var(--color-logistics)" />
+            <ModuleBadge icon="truck" label="Shipping" color="var(--color-logistics)" />
 
             <div className="flex items-center gap-2 ml-2">
-                <SubTabPills 
-                    tabs={tabs} 
-                    active={subTab} 
-                    onSelect={(id) => setSubTab(id as any)} 
-                    accentColor="var(--color-logistics)" 
+                <SubTabPills
+                    tabs={tabs}
+                    active={subTab}
+                    onSelect={(id) => { setSubTab(id as any); if (id !== 'packing') setSearch(''); }}
+                    accentColor="var(--color-logistics)"
                 />
             </div>
 
+            {subTab === 'packing' && (
+                <div className="flex-1 max-w-xl mx-4 relative group/search">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/search:text-(--main-color) transition-all" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="SEARCH INVENTORY…"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-11 pr-10 text-[11px] font-bold text-white outline-none placeholder-white/20 focus:bg-white/10 focus:border-(--main-color)/30 transition-all uppercase tracking-widest"
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white cursor-pointer">
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+            )}
+
             <div className="ml-auto">
-                {/* Optional: Add minimal stats if needed */}
-                <span className="text-[9px] font-black text-white/15 uppercase tracking-widest hidden lg:block">Logistics Protocol v1.28</span>
+                <span className="text-[9px] font-black text-white/15 uppercase tracking-widest hidden lg:block">Shipping Protocol v1.29</span>
             </div>
         </>
     );
