@@ -714,38 +714,31 @@ const FinanceBar: React.FC = () => {
 
 
 const LogisticsBar: React.FC = () => {
-    const t = useTranslation();
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
-    const [cameraView, setCameraView] = useAtom(shippingCameraViewAtom);
-    const [viewMode, setViewMode] = useAtom(shippingViewModeAtom);
-    const [maxWeight, setMaxWeight] = useAtom(truckMaxWeightAtom);
-    const setTriggerOrg = useSetAtom(triggerWarehouseOrganizationAtom);
-
-    const cameraViews: CameraView[] = ['perspective', 'top', 'side', 'front'];
+    const docs = useAtomValue(financeDataAtom); // or logistics data if we had a dedicated atom, docs here for total count
+    
+    const tabs = [
+        { id: 'crates', label: 'CRATES', icon: 'truck' }, // box
+        { id: 'packing', label: 'PACK', icon: 'package' },
+        { id: 'shipping', label: 'TRK', icon: 'map-pin' },
+    ];
 
     return (
         <>
             <ModuleBadge icon="truck" label="Logistics" color="var(--color-logistics)" />
 
-            <div className="hidden md:flex items-center gap-2 ml-2">
-                {/* Warehouse organise */}
-                <button onClick={() => setTriggerOrg(v => v + 1)} title="Organise warehouse"
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors shrink-0">
-                    <svg className="w-4 h-4"><use href="#layout-grid" /></svg>
-                </button>
-                {/* View mode */}
-                <div className="flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-0.5">
-                    {(['warehouse', 'truck'] as const).map(m => (
-                        <button key={m} onClick={() => setViewMode(m)}
-                            className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${viewMode === m ? 'bg-(--color-logistics) text-black' : 'text-white/35 hover:text-white/70'}`}>
-                            {m}
-                        </button>
-                    ))}
-                </div>
+            <div className="flex items-center gap-2 ml-2">
+                <SubTabPills 
+                    tabs={tabs} 
+                    active={subTab} 
+                    onSelect={(id) => setSubTab(id as any)} 
+                    accentColor="var(--color-logistics)" 
+                />
             </div>
 
             <div className="ml-auto">
-                <ShippingStats />
+                {/* Optional: Add minimal stats if needed */}
+                <span className="text-[9px] font-black text-white/15 uppercase tracking-widest hidden lg:block">Logistics Protocol v1.28</span>
             </div>
         </>
     );

@@ -64,9 +64,13 @@ export const LogisticsView: React.FC = () => {
             </div>
             {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
-                {activeTab === 'crates' && <CratesInventoryView />}
-                {activeTab === 'packing' && <CratePackingManager />}
-                {activeTab === 'shipping' && <ShipmentTrackingPanel docs={docs} onRefresh={refresh} />}
+                {activeTab === 'packing' ? (
+                    <CratePackingManager />
+                ) : activeTab === 'shipping' ? (
+                    <ShipmentTrackingPanel docs={docs} onRefresh={refresh} />
+                ) : (
+                    <CratesInventoryView />
+                )}
             </div>
         </div>
     );
