@@ -2,11 +2,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    userAtom, financeSubTabAtom, liveExchangeRateAtom
+    financeSubTabAtom, liveExchangeRateAtom, inventoryAtom
 } from '../../lib/atoms';
-import { useDatabase, useTranslation } from '../../lib/hooks';
-import { normalizeInventoryData } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
+import { useDatabase } from '../../lib/hooks';
 import {
     RefreshCcw, DollarSign, Wallet,
     ShoppingCart, CreditCard, Package, ArrowUpRight, ChevronDown, ChevronUp,
@@ -77,40 +76,31 @@ export const ClientOverview: React.FC = () => {
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const currentExchangeRate = liveExchangeRate || exchangeRate;
     const [showFinancials] = useAtom(showFinancialsAtom);
-    const [financeData, setFinanceData] = useAtom(financeDataAtom);
+    // Read-only — DataSyncProvider is the single writer for financeDataAtom
+    const financeData = useAtomValue(financeDataAtom);
+    // Read-only — DataSyncProvider drives inventoryAtom via Supabase realtime
+    const allInventoryItems = useAtomValue(inventoryAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
 
-    const [items, setItems] = useState<any[]>([]);
-    const [storeItems, setStoreItems] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedDests, setExpandedDests] = useState<Record<string, boolean>>({});
     const [isComingExpanded, setIsComingExpanded] = useState(true);
 
     const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
-    useEffect(() => {
-        if (!db) return;
-        setIsLoading(true);
-        const subs = [
-            db.inventory.find().$.subscribe((d: any[]) => {
-                const all = d.map((x: any) => ({ ...x.toJSON(), source: 'inventory', data: normalizeInventoryData(x.toJSON()) }));
-                const store = all.filter((x: any) => ['Available', 'Avaiable', 'Catalog'].includes(x.data.status));
-                const inventory = all.filter((x: any) => !['Available', 'Avaiable', 'Catalog'].includes(x.data.status) && x.data.status !== 'Pending Deletion');
-                setItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...inventory]);
-                setStoreItems(prev => [...prev.filter(p => p.source !== 'inventory'), ...store]);
-            }),
-            db.production.find().$.subscribe((d: any[]) => {
-                const mapped = d.map((x: any) => ({ ...x.toJSON(), source: 'production', data: normalizeInventoryData(x.toJSON()) }));
-                setItems(prev => [...prev.filter(p => p.source !== 'production'), ...mapped]);
-            }),
-            db.finance.find().$.subscribe((d: any[]) => {
-                setFinanceData(d.map((x: any) => x.toJSON()));
-            }),
-        ];
-        setTimeout(() => setIsLoading(false), 600);
-        return () => subs.forEach((s: any) => s.unsubscribe());
-    }, [db]);
+    // Derive items and storeItems from the centralized inventoryAtom
+    const items = useMemo(() =>
+        allInventoryItems.filter(i => !['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '') && i.data.status !== 'Pending Deletion'),
+        [allInventoryItems]
+    );
+    const storeItems = useMemo(() =>
+        allInventoryItems.filter(i => ['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '')),
+        [allInventoryItems]
+    );
+
+    // Show skeleton only on first load
+    useEffect(() => { const t = setTimeout(() => setIsLoading(false), 800); return () => clearTimeout(t); }, []);
 
     const vendorSummaries = useMemo<ClientVendorSummary[]>(() => {
         const map: Record<string, ClientVendorSummary> = {};
@@ -118,8 +108,8 @@ export const ClientOverview: React.FC = () => {
             const norm = item.data;
             const vid = String(norm?.itemId || '').split('-')[0] || '?';
             if (!map[vid]) map[vid] = { vendorId: vid, color: (vendors as any)[vid]?.color || '#888', itemCount: 0, totalAcqMxn: 0, totalAcqUsd: 0 };
-            const price = parseFloat(norm?.price || 0);
-            const qty = parseInt(norm?.quantity || 1) || 1;
+            const price = parseFloat(String(norm?.price || 0));
+            const qty = parseInt(String(norm?.quantity || 1)) || 1;
             const totalPrice = price * qty;
             map[vid].itemCount += qty;
             map[vid].totalAcqMxn += totalPrice;
@@ -190,7 +180,7 @@ export const ClientOverview: React.FC = () => {
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
             let ratio = 1;
-            const payReqStr = String(data.payReq || data.pay_req || '').toLowerCase();
+            const payReqStr = String(data.payReq || (data as any).pay_req || '').toLowerCase();
             if (payReqStr.includes('%')) {
                 const match = payReqStr.match(/(\d+)%/);
                 if (match) { ratio = Math.max(0, (100 - parseInt(match[1])) / 100); groups[vid].partials.push(`${match[1]}% paid on ${itemIdStr}`); }
@@ -214,7 +204,7 @@ export const ClientOverview: React.FC = () => {
             totalUnpaidUsd: (requestedUnpaidMxn + pendingToRequestMxn) / currentExchangeRate,
             totalUnpaidMxn: requestedUnpaidMxn + pendingToRequestMxn,
             storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
-            newStoreCount: storeItems.filter(x => Date.now() - new Date(x.data.updatedAt || 0).getTime() < 7 * 864e5).length,
+            newStoreCount: storeItems.filter(x => Date.now() - new Date((x.data as any).updatedAt || (x.data as any).updated_at || 0).getTime() < 7 * 864e5).length,
         };
     }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor]);
 
