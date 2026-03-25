@@ -267,7 +267,7 @@ const AddPaymentModal: React.FC<{
                     {step === 3.1 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                             <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">VENDORS</h2>
-                            <button onClick={() => setStep(2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">
+                            <button onClick={() => setStep(form.subcategory === 'Packing' ? 2.2 : 2.1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">
                                 <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK
                             </button>
 
@@ -279,6 +279,8 @@ const AddPaymentModal: React.FC<{
                                 ) : (
                                     pendingGroups
                                         .filter(g => {
+                                            if (form.subcategory === 'Packing') return g.vendorId === 'Crates';
+                                            if (g.vendorId === 'Crates') return false; // Hide from Acq/Prod
                                             const isProdGroup = g.items.some(i => i.data?.status?.toLowerCase() === 'production');
                                             return form.subcategory === 'Prod' ? isProdGroup : !isProdGroup;
                                         })
@@ -290,7 +292,15 @@ const AddPaymentModal: React.FC<{
                                                     onClick={() => {
                                                         set('vendor_id', group.vendorId);
                                                         set('amount', (group.total - group.paidTotal).toString());
-                                                        set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${group.vendorId}`);
+                                                        if (form.subcategory === 'Packing') {
+                                                            const sizesSet = new Set(group.items.map(i => {
+                                                                const d = i.data as any;
+                                                                return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
+                                                            }));
+                                                            set('description', `Payment for ${group.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
+                                                        } else {
+                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${group.vendorId}`);
+                                                        }
                                                         setStep(4);
                                                     }}
                                                     className="flex justify-between items-center p-5 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:bg-(--glass-bg) hover:border-(--text-color-secondary)/20 transition-all text-left group"
@@ -333,20 +343,8 @@ const AddPaymentModal: React.FC<{
                                     <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Recurring bills<br />& subscriptions</span>
                                 </button>
                                 <button onClick={() => { 
-                                    const cratesGroup = pendingGroups.find(g => g.vendorId === 'Crates');
-                                    if (cratesGroup) {
-                                        set('subcategory', 'Packing'); 
-                                        set('vendor_id', 'Crates');
-                                        set('amount', (cratesGroup.total - cratesGroup.paidTotal).toString());
-                                        const sizesSet = new Set(cratesGroup.items.map(i => {
-                                            const d = i.data as any;
-                                            return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
-                                        }));
-                                        set('description', `Payment for ${cratesGroup.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
-                                        setStep(4);
-                                    } else {
-                                        toast.error("No pending crates found");
-                                    }
+                                    set('subcategory', 'Packing');
+                                    setStep(3.1);
                                 }}
                                     className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-[#8DC63F]/50 hover:bg-[#8DC63F]/5 transition-all group">
                                     <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
