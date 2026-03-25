@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -645,6 +645,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const db = useDatabase();
     const user = useAtomValue(userAtom);
     const [inventory, setInventory] = useAtom(inventoryAtom);
+    const logisticsData = useAtomValue(logisticsDataAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
@@ -688,8 +689,26 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             return targetStatuses.includes(status) && !i.data.payReq && !(i.data as any).pay_req && i.data.payReq !== 'true' && (i.data as any).pay_req !== 'true';
         });
 
+        const pendingCrates = logisticsData.filter(c => {
+            return c.type === 'crate' && !c.pay_req && c.pay_req !== 'true' && (c.cost_mxn || 0) > 0;
+        }).map(c => ({
+            row: c.id,
+            label: c.description || `Crate ${c.id}`,
+            imageUrl: '',
+            data: {
+                ...c,
+                status: 'Pack', 
+                item_id: c.id,
+                vendor_id: 'Pack',
+                price: c.cost_mxn,
+                quantity: c.quantity || 1
+            }
+        } as any));
+
+        const itemsToProcess = [...pendingItems, ...pendingCrates];
+
         const groups: Record<string, VendorGroup> = {};
-        for (const item of pendingItems) {
+        for (const item of itemsToProcess) {
 
 
 
@@ -792,14 +811,28 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             const itemIdsStr = requestGroup.items.map(i => String(i.row)).join(',');
             const ids = itemIdsStr.split(',');
 
+            const isCrateGroup = requestGroup.vendorId === 'Pack';
             const upVal = isPartial ? `requested ${percentage}%` : 'true';
-            await supabase.from('inventory').update({ pay_req: upVal }).in('id', ids);
-            if (db) {
-                for (const iid of ids) {
-                    try {
-                        const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                        if (lInv) await lInv.patch({ pay_req: upVal, payReq: upVal });
-                    } catch (e) { console.error(e); }
+            
+            if (isCrateGroup) {
+                await supabase.from('logistics').update({ pay_req: upVal }).in('id', ids);
+                if (db) {
+                    for (const iid of ids) {
+                        try {
+                            const lLog = await db.logistics.findOne({ selector: { id: iid } }).exec();
+                            if (lLog) await lLog.patch({ pay_req: upVal });
+                        } catch (e) { console.error(e); }
+                    }
+                }
+            } else {
+                await supabase.from('inventory').update({ pay_req: upVal }).in('id', ids);
+                if (db) {
+                    for (const iid of ids) {
+                        try {
+                            const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                            if (lInv) await lInv.patch({ pay_req: upVal, payReq: upVal });
+                        } catch (e) { console.error(e); }
+                    }
                 }
             }
 
@@ -809,7 +842,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 commission,
                 destination: dest,
                 status: 'Requested',
-                subcategory: isProduction ? 'Prod' : 'Acq',
+                subcategory: requestGroup.vendorId === 'Pack' ? 'Pack' : (isProduction ? 'Prod' : 'Acq'),
                 vendor_id: requestGroup.vendorId,
                 inventoryItemRows: isPartial ? null : itemIdsStr,
                 linkedRows: isPartial ? itemIdsStr : null,
@@ -833,14 +866,27 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             try {
                 const idsStr = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
                 if (idsStr && idsStr.length > 0) {
-                    await supabase.from('inventory').update({ pay_req: null }).in('id', idsStr);
-                    if (db) {
-                        for (const iid of idsStr) {
-                            try {
-                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                if (lInv) await lInv.patch({ pay_req: null, payReq: null });
-                            } catch (e) {
-                                console.error('Error patching local inventory', e);
+                    const isCrate = r.subcategory === 'Pack';
+                    if (isCrate) {
+                        await supabase.from('logistics').update({ pay_req: null }).in('id', idsStr);
+                        if (db) {
+                            for (const iid of idsStr) {
+                                try {
+                                    const lLog = await db.logistics.findOne({ selector: { id: iid } }).exec();
+                                    if (lLog) await lLog.patch({ pay_req: null });
+                                } catch (e) {}
+                            }
+                        }
+                    } else {
+                        await supabase.from('inventory').update({ pay_req: null }).in('id', idsStr);
+                        if (db) {
+                            for (const iid of idsStr) {
+                                try {
+                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                    if (lInv) await lInv.patch({ pay_req: null, payReq: null });
+                                } catch (e) {
+                                    console.error('Error patching local inventory', e);
+                                }
                             }
                         }
                     }
@@ -885,35 +931,49 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             if (next === 'Paid') {
                 const ids = r.related_ids || r.related_inventory_ids?.split(',');
                 if (ids?.length > 0) {
-                    if (r.description?.includes('%')) {
-                        const perc = r.description.match(/(\d+)%/)?.[1];
-                        const upStr = `paid ${perc || 'partial'}%`;
-                        await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
+                    const isCrate = r.subcategory === 'Pack';
+                    if (isCrate) {
+                        const upStr = r.description?.includes('%') ? `paid ${r.description.match(/(\d+)%/)?.[1] || 'partial'}%` : 'true';
+                        await supabase.from('logistics').update({ pay_req: upStr }).in('id', ids);
                         if (db) {
                             for (const iid of ids) {
                                 try {
-                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                    if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr });
-                                } catch (e) { console.error(e); }
+                                    const lLog = await db.logistics.findOne({ selector: { id: iid } }).exec();
+                                    if (lLog) await lLog.patch({ pay_req: upStr });
+                                } catch (e) {}
                             }
                         }
                     } else {
-                        // Full Liquidation
-                        const isProdPayment = r.subcategory === 'Prod' || r.description?.toLowerCase().includes('liquidation');
-                        const updateData: any = { pay_req: 'true' };
-                        if (isProdPayment) {
-                            updateData.status = 'Acquisition';
-                        }
+                        if (r.description?.includes('%')) {
+                            const perc = r.description.match(/(\d+)%/)?.[1];
+                            const upStr = `paid ${perc || 'partial'}%`;
+                            await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
+                            if (db) {
+                                for (const iid of ids) {
+                                    try {
+                                        const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                        if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr });
+                                    } catch (e) { console.error(e); }
+                                }
+                            }
+                        } else {
+                            // Full Liquidation
+                            const isProdPayment = r.subcategory === 'Prod' || r.description?.toLowerCase().includes('liquidation');
+                            const updateData: any = { pay_req: 'true' };
+                            if (isProdPayment) {
+                                updateData.status = 'Acquisition';
+                            }
 
-                        await supabase.from('inventory').update(updateData).in('id', ids);
-                        if (db) {
-                            const lUpdates: any = { pay_req: 'true', payReq: 'true' };
-                            if (isProdPayment) lUpdates.status = 'Acquisition';
-                            for (const iid of ids) {
-                                try {
-                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                    if (lInv) await lInv.patch(lUpdates);
-                                } catch (e) { console.error(e); }
+                            await supabase.from('inventory').update(updateData).in('id', ids);
+                            if (db) {
+                                const lUpdates: any = { pay_req: 'true', payReq: 'true' };
+                                if (isProdPayment) lUpdates.status = 'Acquisition';
+                                for (const iid of ids) {
+                                    try {
+                                        const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                        if (lInv) await lInv.patch(lUpdates);
+                                    } catch (e) { console.error(e); }
+                                }
                             }
                         }
                     }

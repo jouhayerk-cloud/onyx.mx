@@ -11,6 +11,15 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.0 — 2026-03-25
+### Added
+- **Global Realtime Sync:** Augmented the RxDB local storage mechanism with a Live Supabase Real-Time Channel, allowing all clients to reflect dataset changes simultaneously across the application, achieving fully reactive multiplayer and optimistic UI updates.
+- **Logistics Finance Tracking:** Auto-generation of empty crates now surfaces as a localized "payment request" bubble at the top of the Finance Tracking Module under the "Logistics" / "Pack" subcategory instead of inserting hardcoded financial ledger entries.
+
+## v1.28.1 — 2026-03-25
+### Changed
+- **Header Tabs:** App version bump to v1.28.1 to resolve logistics sub-tab routing in MainHeader interface logic.
+
 ## v1.28.0 — 2026-03-25
 ### Added
 - **Logistics Module Redesign [feat]:** Complete overhaul of the Logistics module replacing the Three.js placeholder with a production-grade glassmorphic UI system.
