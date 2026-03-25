@@ -675,11 +675,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
-            return targetStatuses.includes(status) && !i.data.payReq && !(i.data as any).pay_req && i.data.payReq !== 'true' && (i.data as any).pay_req !== 'true';
+            const payReqStr = String(i.data.payReq || (i.data as any).pay_req || '').toLowerCase();
+            return targetStatuses.includes(status) && payReqStr !== 'true' && payReqStr !== 'paid';
         });
 
         const pendingCrates = logisticsData.filter(c => {
-            return c.type === 'crate' && !c.pay_req && c.pay_req !== 'true' && (c.cost_mxn || 0) > 0;
+            const payReqStr = String(c.pay_req || '').toLowerCase();
+            return c.type === 'crate' && payReqStr !== 'true' && payReqStr !== 'paid' && (c.cost_mxn || 0) > 0;
         }).map(c => ({
             row: c.id,
             label: c.description || `Crate ${c.id}`,
@@ -1085,25 +1087,23 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 </button>
                                 {pendingGroups.map(group => {
                                     const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                                    const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
                                     const paidPerc = Math.round((group.paidTotal / group.total) * 100);
 
                                     return (
                                         <div key={group.vendorId}
-                                            onClick={() => setRequestGroup(group)}
-                                            className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] cursor-pointer hover:-translate-y-1 transition-transform border border-white/10 shadow-lg bg-black/20"
+                                            className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] border border-white/10 shadow-lg bg-black/20"
                                             style={{ borderTopColor: color }}>
                                             <div className="flex justify-between items-center mb-1">
                                                 <p className="font-black text-[11px] uppercase tracking-wider" style={{ color }}>{group.vendorId}</p>
                                                 <span className="text-[9px] font-mono font-bold bg-white/10 text-(--text-color) px-1.5 py-0.5 rounded">{group.items.length} ITM</span>
                                             </div>
                                             <p className="font-mono font-black text-sm text-(--text-color)">{fmtMXN(group.total)}</p>
-                                            {isProd && paidPerc > 0 ? (
+                                            {paidPerc > 0 ? (
                                                 <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2">
                                                     <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
                                                 </div>
                                             ) : (
-                                                <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Request Payment</div>
+                                                <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Pending Request</div>
                                             )}
                                         </div>
                                     );
@@ -1140,19 +1140,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar no-scrollbar">
                                     {pendingGroups.map(group => {
                                         const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#555';
-                                        const isProd = group.items.some(i => i.data.status?.toLowerCase() === 'production');
                                         const paidPerc = group.total > 0 ? Math.round((group.paidTotal / group.total) * 100) : 0;
                                         return (
                                             <div key={group.vendorId}
-                                                onClick={() => setShowAdd(true)}
-                                                title={`${group.vendorId}: ${fmtMXN(group.total)}${isProd && paidPerc > 0 ? ` (${paidPerc}% paid)` : ''}`}
-                                                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-all shadow-lg border-2 relative group/bubble"
+                                                title={`${group.vendorId}: ${fmtMXN(group.total)}${paidPerc > 0 ? ` (${paidPerc}% paid)` : ''}`}
+                                                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 relative group/bubble"
                                                 style={{ backgroundColor: color, borderColor: `${color}80` }}>
                                                 <span className="text-[8px] font-black text-black leading-none">
-                                                    {isProd && paidPerc > 0 ? `${paidPerc}%` : fmtMXN(group.total).replace('MXN', '').replace('$', '').trim().split('.')[0]}
+                                                    {paidPerc > 0 ? `${paidPerc}%` : fmtMXN(group.total).replace('MXN', '').replace('$', '').trim().split('.')[0]}
                                                 </span>
-                                                {/* Progress ring for production items */}
-                                                {isProd && paidPerc > 0 && (
+                                                {/* Progress ring for partial payments */}
+                                                {paidPerc > 0 && (
                                                     <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
                                                         <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
                                                         <circle cx="18" cy="18" r="16" fill="none" stroke="white" strokeWidth="2"
