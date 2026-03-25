@@ -19,12 +19,14 @@ import {
     Download,
     X,
     Edit,
-    Printer
+    Printer,
+    Video
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
+import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -163,9 +165,10 @@ export const PackingModule: React.FC = () => {
     const deferredSearch = React.useDeferredValue(globalSearchTerm);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
     const [isSendingToDesigner, setIsSendingToDesigner] = useState(false);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('50x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(false);
     const [vendorFilter, setVendorFilter] = useState<string | null>(null);
@@ -173,7 +176,15 @@ export const PackingModule: React.FC = () => {
     const [lastPrintedIds, setLastPrintedIds] = useState<string[]>([]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
-    const pendingBatchRef = useRef<any>(null); // holds batch until DESIGNER_READY
+    const pendingBatchRef = useRef<any>(null);
+
+    const toggleExpand = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (!db) return;
@@ -209,9 +220,16 @@ export const PackingModule: React.FC = () => {
 
                 const term = (deferredSearch || '').toLowerCase().trim();
                 if (term) {
-                    const searchStr = [normData.itemId, normData.itemNumber, normData.description, normData.shape, normData.itemType, codes.bookBardcode]
-                        .map(v => String(v || '').toLowerCase()).join(' ');
-                    if (!searchStr.includes(term)) return false;
+                    const fields = [
+                        normData.itemId, normData.itemNumber, normData.color, normData.material,
+                        normData.shape, normData.shortDescription, normData.description,
+                        normData.widthCm, normData.heightCm, normData.lengthCm, normData.weightKg,
+                        codes.bookAqCode, codes.bookLandCode, codes.bookBardcode,
+                        normData.status, normData.workbook,
+                    ].map(v => String(v || '').toLowerCase());
+                    const haystack = fields.join(' ');
+                    const terms = term.split(/\s+/).filter(Boolean);
+                    if (!terms.every(t => haystack.includes(t))) return false;
                 }
 
                 if (vendorFilter) {
@@ -555,13 +573,15 @@ export const PackingModule: React.FC = () => {
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-2 content-start">
+                        <div className="flex flex-col gap-1 content-start">
                             {processedItems.map(item => (
                                 <LogisticsRow
                                     key={item.row}
                                     item={item}
                                     isSelected={selectedIds.has(String(item.row))}
+                                    isExpanded={expandedIds.has(String(item.row))}
                                     onToggle={() => toggleSelect(String(item.row))}
+                                    onToggleExpand={() => toggleExpand(String(item.row))}
                                 />
                             ))}
                         </div>
@@ -652,86 +672,219 @@ export const PackingModule: React.FC = () => {
     );
 };
 
-/* ─── CARD VIEW ─── */
+/* ─── CARD VIEW (Gallery) ─── */
 const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
     const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
     const vendorColor = (vendors as any)[vendorCode]?.color || 'transparent';
+    const d = item.normData;
+    const isVid = item.imageUrl ? isVideoFile(item.imageUrl) : false;
+    const dimsCm = [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×');
 
     return (
         <div
             onClick={onToggle}
-            className={`group relative bg-white/2 border rounded-4xl p-4 transition-all duration-700 cursor-pointer overflow-hidden ${isSelected ? 'border-(--main-color)/40 bg-(--main-color)/5 scale-[1.02] shadow-2xl shadow-(--main-color)/10' : 'border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+            className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl hover:shadow-(--main-color)/10 ${isSelected ? 'bg-(--main-color)/8 border-(--main-color)/35 shadow-xl shadow-(--main-color)/10 scale-[1.01]' : 'bg-white/5 border-white/10 hover:border-(--main-color)/30'}`}
         >
-            <div className="aspect-square rounded-3xl overflow-hidden bg-black/40 mb-4 relative">
-                {item.imageUrl
-                    ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale brightness-75 group-hover:grayscale-0 group-hover:brightness-100 group-hover:scale-105 transition-all duration-[1.5s] ease-out" alt="" />
-                    : <div className="w-full h-full flex items-center justify-center opacity-5"><Package size={40} /></div>
-                }
-                {/* Selection indicator */}
-                <div className="absolute top-3 right-3 z-10">
-                    <div className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all duration-500 ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/60 border-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100'}`}>
-                        {isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3} />}
+            {/* Image */}
+            <div className="aspect-4/3 relative overflow-hidden bg-black/30">
+                {item.imageUrl ? (
+                    <>
+                        <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
+                        {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Video className="w-8 h-8 text-white" /></div>}
+                    </>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <OnyxMiniLogo className="w-12 h-12 opacity-10" />
+                    </div>
+                )}
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                {/* Tag ID */}
+                <div className="absolute top-2 left-2 z-10">
+                    {item.codes.bookBardcode && (
+                        <div className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black shadow-lg" style={{ backgroundColor: vendorColor }}>
+                            {item.codes.bookBardcode}
+                        </div>
+                    )}
+                </div>
+                {/* Selection */}
+                <div className="absolute top-2 right-2 z-10">
+                    <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-(--main-color) border-(--main-color) shadow-md' : 'bg-black/50 border-white/15 opacity-0 group-hover:opacity-100 backdrop-blur-md'}`}>
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
                     </div>
                 </div>
-                {/* Vendor ribbon */}
-                <div className="absolute top-0 left-0 px-2 py-1 rounded-br-2xl -translate-x-full group-hover:translate-x-0 transition-transform duration-500" style={{ backgroundColor: vendorColor }}>
-                    <span className="text-[8px] font-black text-black tracking-widest uppercase">{vendorCode}</span>
-                </div>
-                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
 
-            <div className="flex flex-col gap-3">
+            {/* Card body */}
+            <div className="p-3 flex flex-col gap-2 flex-1">
                 <div>
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-1">{item.codes.bookBardcode}</span>
-                    <h3 className="text-[11px] font-black text-white/60 uppercase tracking-widest line-clamp-1 group-hover:text-white transition-colors duration-500 font-mono">
-                        {item.normData.description || `${item.normData.shape || ''} ${item.normData.itemType || item.normData.type || ''}`.trim() || 'ONYX PIECE'}
-                    </h3>
+                    <div className="font-bold text-sm text-white leading-tight truncate">
+                        {d.shape || 'OBJ'}
+                        <span className="opacity-60 font-medium text-xs ml-1">{d.shortDescription || d.material || ''}</span>
+                    </div>
+                    {d.color && <div className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5 truncate">{d.color}</div>}
                 </div>
-                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <span className="text-[8px] font-bold text-white/25 uppercase tracking-widest italic">{item.normData.widthCm}×{item.normData.heightCm} CM</span>
-                    <span className="text-sm font-black text-white font-mono tracking-tighter">${item.codes.bookRetail}</span>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="flex flex-col">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest mb-0.5 leading-none">DIMS</span>
+                        <span className="text-[10px] font-bold text-white/70 font-mono truncate">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[7px] font-black text-white/25 uppercase tracking-[0.2em] mb-0.5 leading-none">AQ</span>
+                            <span className="text-[10px] font-mono font-black text-(--main-color)/90">{item.codes.bookAqCode || '—'}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[7px] font-black text-white/25 uppercase tracking-[0.2em] mb-0.5 leading-none">LD</span>
+                            <span className="text-[10px] font-mono font-black text-yellow-500/90">{item.codes.bookLandCode || '—'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-auto pt-2.5 border-t border-white/8">
+                    <div className="flex flex-col">
+                        <span className="text-[13px] font-black text-(--main-color)">${Math.ceil(Number(d.price || 0))}</span>
+                        <span className="text-[8px] font-bold text-white/25 tracking-widest uppercase mt-0.5">COST MXN</span>
+                    </div>
+                    <span className="text-[10px] font-black text-white/30 bg-white/5 px-2 py-1 rounded-md font-mono">×{d.quantity || 1}</span>
                 </div>
             </div>
         </div>
     );
 };
 
-/* ─── ROW VIEW ─── */
-const LogisticsRow = ({ item, isSelected, onToggle }: any) => {
+/* ─── ROW VIEW (Inventory List style) ─── */
+const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }: any) => {
     const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
-    const vendorColor = (vendors as any)[vendorCode]?.color || 'transparent';
+    const vendorColor = (vendors as any)[vendorCode]?.color || '#555';
+    const d = item.normData;
+    const isVid = item.imageUrl ? isVideoFile(item.imageUrl) : false;
+    const dimsCm = [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×');
+    const itemPriceMXN = Math.ceil(Number(d.price || 0));
+    const itemQuantity = Number(d.quantity || 1);
+    const weightKg = d.weightKg ? parseFloat(String(d.weightKg)) : null;
 
     return (
-        <div
-            onClick={onToggle}
-            className={`flex items-center gap-5 p-4 rounded-2xl border transition-all duration-300 cursor-pointer group ${isSelected ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}
-        >
-            <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${isSelected ? 'bg-(--main-color) border-(--main-color)' : 'bg-black/40 border-white/10 opacity-40 group-hover:opacity-100'}`}>
-                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
+        <div className="flex flex-col gap-0">
+            <div
+                className={`flex items-stretch overflow-hidden border rounded-xl transition-all group shadow-sm ${
+                    isSelected
+                        ? 'bg-(--main-color)/8 border-(--main-color)/30 ring-1 ring-(--main-color)/20'
+                        : 'bg-(--stitch-card-bg, rgba(255,255,255,0.03)) border-white/6 hover:border-white/12 hover:bg-white/5'
+                }`}
+            >
+                {/* Select checkbox */}
+                <div
+                    onClick={onToggle}
+                    className="w-10 shrink-0 flex items-center justify-center border-r border-white/5 cursor-pointer"
+                >
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all border ${
+                        isSelected
+                            ? 'bg-(--main-color) border-(--main-color) shadow-md shadow-(--main-color)/30'
+                            : 'border-white/15 group-hover:border-white/30'
+                    }`}>
+                        {isSelected && <CheckCircle2 size={8} className="text-black" strokeWidth={3} />}
+                    </div>
+                </div>
+
+                {/* Image thumb */}
+                <div onClick={onToggle} className="w-14 h-14 shrink-0 bg-black/40 relative cursor-pointer">
+                    {item.imageUrl ? (
+                        <>
+                            <img src={item.imageUrl} className="w-full h-full object-cover" />
+                            {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-3 h-3" /></div>}
+                        </>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center opacity-20">
+                            <OnyxMiniLogo className="w-7 h-7 object-contain" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Scrollable data columns */}
+                <div onClick={onToggle} className="flex-1 overflow-x-auto no-scrollbar flex items-center px-3 gap-3 min-w-0 cursor-pointer">
+                    {/* Name */}
+                    <div className="flex flex-col justify-center min-w-[130px] max-w-[220px] shrink-0 border-r border-white/5 pr-3 h-full py-1">
+                        <h3 className="text-xs font-bold text-white truncate">
+                            {(d.shape || '') + ' ' + (d.shortDescription || d.description || '')}
+                        </h3>
+                        <div className="flex items-center gap-1.5 text-[10px] text-white/40 mt-0.5">
+                            {d.color && <span className="truncate">{d.color}</span>}
+                            {d.material && <><span className="text-white/20">·</span><span className="truncate">{d.material}</span></>}
+                        </div>
+                    </div>
+
+                    {/* Tag ID */}
+                    <div className="flex flex-col min-w-[64px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
+                            style={{ backgroundColor: vendorColor }}>
+                            {item.codes.bookBardcode || vendorCode || 'N/A'}
+                        </span>
+                    </div>
+
+                    {/* Price / Qty */}
+                    <div className="flex flex-col min-w-[72px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Price / Qty</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-[12px] font-bold text-white">${itemPriceMXN}</span>
+                            <span className="text-[10px] text-white/40 font-mono">×{itemQuantity}</span>
+                        </div>
+                    </div>
+
+                    {/* AQ Code */}
+                    <div className="flex flex-col min-w-[56px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">AQ</span>
+                        <span className="text-[11px] text-white/70 font-mono">{item.codes.bookAqCode || '—'}</span>
+                    </div>
+
+                    {/* LD Code */}
+                    <div className="flex flex-col min-w-[56px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">LD</span>
+                        <span className="text-[11px] text-yellow-400/80 font-mono">{item.codes.bookLandCode || '—'}</span>
+                    </div>
+
+                    {/* Dims */}
+                    <div className="flex flex-col min-w-[60px] shrink-0 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Dims</span>
+                        <span className="text-[10px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                    </div>
+
+                    {weightKg && (
+                        <div className="flex flex-col min-w-[46px] shrink-0 justify-center h-full gap-0.5">
+                            <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Wt</span>
+                            <span className="text-[10px] text-white/50 font-mono">{weightKg}kg</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Expand button */}
+                <div className="flex items-center px-2 py-2 shrink-0 bg-white/2 border-l border-white/5">
+                    <button
+                        onClick={e => { e.stopPropagation(); onToggleExpand(); }}
+                        className={`p-1.5 hover:text-white hover:bg-white/10 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : 'text-white/25'}`}
+                    >
+                        <Maximize2 className={`w-3.5 h-3.5 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                </div>
             </div>
 
-            <div className="w-12 h-12 rounded-xl bg-black/60 shrink-0 overflow-hidden border border-white/5 relative group-hover:scale-105 transition-transform duration-500">
-                {item.imageUrl
-                    ? <img src={item.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="" />
-                    : <Package className="w-full h-full p-3 opacity-5" />
-                }
-                <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: vendorColor }} />
-            </div>
-
-            <div className="flex-1 grid grid-cols-12 gap-4 items-center min-w-0">
-                <div className="col-span-3 flex flex-col min-w-0">
-                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.3em] leading-none mb-1 italic truncate">{item.normData.itemId}</span>
-                    <span className="text-[10px] font-black text-white uppercase tracking-tight truncate font-mono">{item.codes.bookBardcode}</span>
+            {/* Expanded Detail Panel */}
+            {isExpanded && (
+                <div className="ml-[94px] mr-1 px-4 pb-3 pt-2.5 bg-black/30 border-x border-b border-white/5 rounded-b-xl animate-in slide-in-from-top-2 duration-200">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-6 gap-y-2">
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Material</p><p className="text-[11px] font-bold text-white/70 uppercase">{d.material || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Dimensions</p><p className="text-[11px] font-mono font-bold text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Weight</p><p className="text-[11px] font-mono font-bold text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Quantity</p><p className="text-[11px] font-mono font-bold text-white/70">{d.quantity || 1}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Status</p><p className="text-[11px] font-bold text-white/70 uppercase">{d.status || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Book Retail</p><p className="text-[11px] font-mono font-black text-green-400">${item.codes.bookRetail || '—'}</p></div>
+                    </div>
+                    {d.description && (
+                        <p className="text-[10px] text-white/40 mt-2 italic leading-relaxed border-t border-white/5 pt-2">{d.description}</p>
+                    )}
                 </div>
-                <div className="col-span-6 flex flex-col min-w-0">
-                    <span className="text-[11px] font-bold text-white/50 uppercase tracking-wide truncate group-hover:text-white transition-colors duration-300">{item.normData.description}</span>
-                    <span className="text-[7px] font-black text-(--main-color)/50 uppercase tracking-[0.3em] mt-0.5 italic">{item.normData.material} · {item.normData.widthCm}×{item.normData.heightCm} CM</span>
-                </div>
-                <div className="col-span-3 flex items-center justify-end gap-3">
-                    <span className="text-sm font-black text-white font-mono tracking-tighter italic">${item.codes.bookRetail}</span>
-                    <ChevronRight size={13} className="text-white/10 group-hover:text-(--main-color) group-hover:translate-x-1 transition-all duration-300 shrink-0" />
-                </div>
-            </div>
+            )}
         </div>
     );
 };
