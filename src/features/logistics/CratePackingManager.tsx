@@ -7,7 +7,7 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVi
 import toast from 'react-hot-toast';
 import {
     Package, Box, ChevronRight, Check, X, Loader2,
-    PackagePlus, ListFilter, Inbox, Video, Maximize2, ChevronDown
+    PackagePlus, ListFilter, Inbox, Video, Maximize2
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
@@ -377,11 +377,11 @@ export const CratePackingManager: React.FC = () => {
                 const norm = normalizeInventoryData(d);
                 const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                 const fields = [
-                    d.item_id, d.itemId, d.item_number, d.color, d.material,
-                    d.shape, d.short_description, d.shortDescription, d.description,
-                    d.width_cm, d.height_cm, d.length_cm, d.weight_kg,
+                    norm.itemId, norm.itemNumber, norm.color, norm.material,
+                    norm.shape, norm.shortDescription, norm.description,
+                    norm.widthCm, norm.heightCm, norm.lengthCm, norm.weightKg,
                     calculated.bookAqCode, calculated.bookLandCode, calculated.bookBardcode,
-                    d.status, d.workbook, vendorId,
+                    norm.status, norm.workbook, vendorId,
                 ].map(v => String(v || '').toLowerCase());
                 const haystack = fields.join(' ');
                 const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -512,27 +512,24 @@ export const CratePackingManager: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Status filter */}
-                        <select
-                            value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value as any)}
-                            className="bg-white/5 border border-white/8 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/60 outline-none cursor-pointer focus:border-white/20 transition appearance-none"
-                        >
-                            {['All', 'Acquisition', 'Production', 'Shipped'].map(s => (
-                                <option key={s} value={s} className="bg-black text-white">{s}</option>
+                        {/* Status filter — pill chips */}
+                        <div className="flex items-center gap-1">
+                            {(['All', 'Acquisition', 'Production', 'Shipped'] as const).map(s => (
+                                <button
+                                    key={s}
+                                    onClick={() => setStatusFilter(s)}
+                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all border cursor-pointer ${
+                                        statusFilter === s
+                                            ? 'bg-(--main-color) text-black border-(--main-color) shadow-md shadow-(--main-color)/20'
+                                            : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
+                                    }`}
+                                >
+                                    {s}
+                                </button>
                             ))}
-                        </select>
+                        </div>
 
-                        {/* Vendor filter */}
-                        <select
-                            value={vendorFilter}
-                            onChange={e => setVendorFilter(e.target.value)}
-                            className="bg-white/5 border border-white/8 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-white/60 outline-none cursor-pointer focus:border-white/20 transition appearance-none"
-                        >
-                            {vendorOptions.map(v => (
-                                <option key={v} value={v} className="bg-black text-white">{v}</option>
-                            ))}
-                        </select>
+                        <div className="w-px h-4 bg-white/10 mx-1" />
 
                         {/* Pack Action */}
                         <button
@@ -544,6 +541,34 @@ export const CratePackingManager: React.FC = () => {
                             Pack {selectedItemIds.size > 0 ? selectedItemIds.size : ''} Item{selectedItemIds.size !== 1 ? 's' : ''}
                         </button>
                     </div>
+                </div>
+
+                {/* Vendor filter strip — pill chips with color dots, mirrors Inventory vendor filter */}
+                <div className="flex items-center gap-1.5 px-5 py-2 border-b border-white/5 bg-black/10 overflow-x-auto no-scrollbar shrink-0">
+                    <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-1">Vendor</span>
+                    {vendorOptions.map(v => {
+                        const color = v === 'All' ? undefined : (vendors as any)[v]?.color;
+                        const isActive = vendorFilter === v;
+                        return (
+                            <button
+                                key={v}
+                                onClick={() => setVendorFilter(v)}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all border shrink-0 cursor-pointer ${
+                                    isActive
+                                        ? 'bg-white text-black border-white shadow-md'
+                                        : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
+                                }`}
+                            >
+                                {color && (
+                                    <div
+                                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                )}
+                                {v}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Inventory List */}

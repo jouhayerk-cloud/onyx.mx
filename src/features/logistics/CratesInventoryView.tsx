@@ -1,10 +1,71 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAtom } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom } from '../../lib/atoms';
+
+// ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
+const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string }> = ({
+    w = 60, l = 60, h = 60, status = 'Empty',
+}) => {
+    const maxDim = Math.max(w, l, h, 1);
+    const scale = 56 / maxDim;
+    const dw = Math.round(w * scale);
+    const dl = Math.round(l * scale);
+    const dh = Math.round(h * scale);
+    const depth = Math.round(dl * 0.38);
+
+    const accentColor =
+        status === 'Packed' ? '#f87171'
+        : status === 'Partial' ? '#fbbf24'
+        : 'var(--main-color)';
+
+    const svgW = dw + depth + 6;
+    const svgH = dh + depth + 6;
+
+    const x0 = 3, y0 = depth + 3;
+    const x1 = x0 + dw, y1 = y0;
+    const x2 = x1, y2 = y0 + dh;
+    const x3 = x0, y3 = y0 + dh;
+    const dx = depth, dy = -depth;
+
+    return (
+        <svg
+            width={svgW} height={svgH}
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            className="overflow-visible drop-shadow-lg"
+            style={{ filter: `drop-shadow(0 0 6px ${accentColor}33)` }}
+        >
+            {/* Back dashed edges */}
+            <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+            <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+            <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+
+            {/* Top face */}
+            <polygon
+                points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y1+dy} ${x1},${y1}`}
+                fill={`${accentColor}08`}
+                stroke={accentColor} strokeWidth="1"
+            />
+            {/* Right face */}
+            <polygon
+                points={`${x1},${y1} ${x1+dx},${y1+dy} ${x1+dx},${y2+dy} ${x1},${y2}`}
+                fill={`${accentColor}05`}
+                stroke={accentColor} strokeWidth="1"
+            />
+            {/* Front face */}
+            <rect x={x0} y={y0} width={dw} height={dh}
+                fill={`${accentColor}07`}
+                stroke={accentColor} strokeWidth="1.2"
+            />
+            {/* Cross braces */}
+            <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+            <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+        </svg>
+    );
+};
 
 // --- Local Crate Type ---
 interface CrateRecord {
@@ -49,18 +110,29 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
             <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-(--main-color)/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
             <div className="p-5 flex flex-col gap-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
-                            <Box size={14} className="text-(--main-color)" strokeWidth={2} />
-                        </div>
-                        <span className="text-[9px] font-mono text-white/30 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</span>
+                {/* Wireframe preview window */}
+                <div className="relative w-full aspect-[4/2.4] rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden">
+                    {/* Subtle grid bg */}
+                    <div className="absolute inset-0 opacity-[0.04]" style={{
+                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+                        backgroundSize: '16px 16px'
+                    }} />
+                    <WireframeCrate
+                        w={crate.width_cm}
+                        l={crate.length_cm}
+                        h={crate.height_cm}
+                        status={crate.status}
+                    />
+                    {/* Status + ID overlay */}
+                    <div className="absolute top-2 left-2.5">
+                        <StatusBadge status={crate.status} />
                     </div>
-                    <StatusBadge status={crate.status} />
+                    <div className="absolute bottom-2 right-2.5">
+                        <span className="text-[7px] font-mono text-white/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</span>
+                    </div>
                 </div>
 
-                {/* Dimensions */}
+                {/* Dimensions + volume */}
                 <div>
                     <h3 className="text-base font-black uppercase tracking-tight text-white leading-none">
                         {crate.width_cm}<span className="text-white/30 text-xs">×</span>{crate.length_cm}<span className="text-white/30 text-xs">×</span>{crate.height_cm}
