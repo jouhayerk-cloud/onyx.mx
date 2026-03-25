@@ -13,6 +13,9 @@
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 ## v1.29.1 — 2026-03-25
 
+### Added
+- **Bank Commission & IVA Toggles:** Implemented a new mutually-exclusive 10% Bank Commission toggle under the existing 16% IVA boolean selector within the Add Payment and Request Payment workflows. This standardizes automatic fee calculations for transactions bound by fixed platform or international transfer percentages, keeping exact ledger balances without manually recalculating the base + fee aggregates.
+
 ### Changed
 - **Operations Workflow:** Integrated Crates tracking seamlessly into the Add Payment Operations sequence (Monthly Fixed · Crates · Other). Clicking Crates automatically aggregates all unpacked logistics crate shipments into a unified vendor group, calculating aggregate metrics (`W×L×D` physical dimensions, counts, combined total cost) and instantly populating the final checkout form.
 - **Categorization:** Upgraded default database sync tagging for crates from general Acquisition (`Acq`) to specific Logistics Packaging (`Packing`). Overrided the default internal subcategory `Pack` naming to `Packing` globally to resolve mapping inconsistency.
