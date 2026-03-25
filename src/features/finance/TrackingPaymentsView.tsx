@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAtom, useSetAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -644,8 +644,10 @@ const RequestPaymentModal: React.FC<{
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
-    const [inventory, setInventory] = useAtom(inventoryAtom);
+    // Use inventoryAtom as a read-only live feed from DataSyncProvider (reactive via Supabase realtime)
+    const inventory = useAtomValue(inventoryAtom);
     const logisticsData = useAtomValue(logisticsDataAtom);
+    const isLoading = useAtomValue(isSyncingAtom);
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
@@ -653,7 +655,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [vendorFilter, setVendorFilter] = useState<string>('All');
     const [showAdd, setShowAdd] = useState(false);
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const filterMode = useAtomValue(paymentFilterBarModeAtom);
     const financeSearch = useAtomValue(financeSearchTermAtom);
@@ -666,18 +667,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
             .catch(() => { });
     }, [liveExchangeRate, setLiveExchangeRate]);
-
-    const fetchInventory = useCallback(async () => {
-        if (!db) { setIsLoading(false); return; }
-        setIsLoading(true);
-        try {
-            const invDocs = await db.inventory.find().exec();
-            setInventory(invDocs.map((doc: any) => ({ row: doc.id, data: doc.toJSON() })));
-        } catch { }
-        setIsLoading(false);
-    }, [db, setInventory]);
-
-    useEffect(() => { fetchInventory(); }, [inventoryVersion, paymentsVersion, fetchInventory]);
 
     const pendingGroups = useMemo<VendorGroup[]>(() => {
 
