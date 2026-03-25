@@ -9,6 +9,7 @@ import {
 } from '../lib/atoms';
 import { useDatabase } from '../lib/hooks';
 import { normalizeInventoryData } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 /**
  * DataSyncProvider
@@ -93,9 +94,41 @@ export const DataSyncProvider: React.FC = () => {
             })
         );
 
+        // 4. Supabase Real-Time Subscriptions
+        const applyRealtimeChange = async (collection: any, payload: any) => {
+            if (!collection) return;
+            try {
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const docInfo = { ...payload.new, id: String(payload.new.id) };
+                    if (docInfo.workbook !== undefined && docInfo.workbook !== null) {
+                        docInfo.workbook = String(docInfo.workbook);
+                    }
+                    await collection.upsert(docInfo);
+                } else if (payload.eventType === 'DELETE') {
+                    const id = String(payload.old.id);
+                    const doc = await collection.findOne({ selector: { id } }).exec();
+                    if (doc) await doc.remove();
+                }
+            } catch (err) {
+                console.error(`[DataSync] Realtime merge error in ${payload.table}:`, err);
+            }
+        };
+
+        const realtimeChannel = supabase.channel('global-db-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, payload => applyRealtimeChange(db.inventory, payload))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, payload => applyRealtimeChange(db.production, payload))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'finance' }, payload => applyRealtimeChange(db.finance, payload))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'logistics' }, payload => applyRealtimeChange(db.logistics, payload))
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('📡 [DataSync] Real-time multiplayer synchronization established.');
+                }
+            });
+
         return () => {
             console.log('🔌 [DataSync] Cleaning up global subscriptions.');
             subscriptions.forEach(sub => sub.unsubscribe());
+            supabase.removeChannel(realtimeChannel);
         };
     }, [db, setInventory, setFinance, setLogistics]);
 

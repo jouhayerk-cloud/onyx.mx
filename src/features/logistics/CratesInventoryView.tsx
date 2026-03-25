@@ -145,32 +145,10 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                 }
             }
 
-            // Auto-generate finance payment record
-            const finPayload = {
-                amount: totalCost || price * qty,
-                commission: 0,
-                destination: 'BBVA Ramses',
-                status: 'Requested',
-                date: now,
-                currency: 'MXN',
-                type: 'Expense',
-                category: 'Logistics',
-                subcategory: 'Pack',
-                description: `Crate acquisition: ${qty}× (${w}×${l}×${h} cm)`,
-                notes: form.description || null,
-                related_ids: logData?.map((c: any) => String(c.id)) || [],
-                updated_at: now,
-            };
+            // Skip auto-generating finance payment record
+            // It is now handled by the UI bubble in Payments.
 
-            const { data: finData, error: finErr } = await supabase.from('finance').insert(finPayload).select();
-            if (finErr) {
-                toast.error('Crates created but payment record failed. Check finance log.');
-                console.error('[Crate] Finance insert error:', finErr);
-            } else if (db && finData?.[0]) {
-                try { await db.finance.insert({ ...finData[0], id: String(finData[0].id) }); } catch (_) { /* */ }
-            }
-
-            toast.success(`${qty} crate(s) initialized. Payment request generated.`, { id: tid });
+            toast.success(`${qty} crate(s) initialized. Navigate to Payments to request it.`, { id: tid });
             onRefresh();
             onClose();
             setForm({ width: '', length: '', height: '', quantity: '1', price: '', description: '' });
