@@ -88,6 +88,7 @@ const AddPaymentModal: React.FC<{
         recurring_day: 1,
         manualFee: '',
         includeIva: false,
+        includeComm: false,
     });
 
     const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
@@ -108,11 +109,13 @@ const AddPaymentModal: React.FC<{
                 recurring_day: new Date().getDate(),
                 manualFee: '',
                 includeIva: false,
+                includeComm: false,
             });
         }
     }, [isOpen]);
 
     const calculateIVA = (amt: number) => amt * 0.16;
+    const calculateComm = (amt: number) => amt * 0.10;
 
     const handleSubmit = async () => {
         const amt = parseFloat(form.amount);
@@ -124,7 +127,8 @@ const AddPaymentModal: React.FC<{
         try {
             const manualFeeAmt = parseFloat(form.manualFee) || 0;
             const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
-            const commission = manualFeeAmt + ivaAmt;
+            const commAmt = form.includeComm ? calculateComm(amt) : 0;
+            const commission = manualFeeAmt + ivaAmt + commAmt;
 
             const isProd = form.subcategory === 'Prod';
             const isPacking = form.subcategory === 'Packing';
@@ -488,18 +492,36 @@ const AddPaymentModal: React.FC<{
                             <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Optional taxes and transaction fees</p>
 
                             <div className="flex flex-col gap-10">
+                            <div className="flex flex-col gap-4">
                                 <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
                                     <div className="flex flex-col">
                                         <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
                                         <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Value added tax calculation</span>
                                     </div>
-                                    <button onClick={() => set('includeIva', !form.includeIva)}
+                                    <button onClick={() => {
+                                        set('includeIva', !form.includeIva);
+                                        if (!form.includeIva) set('includeComm', false);
+                                    }}
                                         className={`w-14 h-8 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
                                         <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeIva ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
+                                <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                                    <div className="flex flex-col">
+                                        <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
+                                        <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Platform & transfer fees</span>
+                                    </div>
+                                    <button onClick={() => {
+                                        set('includeComm', !form.includeComm);
+                                        if (!form.includeComm) set('includeIva', false);
+                                    }}
+                                        className={`w-14 h-8 rounded-full transition-all relative ${form.includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
+                                        <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeComm ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
 
-                                <div className="space-y-4">
+                            <div className="space-y-4 pt-6">
                                     <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
                                     <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
                                         className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
@@ -511,10 +533,11 @@ const AddPaymentModal: React.FC<{
                                         <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
                                     </div>
                                     <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
-                                        {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0))}
+                                        {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
                                     </div>
                                     <div className="flex gap-4 mt-3 opacity-60">
                                         {form.includeIva && <span className="text-[9px] font-black uppercase tracking-widest text-[#8DC63F]">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
                                         {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
                                     </div>
                                 </div>
@@ -538,11 +561,12 @@ const AddPaymentModal: React.FC<{
 const RequestPaymentModal: React.FC<{
     group: VendorGroup | null;
     onClose: () => void;
-    onConfirm: (dest: PaymentDestination, percentage: number, manualFee: number, includeIva: boolean) => void;
+    onConfirm: (dest: PaymentDestination, percentage: number, manualFee: number, includeIva: boolean, includeComm: boolean) => void;
 }> = ({ group, onClose, onConfirm }) => {
     const [dest, setDest] = useState<PaymentDestination | null>(null);
     const [manualFee, setManualFee] = useState('');
     const [includeIva, setIncludeIva] = useState(false);
+    const [includeComm, setIncludeComm] = useState(false);
     const paidPerc = group ? Math.round((group.paidTotal / group.total) * 100) : 0;
     const [percentage, setPercentage] = useState(100);
 
@@ -638,9 +662,22 @@ const RequestPaymentModal: React.FC<{
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between p-4 rounded-2xl bg-(--glass-bg) border border-(--border-color)">
                                 <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
-                                <button onClick={() => setIncludeIva(!includeIva)}
+                                <button onClick={() => {
+                                    setIncludeIva(!includeIva);
+                                    if (!includeIva) setIncludeComm(false);
+                                }}
                                     className={`w-12 h-7 rounded-full transition-all relative ${includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
                                     <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${includeIva ? 'left-6' : 'left-1'}`} />
+                                </button>
+                            </div>
+                            <div className="flex items-center justify-between p-4 rounded-2xl bg-(--glass-bg) border border-(--border-color)">
+                                <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
+                                <button onClick={() => {
+                                    setIncludeComm(!includeComm);
+                                    if (!includeComm) setIncludeIva(false);
+                                }}
+                                    className={`w-12 h-7 rounded-full transition-all relative ${includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
+                                    <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${includeComm ? 'left-6' : 'left-1'}`} />
                                 </button>
                             </div>
                             <div className="relative group/fee">
@@ -657,13 +694,13 @@ const RequestPaymentModal: React.FC<{
                                 <span className="text-[10px] font-mono text-(--text-color-secondary)">{fmtMXN(amountToRequest)} BASE</span>
                             </div>
                             <div className="text-3xl font-mono font-black text-(--text-color)">
-                                {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0))}
+                                {fmtMXN(amountToRequest + (parseFloat(manualFee) || 0) + (includeIva ? (amountToRequest * 0.16) : 0) + (includeComm ? (amountToRequest * 0.10) : 0))}
                             </div>
                         </div>
 
                         <div className="flex gap-4 mt-2">
                             <button onClick={onClose} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[24px] text-[10px] font-black tracking-widest hover:bg-(--glass-bg) transition-all">CANCEL</button>
-                            <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva)} disabled={!dest || amountToRequest <= 0}
+                            <button onClick={() => dest && onConfirm(dest, percentage, parseFloat(manualFee) || 0, includeIva, includeComm)} disabled={!dest || amountToRequest <= 0}
                                 className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[24px] text-[10px] font-black tracking-widest disabled:opacity-40 uppercase transition-all shadow-lg hover:scale-[1.02] active:scale-95">
                                 {paidPerc > 0 && percentage === 100 ? 'CONFIRM LIQUIDATION' : 'CONFIRM PARTIAL PAYMENT'}
                             </button>
@@ -813,7 +850,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
     }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch]);
 
-    const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false) => {
+    const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false, includeComm: boolean = false) => {
         if (!requestGroup) return;
         const toastId = toast.loading('Sending request…');
         try {
@@ -825,7 +862,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 return;
             }
 
-            const commission = Number((manualFee + (includeIva ? amount * 0.16 : 0)).toFixed(2));
+            const commission = Number((manualFee + (includeIva ? amount * 0.16 : 0) + (includeComm ? amount * 0.10 : 0)).toFixed(2));
 
             const isProduction = requestGroup.items.some(i => (i.data.status || '').toLowerCase() === 'production');
             const isPartial = percentage < 100;
