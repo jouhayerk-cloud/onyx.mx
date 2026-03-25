@@ -27,7 +27,7 @@ const normalizeSubcat = (s: string | null | undefined): string => {
     return s;
 };
 
-const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Pack', 'Oprt'] as const;
+const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Packing', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
 type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
@@ -127,15 +127,27 @@ const AddPaymentModal: React.FC<{
             const commission = manualFeeAmt + ivaAmt;
 
             const isProd = form.subcategory === 'Prod';
-            const group = (form.subcategory === 'Acq' || isProd) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
+            const isPacking = form.subcategory === 'Packing';
+            const group = (form.subcategory === 'Acq' || isProd || isPacking) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
             const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
 
             if (ids.length > 0) {
                 const isPartial = group && amt < (group.total - group.paidTotal);
                 const perc = group ? Math.round(((group.paidTotal + amt) / group.total) * 100) : 100;
-
-                if (isProd && isPartial) {
+                
+                if (isPacking) {
+                    const upStatus = isPartial ? `requested ${perc}%` : 'true';
+                    await supabase.from('logistics').update({ pay_req: upStatus }).in('id', ids);
+                    if (db) {
+                        for (const iid of ids) {
+                            try {
+                                const lLog = await db.logistics.findOne({ selector: { id: iid } }).exec();
+                                if (lLog) await lLog.patch({ pay_req: upStatus });
+                            } catch (e) { console.error(e); }
+                        }
+                    }
+                } else if (isProd && isPartial) {
                     const up = { pay_req: `requested ${perc}%`, notes: `Partial payment of ${amt} recorded.` };
                     await supabase.from('inventory').update(up).in('id', ids);
                     if (db) {
@@ -164,7 +176,7 @@ const AddPaymentModal: React.FC<{
                 amount: amt,
                 commission,
                 inventoryItemRows: (form.subcategory === 'Acq' && !form.vendor_id.includes('%')) ? inventoryItemRows : null,
-                linkedRows: (form.subcategory === 'Prod' || form.vendor_id.includes('%')) ? inventoryItemRows : null
+                linkedRows: (form.subcategory === 'Prod' || form.subcategory === 'Packing' || form.vendor_id.includes('%')) ? inventoryItemRows : null
             }, db);
 
             toast.success('Record added!', { id: toastId });
@@ -311,22 +323,45 @@ const AddPaymentModal: React.FC<{
                             <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold text-center">Classify the administrative cost</p>
                             <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
 
-                            <div className="grid grid-cols-2 gap-5 w-full">
+                            <div className="grid grid-cols-3 gap-5 w-full">
                                 <button onClick={() => { set('subcategory', 'Monthly'); setStep(4); }}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-16 h-16 mb-5 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 opacity-50 text-(--text-color-secondary)"><use href="#calendar" /></svg>
+                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
+                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#calendar" /></svg>
                                     </div>
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">MONTHLY FIXED</span>
+                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">MONTHLY FIXED</span>
                                     <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Recurring bills<br />& subscriptions</span>
                                 </button>
-                                <button onClick={() => { setStep(3.2); }}
-                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-16 h-16 mb-5 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-8 h-8 opacity-50 text-(--text-color-secondary)"><use href="#file" /></svg>
+                                <button onClick={() => { 
+                                    const cratesGroup = pendingGroups.find(g => g.vendorId === 'Crates');
+                                    if (cratesGroup) {
+                                        set('subcategory', 'Packing'); 
+                                        set('vendor_id', 'Crates');
+                                        set('amount', (cratesGroup.total - cratesGroup.paidTotal).toString());
+                                        const sizesSet = new Set(cratesGroup.items.map(i => {
+                                            const d = i.data as any;
+                                            return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
+                                        }));
+                                        set('description', `Payment for ${cratesGroup.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
+                                        setStep(4);
+                                    } else {
+                                        toast.error("No pending crates found");
+                                    }
+                                }}
+                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-[#8DC63F]/50 hover:bg-[#8DC63F]/5 transition-all group">
+                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-7 h-7 opacity-50 text-[#8DC63F]"><use href="#pkg" /></svg>
                                     </div>
-                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">VARIABLE COST</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">One-time operational<br />expenditure</span>
+                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">CRATES</span>
+                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Material Packing<br />& Shipments</span>
+                                </button>
+                                <button onClick={() => { setStep(3.2); }}
+                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
+                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#file" /></svg>
+                                    </div>
+                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">OTHER</span>
+                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Variable operations<br />expenditure</span>
                                 </button>
                             </div>
                         </div>
@@ -340,11 +375,11 @@ const AddPaymentModal: React.FC<{
                             <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
 
                             <div className="grid grid-cols-2 gap-4">
-                                {['Sppl', 'Labr', 'Pack', 'Oprt'].map(cat => {
+                                {['Sppl', 'Labr', 'Packing', 'Oprt'].map(cat => {
                                     const labels: Record<string, { t: string, s: string, i: string }> = {
                                         Sppl: { t: 'SUPPLIES', s: 'Equipment & tools', i: '#hammer' },
                                         Labr: { t: 'LABOR', s: 'Workforce payments', i: '#user' },
-                                        Pack: { t: 'PACKAGING', s: 'Shipping materials', i: '#label' },
+                                        Packing: { t: 'PACKAGING', s: 'Shipping materials', i: '#label' },
                                         Oprt: { t: 'OPERATIONS', s: 'General services', i: '#settings' }
                                     };
                                     return (
@@ -403,8 +438,9 @@ const AddPaymentModal: React.FC<{
 
                             <div className="flex gap-5 mt-16">
                                 <button onClick={() => {
-                                    if (form.vendor_id) setStep(3.1);
-                                    else if (['Sppl', 'Labr', 'Pack', 'Oprt'].includes(form.subcategory)) setStep(3.2);
+                                    if (form.subcategory === 'Packing' && form.vendor_id === 'Crates') setStep(2.2);
+                                    else if (form.vendor_id) setStep(3.1);
+                                    else if (['Sppl', 'Labr', 'Packing', 'Oprt'].includes(form.subcategory)) setStep(3.2);
                                     else setStep(2.2);
                                 }} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
                                 <button onClick={() => {
@@ -688,9 +724,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             imageUrl: '',
             data: {
                 ...c,
-                status: 'Pack', 
+                status: 'Packing', 
                 item_id: c.id,
-                vendor_id: 'Pack',
+                vendor_id: 'Crates',
                 price: c.cost_mxn,
                 quantity: c.quantity || 1
             }
@@ -857,7 +893,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             try {
                 const idsStr = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
                 if (idsStr && idsStr.length > 0) {
-                    const isCrate = r.subcategory === 'Pack';
+                    const isCrate = r.subcategory === 'Packing';
                     if (isCrate) {
                         await supabase.from('logistics').update({ pay_req: null }).in('id', idsStr);
                         if (db) {
@@ -882,10 +918,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         }
                     }
                 }
-                const localDoc = await db.finance.findOne({ selector: { id: r.id } }).exec();
-                if (localDoc) await localDoc.remove();
             } catch (e) {
-                console.error('Error removing local doc', e);
+                console.error('Error updating local docs', e);
             }
             toast.success('Payment deleted');
             setPaymentsVersion(v => v + 1);
@@ -1176,8 +1210,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             {SUBCATEGORIES.map(s => {
                                 const labels: Record<string, string> = {
                                     'All': 'All', 'Acq': 'Acquisition', 'Prod': 'Production',
-                                    'Monthly': 'Monthly', 'Sppl': 'Supplies', 'Labr': 'Labor',
-                                    'Pack': 'Packaging', 'Oprt': 'Operations'
+                                    'Monthly': 'Monthly Fixed', 'Oprt': 'Operations', 'Packing': 'Packaging',
+                                    'Sppl': 'Supplies', 'Labr': 'Labor', 'Other': 'Other'
                                 };
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
@@ -1426,7 +1460,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                     </symbol>
                     <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
                     </symbol>
                     <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />

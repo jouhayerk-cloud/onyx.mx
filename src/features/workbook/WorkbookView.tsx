@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { workbookActiveTabAtom, workbookViewModeAtom, workbookDensityAtom, exchangeRateAtom, userAtom } from '../../lib/atoms';
+import { workbookActiveTabAtom, workbookViewModeAtom, workbookDensityAtom, exchangeRateAtom, userAtom, financeDataAtom } from '../../lib/atoms';
 import { WORKBOOK_TABS, vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg } from '../../lib/utils';
+import { getTextColorForBg } from '../../lib/utils';
 
 const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = ({ label, active, color }) => (
     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all duration-300 ${active
@@ -345,6 +345,7 @@ const CratesPanel: React.FC<{ docs: any[] }> = ({ docs }) => {
 };
 const DatabasePanel: React.FC = () => {
     const db = useDatabase();
+    const financeData = useAtomValue(financeDataAtom);
     const [collectionName, setCollectionName] = useState<'inventory' | 'finance' | 'logistics' | 'production'>('inventory');
     const [docs, setDocs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -355,12 +356,19 @@ const DatabasePanel: React.FC = () => {
         if (!db) return;
         setLoading(true);
         setSelectedIds(new Set()); // Reset selections on collection change
+
+        if (collectionName === 'finance') {
+            setDocs(financeData);
+            setLoading(false);
+            return;
+        }
+
         const sub = db[collectionName].find().$.subscribe(d => {
             setDocs(d.map(x => x.toJSON()));
             setLoading(false);
         });
         return () => sub.unsubscribe();
-    }, [db, collectionName]);
+    }, [db, collectionName, financeData]);
 
     const handleUpdate = async (id: string, data: any) => {
         if (!db) return;
@@ -721,8 +729,9 @@ export const WorkbookView: React.FC = () => {
     const [density, setDensity] = useAtom(workbookDensityAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
+    const financeData = useAtomValue(financeDataAtom);
 
-    const [data, setData] = useState<{ inv: any[], prod: any[], log: any[], fin: any[] }>({ inv: [], prod: [], log: [], fin: [] });
+    const [data, setData] = useState<{ inv: any[], prod: any[], log: any[] }>({ inv: [], prod: [], log: [] });
     const [ver, setVer] = useState(0);
     const [isSyncing, setIsSyncing] = useState(true);
     const refresh = () => setVer(v => v + 1);
@@ -753,18 +762,12 @@ export const WorkbookView: React.FC = () => {
                 logTimer = setTimeout(() => {
                     setData(p => ({ ...p, log: d.map(x => x.toJSON()) }));
                 }, 200);
-            }),
-            db.finance.find().$.subscribe(d => {
-                clearTimeout(finTimer);
-                finTimer = setTimeout(() => {
-                    setData(p => ({ ...p, fin: d.map(x => x.toJSON()) }));
-                }, 200);
             })
         ];
 
         return () => {
             subs.forEach(s => s.unsubscribe());
-            [invTimer, prodTimer, logTimer, finTimer, timeoutTimer].forEach(clearTimeout);
+            [invTimer, prodTimer, logTimer, timeoutTimer].forEach(clearTimeout);
         };
     }, [db, ver]);
     const docs = useMemo(() => {
@@ -844,7 +847,7 @@ export const WorkbookView: React.FC = () => {
                     <div className="h-full relative z-10 animate-in fade-in zoom-in-95 duration-500">
                         {activeTab === 'inventory' && <InventoryPanel docs={docs326} exchangeRate={exchangeRate} onRefresh={refresh} />}
                         {activeTab === 'archive' && <InventoryPanel docs={docs825} exchangeRate={exchangeRate} isArchive onRefresh={refresh} />}
-                        {activeTab === 'finance' && <FinancePanel docs={data.fin} onRefresh={refresh} />}
+                        {activeTab === 'finance' && <FinancePanel docs={financeData} onRefresh={refresh} />}
                         {activeTab === 'production' && <ProductionPanel docs={data.prod} />}
                         {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}
                         {activeTab === 'logistics' && <LogisticsPanel docs={data.log} onRefresh={refresh} />}

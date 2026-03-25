@@ -78,13 +78,20 @@ export const DataSyncProvider: React.FC = () => {
             })
         );
 
-        // 2. Finance
-        subscriptions.push(
-            db.finance.find().$.subscribe((docs: any[]) => {
-                const data = docs.map(d => d.toJSON());
-                setFinance(data);
-            })
-        );
+        // 2. Finance - Direct Supabase Sync (Bypassing RxDB for reliability)
+        let currentFinanceData: any[] = [];
+        const fetchInitialFinance = async () => {
+            try {
+                const { data, error } = await supabase.from('finance').select('*');
+                if (!error && data) {
+                    currentFinanceData = data;
+                    setFinance(currentFinanceData);
+                }
+            } catch (err) {
+                console.error('[DataSync] Failed to fetch initial finance data:', err);
+            }
+        };
+        fetchInitialFinance();
 
         // 3. Logistics
         subscriptions.push(
@@ -117,8 +124,18 @@ export const DataSyncProvider: React.FC = () => {
         const realtimeChannel = supabase.channel('global-db-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, payload => applyRealtimeChange(db.inventory, payload))
             .on('postgres_changes', { event: '*', schema: 'public', table: 'production' }, payload => applyRealtimeChange(db.production, payload))
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'finance' }, payload => applyRealtimeChange(db.finance, payload))
             .on('postgres_changes', { event: '*', schema: 'public', table: 'logistics' }, payload => applyRealtimeChange(db.logistics, payload))
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'finance' }, payload => {
+                // Direct memory update for Finance
+                if (payload.eventType === 'INSERT') {
+                    currentFinanceData = [...currentFinanceData, payload.new];
+                } else if (payload.eventType === 'UPDATE') {
+                    currentFinanceData = currentFinanceData.map(d => String(d.id) === String(payload.new.id) ? payload.new : d);
+                } else if (payload.eventType === 'DELETE') {
+                    currentFinanceData = currentFinanceData.filter(d => String(d.id) !== String(payload.old.id));
+                }
+                setFinance(currentFinanceData);
+            })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('📡 [DataSync] Real-time multiplayer synchronization established.');
