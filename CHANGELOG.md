@@ -21,6 +21,7 @@
 - **Local Architecture Overwrite Bug:** Modified `WorkbookView`'s Developer query module to stream finance analytics strictly from the centralized Supabase `financeDataAtom` memory cache. This eliminates remaining dependencies on local RxDB storage which actively interrupted dataset sync logic.
 - **Logistics Form Synchronization Update:** Intercepted and rerouted logistics table mutation logic within the Add Payment Wizard tracking submission (`handleSubmit`) sequence to safely intercept empty references resulting from the pseudo-vendor array mapped from the `logisticsData` source.
 - **SVG Warning Artifacts:** Handled multiple console warnings emitted from `OnyxMiniLogo` and main inventory component mapping rendering by correcting microscopic syntax omissions (missing standard whitespace delimitation before the `a` path execution string identifier).
+- **Workflow Filtering Bug:** Corrected an isolated rendering issue where the auto-generated Crates payment request bubble was erroneously displayed under the Merchandise -> Acquisitions vendor list. The Crates vendor bubble has been actively filtered from Acquisitions and properly routed to display seamlessly when activating Operations -> Crates, deploying the exact, uniform vendor bubble UI.
 
 ## v1.29.0 — 2026-03-25
 ### Added
