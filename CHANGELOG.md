@@ -11,7 +11,16 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.28.0 — 2026-03-25
+### Added
+- **Logistics Module Redesign [feat]:** Complete overhaul of the Logistics module replacing the Three.js placeholder with a production-grade glassmorphic UI system.
+- **Crates Inventory [feat]:** New `CratesInventoryView` with live RxDB subscription, tabbed Empty/Packed views, status strip (Empty · Partial · Packed counters), real-time search, and responsive card grid.
+- **Crate Creation Modal [feat]:** Form for initializing crates with W×L×H dimensions, quantity, and acquisition price. Inserts into `logistics` table (Supabase + RxDB) and **auto-generates a `finance` payment record** (`category: Logistics, subcategory: Pack, status: Requested`) mirroring existing inventory payment logic.
+- **Crate Packing Manager [feat]:** Split-pane `CratePackingManager` with left crate selector (live RxDB-sourced) and right inventory panel with multi-select, status/vendor/search filters. Packing assigns `crate_id` to each inventory item and updates crate `inventory_ids` and `contents_summary` atomically.
+- **Logistics Tab Restructure [ui]:** Navigation tabs updated from `PACK / TRUCK / SHIP` to `CRATES / PACK / TRK`. Legacy Three.js `ShippingView` and `PackingModule` references removed from primary tab routing.
+
 ## v1.27.2 — 2026-03-24
+
 ### Changed
 - **Overview Module [ui]:** Redesigned the "Priority Requisitions" section with significantly larger UI components. Headers, bank logos, vendor dots, and expansion detail panels have been enlarged for better visibility and interactive density.
 - **Payment Split [feat]:** "Direct Wire" payments are now displayed independently per vendor instead of being grouped under a single destination. Other payment destinations (BoA, BBVA) continue to be grouped as usual.

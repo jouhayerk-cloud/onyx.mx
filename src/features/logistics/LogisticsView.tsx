@@ -5,15 +5,15 @@ import { logisticsSubTabAtom, userAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { ShippingView } from '../dashboard/ShippingView';
-import { PackingModule } from './PackingModule';
+import { CratesInventoryView } from './CratesInventoryView';
+import { CratePackingManager } from './CratePackingManager';
 
 const fmtMXN = (n: number) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const SUB_TABS = [
+    { id: 'crates' as const, label: 'CRATES', color: '#00AEEF', icon: 'box' },
     { id: 'packing' as const, label: 'PACK', color: '#8DC63F', icon: 'package' },
-    { id: 'trucking' as const, label: 'TRUCK', color: '#00AEEF', icon: 'truck' },
-    { id: 'shipping' as const, label: 'SHIP', color: '#F7941D', icon: 'map-pin' },
+    { id: 'shipping' as const, label: 'TRK', color: '#F7941D', icon: 'map-pin' },
 ];
 
 export const LogisticsView: React.FC = () => {
@@ -64,8 +64,8 @@ export const LogisticsView: React.FC = () => {
             </div>
             {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
-                {activeTab === 'packing' && <PackingModule />}
-                {activeTab === 'trucking' && <ShippingView />}
+                {activeTab === 'crates' && <CratesInventoryView />}
+                {activeTab === 'packing' && <CratePackingManager />}
                 {activeTab === 'shipping' && <ShipmentTrackingPanel docs={docs} onRefresh={refresh} />}
             </div>
         </div>
