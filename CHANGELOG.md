@@ -11,6 +11,13 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.5 — 2026-03-26
+### Added
+- **Active Crate Sidebar:** When items are staged for a selected crate in the Pack tab, the left sidebar dynamically switches from the crate list to a focused **Active Crate Mode**. It displays: rotating 3D animated wireframe of the selected crate (using `requestAnimationFrame`), cubic-centimeter volume fill gauge (colour-coded emerald → amber → rose), a 2-col stat panel showing total units and total weight (kg), and a per-item staged summary showing TAG IDs, dimensions, and allocated quantity.
+- **Rotating 3D Wireframe:** The static wireframe in the group drill-down view is replaced by a live-animated isometric wireframe rendered via SVG and `requestAnimationFrame`, giving perspective depth based on a continuous rotation angle. Pallets render as a 15cm-tall flat-bed, crates as standard cuboids.
+- **Volume Fill Estimator:** Per-crate internal volume (cm³) is calculated from stored dimensions. Each staged item's volume is estimated from its own `widthCm × heightCm × lengthCm` fields. Fill % combines already-packed + pending items vs crate capacity, shown as a live progress bar with warning indicator above 85%.
+- **Sidebar View Switch:** Cleared selection or no item staged reverts the sidebar back to the available crates/sizes list. A "Clear" button dismisses the active crate panel.
+
 ## v1.29.4 — 2026-03-25
 ### Added
 - **Pallet Support:** Shipping Crates module now supports both Crates and Pallets. The "Initialize" dialog features a type toggle (Crate / Pallet). Pallets render as a flat 15cm-tall wireframe distinctly different from the standard cuboid Crate, omitting the cross-brace overlay to visually distinguish flat-bed shipping containers.
