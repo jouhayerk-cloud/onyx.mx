@@ -6,16 +6,46 @@ import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import {
-    Package, Box, ChevronRight, Check, X, Loader2,
-    PackagePlus, ListFilter, Inbox, Video, Maximize2
+    Package, ChevronRight, Check, Loader2, X,
+    PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
+// ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
+// Backward compat: entries without ":qty" default to full quantity
+function parseInventoryIds(raw?: string): Map<string, number> {
+    const map = new Map<string, number>();
+    if (!raw) return map;
+    raw.split(',').filter(Boolean).forEach(entry => {
+        const [id, qty] = entry.split(':');
+        if (id) map.set(id.trim(), qty ? parseInt(qty) : -1); // -1 = full qty (legacy)
+    });
+    return map;
+}
+
+function serializeInventoryIds(map: Map<string, number>): string {
+    return Array.from(map.entries()).map(([id, qty]) => qty === -1 ? id : `${id}:${qty}`).join(',');
+}
+
+// Compute total packed qty for a given item id across all crates
+function getTotalPackedForItem(itemId: string, allCrates: CrateRecord[]): number {
+    let total = 0;
+    for (const c of allCrates) {
+        const m = parseInventoryIds(c.inventory_ids);
+        if (m.has(itemId)) {
+            const q = m.get(itemId)!;
+            total += q === -1 ? 1 : q;
+        }
+    }
+    return total;
+}
+
 // --- Local Crate type ---
 interface CrateRecord {
     id: string;
+    type?: string;
     status: 'Empty' | 'Packed' | 'Partial';
     length_cm?: number;
     width_cm?: number;
@@ -26,6 +56,11 @@ interface CrateRecord {
     cost_mxn?: number;
     quantity?: number;
     updated_at?: string;
+}
+
+interface GroupedCrateRecord extends CrateRecord {
+    groupedCount: number;
+    children: CrateRecord[];
 }
 
 // --- Helpers ---
@@ -44,15 +79,16 @@ const statusText = (s: string) => {
 };
 
 // ─── Wireframe Crate Visual ───────────────────────────────────────────────────
-const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: boolean }> = ({
-    w = 60, l = 60, h = 60, selected = false,
+const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: boolean; type?: string }> = ({
+    w = 60, l = 60, h = 60, selected = false, type = 'crate'
 }) => {
     // Normalize dims to max 48px display box
-    const maxDim = Math.max(w, l, h, 1);
+    const visH = type === 'pallet' ? 15 : h;
+    const maxDim = Math.max(w, l, visH, 1);
     const scale = 38 / maxDim;
     const dw = Math.round(w * scale);
     const dl = Math.round(l * scale);
-    const dh = Math.round(h * scale);
+    const dh = Math.round(visH * scale);
 
     // Isometric-style wireframe params
     const depth = Math.round(dl * 0.35); // depth perspective
@@ -68,14 +104,6 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: 
 
     // Top face offset
     const dx = depth, dy = -depth;
-
-    // Dashed back edges
-    const topRight = `${x1 + dx},${y1 + dy}`;
-    const topLeft = `${x0 + dx},${y0 + dy}`;
-    const topFrontLeft = `${x0},${y0}`;
-    const topFrontRight = `${x1},${y1}`;
-    const topBack = `${x0 + dx},${y3 + dy}`;
-    const bottomBack = `${x2 + dx},${y2 + dy}`;
 
     return (
         <svg
@@ -113,8 +141,12 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: 
             />
 
             {/* Cross braces on front */}
-            <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
-            <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
+            {type !== 'pallet' && (
+                <>
+                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
+                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
+                </>
+            )}
         </svg>
     );
 };
@@ -142,6 +174,7 @@ const CrateSelectCard: React.FC<{
                     l={crate.length_cm}
                     h={crate.height_cm}
                     selected={isSelected}
+                    type={crate.type}
                 />
             </div>
 
@@ -165,16 +198,19 @@ const CrateSelectCard: React.FC<{
     );
 };
 
-// ─── Inventory Row (mirrors Inventory List View) ──────────────────────────────
+// ─── Inventory Row (quantity-aware) ──────────────────────────────────────────────
 const PackingInventoryRow: React.FC<{
     item: InventoryItem;
     isSelected: boolean;
-    isPacked: boolean;
-    isExpanded: boolean;
+    packedQtyInCurrentCrate: number;
+    totalPackedQty: number;
+    selectedQty: number;
     onToggle: () => void;
+    onQtyChange: (newQty: number) => void;
+    isExpanded: boolean;
     onToggleExpand: () => void;
     exchangeRate: number;
-}> = ({ item, isSelected, isPacked, isExpanded, onToggle, onToggleExpand, exchangeRate }) => {
+}> = ({ item, isSelected, packedQtyInCurrentCrate, totalPackedQty, selectedQty, onToggle, onQtyChange, isExpanded, onToggleExpand, exchangeRate }) => {
     const d = item.data;
     const norm = normalizeInventoryData(d);
     const vendorPrefix = String(norm.itemId || d.vendor_id || '').split('-')[0] || '';
@@ -193,6 +229,9 @@ const PackingInventoryRow: React.FC<{
 
     const itemPriceMXN = Math.ceil(Number(norm.price || 0));
     const itemQuantity = Number(norm.quantity || 1);
+    const remaining = Math.max(0, itemQuantity - totalPackedQty);
+    const fullyPacked = remaining === 0;
+    const partiallyPacked = totalPackedQty > 0 && remaining > 0;
 
     const dimsCm = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('×');
     const weightKg = norm.weightKg ? parseFloat(String(norm.weightKg)) : null;
@@ -200,25 +239,29 @@ const PackingInventoryRow: React.FC<{
     return (
         <div className="flex flex-col gap-0">
             <div
-                className={`flex items-stretch overflow-hidden border rounded-xl transition-all group shadow-sm cursor-pointer ${
-                    isPacked
-                        ? 'bg-white/1 border-white/3 opacity-40 cursor-not-allowed'
+                className={`flex items-stretch overflow-hidden border rounded-xl transition-all group shadow-sm ${
+                    fullyPacked
+                        ? 'bg-white/1 border-white/3 opacity-40'
                         : isSelected
                             ? 'bg-(--main-color)/8 border-(--main-color)/30 ring-1 ring-(--main-color)/20'
-                            : 'bg-white/3 border-white/6 hover:border-white/12 hover:bg-white/5'
+                            : partiallyPacked
+                                ? 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/30'
+                                : 'bg-white/3 border-white/6 hover:border-white/12 hover:bg-white/5'
                 }`}
-                onClick={() => !isPacked && onToggle()}
             >
-                {/* Selection checkbox */}
-                <div className="w-10 shrink-0 flex items-center justify-center border-r border-white/5">
+                {/* Selection checkbox - click anywhere except stepper */}
+                <div
+                    className={`w-10 shrink-0 flex items-center justify-center border-r border-white/5 cursor-pointer ${ fullyPacked ? 'cursor-not-allowed' : ''}`}
+                    onClick={() => !fullyPacked && onToggle()}
+                >
                     <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all border ${
-                        isPacked
+                        fullyPacked
                             ? 'bg-white/5 border-white/10'
                             : isSelected
                                 ? 'bg-(--main-color) border-(--main-color) shadow-md shadow-(--main-color)/30'
                                 : 'border-white/15 group-hover:border-white/30'
                     }`}>
-                        {(isPacked || isSelected) && <Check size={8} className={isPacked ? 'text-white/30' : 'text-black'} strokeWidth={3} />}
+                        {(fullyPacked || isSelected) && <Check size={8} className={fullyPacked ? 'text-white/30' : 'text-black'} strokeWidth={3} />}
                     </div>
                 </div>
 
@@ -259,11 +302,23 @@ const PackingInventoryRow: React.FC<{
                     </div>
 
                     {/* Price / Qty */}
-                    <div className="flex flex-col min-w-[72px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Price / Qty</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-[12px] font-bold text-white">${itemPriceMXN}</span>
-                            <span className="text-[10px] text-white/40 font-mono">×{itemQuantity}</span>
+                    <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Qty &amp; Status</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-[11px] font-mono font-black text-white">{itemQuantity}</span>
+                                <span className="text-[9px] text-white/40">total</span>
+                            </div>
+                            {totalPackedQty > 0 && (
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/20 text-rose-400 font-black">
+                                    {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} elsewhere` : ''}
+                                </span>
+                            )}
+                            {remaining > 0 && (
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black">
+                                    {remaining} avail
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -275,13 +330,13 @@ const PackingInventoryRow: React.FC<{
 
                     {/* Dims */}
                     <div className="flex flex-col min-w-[60px] shrink-0 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Dims</span>
+                        <span className="text-[7px] font-black uppercase tracking-widest leading-none">Dims</span>
                         <span className="text-[10px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
                     </div>
 
                     {weightKg && (
                         <div className="flex flex-col min-w-[50px] shrink-0 justify-center h-full gap-0.5">
-                            <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Wt</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest leading-none">Wt</span>
                             <span className="text-[10px] text-white/50 font-mono">{weightKg}kg</span>
                         </div>
                     )}
@@ -289,7 +344,30 @@ const PackingInventoryRow: React.FC<{
 
                 {/* Right action area */}
                 <div className="flex items-center gap-1 px-2 py-2 shrink-0 bg-white/2 border-l border-white/5">
-                    {isPacked && <span className="text-[7px] font-black uppercase tracking-widest text-white/20 px-1.5">Packed</span>}
+                    {fullyPacked && <span className="text-[7px] font-black uppercase tracking-widest text-white/20 px-1.5">Done</span>}
+                    {isSelected && !fullyPacked && (
+                        // Qty stepper — stops click propagation so it doesn't toggle selection
+                        <div
+                            className="flex items-center gap-1 bg-black/30 border border-white/10 rounded-lg overflow-hidden"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => onQtyChange(Math.max(1, selectedQty - 1))}
+                                className="w-6 h-7 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                            >
+                                <Minus size={9} strokeWidth={3} />
+                            </button>
+                            <span className="text-[11px] font-black text-white font-mono w-5 text-center">{selectedQty}</span>
+                            <button
+                                type="button"
+                                onClick={() => onQtyChange(Math.min(remaining, selectedQty + 1))}
+                                className="w-6 h-7 flex items-center justify-center text-white/50 hover:text-(--main-color) hover:bg-(--main-color)/10 transition cursor-pointer"
+                            >
+                                <Plus size={9} strokeWidth={3} />
+                            </button>
+                        </div>
+                    )}
                     <button
                         onClick={e => { e.stopPropagation(); onToggleExpand(); }}
                         className={`p-1.5 hover:text-white hover:bg-white/10 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : 'text-white/30'}`}
@@ -331,29 +409,49 @@ export const CratePackingManager: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'All' | 'Acquisition' | 'Production' | 'Shipped'>('All');
     const [vendorFilter, setVendorFilter] = useState('All');
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+    // Map of itemId -> qty user wants to pack into this crate
+    const [selectedQtys, setSelectedQtys] = useState<Record<string, number>>({});
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
 
     // Subscribe to RxDB crates
     useEffect(() => {
         if (!db) return;
-        const sub = db.logistics.find({ selector: { type: 'crate' } }).$.subscribe((data: any[]) => {
+        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet'] } } }).$.subscribe((data: any[]) => {
             setCrates(data.map(c => c.toJSON()));
         });
         return () => sub.unsubscribe();
     }, [db, cratesVersion]);
 
+    const activeCrates = useMemo(() => crates.filter(c => c.status !== 'Packed'), [crates]);
+
+    const groupedAvailableCrates = useMemo(() => {
+        const groups: Record<string, GroupedCrateRecord> = {};
+        for (const c of activeCrates) {
+            const dimTypeKey = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
+            if (!groups[dimTypeKey]) {
+                groups[dimTypeKey] = { ...c, groupedCount: 0, children: [] };
+            }
+            groups[dimTypeKey].groupedCount += 1;
+            groups[dimTypeKey].children.push(c);
+        }
+        return Object.values(groups).sort((a, b) => b.groupedCount - a.groupedCount);
+    }, [activeCrates]);
+
+    const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
+    const activeGroup = useMemo(() => activeGroupKey ? groupedAvailableCrates.find(g => `${g.width_cm}x${g.length_cm}x${g.height_cm}x${g.type}` === activeGroupKey) : null, [activeGroupKey, groupedAvailableCrates]);
+
     const selectedCrate = useMemo(() => crates.find(c => c.id === selectedCrateId) ?? null, [crates, selectedCrateId]);
 
-    const packedIds = useMemo(() => {
-        if (!selectedCrate?.inventory_ids) return new Set<string>();
-        return new Set(selectedCrate.inventory_ids.split(',').filter(Boolean));
-    }, [selectedCrate]);
+    // Current crate packed ID map
+    const currentCratePackedMap = useMemo(() => parseInventoryIds(selectedCrate?.inventory_ids), [selectedCrate]);
+
+    const packedIds = useMemo(() => new Set(currentCratePackedMap.keys()), [currentCratePackedMap]);
 
     const allPackedIds = useMemo(() => {
         const ids = new Set<string>();
         crates.forEach(c => {
-            if (c.inventory_ids) c.inventory_ids.split(',').filter(Boolean).forEach(id => ids.add(id));
+            parseInventoryIds(c.inventory_ids).forEach((_, id) => ids.add(id));
         });
         return ids;
     }, [crates]);
@@ -391,10 +489,17 @@ export const CratePackingManager: React.FC = () => {
         });
     }, [allInventory, search, statusFilter, vendorFilter, exchangeRate]);
 
-    const toggleItem = useCallback((id: string) => {
+    const toggleItem = useCallback((id: string, maxQty: number) => {
         setSelectedItemIds(prev => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+                setSelectedQtys(q => { const nq = { ...q }; delete nq[id]; return nq; });
+            } else {
+                next.add(id);
+                // Default to 1, or maxQty if maxQty is less than 1 (e.g., 0, though it should be at least 1 to be selectable)
+                setSelectedQtys(q => ({ ...q, [id]: Math.max(1, Math.min(maxQty, 1)) }));
+            }
             return next;
         });
     }, []);
@@ -412,10 +517,21 @@ export const CratePackingManager: React.FC = () => {
         setIsSaving(true);
         const tid = toast.loading(`Packing ${selectedItemIds.size} item(s)…`);
         try {
-            const existingIds = selectedCrate.inventory_ids ? selectedCrate.inventory_ids.split(',').filter(Boolean) : [];
-            const allIds = [...new Set([...existingIds, ...Array.from(selectedItemIds)])];
-            const summary = `${allIds.length} items packed`;
-            const updatePayload = { inventory_ids: allIds.join(','), contents_summary: summary, status: 'Partial' as const, updated_at: new Date().toISOString() };
+            // Merge with existing packed map
+            const existingMap = parseInventoryIds(selectedCrate.inventory_ids);
+            for (const itemId of Array.from(selectedItemIds)) {
+                const addQty = selectedQtys[itemId] ?? 1; // Use selectedQtys for quantity
+                const existing = existingMap.get(itemId);
+                if (existing !== undefined && existing !== -1) {
+                    existingMap.set(itemId, existing + addQty);
+                } else {
+                    existingMap.set(itemId, addQty);
+                }
+            }
+            const serialized = serializeInventoryIds(existingMap);
+            const totalUnits = Array.from(existingMap.values()).reduce((s, q) => s + (q === -1 ? 1 : q), 0);
+            const summary = `${existingMap.size} SKU(s) · ${totalUnits} unit(s) packed`;
+            const updatePayload = { inventory_ids: serialized, contents_summary: summary, status: 'Partial' as const, updated_at: new Date().toISOString() };
 
             const { error } = await supabase.from('logistics').update(updatePayload).eq('id', selectedCrate.id);
             if (error) throw error;
@@ -425,6 +541,10 @@ export const CratePackingManager: React.FC = () => {
                 if (localCrate) await localCrate.patch(updatePayload);
             }
 
+            // Tag inventory items with crate_id (still tag even if partial qty)
+            // Only tag items that are fully packed into this crate, or if it's the only crate they're in.
+            // For now, we'll tag all selected items, assuming they are primarily associated with this crate.
+            // A more complex system would track which crate holds which quantity.
             const idsArr = Array.from(selectedItemIds);
             await supabase.from('inventory').update({ crate_id: selectedCrate.id }).in('id', idsArr);
             if (db) {
@@ -433,8 +553,10 @@ export const CratePackingManager: React.FC = () => {
                 }
             }
 
-            toast.success(`${selectedItemIds.size} item(s) packed into ${fmtDims(selectedCrate)} crate`, { id: tid });
+            const totalQtySent = Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0);
+            toast.success(`${totalQtySent} unit(s) across ${selectedItemIds.size} SKU(s) packed`, { id: tid });
             setSelectedItemIds(new Set());
+            setSelectedQtys({});
             setCratesVersion(v => v + 1);
         } catch (err: any) {
             toast.error(err.message || 'Packing failed.', { id: tid });
@@ -443,37 +565,97 @@ export const CratePackingManager: React.FC = () => {
         }
     };
 
-    const availableCrates = crates.filter(c => c.status !== 'Packed');
-
     return (
         <div className="flex h-full w-full overflow-hidden bg-transparent">
 
             {/* ── Left Pane: Compact Crate Selector ── */}
             <div className="w-[220px] shrink-0 border-r border-white/5 flex flex-col bg-black/40 backdrop-blur-3xl">
                 {/* Header */}
-                <div className="px-4 pt-4 pb-2.5 border-b border-white/5 shrink-0">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Available Crates</h3>
-                    <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{availableCrates.length} ready to pack</p>
+                <div className="px-4 pt-4 pb-2.5 border-b border-white/5 shrink-0 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Sizes'}</h3>
+                        <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{activeCrates.length} ready to pack</p>
+                    </div>
                 </div>
 
                 {/* Crate List */}
                 <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-1.5 custom-scrollbar">
-                    {availableCrates.length === 0 ? (
+                    {activeCrates.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-3 py-8">
                             <Inbox size={28} className="text-white/20" strokeWidth={1} />
                             <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 max-w-[120px] leading-relaxed">
-                                No crates.<br />Create some in the Crates tab.
+                                No empty sizes.<br />Create some in the Crates tab.
                             </span>
                         </div>
+                    ) : !activeGroup ? (
+                        groupedAvailableCrates.map(group => {
+                            const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
+                            return (
+                                <CrateSelectCard
+                                    key={group.id}
+                                    crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
+                                    isSelected={!!isSelected}
+                                    onClick={() => {
+                                        setActiveGroupKey(`${group.width_cm}x${group.length_cm}x${group.height_cm}x${group.type}`);
+                                        // Auto select first mostly-packed 'Partial' if available, otherwise just first empty
+                                        const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
+                                        setSelectedCrateId(targetCrate.id);
+                                        setSelectedItemIds(new Set());
+                                        setSelectedQtys({});
+                                        setExpandedIds(new Set());
+                                    }}
+                                />
+                            );
+                        })
                     ) : (
-                        availableCrates.map(crate => (
-                            <CrateSelectCard
-                                key={crate.id}
-                                crate={crate}
-                                isSelected={selectedCrateId === crate.id}
-                                onClick={() => { setSelectedCrateId(crate.id); setSelectedItemIds(new Set()); setExpandedIds(new Set()); }}
-                            />
-                        ))
+                        <div className="flex flex-col gap-2 relative">
+                            <button
+                                onClick={() => setActiveGroupKey(null)}
+                                className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer"
+                            >
+                                Back
+                            </button>
+                            <div className="w-full aspect-square mt-6 flex items-center justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner">
+                                <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-[size:10px_10px]" />
+                                <WireframeCrate w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} selected />
+                                <div className="absolute bottom-2 left-0 right-0 text-center">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">
+                                        {activeGroup.groupedCount} AVAILABLE
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mt-2 pl-1">Inventory Units in this size</p>
+                            <div className="flex flex-col gap-1 px-1">
+                                {activeGroup.children.map(c => {
+                                    const packedItems = c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0;
+                                    return (
+                                        <button
+                                            key={c.id}
+                                            onClick={() => setSelectedCrateId(c.id)}
+                                            className={`flex items-center justify-between px-3 py-2 border rounded-xl cursor-pointer transition ${
+                                                selectedCrateId === c.id
+                                                    ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-md inset-ring-1 inset-ring-(--main-color)/30'
+                                                    : 'bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10 text-white/50'
+                                            }`}
+                                        >
+                                            <div className="flex flex-col items-start gap-1 p-0 m-0">
+                                                <span className={`text-[9px] font-mono leading-none ${selectedCrateId === c.id ? 'text-white' : ''}`}>
+                                                    {c.id.slice(0,8).toUpperCase()}
+                                                </span>
+                                                <div className="flex items-center gap-1.5 opacity-80">
+                                                    <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${c.status === 'Partial' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                                        {c.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{packedItems} items</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -504,7 +686,7 @@ export const CratePackingManager: React.FC = () => {
                         {selectedItemIds.size > 0 && selectedCrate && (
                             <div className="flex items-center gap-2 px-2.5 py-1 bg-(--main-color)/10 border border-(--main-color)/20 rounded-xl">
                                 <span className="text-[10px] font-black text-(--main-color)">{selectedItemIds.size} selected</span>
-                                <button onClick={() => setSelectedItemIds(new Set())} className="text-(--main-color)/60 hover:text-(--main-color) cursor-pointer">
+                                <button onClick={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }} className="text-(--main-color)/60 hover:text-(--main-color) cursor-pointer">
                                     <X size={10} />
                                 </button>
                             </div>
@@ -592,26 +774,46 @@ export const CratePackingManager: React.FC = () => {
                                 <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{filteredInventory.length} items</span>
                                 {filteredInventory.length > 0 && (
                                     <button
-                                        onClick={() => setSelectedItemIds(new Set(filteredInventory.map(i => String(i.row)).filter(id => !allPackedIds.has(id) || packedIds.has(id))))}
+                                        onClick={() => {
+                                            const newIds = new Set<string>();
+                                            const newQtys: Record<string, number> = {};
+                                            filteredInventory.forEach(i => {
+                                                const iid = String(i.row);
+                                                const norm = normalizeInventoryData(i.data);
+                                                const totalQty = Number(norm.quantity || 1);
+                                                const packed = getTotalPackedForItem(iid, crates);
+                                                const rem = Math.max(0, totalQty - packed);
+                                                if (rem > 0) { newIds.add(iid); newQtys[iid] = rem; }
+                                            });
+                                            setSelectedItemIds(newIds);
+                                            setSelectedQtys(newQtys);
+                                        }}
                                         className="text-[8px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition cursor-pointer"
                                     >
-                                        Select all visible
+                                        Select all with remaining
                                     </button>
                                 )}
                             </div>
-
                             {filteredInventory.map(item => {
-                                const rowId = String(item.row);
-                                const isPacked = allPackedIds.has(rowId) && !packedIds.has(rowId);
+                                const iid = String(item.row);
+                                const norm = normalizeInventoryData(item.data);
+                                const totalQty = Number(norm.quantity || 1);
+                                const totalPacked = getTotalPackedForItem(iid, crates);
+                                const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
+                                const remaining = Math.max(0, totalQty - totalPacked);
+                                const isSelected = selectedItemIds.has(iid);
                                 return (
                                     <PackingInventoryRow
-                                        key={rowId}
-                                        item={item}
-                                        isSelected={selectedItemIds.has(rowId)}
-                                        isPacked={isPacked}
-                                        isExpanded={expandedIds.has(rowId)}
-                                        onToggle={() => !isPacked && toggleItem(rowId)}
-                                        onToggleExpand={() => toggleExpand(rowId)}
+                                        key={item.row}
+                                        item={item as InventoryItem}
+                                        isSelected={isSelected}
+                                        packedQtyInCurrentCrate={inCurrentCrate}
+                                        totalPackedQty={totalPacked}
+                                        selectedQty={selectedQtys[iid] ?? 1}
+                                        onToggle={() => toggleItem(iid, remaining)}
+                                        onQtyChange={qty => setSelectedQtys(q => ({ ...q, [iid]: qty }))}
+                                        isExpanded={expandedIds.has(iid)}
+                                        onToggleExpand={() => toggleExpand(iid)}
                                         exchangeRate={exchangeRate}
                                     />
                                 );
@@ -623,9 +825,14 @@ export const CratePackingManager: React.FC = () => {
                 {/* Confirm Pack summary bar */}
                 {selectedCrate && selectedItemIds.size > 0 && (
                     <div className="flex items-center justify-between px-5 py-3 border-t border-white/5 bg-black/30 backdrop-blur-xl shrink-0 animate-in slide-in-from-bottom-2 duration-200">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                            {selectedItemIds.size} item(s) → <span className="text-(--main-color)">{fmtDims(selectedCrate)} cm</span>
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                                {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} unit(s) · {selectedItemIds.size} SKU(s)
+                            </span>
+                            <span className="text-[8px] font-mono text-(--main-color)/70 mt-0.5">
+                                → {fmtDims(selectedCrate)} {selectedCrate.type === 'pallet' ? 'pallet' : 'crate'} cm
+                            </span>
+                        </div>
                         <button
                             onClick={handlePackItems}
                             disabled={isSaving}
