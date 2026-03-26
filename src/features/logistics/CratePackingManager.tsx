@@ -486,9 +486,9 @@ const PackingInventoryRow: React.FC<{
 
     const itemPriceMXN = Math.ceil(Number(norm.price || 0));
     const itemQuantity = Number(norm.quantity || 1);
-    const remaining = Math.max(0, itemQuantity - totalPackedQty);
-    const fullyPacked = remaining === 0;
-    const partiallyPacked = totalPackedQty > 0 && remaining > 0;
+    const availableForThisCrate = Math.max(0, itemQuantity - (totalPackedQty - packedQtyInCurrentCrate));
+    const fullyPacked = availableForThisCrate === 0;
+    const partiallyPacked = totalPackedQty > 0 && availableForThisCrate > 0;
 
     const dimsCm = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('×');
     const weightKg = norm.weightKg ? parseFloat(String(norm.weightKg)) : null;
@@ -571,9 +571,9 @@ const PackingInventoryRow: React.FC<{
                                     {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} elsewhere` : ''}
                                 </span>
                             )}
-                            {remaining > 0 && (
+                            {availableForThisCrate > 0 && (
                                 <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black">
-                                    {remaining} avail
+                                    {availableForThisCrate} avail
                                 </span>
                             )}
                         </div>
@@ -618,7 +618,7 @@ const PackingInventoryRow: React.FC<{
                             <span className="text-[11px] font-black text-white font-mono w-5 text-center">{selectedQty}</span>
                             <button
                                 type="button"
-                                onClick={() => onQtyChange(Math.min(remaining, selectedQty + 1))}
+                                onClick={() => onQtyChange(Math.min(availableForThisCrate, selectedQty + 1))}
                                 className="w-6 h-7 flex items-center justify-center text-white/50 hover:text-(--main-color) hover:bg-(--main-color)/10 transition cursor-pointer"
                             >
                                 <Plus size={9} strokeWidth={3} />
@@ -919,9 +919,15 @@ export const CratePackingManager: React.FC = () => {
                             ) : (
                                 <div className="flex flex-col gap-2 relative">
                                     <button onClick={() => setActiveGroupKey(null)} className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer">Back</button>
-                                    <div className="w-full aspect-square mt-6 flex items-center justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner">
+                                    <div className="w-full aspect-[2/1] mt-6 flex flex-col justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner px-2 pt-2 pb-6">
                                         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-size-[10px_10px]" />
-                                        <LargeCrateWireframe w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={160} />
+                                        <div className="grid grid-cols-5 gap-2 relative z-10">
+                                            {Array.from({ length: 10 }).map((_, i) => (
+                                                <div key={i} className="flex items-center justify-center">
+                                                    <LargeCrateWireframe w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={32} />
+                                                </div>
+                                            ))}
+                                        </div>
                                         <div className="absolute bottom-2 left-0 right-0 text-center">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">{activeGroup.groupedCount} AVAILABLE</span>
                                         </div>

@@ -123,14 +123,13 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
     const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
     return (
-        <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30">
+        <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30 w-full">
             {/* Top accent line */}
             <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-(--main-color)/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <div className="p-5 flex flex-col gap-4">
+            <div className="p-4 flex items-center gap-6">
                 {/* Wireframe preview window */}
-                <div className="relative w-full aspect-[4/2.4] rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden">
-                    {/* Subtle grid bg */}
+                <div className="relative w-48 h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.04]" style={{
                         backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
                         backgroundSize: '16px 16px'
@@ -143,55 +142,64 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                         type={crate.type}
                         count={crate.groupedCount || 1}
                     />
-                    {/* Status + ID overlay */}
                     <div className="absolute top-2 left-2.5">
                         <StatusBadge status={crate.status} />
                     </div>
-                    <div className="absolute bottom-2 right-2.5">
-                        <span className="text-[7px] font-mono text-white/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</span>
+                </div>
+
+                {/* Info & Stats */}
+                <div className="flex-1 min-w-0 flex items-center gap-8">
+                    {/* Size & ID */}
+                    <div className="min-w-[140px]">
+                        <p className="text-[7px] font-mono text-white/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</p>
+                        <h3 className="text-xl font-black uppercase tracking-tight text-white leading-tight mt-1">
+                            {crate.width_cm}<span className="text-white/30 text-sm">×</span>{crate.length_cm}<span className="text-white/30 text-sm">×</span>{crate.height_cm}
+                            <span className="text-[9px] text-white/30 font-black ml-1">CM</span>
+                        </h3>
+                        {crate.groupedCount && crate.groupedCount > 1 && (
+                            <p className="text-[9px] font-black text-(--main-color)/70 mt-1 uppercase tracking-widest">
+                                x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
+                            </p>
+                        )}
                     </div>
-                    {crate.groupedCount && crate.groupedCount > 1 && (
-                        <div className="absolute top-2 right-2.5 px-2 py-0.5 rounded bg-(--main-color)/20 border border-(--main-color)/40 text-(--main-color) font-black text-[9px]">
-                            x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
+
+                    {/* Stats */}
+                    <div className="flex gap-4 min-w-[200px]">
+                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
+                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Volume</p>
+                            <p className="text-sm font-mono font-black text-white">{vol} m³</p>
                         </div>
-                    )}
-                </div>
-
-                {/* Dimensions + volume */}
-                <div>
-                    <h3 className="text-base font-black uppercase tracking-tight text-white leading-none">
-                        {crate.width_cm}<span className="text-white/30 text-xs">×</span>{crate.length_cm}<span className="text-white/30 text-xs">×</span>{crate.height_cm}
-                        <span className="text-[9px] text-white/30 font-black ml-1">CM</span>
-                    </h3>
-                    <p className="text-[9px] font-mono text-white/20 mt-0.5">{vol} m³</p>
-                    {crate.contents_summary && (
-                        <p className="text-[10px] text-white/40 font-medium italic mt-1 line-clamp-1">{crate.contents_summary}</p>
-                    )}
-                    {crate.description && !crate.contents_summary && (
-                        <p className="text-[10px] text-white/30 mt-1 line-clamp-1 font-mono italic">{crate.description}</p>
-                    )}
-                </div>
-
-                {/* Stats row — Items + Net Weight */}
-                <div className="flex gap-3">
-                    <div className="flex-1 bg-black/20 rounded-xl px-3 py-2 border border-white/5">
-                        <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Items</p>
-                        <p className="text-sm font-mono font-black text-white">{itemCount}</p>
+                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
+                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Weight</p>
+                            <p className="text-sm font-mono font-black text-(--main-color)">
+                                {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
+                            </p>
+                        </div>
+                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5 text-center">
+                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Items</p>
+                            <p className="text-sm font-mono font-black text-white">{itemCount}</p>
+                        </div>
                     </div>
-                    <div className="flex-1 bg-black/20 rounded-xl px-3 py-2 border border-white/5">
-                        <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Net Weight</p>
-                        <p className="text-sm font-mono font-black text-(--main-color)">
-                            {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
-                        </p>
+
+                    {/* Description / Summary */}
+                    <div className="flex-1 min-w-0 hidden lg:block">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">Contents / Notes</p>
+                        {crate.contents_summary ? (
+                            <p className="text-[11px] text-white/40 font-medium italic line-clamp-2">{crate.contents_summary}</p>
+                        ) : crate.description ? (
+                            <p className="text-[11px] text-white/30 line-clamp-2 font-mono italic">{crate.description}</p>
+                        ) : (
+                            <p className="text-[11px] text-white/10 italic">No description provided</p>
+                        )}
                     </div>
                 </div>
 
                 {/* Pack button */}
                 <button
                     onClick={() => onPack(crate)}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer"
+                    className="flex items-center justify-center gap-2 px-8 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer shrink-0"
                 >
-                    Pack Items <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </button>
             </div>
         </div>
@@ -516,7 +524,7 @@ export const CratesInventoryView: React.FC = () => {
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-8 py-7 custom-scrollbar">
                 {displayCrates.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 content-start">
+                    <div className="flex flex-col gap-4 content-start pb-8">
                         {displayCrates.map(crate => (
                             <CrateCard key={crate.id} crate={crate} onPack={handlePack} />
                         ))}
