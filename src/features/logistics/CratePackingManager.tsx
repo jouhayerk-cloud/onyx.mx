@@ -875,7 +875,7 @@ export const CratePackingManager: React.FC = () => {
                                     <button onClick={() => setActiveGroupKey(null)} className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer">Back</button>
                                     <div className="w-full aspect-square mt-6 flex items-center justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner">
                                         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-size-[10px_10px]" />
-                                        <RotatingWireframeCrate w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={160} />
+                                        <LargeCrateWireframe w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={160} />
                                         <div className="absolute bottom-2 left-0 right-0 text-center">
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">{activeGroup.groupedCount} AVAILABLE</span>
                                         </div>
