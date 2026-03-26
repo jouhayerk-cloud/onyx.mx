@@ -11,6 +11,14 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.6 — 2026-03-25
+### Changed
+- **Volume Formulas Refined:** Internal crate volume now deducts 15 cm per axis (7.5 cm wall thickness × 2 sides): `(W−15)×(L−15)×(H−15) cm³`. Item volume uses padded dimensions adding 3 cm per axis (1.5 cm clearance × 2 faces): `(W+3)×(H+3)×(L+3) cm³`. Fill % is calculated as `Σ padded item volumes ÷ internal crate volume × 100`.
+- **Stacked Fill Bar:** The Vol. Fill gauge now displays two segments — a solid bar for net item volume and a translucent bar for packaging padding volume — colour-coded emerald → amber → rose at 70%/90% thresholds.
+- **Formula Chip:** A compact formula reference card is displayed below the fill gauge showing the three formulas used for internal, item, and fill % calculations.
+- **Collapsible Sidebar Panel:** The Active Crate sidebar can now be collapsed to a minimal strip showing only the crate label, fill %, and a mini-bar. Expand/collapse via chevron toggle buttons.
+- **Static Wireframe:** Removed `requestAnimationFrame` animation from the crate wireframe in the Active Crate sidebar and drill-down preview. Replaced with a clean static isometric projection (`LargeCrateWireframe`).
+
 ## v1.29.5 — 2026-03-26
 ### Added
 - **Active Crate Sidebar:** When items are staged for a selected crate in the Pack tab, the left sidebar dynamically switches from the crate list to a focused **Active Crate Mode**. It displays: rotating 3D animated wireframe of the selected crate (using `requestAnimationFrame`), cubic-centimeter volume fill gauge (colour-coded emerald → amber → rose), a 2-col stat panel showing total units and total weight (kg), and a per-item staged summary showing TAG IDs, dimensions, and allocated quantity.

@@ -152,63 +152,87 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: 
 };
 
 // ─── Volume helpers ─────────────────────────────────────────────────────
+//
+// INTERNAL CRATE VOLUME
+//   Each physical wall is ~7.5 cm thick, so we subtract 15 cm from every
+//   external dimension (7.5 cm × 2 sides) before cubing.
+//   Formula: (W_ext − 15) × (L_ext − 15) × (H_ext − 15)  [cm³]
+//   Floors at 0 so degenerate/tiny crates don't go negative.
 function crateCm3(c: CrateRecord): number {
-    return (c.width_cm ?? 0) * (c.length_cm ?? 0) * (c.height_cm ?? 0);
+    const iw = Math.max(0, (c.width_cm  ?? 0) - 15);
+    const il = Math.max(0, (c.length_cm ?? 0) - 15);
+    const ih = Math.max(0, (c.height_cm ?? 0) - 15);
+    return iw * il * ih;
 }
-function itemCm3(norm: ReturnType<typeof normalizeInventoryData>): number {
-    return (Number(norm.widthCm) || 0) * (Number(norm.heightCm) || 0) * (Number(norm.lengthCm) || 0);
+
+// NET ITEM VOLUME  — actual bounding box of the item
+//   Formula: W × H × L  [cm³]
+function itemNetCm3(norm: ReturnType<typeof normalizeInventoryData>): number {
+    return (Number(norm.widthCm)  || 0) *
+           (Number(norm.heightCm) || 0) *
+           (Number(norm.lengthCm) || 0);
 }
+
+// PADDED ITEM VOLUME — item + 1.5 cm packaging clearance on every face
+//   Each axis gains +3 cm (1.5 cm × 2 opposite faces).
+//   Formula: (W+3) × (H+3) × (L+3)  [cm³]
+function itemPaddedCm3(norm: ReturnType<typeof normalizeInventoryData>): number {
+    return (Math.max(0, Number(norm.widthCm)  || 0) + 3) *
+           (Math.max(0, Number(norm.heightCm) || 0) + 3) *
+           (Math.max(0, Number(norm.lengthCm) || 0) + 3);
+}
+
 function clampN(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
 function fillBarColor(pct: number): string {
-    if (pct >= 85) return '#ef4444';
-    if (pct >= 60) return '#f59e0b';
+    if (pct >= 90) return '#ef4444';
+    if (pct >= 70) return '#f59e0b';
     return '#10b981';
 }
 
-// ─── RotatingWireframeCrate ──────────────────────────────────────────────
-const RotatingWireframeCrate: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number }> = ({
+// ─── Static Isometric Wireframe (sidebar large view) ─────────────────────────
+// Static — no animation. Fixed 35° isometric projection.
+const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number }> = ({
     w = 60, l = 60, h = 60, type = 'crate', size = 130
 }) => {
-    const angleRef = useRef(0);
-    const [angle, setAngle] = useState(0);
-    useEffect(() => {
-        let raf: number;
-        const tick = () => { angleRef.current = (angleRef.current + 0.35) % 360; setAngle(angleRef.current); raf = requestAnimationFrame(tick); };
-        raf = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(raf);
-    }, []);
     const visH = type === 'pallet' ? 15 : h;
     const maxDim = Math.max(w, l, visH, 1);
-    const scale = (size * 0.33) / maxDim;
-    const dw = Math.round(w * scale);
+    const scale  = (size * 0.33) / maxDim;
+    const dw = Math.round(w    * scale);
     const dh = Math.round(visH * scale);
-    const dl = Math.round(l * scale);
-    const rad = (angle * Math.PI) / 180;
-    const depth = Math.round(dl * 0.4 * Math.abs(Math.cos(rad)) + dw * 0.08 * Math.abs(Math.sin(rad)));
-    const dxSign = Math.cos(rad) >= 0 ? 1 : -1;
-    const color = 'var(--main-color)';
+    const depth = Math.round(l * scale * 0.4);
+    const color  = 'var(--main-color)';
     const svgW = dw + depth + 8, svgH = dh + depth + 8;
-    const x0 = 4, y0 = depth + 4, x1 = x0 + dw, y2 = y0 + dh, y3 = y0 + dh;
-    const dx = dxSign * depth, dy = -depth;
+    const x0 = 4, y0 = depth + 4, x1 = x0 + dw, y2 = y0 + dh;
+    const dx = depth, dy = -depth;
     return (
-        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ filter: 'drop-shadow(0 0 8px var(--main-color))', overflow: 'visible' }}>
-            <line x1={x0+dx} y1={y0+dy} x2={x0+dx} y2={y3+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ filter: 'drop-shadow(0 0 10px var(--main-color))', overflow: 'visible' }}>
+            {/* back edges (dashed) */}
+            <line x1={x0+dx} y1={y0+dy} x2={x0+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
             <line x1={x0+dx} y1={y0+dy} x2={x1+dx} y2={y0+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
-            <line x1={x0+dx} y1={y3+dy} x2={x1+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <line x1={x0+dx} y1={y2+dy} x2={x1+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            {/* top face */}
             <polygon points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y0+dy} ${x1},${y0}`} fill="rgba(249,115,22,0.08)" stroke={color} strokeWidth="1" />
+            {/* right face */}
             <polygon points={`${x1},${y0} ${x1+dx},${y0+dy} ${x1+dx},${y2+dy} ${x1},${y2}`} fill="rgba(249,115,22,0.04)" stroke={color} strokeWidth="1" />
-            <rect x={x0} y={y0} width={dw} height={dh} fill="rgba(249,115,22,0.06)" stroke={color} strokeWidth="1.2" />
+            {/* front face */}
+            <rect x={x0} y={y0} width={dw} height={dh} fill="rgba(249,115,22,0.07)" stroke={color} strokeWidth="1.2" />
             {type !== 'pallet' && (
                 <>
-                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.35" />
-                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.35" />
+                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.3" />
+                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.3" />
                 </>
             )}
         </svg>
     );
 };
 
-// ─── ActiveCrateSidebar ──────────────────────────────────────────────
+// ─── ActiveCrateSidebar ───────────────────────────────────────────────────────
+// VOLUME FORMULAS:
+//   Internal crate  = (W_ext−15) × (L_ext−15) × (H_ext−15) cm³  [7.5cm walls]
+//   Item net        = W × H × L  cm³
+//   Item padded     = (W+3) × (H+3) × (L+3) cm³  [1.5cm clearance/face]
+//   Fill %          = Σ(padded item cm³) / internalCrate cm³ × 100
+//   Bar shows net (solid) + padding (translucent) segments of filled volume.
 const ActiveCrateSidebar: React.FC<{
     crate: CrateRecord;
     selectedItemIds: Set<string>;
@@ -218,6 +242,8 @@ const ActiveCrateSidebar: React.FC<{
     exchangeRate: number;
     onClear: () => void;
 }> = ({ crate, selectedItemIds, selectedQtys, allInventory, crates: _crates, exchangeRate, onClear }) => {
+    const [collapsed, setCollapsed] = useState(false);
+
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -227,56 +253,128 @@ const ActiveCrateSidebar: React.FC<{
             const qty = selectedQtys[id] ?? 1;
             const vendorPrefix = String(norm.itemId || inv.data?.vendor_id || '').split('-')[0] || '';
             const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
-            return [{ id, norm, calc, qty, vol: itemCm3(norm) * qty, weight: (Number(norm.weightKg) || 0) * qty, tagColor, vendorPrefix }];
+            const netVol     = itemNetCm3(norm) * qty;
+            const paddedVol  = itemPaddedCm3(norm) * qty;
+            const paddingVol = paddedVol - netVol;
+            const weight     = (Number(norm.weightKg) || 0) * qty;
+            return [{ id, norm, calc, qty, netVol, paddedVol, paddingVol, weight, tagColor, vendorPrefix }];
         })
     , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
 
-    const crateVol = crateCm3(crate);
+    // Internal crate volume: subtract 7.5cm walls per side (−15cm per axis)
+    const internalCrateCm3 = crateCm3(crate);
+
+    // Already-packed padded volume (items saved to this crate)
     const alreadyPackedMap = useMemo(() => parseInventoryIds(crate.inventory_ids), [crate.inventory_ids]);
-    const alreadyPackedVol = useMemo(() => {
+    const alreadyPackedPaddedVol = useMemo(() => {
         let v = 0;
         alreadyPackedMap.forEach((qty, id) => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
             if (!inv) return;
-            v += itemCm3(normalizeInventoryData(inv.data)) * (qty === -1 ? 1 : qty);
+            v += itemPaddedCm3(normalizeInventoryData(inv.data)) * (qty === -1 ? 1 : qty);
         });
         return v;
     }, [alreadyPackedMap, allInventory]);
 
-    const pendingVol = selectedItems.reduce((s, i) => s + i.vol, 0);
-    const fillPct = crateVol > 0 ? clampN((alreadyPackedVol + pendingVol) / crateVol * 100, 0, 100) : 0;
-    const barColor = fillBarColor(fillPct);
-    const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
+    // Pending (staged, not yet saved)
+    const pendingNetVol     = selectedItems.reduce((s, i) => s + i.netVol, 0);
+    const pendingPaddingVol = selectedItems.reduce((s, i) => s + i.paddingVol, 0);
+    const pendingPaddedVol  = pendingNetVol + pendingPaddingVol;
+
+    const totalUsedPaddedVol = alreadyPackedPaddedVol + pendingPaddedVol;
+    const fillPct    = internalCrateCm3 > 0 ? clampN(totalUsedPaddedVol / internalCrateCm3 * 100, 0, 100) : 0;
+    const netFillPct = internalCrateCm3 > 0 ? clampN((alreadyPackedPaddedVol + pendingNetVol) / internalCrateCm3 * 100, 0, 100) : 0;
+    const padFillPct = Math.max(0, fillPct - netFillPct);
+    const barColor   = fillBarColor(fillPct);
+
+    const totalQty    = selectedItems.reduce((s, i) => s + i.qty, 0);
     const totalWeight = selectedItems.reduce((s, i) => s + i.weight, 0);
 
+    // ── Collapsed state: mini strip
+    if (collapsed) {
+        return (
+            <div className="flex flex-col h-full overflow-hidden">
+                <div className="px-3 pt-3 pb-3 border-b border-white/5 shrink-0 flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[8px] font-black uppercase tracking-widest text-(--main-color) truncate">Active {crate.type === 'pallet' ? 'Pallet' : 'Crate'}</p>
+                        <p className="text-[7px] font-mono text-white/25 truncate">{fmtDims(crate)} cm</p>
+                    </div>
+                    <span className="text-[10px] font-black tabular-nums shrink-0" style={{ color: barColor }}>{fillPct.toFixed(0)}%</span>
+                    <button onClick={() => setCollapsed(false)} className="text-white/40 hover:text-white transition cursor-pointer shrink-0 p-1" title="Expand">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    </button>
+                </div>
+                <div className="h-1 w-full bg-white/5 shrink-0 flex">
+                    <div className="h-full" style={{ width: `${netFillPct}%`, backgroundColor: barColor }} />
+                    <div className="h-full opacity-35" style={{ width: `${padFillPct}%`, backgroundColor: barColor }} />
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                    <button onClick={() => setCollapsed(false)} className="text-[7px] font-black uppercase tracking-widest text-white/20 hover:text-white/50 transition cursor-pointer">Expand panel</button>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Expanded state
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            <div className="px-4 pt-4 pb-3 border-b border-white/5 shrink-0 flex items-center justify-between">
+            {/* Header */}
+            <div className="px-4 pt-3 pb-3 border-b border-white/5 shrink-0 flex items-center justify-between">
                 <div>
                     <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Active {crate.type === 'pallet' ? 'Pallet' : 'Crate'}</h3>
                     <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{fmtDims(crate)} cm</p>
                 </div>
-                <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Clear</button>
+                <div className="flex items-center gap-1.5">
+                    <button onClick={() => setCollapsed(true)} className="text-white/30 hover:text-white transition cursor-pointer p-1" title="Collapse">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    </button>
+                    <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Clear</button>
+                </div>
             </div>
+
+            {/* Wireframe */}
             <div className="flex items-center justify-center py-4 relative shrink-0">
                 <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(ellipse_at_center,var(--main-color)_0%,transparent_70%)]" />
-                <RotatingWireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={130} />
+                <LargeCrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={130} />
             </div>
             <div className="px-4 pb-2 shrink-0"><p className="text-[7px] font-mono text-white/25 truncate">{crate.id.slice(0, 12).toUpperCase()}</p></div>
+
+            {/* Fill gauge */}
             <div className="px-4 pb-3 shrink-0">
                 <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Est. Fill</span>
+                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Vol. Fill</span>
                     <span className="text-[11px] font-black tabular-nums" style={{ color: barColor }}>{fillPct.toFixed(1)}%</span>
                 </div>
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${fillPct}%`, backgroundColor: barColor }} />
+                {/* Stacked bar: solid = net item vol, faded = padding vol */}
+                <div className="h-2.5 bg-white/5 rounded-full overflow-hidden flex">
+                    <div className="h-full transition-all duration-300" style={{ width: `${netFillPct}%`, backgroundColor: barColor, borderRadius: netFillPct < 98 ? '9999px 0 0 9999px' : '9999px' }} />
+                    <div className="h-full transition-all duration-300 opacity-35" style={{ width: `${padFillPct}%`, backgroundColor: barColor, borderRadius: padFillPct > 0 ? '0 9999px 9999px 0' : '0' }} />
                 </div>
-                <div className="flex justify-between mt-1">
-                    <span className="text-[7px] text-white/20 font-mono">{((alreadyPackedVol + pendingVol) / 1000).toFixed(1)}L used</span>
-                    <span className="text-[7px] text-white/20 font-mono">{(crateVol / 1000).toFixed(1)}L cap</span>
+                {/* Legend */}
+                <div className="flex items-center gap-3 mt-1.5">
+                    <div className="flex items-center gap-1">
+                        <div className="w-2 h-1.5 rounded-sm" style={{ backgroundColor: barColor }} />
+                        <span className="text-[6px] text-white/30 font-mono">item {(pendingNetVol/1000).toFixed(1)}L</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="w-2 h-1.5 rounded-sm opacity-35" style={{ backgroundColor: barColor }} />
+                        <span className="text-[6px] text-white/30 font-mono">+pad {(pendingPaddingVol/1000).toFixed(1)}L</span>
+                    </div>
+                    <span className="text-[6px] text-white/20 font-mono ml-auto">/{(internalCrateCm3/1000).toFixed(0)}L int.</span>
                 </div>
-                {fillPct >= 85 && <p className="text-[7px] font-black uppercase tracking-widest text-rose-400 mt-1 animate-pulse">⚠ Near capacity</p>}
+                {fillPct >= 90 && <p className="text-[7px] font-black uppercase tracking-widest text-rose-400 mt-1.5 animate-pulse">⚠ Near capacity</p>}
             </div>
+
+            {/* Formula chip */}
+            <div className="mx-3 mb-3 px-3 py-2 bg-white/2 border border-white/5 rounded-xl shrink-0">
+                <p className="text-[6px] font-mono text-white/20 leading-relaxed">
+                    Internal = (W−15)×(L−15)×(H−15) cm³<br />
+                    Each item = (W+3)×(H+3)×(L+3) cm³<br />
+                    Fill % = Σ padded ÷ internal × 100
+                </p>
+            </div>
+
+            {/* Stats */}
             <div className="grid grid-cols-2 gap-1.5 px-3 pb-3 shrink-0">
                 <div className="bg-white/3 border border-white/5 rounded-xl px-3 py-2">
                     <p className="text-[7px] font-black uppercase tracking-widest text-white/25">Units</p>
@@ -287,16 +385,19 @@ const ActiveCrateSidebar: React.FC<{
                     <p className="text-[15px] font-black text-white tabular-nums">{totalWeight.toFixed(1)}<span className="text-[8px] text-white/30 ml-0.5">kg</span></p>
                 </div>
             </div>
+
+            {/* Staged items */}
             <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-1 custom-scrollbar">
                 <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mb-1">Staged ({selectedItems.length})</p>
                 {selectedItems.map(item => (
-                    <div key={item.id} className="flex items-center gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-xl">
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-black" style={{ backgroundColor: item.tagColor }}>
+                    <div key={item.id} className="flex items-start gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-xl">
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-black mt-0.5" style={{ backgroundColor: item.tagColor }}>
                             {item.calc.bookBardcode || item.vendorPrefix || '—'}
                         </span>
                         <div className="flex-1 min-w-0">
                             <p className="text-[8px] font-black text-white truncate leading-none">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
                             <p className="text-[7px] text-white/30 font-mono mt-0.5">{item.norm.widthCm || '?'}×{item.norm.heightCm || '?'}×{item.norm.lengthCm || '?'}cm · {item.weight.toFixed(1)}kg</p>
+                            <p className="text-[6px] text-white/15 font-mono">{(item.paddedVol/1000).toFixed(2)}L padded ×{item.qty}</p>
                         </div>
                         <span className="text-[9px] font-black text-(--main-color) shrink-0">×{item.qty}</span>
                     </div>
@@ -305,6 +406,7 @@ const ActiveCrateSidebar: React.FC<{
         </div>
     );
 };
+
 
 // ─── Compact Crate Card (left panel) ─────────────────────────────────────────
 const CrateSelectCard: React.FC<{
