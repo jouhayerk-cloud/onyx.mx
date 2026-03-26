@@ -11,6 +11,13 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.9 — 2026-03-25
+### Changed
+- **Full-Width Crate Cards:** Refactored the "Empty Inventory" and "Packed Crates" views in the Crates tab to use a horizontal, full-width card layout for better information density and readability.
+- **2x5 Grid Preview:** Replaced the single large wireframe icon in the Active Group sidebar with a stacked 2x5 grid of 10 smaller icons to visualize available capacity.
+- **Selection Button Fix:** Corrected a logic bug in `PackingInventoryRow` that disabled the selection button for items already in the current crate. These items are now correctly selectable, enabling de-selection/removal from packed crates.
+- **Improved Alignment:** Switched sidebar aspect ratios to better suit the new grid preview.
+
 ## v1.29.8 — 2026-03-25
 ### Changed
 - **Unified Selection State:** Selecting any crate (empty or packed) now instantly pre-populates the "staged items" with its current contents. This "checks" the items in the inventory list, allowing for seamless addition/removal editing.
