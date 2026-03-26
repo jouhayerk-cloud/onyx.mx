@@ -11,6 +11,10 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.7 — 2026-03-25
+### Fixed
+- **Crash on Crate Selection:** Resolved a React #130 crash that occurred when drilling down into an empty crate size group in the Pack tab. Removed an obsolete component reference (`RotatingWireframeCrate`) from the drill-down preview panel, replacing it with the new static `LargeCrateWireframe` representation.
+
 ## v1.29.6 — 2026-03-25
 ### Changed
 - **Volume Formulas Refined:** Internal crate volume now deducts 15 cm per axis (7.5 cm wall thickness × 2 sides): `(W−15)×(L−15)×(H−15) cm³`. Item volume uses padded dimensions adding 3 cm per axis (1.5 cm clearance × 2 faces): `(W+3)×(H+3)×(L+3) cm³`. Fill % is calculated as `Σ padded item volumes ÷ internal crate volume × 100`.
