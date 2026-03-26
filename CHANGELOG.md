@@ -11,6 +11,15 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.4 — 2026-03-25
+### Added
+- **Pallet Support:** Shipping Crates module now supports both Crates and Pallets. The "Initialize" dialog features a type toggle (Crate / Pallet). Pallets render as a flat 15cm-tall wireframe distinctly different from the standard cuboid Crate, omitting the cross-brace overlay to visually distinguish flat-bed shipping containers.
+- **Grouped Empty Inventory View:** The Empty Inventory tab now condenses crates and pallets of identical dimensions into a single stacked wireframe card (showing up to 5 ghost outlines). A count badge shows how many units share that footprint. Packed items are shown as independent grid cards as before.
+- **Pack Tab Grouped Sidebar:** Available crates/pallets in the Packing Module sidebar are now displayed grouped by their dimensional size. Selecting a size drills into a full-panel wireframe preview with an individual unit sub-list underneath for precise selection. A "Back" navigation bar exits the drill-down.
+- **Quantity-Aware Packing Workflow:** Each inventory row in the packing module now shows a real-time status breakdown: total quantity, units already packed in this crate, and units packed into other crates. When an item is checked for packing, a `−` / `+` stepper appears on the right to select exactly how many units to assign to this crate. Quantities default to 1 and are capped by remaining available units.
+- **Cross-Crate Quantity Tracking:** `inventory_ids` now serializes as `id:qty` pairs (`id1:4,id2:2`) enabling per-crate per-item quantity tracking without destructive schema changes. Legacy entries without a `:qty` suffix are treated as full-quantity (backward compat). Total units packed per SKU are computed in real time across all crates to accurately compute "elsewhere" packed quantities.
+- **Confirm Bar Enhancement:** The bottom pack confirmation bar now shows the total unit count and SKU count, plus the target crate/pallet type and dimensions.
+
 ## v1.29.3 — 2026-03-25
 ### Added
 - **Bank Commission & IVA Toggles:** Implemented a new mutually-exclusive 10% Bank Commission toggle under the existing 16% IVA boolean selector within the Add Payment and Request Payment workflows. This standardizes automatic fee calculations for transactions bound by fixed platform or international transfer percentages, keeping exact ledger balances without manually recalculating the base + fee aggregates.

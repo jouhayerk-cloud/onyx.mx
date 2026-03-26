@@ -7,14 +7,15 @@ import { useDatabase } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom } from '../../lib/atoms';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
-const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string }> = ({
-    w = 60, l = 60, h = 60, status = 'Empty',
+const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number }> = ({
+    w = 60, l = 60, h = 60, status = 'Empty', type = 'crate', count = 1
 }) => {
-    const maxDim = Math.max(w, l, h, 1);
+    const visH = type === 'pallet' ? 15 : h;
+    const maxDim = Math.max(w, l, visH, 1);
     const scale = 56 / maxDim;
     const dw = Math.round(w * scale);
     const dl = Math.round(l * scale);
-    const dh = Math.round(h * scale);
+    const dh = Math.round(visH * scale);
     const depth = Math.round(dl * 0.38);
 
     const accentColor =
@@ -22,13 +23,10 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: st
         : status === 'Partial' ? '#fbbf24'
         : 'var(--main-color)';
 
+    const maxCount = Math.min(count, 5);
     const svgW = dw + depth + 6;
-    const svgH = dh + depth + 6;
+    const svgH = dh + depth + 6 + (maxCount - 1) * 8;
 
-    const x0 = 3, y0 = depth + 3;
-    const x1 = x0 + dw, y1 = y0;
-    const x2 = x1, y2 = y0 + dh;
-    const x3 = x0, y3 = y0 + dh;
     const dx = depth, dy = -depth;
 
     return (
@@ -38,31 +36,49 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: st
             className="overflow-visible drop-shadow-lg"
             style={{ filter: `drop-shadow(0 0 6px ${accentColor}33)` }}
         >
-            {/* Back dashed edges */}
-            <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
-            <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
-            <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+            {Array.from({ length: maxCount }).map((_, i) => {
+                // Stack downwards to simulate empty crates stacked on each other
+                const stackYSpacing = 8;
+                const offsetY = i * stackYSpacing;
+                const x0 = 3, y0 = depth + 3 + offsetY;
+                const x1 = x0 + dw, y1 = y0;
+                const x2 = x1, y2 = y0 + dh;
+                const x3 = x0, y3 = y0 + dh;
 
-            {/* Top face */}
-            <polygon
-                points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y1+dy} ${x1},${y1}`}
-                fill={`${accentColor}08`}
-                stroke={accentColor} strokeWidth="1"
-            />
-            {/* Right face */}
-            <polygon
-                points={`${x1},${y1} ${x1+dx},${y1+dy} ${x1+dx},${y2+dy} ${x1},${y2}`}
-                fill={`${accentColor}05`}
-                stroke={accentColor} strokeWidth="1"
-            />
-            {/* Front face */}
-            <rect x={x0} y={y0} width={dw} height={dh}
-                fill={`${accentColor}07`}
-                stroke={accentColor} strokeWidth="1.2"
-            />
-            {/* Cross braces */}
-            <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
-            <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+                return (
+                    <g key={i}>
+                        {/* Back dashed edges */}
+                        <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+                        <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+                        <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={accentColor} strokeWidth="0.7" strokeDasharray="2.5,2.5" opacity="0.4" />
+
+                        {/* Top face */}
+                        <polygon
+                            points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y1+dy} ${x1},${y1}`}
+                            fill={`${accentColor}08`}
+                            stroke={accentColor} strokeWidth="1"
+                        />
+                        {/* Right face */}
+                        <polygon
+                            points={`${x1},${y1} ${x1+dx},${y1+dy} ${x1+dx},${y2+dy} ${x1},${y2}`}
+                            fill={`${accentColor}05`}
+                            stroke={accentColor} strokeWidth="1"
+                        />
+                        {/* Front face */}
+                        <rect x={x0} y={y0} width={dw} height={dh}
+                            fill={`${accentColor}07`}
+                            stroke={accentColor} strokeWidth="1.2"
+                        />
+                        {/* Cross braces */}
+                        {type !== 'pallet' && (
+                            <>
+                                <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+                                <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
+                            </>
+                        )}
+                    </g>
+                );
+            }).reverse() /* Draw bottom-up for correct z-indexing perspective */}
         </svg>
     );
 };
@@ -83,6 +99,8 @@ interface CrateRecord {
     cost_mxn?: number;
     date?: string;
     updated_at?: string;
+    groupedCount?: number;
+    groupedIds?: string[];
 }
 
 // --- Status Badge ---
@@ -122,6 +140,8 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                         l={crate.length_cm}
                         h={crate.height_cm}
                         status={crate.status}
+                        type={crate.type}
+                        count={crate.groupedCount || 1}
                     />
                     {/* Status + ID overlay */}
                     <div className="absolute top-2 left-2.5">
@@ -130,6 +150,11 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                     <div className="absolute bottom-2 right-2.5">
                         <span className="text-[7px] font-mono text-white/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</span>
                     </div>
+                    {crate.groupedCount && crate.groupedCount > 1 && (
+                        <div className="absolute top-2 right-2.5 px-2 py-0.5 rounded bg-(--main-color)/20 border border-(--main-color)/40 text-(--main-color) font-black text-[9px]">
+                            x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
+                        </div>
+                    )}
                 </div>
 
                 {/* Dimensions + volume */}
@@ -177,7 +202,7 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
 const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) => {
     const db = useDatabase();
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({ width: '', length: '', height: '', quantity: '1', price: '', description: '' });
+    const [form, setForm] = useState({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
     const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
     if (!isOpen) return null;
@@ -199,11 +224,11 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
             const now = new Date().toISOString();
             // Build crate rows
             const crateRows = Array.from({ length: qty }, (_, i) => ({
-                type: 'crate',
+                type: form.type,
                 status: 'Empty',
                 width_cm: w, length_cm: l, height_cm: h,
                 cost_mxn: price,
-                description: form.description || `Crate ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
+                description: form.description || `${form.type === 'pallet' ? 'Pallet' : 'Crate'} ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
                 contents_summary: '',
                 quantity: 1,
                 date: now,
@@ -228,7 +253,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
             toast.success(`${qty} crate(s) initialized. Navigate to Payments to request it.`, { id: tid });
             onRefresh();
             onClose();
-            setForm({ width: '', length: '', height: '', quantity: '1', price: '', description: '' });
+            setForm({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
         } catch (err: any) {
             toast.error(err.message || 'Failed to create crates.', { id: tid });
         } finally {
@@ -258,6 +283,16 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="px-8 py-7 flex flex-col gap-6">
+                    {/* Crate or Pallet Toggle */}
+                    <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl">
+                        <button type="button" onClick={() => set('type', 'crate')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition ${form.type === 'crate' ? 'bg-(--main-color) text-black shadow-md' : 'text-white/40 hover:text-white cursor-pointer'}`}>
+                            Crate
+                        </button>
+                        <button type="button" onClick={() => set('type', 'pallet')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition ${form.type === 'pallet' ? 'bg-(--main-color) text-black shadow-md' : 'text-white/40 hover:text-white cursor-pointer'}`}>
+                            Pallet
+                        </button>
+                    </div>
+
                     {/* Dimensions */}
                     <div>
                         <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-3">Dimensions (cm)</p>
@@ -357,11 +392,11 @@ export const CratesInventoryView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
 
-    // Subscribe to RxDB logistics collection (only type=crate)
+    // Subscribe to RxDB logistics collection
     useEffect(() => {
         if (!db) return;
         let timer: any;
-        const sub = db.logistics.find({ selector: { type: 'crate' } }).$.subscribe((data: any[]) => {
+        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet'] } } }).$.subscribe((data: any[]) => {
             clearTimeout(timer);
             timer = setTimeout(() => setCrates(data.map(c => c.toJSON())), 150);
         });
@@ -384,6 +419,25 @@ export const CratesInventoryView: React.FC = () => {
             return matchesTab && matchesSearch;
         });
     }, [crates, activeTab, searchQuery]);
+
+    // Group logic for 'empty' crates
+    const displayCrates = useMemo(() => {
+        if (activeTab === 'packed') return filteredCrates;
+
+        // For empty crates, group by WxLxHxType
+        const groups: Record<string, CrateRecord> = {};
+        for (const c of filteredCrates) {
+            const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
+            if (!groups[key]) {
+                groups[key] = { ...c, groupedCount: 0, groupedIds: [], cost_mxn: 0, weight_kg: 0 };
+            }
+            groups[key].groupedCount = (groups[key].groupedCount || 0) + 1;
+            groups[key].groupedIds!.push(c.id);
+            groups[key].cost_mxn = (groups[key].cost_mxn || 0) + (c.cost_mxn || 0);
+            groups[key].weight_kg = (groups[key].weight_kg || 0) + (c.weight_kg || 0);
+        }
+        return Object.values(groups);
+    }, [filteredCrates, activeTab]);
 
     // Status counters
     const summary = useMemo(() => ({
@@ -461,9 +515,9 @@ export const CratesInventoryView: React.FC = () => {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-8 py-7 custom-scrollbar">
-                {filteredCrates.length > 0 ? (
+                {displayCrates.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 content-start">
-                        {filteredCrates.map(crate => (
+                        {displayCrates.map(crate => (
                             <CrateCard key={crate.id} crate={crate} onPack={handlePack} />
                         ))}
                     </div>
