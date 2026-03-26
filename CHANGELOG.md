@@ -11,6 +11,14 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.29.8 — 2026-03-25
+### Changed
+- **Unified Selection State:** Selecting any crate (empty or packed) now instantly pre-populates the "staged items" with its current contents. This "checks" the items in the inventory list, allowing for seamless addition/removal editing.
+- **Overwrite Packing Logic:** Refactored `handlePackItems` from merge-mode to overwrite-mode. Saving a crate now commits the *exact* staged selection, making it easy to remove items by unchecking them or move them between crates.
+- **Inventory Sync:** When items are removed from or added to a crate during editing, the `inventory` table's `crate_id` pointers are automatically synced (cleared for removals, set for additions).
+- **Context-Aware Availability:** The "available" quantity calculation in the inventory list now correctly includes items already in the currently selected crate, so they can be re-selected or kept during editing without hitting "max quantity" limits.
+- **UI Labeling:** The main action button dynamically switches between "Confirm Pack" (for new crates) and "Update Crate Contents" (for existing ones). The sidebar "Clear" button is now "Deselect Crate" and resets the left-pane view.
+
 ## v1.29.7 — 2026-03-25
 ### Fixed
 - **Crash on Crate Selection:** Resolved a React #130 crash that occurred when drilling down into an empty crate size group in the Pack tab. Removed an obsolete component reference (`RotatingWireframeCrate`) from the drill-down preview panel, replacing it with the new static `LargeCrateWireframe` representation.

@@ -328,7 +328,7 @@ const ActiveCrateSidebar: React.FC<{
                     <button onClick={() => setCollapsed(true)} className="text-white/30 hover:text-white transition cursor-pointer p-1" title="Collapse">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                     </button>
-                    <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Clear</button>
+                    <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Deselect Crate</button>
                 </div>
             </div>
 
@@ -671,6 +671,28 @@ export const CratePackingManager: React.FC = () => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
 
+    const handleSelectCrate = useCallback((id: string | null) => {
+        setSelectedCrateId(id);
+        setExpandedIds(new Set());
+        if (!id) {
+            setSelectedItemIds(new Set());
+            setSelectedQtys({});
+            return;
+        }
+        const crate = crates.find(c => c.id === id);
+        if (crate) {
+            const map = parseInventoryIds(crate.inventory_ids);
+            const ids = new Set(map.keys());
+            const qtys: Record<string, number> = {};
+            map.forEach((q, iid) => { qtys[iid] = q === -1 ? 1 : q; });
+            setSelectedItemIds(ids);
+            setSelectedQtys(qtys);
+        } else {
+            setSelectedItemIds(new Set());
+            setSelectedQtys({});
+        }
+    }, [crates]);
+
     // Subscribe to RxDB crates
     useEffect(() => {
         if (!db) return;
@@ -770,53 +792,80 @@ export const CratePackingManager: React.FC = () => {
     }, []);
 
     const handlePackItems = async () => {
-        if (!selectedCrate || selectedItemIds.size === 0) return;
+        if (!selectedCrate) return;
         setIsSaving(true);
-        const tid = toast.loading(`Packing ${selectedItemIds.size} item(s)…`);
+        const isUpdate = selectedCrate.inventory_ids && selectedCrate.inventory_ids.length > 0;
+        const tid = toast.loading(isUpdate ? `Updating ${selectedCrate.type}...` : `Packing ${selectedItemIds.size} item(s)...`);
+        
         try {
-            // Merge with existing packed map
-            const existingMap = parseInventoryIds(selectedCrate.inventory_ids);
-            for (const itemId of Array.from(selectedItemIds)) {
-                const addQty = selectedQtys[itemId] ?? 1; // Use selectedQtys for quantity
-                const existing = existingMap.get(itemId);
-                if (existing !== undefined && existing !== -1) {
-                    existingMap.set(itemId, existing + addQty);
-                } else {
-                    existingMap.set(itemId, addQty);
-                }
-            }
-            const serialized = serializeInventoryIds(existingMap);
-            const totalUnits = Array.from(existingMap.values()).reduce((s, q) => s + (q === -1 ? 1 : q), 0);
-            const summary = `${existingMap.size} SKU(s) · ${totalUnits} unit(s) packed`;
-            const updatePayload = { inventory_ids: serialized, contents_summary: summary, status: 'Partial' as const, updated_at: new Date().toISOString() };
+            // THE NEW MAP: fully defined by the staged selection (overwrite mode)
+            const newMap = new Map<string, number>();
+            selectedItemIds.forEach(id => {
+                newMap.set(id, selectedQtys[id] ?? 1);
+            });
 
-            const { error } = await supabase.from('logistics').update(updatePayload).eq('id', selectedCrate.id);
-            if (error) throw error;
+            const serialized = serializeInventoryIds(newMap);
+            const totalUnits = Array.from(newMap.values()).reduce((s, q) => s + (q === -1 ? 1 : q), 0);
+            const summary = `${newMap.size} SKU(s) · ${totalUnits} unit(s) packed`;
+            const newStatus = totalUnits === 0 ? 'Empty' : 'Partial';
+            const updatePayload = { 
+                inventory_ids: serialized, 
+                contents_summary: summary, 
+                status: newStatus as any, 
+                updated_at: new Date().toISOString() 
+            };
 
+            // 1. Update the crate in Supabase
+            const { error: crateErr } = await supabase.from('logistics').update(updatePayload).eq('id', selectedCrate.id);
+            if (crateErr) throw crateErr;
+
+            // 2. Local RxDB update
             if (db) {
                 const localCrate = await db.logistics.findOne({ selector: { id: selectedCrate.id } }).exec();
                 if (localCrate) await localCrate.patch(updatePayload);
             }
 
-            // Tag inventory items with crate_id (still tag even if partial qty)
-            // Only tag items that are fully packed into this crate, or if it's the only crate they're in.
-            // For now, we'll tag all selected items, assuming they are primarily associated with this crate.
-            // A more complex system would track which crate holds which quantity.
-            const idsArr = Array.from(selectedItemIds);
-            await supabase.from('inventory').update({ crate_id: selectedCrate.id }).in('id', idsArr);
-            if (db) {
-                for (const iid of idsArr) {
-                    try { const lDoc = await db.inventory.findOne({ selector: { id: iid } }).exec(); if (lDoc) await lDoc.patch({ crate_id: selectedCrate.id }); } catch (_) { }
+            // 3. Sync Inventory crate_id pointers
+            const originalMap = parseInventoryIds(selectedCrate.inventory_ids);
+            const originalIds = Array.from(originalMap.keys());
+            const currentIds = Array.from(newMap.keys());
+
+            const addedIds = currentIds.filter(id => !originalMap.has(id));
+            const removedIds = originalIds.filter(id => !newMap.has(id));
+
+            // Mark additions
+            if (addedIds.length > 0) {
+                await supabase.from('inventory').update({ crate_id: selectedCrate.id }).in('id', addedIds);
+                if (db) {
+                    for (const id of addedIds) {
+                        try { 
+                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec(); 
+                            if (lDoc) await lDoc.patch({ crate_id: selectedCrate.id }); 
+                        } catch (_) {}
+                    }
                 }
             }
 
-            const totalQtySent = Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0);
-            toast.success(`${totalQtySent} unit(s) across ${selectedItemIds.size} SKU(s) packed`, { id: tid });
-            setSelectedItemIds(new Set());
-            setSelectedQtys({});
+            // Mark removals
+            if (removedIds.length > 0) {
+                await supabase.from('inventory').update({ crate_id: null }).in('id', removedIds);
+                if (db) {
+                    for (const id of removedIds) {
+                        try { 
+                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec(); 
+                            if (lDoc) await lDoc.patch({ crate_id: null }); 
+                        } catch (_) {}
+                    }
+                }
+            }
+
+            toast.success(isUpdate ? "Crate contents updated" : "Packing confirmed", { id: tid });
+            // Keep the selection active but we need to re-sync if version changes
+            // Actually, usually users want to continue editing or move to next crate.
+            // Let's keep it selected so they can see the result.
             setCratesVersion(v => v + 1);
         } catch (err: any) {
-            toast.error(err.message || 'Packing failed.', { id: tid });
+            toast.error(err.message || 'Update failed.', { id: tid });
         } finally {
             setIsSaving(false);
         }
@@ -835,7 +884,7 @@ export const CratePackingManager: React.FC = () => {
                         allInventory={allInventory}
                         crates={crates}
                         exchangeRate={exchangeRate}
-                        onClear={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }}
+                        onClear={() => handleSelectCrate(null)}
                     />
                 ) : (
                     <>
@@ -862,10 +911,7 @@ export const CratePackingManager: React.FC = () => {
                                             onClick={() => {
                                                 setActiveGroupKey(`${group.width_cm}x${group.length_cm}x${group.height_cm}x${group.type}`);
                                                 const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
-                                                setSelectedCrateId(targetCrate.id);
-                                                setSelectedItemIds(new Set());
-                                                setSelectedQtys({});
-                                                setExpandedIds(new Set());
+                                                handleSelectCrate(targetCrate.id);
                                             }}
                                         />
                                     );
@@ -885,7 +931,7 @@ export const CratePackingManager: React.FC = () => {
                                         {activeGroup.children.map(c => {
                                             const packedItems = c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0;
                                             return (
-                                                <button key={c.id} onClick={() => setSelectedCrateId(c.id)}
+                                                <button key={c.id} onClick={() => handleSelectCrate(c.id)}
                                                     className={`flex items-center justify-between px-3 py-2 border rounded-xl cursor-pointer transition ${
                                                         selectedCrateId === c.id
                                                             ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-md'
@@ -1051,7 +1097,7 @@ export const CratePackingManager: React.FC = () => {
                                 const totalQty = Number(norm.quantity || 1);
                                 const totalPacked = getTotalPackedForItem(iid, crates);
                                 const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
-                                const remaining = Math.max(0, totalQty - totalPacked);
+                                const availableForThisCrate = Math.max(0, totalQty - (totalPacked - inCurrentCrate));
                                 const isSelected = selectedItemIds.has(iid);
                                 return (
                                     <PackingInventoryRow
@@ -1061,7 +1107,7 @@ export const CratePackingManager: React.FC = () => {
                                         packedQtyInCurrentCrate={inCurrentCrate}
                                         totalPackedQty={totalPacked}
                                         selectedQty={selectedQtys[iid] ?? 1}
-                                        onToggle={() => toggleItem(iid, remaining)}
+                                        onToggle={() => toggleItem(iid, availableForThisCrate)}
                                         onQtyChange={qty => setSelectedQtys(q => ({ ...q, [iid]: qty }))}
                                         isExpanded={expandedIds.has(iid)}
                                         onToggleExpand={() => toggleExpand(iid)}
@@ -1090,7 +1136,7 @@ export const CratePackingManager: React.FC = () => {
                             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                         >
                             {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={3} />}
-                            Confirm Pack
+                            {selectedCrate.inventory_ids && selectedCrate.inventory_ids.length > 0 ? 'Update Crate Contents' : 'Confirm Pack'}
                         </button>
                     </div>
                 )}
