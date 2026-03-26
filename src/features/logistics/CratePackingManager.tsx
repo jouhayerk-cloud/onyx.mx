@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAtomValue, useAtom } from 'jotai/react';
 import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
@@ -148,6 +148,161 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: 
                 </>
             )}
         </svg>
+    );
+};
+
+// ─── Volume helpers ─────────────────────────────────────────────────────
+function crateCm3(c: CrateRecord): number {
+    return (c.width_cm ?? 0) * (c.length_cm ?? 0) * (c.height_cm ?? 0);
+}
+function itemCm3(norm: ReturnType<typeof normalizeInventoryData>): number {
+    return (Number(norm.widthCm) || 0) * (Number(norm.heightCm) || 0) * (Number(norm.lengthCm) || 0);
+}
+function clampN(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
+function fillBarColor(pct: number): string {
+    if (pct >= 85) return '#ef4444';
+    if (pct >= 60) return '#f59e0b';
+    return '#10b981';
+}
+
+// ─── RotatingWireframeCrate ──────────────────────────────────────────────
+const RotatingWireframeCrate: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number }> = ({
+    w = 60, l = 60, h = 60, type = 'crate', size = 130
+}) => {
+    const angleRef = useRef(0);
+    const [angle, setAngle] = useState(0);
+    useEffect(() => {
+        let raf: number;
+        const tick = () => { angleRef.current = (angleRef.current + 0.35) % 360; setAngle(angleRef.current); raf = requestAnimationFrame(tick); };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, []);
+    const visH = type === 'pallet' ? 15 : h;
+    const maxDim = Math.max(w, l, visH, 1);
+    const scale = (size * 0.33) / maxDim;
+    const dw = Math.round(w * scale);
+    const dh = Math.round(visH * scale);
+    const dl = Math.round(l * scale);
+    const rad = (angle * Math.PI) / 180;
+    const depth = Math.round(dl * 0.4 * Math.abs(Math.cos(rad)) + dw * 0.08 * Math.abs(Math.sin(rad)));
+    const dxSign = Math.cos(rad) >= 0 ? 1 : -1;
+    const color = 'var(--main-color)';
+    const svgW = dw + depth + 8, svgH = dh + depth + 8;
+    const x0 = 4, y0 = depth + 4, x1 = x0 + dw, y2 = y0 + dh, y3 = y0 + dh;
+    const dx = dxSign * depth, dy = -depth;
+    return (
+        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ filter: 'drop-shadow(0 0 8px var(--main-color))', overflow: 'visible' }}>
+            <line x1={x0+dx} y1={y0+dy} x2={x0+dx} y2={y3+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <line x1={x0+dx} y1={y0+dy} x2={x1+dx} y2={y0+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <line x1={x0+dx} y1={y3+dy} x2={x1+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <polygon points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y0+dy} ${x1},${y0}`} fill="rgba(249,115,22,0.08)" stroke={color} strokeWidth="1" />
+            <polygon points={`${x1},${y0} ${x1+dx},${y0+dy} ${x1+dx},${y2+dy} ${x1},${y2}`} fill="rgba(249,115,22,0.04)" stroke={color} strokeWidth="1" />
+            <rect x={x0} y={y0} width={dw} height={dh} fill="rgba(249,115,22,0.06)" stroke={color} strokeWidth="1.2" />
+            {type !== 'pallet' && (
+                <>
+                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.35" />
+                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.35" />
+                </>
+            )}
+        </svg>
+    );
+};
+
+// ─── ActiveCrateSidebar ──────────────────────────────────────────────
+const ActiveCrateSidebar: React.FC<{
+    crate: CrateRecord;
+    selectedItemIds: Set<string>;
+    selectedQtys: Record<string, number>;
+    allInventory: any[];
+    crates: CrateRecord[];
+    exchangeRate: number;
+    onClear: () => void;
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, crates: _crates, exchangeRate, onClear }) => {
+    const selectedItems = useMemo(() =>
+        Array.from(selectedItemIds).flatMap(id => {
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (!inv) return [];
+            const norm = normalizeInventoryData(inv.data);
+            const calc = calculateCodesAndPrices(norm, exchangeRate, '326');
+            const qty = selectedQtys[id] ?? 1;
+            const vendorPrefix = String(norm.itemId || inv.data?.vendor_id || '').split('-')[0] || '';
+            const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
+            return [{ id, norm, calc, qty, vol: itemCm3(norm) * qty, weight: (Number(norm.weightKg) || 0) * qty, tagColor, vendorPrefix }];
+        })
+    , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
+
+    const crateVol = crateCm3(crate);
+    const alreadyPackedMap = useMemo(() => parseInventoryIds(crate.inventory_ids), [crate.inventory_ids]);
+    const alreadyPackedVol = useMemo(() => {
+        let v = 0;
+        alreadyPackedMap.forEach((qty, id) => {
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (!inv) return;
+            v += itemCm3(normalizeInventoryData(inv.data)) * (qty === -1 ? 1 : qty);
+        });
+        return v;
+    }, [alreadyPackedMap, allInventory]);
+
+    const pendingVol = selectedItems.reduce((s, i) => s + i.vol, 0);
+    const fillPct = crateVol > 0 ? clampN((alreadyPackedVol + pendingVol) / crateVol * 100, 0, 100) : 0;
+    const barColor = fillBarColor(fillPct);
+    const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
+    const totalWeight = selectedItems.reduce((s, i) => s + i.weight, 0);
+
+    return (
+        <div className="flex flex-col h-full overflow-hidden">
+            <div className="px-4 pt-4 pb-3 border-b border-white/5 shrink-0 flex items-center justify-between">
+                <div>
+                    <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Active {crate.type === 'pallet' ? 'Pallet' : 'Crate'}</h3>
+                    <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{fmtDims(crate)} cm</p>
+                </div>
+                <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Clear</button>
+            </div>
+            <div className="flex items-center justify-center py-4 relative shrink-0">
+                <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(ellipse_at_center,var(--main-color)_0%,transparent_70%)]" />
+                <RotatingWireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={130} />
+            </div>
+            <div className="px-4 pb-2 shrink-0"><p className="text-[7px] font-mono text-white/25 truncate">{crate.id.slice(0, 12).toUpperCase()}</p></div>
+            <div className="px-4 pb-3 shrink-0">
+                <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Est. Fill</span>
+                    <span className="text-[11px] font-black tabular-nums" style={{ color: barColor }}>{fillPct.toFixed(1)}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${fillPct}%`, backgroundColor: barColor }} />
+                </div>
+                <div className="flex justify-between mt-1">
+                    <span className="text-[7px] text-white/20 font-mono">{((alreadyPackedVol + pendingVol) / 1000).toFixed(1)}L used</span>
+                    <span className="text-[7px] text-white/20 font-mono">{(crateVol / 1000).toFixed(1)}L cap</span>
+                </div>
+                {fillPct >= 85 && <p className="text-[7px] font-black uppercase tracking-widest text-rose-400 mt-1 animate-pulse">⚠ Near capacity</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 px-3 pb-3 shrink-0">
+                <div className="bg-white/3 border border-white/5 rounded-xl px-3 py-2">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-white/25">Units</p>
+                    <p className="text-[15px] font-black text-white tabular-nums">{totalQty}</p>
+                </div>
+                <div className="bg-white/3 border border-white/5 rounded-xl px-3 py-2">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-white/25">Weight</p>
+                    <p className="text-[15px] font-black text-white tabular-nums">{totalWeight.toFixed(1)}<span className="text-[8px] text-white/30 ml-0.5">kg</span></p>
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-1 custom-scrollbar">
+                <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mb-1">Staged ({selectedItems.length})</p>
+                {selectedItems.map(item => (
+                    <div key={item.id} className="flex items-center gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-xl">
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-black" style={{ backgroundColor: item.tagColor }}>
+                            {item.calc.bookBardcode || item.vendorPrefix || '—'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[8px] font-black text-white truncate leading-none">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
+                            <p className="text-[7px] text-white/30 font-mono mt-0.5">{item.norm.widthCm || '?'}×{item.norm.heightCm || '?'}×{item.norm.lengthCm || '?'}cm · {item.weight.toFixed(1)}kg</p>
+                        </div>
+                        <span className="text-[9px] font-black text-(--main-color) shrink-0">×{item.qty}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 };
 
@@ -568,96 +723,90 @@ export const CratePackingManager: React.FC = () => {
     return (
         <div className="flex h-full w-full overflow-hidden bg-transparent">
 
-            {/* ── Left Pane: Compact Crate Selector ── */}
-            <div className="w-[220px] shrink-0 border-r border-white/5 flex flex-col bg-black/40 backdrop-blur-3xl">
-                {/* Header */}
-                <div className="px-4 pt-4 pb-2.5 border-b border-white/5 shrink-0 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Sizes'}</h3>
-                        <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{activeCrates.length} ready to pack</p>
-                    </div>
-                </div>
-
-                {/* Crate List */}
-                <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-1.5 custom-scrollbar">
-                    {activeCrates.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-3 py-8">
-                            <Inbox size={28} className="text-white/20" strokeWidth={1} />
-                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 max-w-[120px] leading-relaxed">
-                                No empty sizes.<br />Create some in the Crates tab.
-                            </span>
+            {/* ── Left Pane: Active Crate Panel ✔ Size Selector ── */}
+            <div className="w-[240px] shrink-0 border-r border-white/5 flex flex-col bg-black/40 backdrop-blur-3xl overflow-hidden">
+                {selectedCrate && selectedItemIds.size > 0 ? (
+                    <ActiveCrateSidebar
+                        crate={selectedCrate}
+                        selectedItemIds={selectedItemIds}
+                        selectedQtys={selectedQtys}
+                        allInventory={allInventory}
+                        crates={crates}
+                        exchangeRate={exchangeRate}
+                        onClear={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }}
+                    />
+                ) : (
+                    <>
+                        <div className="px-4 pt-4 pb-2.5 border-b border-white/5 shrink-0 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Sizes'}</h3>
+                                <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{activeCrates.length} ready to pack</p>
+                            </div>
                         </div>
-                    ) : !activeGroup ? (
-                        groupedAvailableCrates.map(group => {
-                            const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
-                            return (
-                                <CrateSelectCard
-                                    key={group.id}
-                                    crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
-                                    isSelected={!!isSelected}
-                                    onClick={() => {
-                                        setActiveGroupKey(`${group.width_cm}x${group.length_cm}x${group.height_cm}x${group.type}`);
-                                        // Auto select first mostly-packed 'Partial' if available, otherwise just first empty
-                                        const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
-                                        setSelectedCrateId(targetCrate.id);
-                                        setSelectedItemIds(new Set());
-                                        setSelectedQtys({});
-                                        setExpandedIds(new Set());
-                                    }}
-                                />
-                            );
-                        })
-                    ) : (
-                        <div className="flex flex-col gap-2 relative">
-                            <button
-                                onClick={() => setActiveGroupKey(null)}
-                                className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer"
-                            >
-                                Back
-                            </button>
-                            <div className="w-full aspect-square mt-6 flex items-center justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner">
-                                <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-[size:10px_10px]" />
-                                <WireframeCrate w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} selected />
-                                <div className="absolute bottom-2 left-0 right-0 text-center">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">
-                                        {activeGroup.groupedCount} AVAILABLE
-                                    </span>
+                        <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-1.5 custom-scrollbar">
+                            {activeCrates.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-3 py-8">
+                                    <Inbox size={28} className="text-white/20" strokeWidth={1} />
+                                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 max-w-[120px] leading-relaxed">No empty sizes.<br />Create some in the Crates tab.</span>
                                 </div>
-                            </div>
-
-                            <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mt-2 pl-1">Inventory Units in this size</p>
-                            <div className="flex flex-col gap-1 px-1">
-                                {activeGroup.children.map(c => {
-                                    const packedItems = c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0;
+                            ) : !activeGroup ? (
+                                groupedAvailableCrates.map(group => {
+                                    const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
                                     return (
-                                        <button
-                                            key={c.id}
-                                            onClick={() => setSelectedCrateId(c.id)}
-                                            className={`flex items-center justify-between px-3 py-2 border rounded-xl cursor-pointer transition ${
-                                                selectedCrateId === c.id
-                                                    ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-md inset-ring-1 inset-ring-(--main-color)/30'
-                                                    : 'bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10 text-white/50'
-                                            }`}
-                                        >
-                                            <div className="flex flex-col items-start gap-1 p-0 m-0">
-                                                <span className={`text-[9px] font-mono leading-none ${selectedCrateId === c.id ? 'text-white' : ''}`}>
-                                                    {c.id.slice(0,8).toUpperCase()}
-                                                </span>
-                                                <div className="flex items-center gap-1.5 opacity-80">
-                                                    <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${c.status === 'Partial' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                                        {c.status}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{packedItems} items</span>
-                                        </button>
+                                        <CrateSelectCard
+                                            key={group.id}
+                                            crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
+                                            isSelected={!!isSelected}
+                                            onClick={() => {
+                                                setActiveGroupKey(`${group.width_cm}x${group.length_cm}x${group.height_cm}x${group.type}`);
+                                                const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
+                                                setSelectedCrateId(targetCrate.id);
+                                                setSelectedItemIds(new Set());
+                                                setSelectedQtys({});
+                                                setExpandedIds(new Set());
+                                            }}
+                                        />
                                     );
-                                })}
-                            </div>
+                                })
+                            ) : (
+                                <div className="flex flex-col gap-2 relative">
+                                    <button onClick={() => setActiveGroupKey(null)} className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer">Back</button>
+                                    <div className="w-full aspect-square mt-6 flex items-center justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner">
+                                        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-size-[10px_10px]" />
+                                        <RotatingWireframeCrate w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={160} />
+                                        <div className="absolute bottom-2 left-0 right-0 text-center">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">{activeGroup.groupedCount} AVAILABLE</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mt-2 pl-1">Select a unit</p>
+                                    <div className="flex flex-col gap-1 px-1">
+                                        {activeGroup.children.map(c => {
+                                            const packedItems = c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0;
+                                            return (
+                                                <button key={c.id} onClick={() => setSelectedCrateId(c.id)}
+                                                    className={`flex items-center justify-between px-3 py-2 border rounded-xl cursor-pointer transition ${
+                                                        selectedCrateId === c.id
+                                                            ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-md'
+                                                            : 'bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10 text-white/50'
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        <span className={`text-[9px] font-mono leading-none ${selectedCrateId === c.id ? 'text-white' : ''}`}>{c.id.slice(0,8).toUpperCase()}</span>
+                                                        <div className="flex items-center gap-1.5 opacity-80">
+                                                            <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                                            <span className={`text-[7px] font-black uppercase tracking-widest ${c.status === 'Partial' ? 'text-amber-400' : 'text-emerald-400'}`}>{c.status}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{packedItems} items</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
 
             {/* ── Right Pane: Inventory List ── */}
