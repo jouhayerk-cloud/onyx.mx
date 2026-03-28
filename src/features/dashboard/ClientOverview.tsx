@@ -365,7 +365,7 @@ export const ClientOverview: React.FC = () => {
                 {/* ── TOP TRACKING & KPI STRIP ────────────────────────────────── */}
                 <div className="flex flex-col gap-6 mb-6">
                     {/* High-Level Overview Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                         <div className="flex flex-col p-4 rounded-[2rem] bg-white/[0.03] backdrop-blur-3xl">
                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Crates</span>
                             <span className="text-2xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
@@ -373,7 +373,6 @@ export const ClientOverview: React.FC = () => {
                         </div>
                         <KpiStat label="Units" value={globalTotals.totalItems.toLocaleString()} accent="#6BCEBB" onClick={() => setActiveView('inventory')} />
                         <KpiStat label="Acq Value" value={fmtUSDCompact(globalTotals.totalAcqValueUsd)} accent="#6BCEBB" />
-                        <KpiStat label="Catalog" value={globalTotals.storeCount.toLocaleString()} accent="#34D399" onClick={() => setActiveView('store')} />
                         <KpiStat label="Requested" value={fmtUSDCompact(globalTotals.requestedUnpaidUsd)} sub={showFinancials ? fmtMXN(globalTotals.requestedUnpaidMxn) : undefined} accent="#FBBF24" />
                         <KpiStat label="Pending Req" value={fmtUSDCompact(globalTotals.pendingToRequestUsd)} sub={showFinancials ? fmtMXN(globalTotals.pendingToRequestMxn) : undefined} accent="#F97316" />
                         <KpiStat label="Total Unpaid" value={fmtUSDCompact(globalTotals.totalUnpaidUsd)} accent="#EF4444" onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }} />
@@ -558,18 +557,6 @@ export const ClientOverview: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Quality & Type Breakdown */}
-                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl col-span-1 lg:col-span-2">
-                        <SectionHeader icon={Grid} title="Shape + Description" color="#F97316" />
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 mt-4">
-                            {attributeStats.topST.map(([label, count]) => (
-                                <div key={label} className="flex items-center justify-between border-b border-white/5 pb-1">
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate max-w-[150px]">{label}</span>
-                                    <span className="text-[10px] font-mono font-black text-white">{count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
 
                     {/* Color & Material Analysis */}
                     <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl col-span-1 lg:col-span-2">
