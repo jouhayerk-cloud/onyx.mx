@@ -3,7 +3,6 @@
 ### v1.31.3 — 2026-03-28
 - **About Modal Reliability [fix]:** Resolved documentation loading failures by migrating logs to source-controlled assets, ensuring the 'About' popup is always high-fidelity.
 - **Security Redaction [standard]:** Successfully scrubbed sensitive Cypher Keys and private development markers from all public-facing logs in the repository.
-- **Cypher Logic Restoration [logic]:** Reinstated the original system mapping (`DOXHELFANM`) to guarantee accurate TAG ID and price generation across all modules.
 - **UI Simplification [ui]:** Removed the legacy 'Version History' tab to focus the 'About' experience on the latest release logs and system updates.
 
 ### v1.31.2 — 2026-03-28
