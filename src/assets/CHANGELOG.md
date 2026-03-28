@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.37.7] - 2026-03-28
+### Optimized
+- **Financial UI Cleanup**: Streamlined the `Expenses & Financials` panel by removing secondary MXN currency tags from operational categories.
+- **Metric Refinement**: Removed the "Inventory Total" tag and MXN conversion from the `Units` count panel to focus strictly on the item quantity as requested.
+
 ## [1.37.6] - 2026-03-28
 ### Fixed
 - **Dashboard Layout Fix**: Resolved the persistent vertical stacking of primary panels. The `Active Request Queue` (75%) and `Upcoming Payments` (25%) now correctly stack horizontally side-by-side using a 12-column grid starting at the `md` (768px) breakpoint.

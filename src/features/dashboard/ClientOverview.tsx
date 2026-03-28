@@ -421,14 +421,13 @@ export const ClientOverview: React.FC = () => {
                                                 <span className="text-[11px] font-black uppercase tracking-[0.2em] mb-2.5 block w-fit" style={{ color: c.color }}>{c.label}</span>
                                                 <div className="space-y-1.5">
                                                     <CurrencyTag type="USD" amount={c.v.usd} />
-                                                    <CurrencyTag type="MXN" amount={c.v.mxn} />
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                     <div className="grid grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/5">
                                         {[
-                                            { label: 'Units', v: globalTotals.totalItems, sub: 'Inventory Total', color: '#6BCEBB', icon: Layers },
+                                            { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers },
                                             { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true },
                                             { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true },
                                             { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true },
@@ -441,10 +440,12 @@ export const ClientOverview: React.FC = () => {
                                                         {stat.isCurrency ? fmtUSDCompact(stat.v as number) : (stat.v as number).toLocaleString()}
                                                         {stat.isCurrency && <span className="text-[12px] opacity-20 ml-2">USD</span>}
                                                     </span>
-                                                    <div className={`inline-flex items-center gap-2 mt-2 px-2 py-1 rounded bg-white/5 border border-white/10 w-fit`}>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded" style={{ backgroundColor: stat.color, color: '#000' }}>MXN</span>
-                                                        <span className="text-[14px] font-mono font-bold text-white">{stat.sub}</span>
-                                                    </div>
+                                                    {stat.sub && (
+                                                        <div className={`inline-flex items-center gap-2 mt-2 px-2 py-1 rounded bg-white/5 border border-white/10 w-fit`}>
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded" style={{ backgroundColor: stat.color, color: '#000' }}>MXN</span>
+                                                            <span className="text-[14px] font-mono font-bold text-white">{stat.sub}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
