@@ -81,8 +81,8 @@ This document tracks major changes and milestones as we progress towards the nex
 
 ### **Date:** 2026-03-01
 
-- **Database: Cypher Integrity** — Fixed an issue where the `VITE_CYPHER_KEY` was not being correctly injected into production builds, causing codes to revert to defaults.
-- **System: Fallback Logic** — Updated the application's default cypher key to `DOXHELFANM` to ensure code consistency even if environment variables are missing.
+- **Database: Cypher Integrity** — Fixed an issue where the `VITE_[REDACTED]` was not being correctly injected into production builds, causing codes to revert to defaults.
+- **System: Fallback Logic** — Updated the application's default cypher key to `[REDACTED]` to ensure code consistency even if environment variables are missing.
 - **Build: Explicit Injection** — Enhanced `vite.config.ts` to explicitly define and replace the cypher key during the build process.
 
 ## **v1.10.46 - Supabase Schema Alignment**
@@ -251,7 +251,7 @@ This document tracks major changes and milestones as we progress towards the nex
 - **ARCHIVE: `acquired_by` as Vendor Tag** — Vendor filter pills and card color/label now read from `acquired_by` field (short tag like `EM`, `JM`, `GE`) instead of the long `item_id` code.
 - **ARCHIVE: Landed & Retail Prices** — Every card now shows computed `Landed USD` and `Retail USD` prices derived from `price_mxn` ÷ exchange rate, with the standard multipliers (×1.4 landed, ×8 retail). Also shows `AQ` and `LD` cypher codes.
 - **ARCHIVE: Card Fix** — Cards now render full content (shape, material, vendor pill, color swatch, dims, kg, AQ code, Landed code, price row).
-- **SECURITY: Cypher Key moved to env** — `numberToCypher` alphabet removed from `utils.tsx` and now read from `VITE_CYPHER_KEY` environment variable stored in `.env.local` (gitignored). GitHub source code no longer exposes the price obfuscation mapping.
+- **SECURITY: Cypher Key moved to env** — `numberToCypher` alphabet removed from `utils.tsx` and now read from `VITE_[REDACTED]` environment variable stored in `.env.local` (gitignored). GitHub source code no longer exposes the price obfuscation mapping.
 - **Added `.env.example`** — Template file documents all required env variables for onboarding without exposing secrets.
 
 ---

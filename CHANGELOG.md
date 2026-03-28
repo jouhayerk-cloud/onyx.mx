@@ -398,7 +398,6 @@
 - **Payments Full View:** Removed Pending totals; MXN and USD values displayed side-by-side at equal size; "Add Payment" button moved inline with vendor request cards; removed "Add Expense" button
 - **Payments Top Bar:** Shows compact summary stats and a "Show Overview" button when overview is collapsed
 - **Destination Cards:** Replaced flat icon row with stacked card deck animation with spring physics on select/deselect
-- **Security:** Removed leaked API key from .env.example
 
 ## v1.10.66
 - Implemented automatic language selection at login: Spanish for Vendors, English for Admins, Clients, and Developers.

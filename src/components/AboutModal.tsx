@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Info, History, Sparkles, Github, Zap } from 'lucide-react';
+import { X, Info, Sparkles, Github, Zap } from 'lucide-react';
 import { OnyxMiniLogo } from './OnyxLogo';
 
 // Import markdown files as raw strings
 import changelogText from '../../CHANGELOG.md?raw';
-import versionLogText from '../../version_log.md?raw';
 
 interface AboutModalProps {
     isOpen: boolean;
@@ -16,26 +15,44 @@ interface AboutModalProps {
 declare const __APP_VERSION__: string;
 
 export function AboutModal({ isOpen, onClose }: AboutModalProps) {
-    const [activeTab, setActiveTab] = useState<'latest' | 'history'>('latest');
-
     if (!isOpen) return null;
 
     // A very basic markdown parser for the few styles we need
     const renderMarkdown = (text: string) => {
-        return text.split('\n').map((line, i) => {
+        const lines = text.split('\n');
+        const rendered: React.ReactNode[] = [];
+        let inComment = false;
+
+        lines.forEach((line, i) => {
+            const trimmedLine = line.trim();
+            
+            // Handle HTML Comments (one-liners or blocks)
+            if (trimmedLine.startsWith('<!--')) {
+                inComment = true;
+                if (trimmedLine.endsWith('-->')) inComment = false;
+                return;
+            }
+            if (trimmedLine.endsWith('-->')) {
+                inComment = false;
+                return;
+            }
+            if (inComment) return;
+
             if (line.startsWith('### ')) {
-                return <h3 key={i} className="text-blue-300 font-black mt-6 mb-2 text-sm tracking-widest uppercase flex items-center gap-2">
-                    <Zap size={14} className="text-blue-400" /> {line.replace('### ', '')}
-                </h3>;
-            }
-            if (line.startsWith('## ')) {
-                return <h2 key={i} className="text-white font-black mt-8 mb-4 text-lg border-b border-white/10 pb-2 flex items-center gap-2">
-                    <Sparkles size={18} className="text-yellow-400" /> {line.replace('## ', '')}
-                </h2>;
-            }
-            if (line.startsWith('- **')) {
+                rendered.push(
+                    <h3 key={i} className="text-blue-300 font-black mt-6 mb-2 text-sm tracking-widest uppercase flex items-center gap-2">
+                        <Zap size={14} className="text-blue-400" /> {line.replace('### ', '')}
+                    </h3>
+                );
+            } else if (line.startsWith('## ')) {
+                rendered.push(
+                    <h2 key={i} className="text-white font-black mt-8 mb-4 text-lg border-b border-white/10 pb-2 flex items-center gap-2">
+                        <Sparkles size={18} className="text-yellow-400" /> {line.replace('## ', '')}
+                    </h2>
+                );
+            } else if (line.startsWith('- **')) {
                 const parts = line.split('**');
-                return (
+                rendered.push(
                     <div key={i} className="flex gap-3 mb-2 pl-2">
                         <span className="text-blue-400 mt-1.5 shrink-0">•</span>
                         <p className="text-white/80 text-xs leading-relaxed">
@@ -44,22 +61,23 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                         </p>
                     </div>
                 );
-            }
-            if (line.startsWith('- ')) {
-                return (
+            } else if (line.startsWith('- ')) {
+                rendered.push(
                     <div key={i} className="flex gap-3 mb-2 pl-2">
                         <span className="text-white/20 mt-1.5 shrink-0">•</span>
                         <p className="text-white/60 text-xs leading-relaxed">{line.replace('- ', '')}</p>
                     </div>
                 );
+            } else if (line.includes('---')) {
+                rendered.push(<hr key={i} className="border-white/5 my-8" />);
+            } else if (trimmedLine === '') {
+                rendered.push(<div key={i} className="h-2" />);
+            } else if (!line.startsWith('# ')) { // Skip top-level # titles as we have the modal header
+                rendered.push(<p key={i} className="text-white/40 text-[11px] mb-1 italic">{line}</p>);
             }
-            if (line.includes('---')) {
-                return <hr key={i} className="border-white/5 my-8" />;
-            }
-            if (line.trim() === '') return <div key={i} className="h-2" />;
-            
-            return <p key={i} className="text-white/40 text-[11px] mb-1 italic">{line}</p>;
         });
+
+        return rendered;
     };
 
     return createPortal(
@@ -83,7 +101,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             <h1 className="text-xl font-black uppercase tracking-[0.2em] text-white leading-none mb-1">Onyx.mx Studio</h1>
                             <div className="flex items-center gap-2">
                                 <span className="px-1.5 py-0.5 rounded bg-blue-500/20 border border-blue-500/30 text-[9px] font-black text-blue-300 uppercase tracking-widest">Version v{__APP_VERSION__}</span>
-                                <span className="text-[10px] text-white/30 font-medium">Production Release</span>
+                                <span className="text-[10px] text-white/30 font-medium">Release Log</span>
                             </div>
                         </div>
                     </div>
@@ -95,30 +113,10 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex p-2 bg-black/20 gap-2 shrink-0">
-                    <button 
-                        onClick={() => setActiveTab('latest')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all
-                            ${activeTab === 'latest' ? 'bg-white/10 text-blue-300 shadow-lg border border-white/10' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}
-                    >
-                        <Zap size={13} strokeWidth={2.5} />
-                        Latest Changes
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('history')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all
-                            ${activeTab === 'history' ? 'bg-white/10 text-blue-300 shadow-lg border border-white/10' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}
-                    >
-                        <History size={13} strokeWidth={2.5} />
-                        Version History
-                    </button>
-                </div>
-
                 {/* Content Viewer */}
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-black/10 select-text">
                     <div className="max-w-2xl mx-auto py-4">
-                        {activeTab === 'latest' ? renderMarkdown(changelogText) : renderMarkdown(versionLogText)}
+                        {renderMarkdown(changelogText)}
                     </div>
                 </div>
 
