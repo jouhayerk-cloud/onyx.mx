@@ -1402,37 +1402,42 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         </div>
                                     </div>
 
-                                    {/* Column 3: Financials */}
-                                    <div className="shrink-0 flex flex-col items-end gap-0.5 w-[110px] mr-2">
-                                        <div className="flex items-center justify-end gap-1.5 leading-none">
-                                            <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
-                                            <span className="text-[9px] font-mono font-black text-white/20 uppercase">MXN</span>
+                                    {/* Column 3: Financials & Account Icon Segment */}
+                                    <div className="shrink-0 flex items-center justify-end gap-3 w-[150px]">
+                                        <div className="flex flex-col items-end gap-0.5 min-w-[90px]">
+                                            <div className="flex items-center justify-end gap-1 leading-none">
+                                                <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
+                                                <span className="text-[9px] font-mono font-black text-white/20 uppercase">MXN</span>
+                                            </div>
+                                            <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-[0.85] origin-right">
+                                                <span className="text-[11px] font-mono font-black text-white/60 tracking-tighter">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-[8px] font-black text-white/20">USD</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-[0.85] origin-right">
-                                            <span className="text-[11px] font-mono font-black text-white/60 tracking-tighter">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            <span className="text-[8px] font-black text-white/20">USD</span>
+
+                                        {/* Small Card/Account Icon */}
+                                        <div className="shrink-0 w-8 h-8 flex items-center justify-center bg-white/2 rounded-lg border border-white/5 p-1 relative">
+                                            {destCfg ? (
+                                                <img src={destCfg.icon} className="max-w-full max-h-full object-contain brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
+                                            ) : (
+                                                <Info size={10} className="text-white/10" />
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Column 4: Destination Account */}
-                                    <div className="shrink-0 w-8 h-10 flex items-center justify-center">
-                                        {destCfg ? (
-                                            <img src={destCfg.icon} className="max-w-[24px] max-h-[20px] object-contain brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
-                                        ) : (
-                                            <Info size={12} className="text-white/10" />
-                                        )}
-                                    </div>
+                                    {/* Clean Vertical Separator */}
+                                    <div className="shrink-0 w-px h-7 bg-white/10 mx-1.5" />
 
-                                    {/* Column 5: Status Action */}
-                                    <div className="shrink-0 w-[100px] flex justify-end gap-1.5">
+                                    {/* Column 4: Status Action Area */}
+                                    <div className="shrink-0 w-[110px] flex items-center justify-end gap-1.5 relative">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
-                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
+                                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
                                             {r.status}
                                         </button>
                                         {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                             <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
-                                                className="w-6 h-6 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[8px] opacity-0 group-hover:opacity-100 border border-red-500/20" title="Delete record">
+                                                className="absolute -right-7 w-6 h-6 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[8px] opacity-0 group-hover:opacity-100 border border-red-500/20" title="Delete record">
                                                 ✕
                                             </button>
                                         )}
