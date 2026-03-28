@@ -45,6 +45,7 @@
     "react-dropzone": "^14.2.3",
     "react-hot-toast": "^2.4.1",
     "react-resizable": "^3.0.5",
+    "react-resize-detector": "^12.3.0",
     "react-router-dom": "^6.22.3",
     "rxdb": "^15.19.0",
     "rxjs": "^7.8.1",
