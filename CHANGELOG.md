@@ -1,5 +1,11 @@
 # Changelog
 
+### v1.36.0 — 2026-03-28
+- **Refined Metrics [feat]:** Added "Packed Items" count and quantity-per-size labels to the Storage & Logistics panel.
+- **Financial Typography [ui]:** Enlarged font sizes for all primary amounts in the Dashboard Overview for improved legibility.
+- **Enhanced Payment UI [ui]:** Widened vendor payment tiles to support a cleaner layout and implemented large 20px centered typography.
+- **UI Density Fix [fix]:** Resolved layout issues where payment element information was not rendering correctly due to tile width constraints.
+
 ### v1.35.1 — 2026-03-28
 - **UI Squaring [ui]:** Standardized all dashboard and inventory panels to `rounded-xl` for a more professional, "squared" Studio aesthetic.
 - **Dual-Currency Dashboard [feat]:** Added explicit USD/MXN labels to *all* financial KPIs in the Overview, including Acq Value, Req Unpaid, Total Unpaid, and Expense categories.
@@ -427,8 +433,8 @@
 - **Sidebar Version Tag:** Logo and version number use theme-aware text colors, visible on both light and dark themes
 - **Background Containers:** Increased transparency across the app for a lighter, more modern feel
 
-## v1.10.67
-- **Top Bar Refactor:** Removed Onyx logo, version count, inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
+## v1.36.0
+- **Top Bar Refactor:** Removed Onyx logo, "version": "1.36.0", inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
 - **Search Bar:** Enhanced to full-width liquid glass style with responsive animations
 - **Sidebar:** Relocated Onyx logo and version tag to the bottom of the sidebar (expanded + compact modes)
 - **Dashboard:** Added "Lock Financial Info" toggle button to Admin Dashboard header
