@@ -12,6 +12,13 @@
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 
+## v1.30.4 — 2026-03-28
+### Fixed
+- **Partial Payment Tracking [fix]:** Resolved an issue where partially paid items (e.g., "50% paid") were erroneously stamped with a `pay_date`, causing them to show as **Green/Paid**. 
+- **Indicator Priority [fix]:** `getStatusClass` now correctly prioritizes **Red/Partial** status when a percentage is detected in `pay_req`, even if a payment timestamp exists.
+- **Pay Date Integrity [fix]:** Fixed `handleToggleStatus` in the Finance module to only stamp `pay_date` on inventory items for **Full Liquidation** payments. Partial payments now correctly update `pay_req` without triggering a full-paid state.
+- **Data Synchronization [fix]:** Executed `backfill_v1_30_4.py` to restore 34 items to their correct partial/requested states in the database.
+
 ## v1.30.3 — 2026-03-28
 ### Added
 - **Status Filter Refinement [ui]:** Refined the Global Status Toggle cycle to: All → **Partial** (Red) → **Requested** (Yellow) → **Paid** (Green).

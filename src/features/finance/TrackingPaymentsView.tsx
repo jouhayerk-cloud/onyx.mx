@@ -1014,12 +1014,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         if (r.description?.includes('%')) {
                             const perc = r.description.match(/(\d+)%/)?.[1];
                             const upStr = `paid ${perc || 'partial'}%`;
-                            await supabase.from('inventory').update({ pay_req: upStr, pay_date: nowIso }).in('id', ids);
+                            await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
                             if (db) {
                                 for (const iid of ids) {
                                     try {
                                         const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                        if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr, pay_date: nowIso, payDate: nowIso });
+                                        if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr });
                                     } catch (e) { console.error(e); }
                                 }
                             }
