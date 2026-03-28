@@ -16,6 +16,7 @@ import {
     Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
+import { InventoryArtifact } from '../inventory/InventoryArtifact';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
@@ -733,10 +734,20 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [showAdd, setShowAdd] = useState(false);
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
-    const filterMode = useAtomValue(paymentFilterBarModeAtom);
+    const showFilters = useAtomValue(paymentFilterBarModeAtom) !== 'off';
     const financeSearch = useAtomValue(financeSearchTermAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+    const toggleRow = (id: string) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (liveExchangeRate) return;
@@ -970,20 +981,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         }
     };
 
-    const [showFilters, setShowFilters] = useState(false);
-    const [isBubblesCollapsed, setIsBubblesCollapsed] = useState(false);
-    const [expandedBubble, setExpandedBubble] = useState<string | null>(null);
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-
-    const toggleRow = (id: string) => {
-        setExpandedRows(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    };
-
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
         const nowIso = new Date().toISOString();
@@ -1124,108 +1121,85 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── Top Header with Filter Toggle & Add Button ── */}
-            <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/5 shrink-0">
-                <div className="flex items-center gap-3">
-                    <h2 className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Finance Module (v1.38.1)</h2>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                    {/* Compact Filter Toggle (On/Off Switch) */}
-                    <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/5 border border-white/5">
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${!showFilters ? 'text-white/60' : 'text-white/20'}`}>OFF</span>
-                        <button onClick={() => setShowFilters(!showFilters)}
-                            className={`w-8 h-4 rounded-full transition-all relative ${showFilters ? 'bg-(--main-color)' : 'bg-white/10'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all shadow-sm ${showFilters ? 'left-4.5' : 'left-0.5'}`} />
-                        </button>
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${showFilters ? 'text-(--main-color)' : 'text-white/20'}`}>ON</span>
-                        <div className="w-px h-3 bg-white/10 mx-1" />
-                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">FILTERS</span>
-                    </div>
-
-                    <button onClick={() => setOverviewMode(prev => prev === 'extended' ? 'compact' : (prev === 'compact' ? 'collapsed' : 'extended'))}
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all border border-white/5" title="Toggle Overview Density">
-                        {overviewMode === 'extended' ? <List size={14} /> : <LayoutGrid size={14} />}
-                    </button>
-
-                    <button onClick={() => setShowAdd(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-(--main-color)/20 hover:bg-(--main-color)/30 text-(--main-color) border border-(--main-color)/30 transition-all active:scale-95 shadow-xl hover:shadow-(--main-color)/10">
-                        <Plus size={14} />
-                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">Record</span>
-                    </button>
-                </div>
+            {/* ── Top Floating Add Button ── */}
+            <div className="absolute top-4 right-4 z-20">
+                <button onClick={() => setShowAdd(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-(--main-color) text-black font-black uppercase tracking-widest leading-none transition-all active:scale-95 shadow-2xl hover:scale-105">
+                    <Plus size={18} strokeWidth={3} />
+                    <span className="text-[10px]">RECORD</span>
+                </button>
             </div>
 
             {/* ── General Overview & Stats Grids ── */}
             {overviewMode !== 'collapsed' && (
-                <div className={`flex flex-col shrink-0 border-b border-white/10 bg-black/20 ${overviewMode === 'extended' ? 'p-4' : 'p-2'} transition-all duration-300 relative`}>
+                <div className={`flex flex-col shrink-0 border-b border-white/5 bg-black/10 ${overviewMode === 'extended' ? 'p-3' : 'p-1.5'} transition-all duration-300 relative`}>
                     
                     {/* Primary Grid: Rates & Summary Totals */}
-                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-3' : 'gap-1.5'} mb-2`}>
+                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-2.5' : 'gap-1'} mb-1`}>
                         {/* Exchange Rates Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-20 group-hover:opacity-100 transition-opacity">
-                                <TrendingUp size={14} className="text-[#6BCEBB]" />
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                <TrendingUp size={12} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">FX Rates</span>
-                            <div className="grid grid-cols-2 gap-4">
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">FX Rates</span>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-bold text-white/20 uppercase leading-none mb-0.5">Workbook</span>
-                                    <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-xs' : 'text-[10px]'}`}>{exchangeRate.toFixed(2)}</span>
+                                    <span className="text-[7px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
+                                    <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[11px]' : 'text-[9px]'}`}>{exchangeRate.toFixed(2)}</span>
                                 </div>
-                                <div className="flex flex-col border-l border-white/5 pl-4">
-                                    <span className="text-[8px] font-bold text-white/20 uppercase leading-none mb-0.5">Live</span>
-                                    <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-xs' : 'text-[10px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                                <div className="flex flex-col border-l border-white/5 pl-2">
+                                    <span className="text-[7px] font-bold text-white/10 uppercase mb-0.5">Live</span>
+                                    <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[11px]' : 'text-[9px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Paid Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-20 group-hover:opacity-100 transition-opacity">
-                                <CheckCircle size={14} className="text-[#6BCEBB]" />
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                <CheckCircle size={12} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Total Paid</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Paid</span>
                             <div className="flex items-center justify-between gap-1 leading-tight">
-                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-lg' : 'text-sm'}`}>
+                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
                                     {fmtMXN(statusTotals.Paid || 0)}
                                 </span>
-                                <CurrencyTag type="USD" amount={(statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-40 scale-75 origin-right" />
+                                <CurrencyTag type="USD" amount={(statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-30 scale-[0.65] origin-right" />
                             </div>
                         </div>
 
                         {/* Pending Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-20 group-hover:opacity-100 transition-opacity">
-                                <Clock size={14} className="text-[#FACC15]" />
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                <Clock size={12} className="text-[#FACC15]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Total Pending</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Pending</span>
                             <div className="flex items-center justify-between gap-1 leading-tight">
-                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-lg' : 'text-sm'}`}>
+                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
                                     {fmtMXN(statusTotals.Requested + statusTotals.Pending || 0)}
                                 </span>
-                                <CurrencyTag type="USD" amount={(statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-40 scale-75 origin-right" />
+                                <CurrencyTag type="USD" amount={(statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-30 scale-[0.65] origin-right" />
                             </div>
                         </div>
 
                         {/* Active Selection Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--main-color)/5 border border-(--main-color)/20 shadow-inner overflow-hidden`}>
-                            <span className="text-[7px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-1">Active Account</span>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-(--main-color)/5 border border-(--main-color)/20`}>
+                            <span className="text-[7px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-0.5 leading-none">Active Account</span>
                             {destinationFilter !== 'All' ? (
                                 <div className="flex items-center justify-between gap-1 leading-tight relative z-10">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 flex items-center justify-center bg-white/10 rounded p-1 border border-white/10">
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-4 h-4 flex items-center justify-center bg-white/10 rounded p-0.5 border border-white/10">
                                             <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
                                         </div>
-                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-lg' : 'text-sm'}`}>
+                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
                                             {fmtMXN(activeDestReqNetMXN)}
                                         </span>
                                     </div>
-                                    <CurrencyTag type="USD" amount={activeDestReqNetUSD} size="small" className="opacity-40 scale-75 origin-right" />
+                                    <CurrencyTag type="USD" amount={activeDestReqNetUSD} size="small" className="opacity-30 scale-[0.65] origin-right" />
                                 </div>
                             ) : (
                                 <div className="flex-1 flex items-center relative z-10">
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">No Selection</span>
+                                    <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">No Selection</span>
                                 </div>
                             )}
                         </div>
@@ -1289,8 +1263,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
             {/* ── Toggleable Filter Bar ── */}
             {showFilters && (
-                <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-(--border-color) animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex flex-col md:flex-row items-center justify-between p-3 gap-4">
+                <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-white/5 animate-in slide-in-from-top-2 duration-300 relative z-10">
+                    <div className="flex flex-col md:flex-row items-center justify-between px-4 py-2 gap-4">
                         {/* Subcategories Filter */}
                         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
                             {SUBCATEGORIES.map(s => {
@@ -1342,8 +1316,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             )}
 
             <div className="flex-1 flex flex-col min-h-0">
-                </div>
-
                 {/* High Density Payment Card List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                     {filtered.length === 0 ? (
@@ -1478,24 +1450,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <div className="lg:col-span-2">
                                                 <div className="flex items-center justify-between mb-3">
                                                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block">Linked Traceability Tags</span>
-                                                    {(() => {
-                                                        const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                                                        const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
-                                                        if (ids.length > 0) {
-                                                            return (
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setArtifactConfig({ isOpen: true, itemIds: ids, title: 'Linked Items' });
-                                                                    }}
-                                                                    className="text-[8px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
-                                                                >
-                                                                    View in Artifact
-                                                                </button>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    })()}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {(() => {
@@ -1512,10 +1466,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                             const tag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : ((data as any).itemNumber ? `#${(data as any).itemNumber}` : id);
                                                             
                                                             return (
-                                                                <div key={id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/40 border border-white/10 shadow-inner group/tag hover:border-(--main-color)/30 transition-all">
+                                                                <button 
+                                                                    key={id} 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setArtifactConfig({ isOpen: true, itemIds: [id], title: `Tag ID: ${tag}` });
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/40 border border-white/10 shadow-inner group/tag hover:border-(--main-color)/50 hover:bg-(--main-color)/5 transition-all outline-none"
+                                                                >
                                                                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendorColor }} />
                                                                     <span className="text-[10px] font-mono font-black text-white/80 group-hover/tag:text-(--main-color)">{tag}</span>
-                                                                </div>
+                                                                </button>
                                                             );
                                                         });
                                                     })()}
@@ -1539,7 +1500,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         );
                     })}
                 </div>
-                {/* SVG Icons for Wizard */}
+            </div>
+
+            {/* SVG Icons for Wizard */}
             <svg style={{ display: 'none' }}>
                 <defs>
                     <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1576,6 +1539,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     </symbol>
                 </defs>
             </svg>
+            <InventoryArtifact />
         </div>
     );
 };

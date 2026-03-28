@@ -439,8 +439,8 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
                 {/* Single consolidated filter toggle */}
                 <div className="relative">
                     <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${(filterMode !== 'off')
-                            ? 'text-(--color-finance)' : 'text-white/40 hover:text-white'
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${(filterMode !== 'off')
+                            ? 'text-(--color-finance)' : 'text-white/40 hover:text-white font-medium'
                             }`}
                         onClick={() => {
                             const modes: ('off' | 'left' | 'right')[] = ['off', 'left', 'right'];
@@ -448,21 +448,31 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
                         }}
                         title={`Filter Mode: ${filterMode.toUpperCase()}`}
                     >
-                        {/* SlidersHorizontal inline SVG */}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-[17px] h-[17px]">
-                            <line x1="21" y1="4" x2="7" y2="4" /><line x1="3" y1="4" x2="3" y2="4" />
-                            <line x1="21" y1="12" x2="11" y2="12" /><line x1="7" y1="12" x2="3" y2="12" />
-                            <line x1="21" y1="20" x2="17" y2="20" /><line x1="13" y1="20" x2="3" y2="20" />
-                            <circle cx="7" cy="4" r="2" /><circle cx="11" cy="12" r="2" /><circle cx="17" cy="20" r="2" />
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
+                            <line x1="21" y1="4" x2="14" y2="4" /><line x1="10" y1="4" x2="3" y2="4" />
+                            <line x1="21" y1="12" x2="12" y2="12" /><line x1="8" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="20" x2="16" y2="20" /><line x1="12" y1="20" x2="3" y2="20" />
+                            <line x1="14" y1="2" x2="14" y2="6" /><line x1="8" y1="10" x2="8" y2="14" /><line x1="16" y1="18" x2="16" y2="22" />
                         </svg>
-                        {filterMode !== 'off' && (
-                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                {filterMode === 'left' ? 'TYPE' : filterMode === 'right' ? 'ACCOUNTS' : ''}
-                            </span>
-                        )}
+                        <span className="text-[9px] font-black uppercase tracking-widest">
+                            {filterMode === 'off' ? 'Filters' : filterMode === 'left' ? 'Types' : 'Accts'}
+                        </span>
                     </button>
-
                 </div>
+
+                <div className="w-px h-5 bg-white/10 mx-1" />
+
+                {/* 3-state Overview Density Toggle */}
+                <button
+                    onClick={cycleOverviewMode}
+                    className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
+                        overviewMode === 'minimal' ? 'text-(--color-finance)/50 hover:text-(--color-finance)' : 'text-(--color-finance)'
+                        }`}
+                    title={`Overview Layout: ${modeLabel[overviewMode]}`}
+                >
+                    <LayoutList size={18} strokeWidth={2} />
+                    <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
+                </button>
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
 
@@ -470,25 +480,11 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
                 <button
                     onClick={onExport}
                     disabled={isExporting || docs.length === 0}
-                    className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-finance) disabled:opacity-20 disabled:cursor-not-allowed"
-                    title={`Export MASTER XLSX — combined Finance (Ledger/Summary) & Inventory (one sheet per vendor)`}
+                    className="p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 text-white/40 hover:text-(--color-inventory) disabled:opacity-20 disabled:cursor-not-allowed"
+                    title={`Export MASTER XLSX`}
                 >
-                    <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
+                    <Download size={18} strokeWidth={2} className={isExporting ? 'animate-bounce' : ''} />
                     <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-                {/* 3-state Overview Toggle */}
-                <button
-                    onClick={cycleOverviewMode}
-                    className={`p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
-                        overviewMode === 'minimal' ? 'text-(--color-finance)/50 hover:text-(--color-finance)' : 'text-(--color-finance)'
-                        }`}
-                    title={`Overview: ${modeLabel[overviewMode]} → click to cycle`}
-                >
-                    <CreditCard size={17} strokeWidth={1.75} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
                 </button>
             </div>
         </div>
