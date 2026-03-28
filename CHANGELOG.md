@@ -1,5 +1,12 @@
 # Changelog
 
+### v1.32.1 — 2026-03-28
+- **Grid-Stackable Dashboard [ui]:** Refactored the 'Active Queue' and 'Upcoming Payments' into a side-by-side grid layout for optimized screen usage.
+- **Floating Payment Tags [ui]:** Removed rigid background boxes from payment destination icons, making them "free floating" with backdrop drop-shadows.
+- **Detailed Non-Merch Tracking [feat]:** Added real-time MXN/USD breakdown lists for Monthly, Supplies, Labor, Packing, and Operations categories.
+- **Partial Production Fix [logic]:** Accurately calculates disbursed partial payments for production items using % paid matching.
+- **Full-Width Attributes [ui]:** Expanded 'Material + Color' and 'Shape + Description' visualization panels to full-width containers.
+
 ### v1.32.0 — 2026-03-28
 - **Overview Dashboard Overhaul [ui]:** Transitioned to a "Frameless" modern aesthetic with floating elements, backdrop-blurs (`bg-white/2`), and zero borders for a professional Studio look.
 - **Unified Payment Queue [feat]:** Merged 'Priority Requisitions' and 'To be Requested' into a single, high-density vertical stack for faster payment processing.
