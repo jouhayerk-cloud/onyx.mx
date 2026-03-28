@@ -65,7 +65,7 @@ import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
-    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download
+    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter
 } from 'lucide-react';
 
 declare const __APP_VERSION__: string;
@@ -436,27 +436,14 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
 
             <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
 
-                {/* Single consolidated filter toggle */}
                 <div className="relative">
                     <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${(filterMode !== 'off')
-                            ? 'text-(--color-finance)' : 'text-white/40 hover:text-white font-medium'
-                            }`}
-                        onClick={() => {
-                            const modes: ('off' | 'left' | 'right')[] = ['off', 'left', 'right'];
-                            setFilterMode(modes[(modes.indexOf(filterMode) + 1) % 3]);
-                        }}
-                        title={`Filter Mode: ${filterMode.toUpperCase()}`}
+                        onClick={() => setFilterMode(filterMode === 'off' ? 'left' : 'off')}
+                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${filterMode !== 'off' ? 'text-(--color-finance)' : 'text-white/40 hover:text-white'}`}
+                        title="Toggle Filter Bar"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
-                            <line x1="21" y1="4" x2="14" y2="4" /><line x1="10" y1="4" x2="3" y2="4" />
-                            <line x1="21" y1="12" x2="12" y2="12" /><line x1="8" y1="12" x2="3" y2="12" />
-                            <line x1="21" y1="20" x2="16" y2="20" /><line x1="12" y1="20" x2="3" y2="20" />
-                            <line x1="14" y1="2" x2="14" y2="6" /><line x1="8" y1="10" x2="8" y2="14" /><line x1="16" y1="18" x2="16" y2="22" />
-                        </svg>
-                        <span className="text-[9px] font-black uppercase tracking-widest">
-                            {filterMode === 'off' ? 'Filters' : filterMode === 'left' ? 'Types' : 'Accts'}
-                        </span>
+                        <Filter size={18} strokeWidth={2} />
+                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">Filters</span>
                     </button>
                 </div>
 
