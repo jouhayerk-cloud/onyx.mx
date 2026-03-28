@@ -1,5 +1,34 @@
 # Changelog
 
+### v1.34.1 — 2026-03-28
+- **Design Unification [ui]:** Unified the Overview module with the Inventory's "Stitch" aesthetic, adopting `#1C212D` card backgrounds, `border-white/10`, and standardized `rounded-3xl` radii.
+- **Typography Cleanup [ui]:** Standardized all dashboard labels and section headers with the `font-black uppercase tracking-widest` style.
+- **Sync Fix [logic]:** Fixed nested div and useMemo syntax errors introduced in the previous refactor.
+
+### v1.34.0 — 2026-03-28
+- **Logistics Hub [feat]:** Extracted Crates/Pallets into a standalone, high-density panel at the top of the dashboard with real-time telemetry for Packed vs. Empty units.
+- **Interactive Material Graph [ui]:** Transformed the static 'Material + Color' analysis into a horizontal segmented bar graph with interactive tooltips.
+- **Expenses Overhaul [ui]:** Refactored the Expenses section into a borderless, high-density tag-grid with large typography and MXN/USD breakdowns.
+- **Clean-Up [ui]:** Removed the redundant 'Merchandise Status' panel to focus strictly on Logistics and Financials.
+
+### v1.32.2 — 2026-03-28
+- **Overview Optimization [ui]:** Removed the redundant 'Catalog' KPI and the 'Shape + Description' visualization panel to focus strictly on Logistics and Active Financials.
+
+### v1.32.1 — 2026-03-28
+- **Grid-Stackable Dashboard [ui]:** Refactored the 'Active Queue' and 'Upcoming Payments' into a side-by-side grid layout for optimized screen usage.
+- **Floating Payment Tags [ui]:** Removed rigid background boxes from payment destination icons, making them "free floating" with backdrop drop-shadows.
+- **Detailed Non-Merch Tracking [feat]:** Added real-time MXN/USD breakdown lists for Monthly, Supplies, Labor, Packing, and Operations categories.
+- **Partial Production Fix [logic]:** Accurately calculates disbursed partial payments for production items using % paid matching.
+- **Full-Width Attributes [ui]:** Expanded 'Material + Color' and 'Shape + Description' visualization panels to full-width containers.
+
+### v1.32.0 — 2026-03-28
+- **Overview Dashboard Overhaul [ui]:** Transitioned to a "Frameless" modern aesthetic with floating elements, backdrop-blurs (`bg-white/2`), and zero borders for a professional Studio look.
+- **Unified Payment Queue [feat]:** Merged 'Priority Requisitions' and 'To be Requested' into a single, high-density vertical stack for faster payment processing.
+- **Segmented Unit Share [ui]:** Replaced the legacy pie chart with a horizontal segmented bar graph for scannable vendor unit distribution.
+- **Top-Level Payment Tracking [feat]:** Integrated a new tracking strip for Non-Merchandise (Monthly, Supplies, Labor, Packing, Ops) vs. Merchandise (Acquisitions, Production).
+- **Attribute Analysis Dashboards [feat]:** Added new multi-dimensional visualizations for **Shape+Category** and **Material+Color** item concentrations.
+- **Logistics Breakdown [ui]:** Added global Crates and Pallets count KPI to the dashboard strip.
+
 ### v1.31.3 — 2026-03-28
 - **About Modal Reliability [fix]:** Resolved documentation loading failures by migrating logs to source-controlled assets, ensuring the 'About' popup is always high-fidelity.
 - **Security Redaction [standard]:** Successfully scrubbed sensitive Cypher Keys and private development markers from all public-facing logs in the repository.
@@ -282,7 +311,7 @@
 ## v1.11.97 — 2026-03-05 (Data Sync Fix)
 - **Packing Sync [fix]:** Implemented direct database listeners in the Packing module to ensure inventory and production items are always loaded and synchronized, even when accessing the module directly.
 - **Packing Header [ui]:** Updated summary header to include "Types", "Count" (total qty), and "Selected" metrics, matching the Unified Inventory View aesthetic.
-- **Search Logic [fix]:** Refined filter to include Tag ID (Barcode) in the search strings.
+- **Search Logic [fix]:** Refined filter to include Tag ID (Barcodes) in the search strings.
 
 ## v1.11.96 — 2026-03-05 (Packing Overhaul)
 - **Packing Module [feat]:** Relocated the Packing module to be a primary sidebar navigation item. Improved filtering logic to include ALL inventory items for labeling.
@@ -402,4 +431,3 @@
 - Re-designed the details tab to properly include data-dense table and removed filter bar bloat
 - Dashboard adjusted to a four column responsive grid, removed the land and retail totals
 - Fixed placeholder image overlay bugs across inventory layouts
-

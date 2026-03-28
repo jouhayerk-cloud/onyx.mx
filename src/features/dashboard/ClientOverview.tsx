@@ -33,11 +33,11 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
 }) => (
     <div
         onClick={onClick}
-        className={`group flex flex-col gap-1 p-4 rounded-3xl border border-white/5 bg-white/3 hover:bg-white/8 hover:border-white/10 hover:scale-[1.02] transform transition-all duration-300 shadow-xl ${onClick ? 'cursor-pointer' : ''}`}
+        className={`group flex flex-col gap-1.5 p-4 rounded-2xl border border-white/10 bg-[#1C212D]/80 hover:bg-[#1C212D] hover:border-white/20 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
     >
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) opacity-30 leading-none group-hover:opacity-60 transition-opacity">{label}</span>
-        <span className="text-[18px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
-        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
+        <span className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-none group-hover:text-white/40 transition-colors">{label}</span>
+        <span className="text-[18px] font-mono font-black text-white leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[9px] font-mono font-bold text-white/20 leading-none mt-1">{sub}</span>}
     </div>
 );
 
@@ -47,10 +47,10 @@ const SectionHeader = ({ icon: Icon, title, badge, color = '#00AEEF', right }: {
 }) => (
     <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-            <Icon size={14} strokeWidth={2} style={{ color }} />
-            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color)">{title}</h2>
+            <Icon size={14} strokeWidth={2.5} style={{ color }} />
+            <h2 className="text-[11px] font-black uppercase tracking-widest text-white/80">{title}</h2>
             {badge && (
-                <span className="px-2 py-0.5 rounded-full bg-white/8 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
+                <span className="px-2 py-0.5 rounded-full bg-white/8 text-[9px] font-black uppercase tracking-widest text-white/40">{badge}</span>
             )}
         </div>
         {right}
@@ -262,6 +262,14 @@ export const ClientOverview: React.FC = () => {
         const totalAcqValueUsd = vendorSummaries.reduce((acc, v) => acc + v.totalAcqUsd, 0);
         const requestedUnpaidMxn = activeDestReqNetMXN;
         const pendingToRequestMxn = comingPaymentsByVendor.reduce((sum, g) => sum + g.total, 0);
+        
+        const crates = logisticsData.filter(d => (d.type || '').toLowerCase().includes('crate'));
+        const packedCrates = crates.filter(c => (c as any).inventoryItems?.length > 0).length;
+        const freeCrates = crates.length - packedCrates;
+        
+        // Find most unique dimensions
+        const dims = Array.from(new Set(logisticsData.map(d => `${d.w || 0}x${d.h || 0}x${d.d || 0}`))).slice(0, 3).join(', ');
+
         return {
             totalItems: vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0),
             totalAcqValueUsd,
@@ -273,8 +281,11 @@ export const ClientOverview: React.FC = () => {
             totalUnpaidMxn: requestedUnpaidMxn + pendingToRequestMxn,
             storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
             newStoreCount: storeItems.filter(x => Date.now() - new Date((x.data as any).updatedAt || (x.data as any).updated_at || 0).getTime() < 7 * 864e5).length,
+            packedCrates,
+            freeCrates,
+            logisticsDims: dims
         };
-    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor]);
+    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData]);
 
     const fmtMXN = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
     const fmtUSD = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD' : '***';
@@ -362,18 +373,53 @@ export const ClientOverview: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-4 pb-20">
 
-                {/* ── TOP TRACKING & KPI STRIP ────────────────────────────────── */}
-                <div className="flex flex-col gap-6 mb-6">
-                    {/* High-Level Overview Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-                        <div className="group flex flex-col p-4 rounded-3xl bg-white/5 backdrop-blur-3xl border border-white/5 hover:bg-white/8 hover:scale-[1.02] transition-all duration-300 cursor-default">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 group-hover:opacity-60 transition-opacity">Logistics Status</span>
-                            <div className="flex items-end gap-2">
-                                <span className="text-3xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
-                                <span className="text-[12px] font-black text-(--main-color) mb-0.5">Crates</span>
-                            </div>
-                            <span className="text-[10px] font-bold text-white/10 mt-2 uppercase tracking-widest">{logisticsData.filter(d => d.type === 'pallet').length} Pallets Tracked</span>
+                {/* ── TOP LOGISTICS & KPI STRIP ────────────────────────────────── */}
+                <div className="flex flex-col gap-4 mb-6">
+                    {/* Standalone Logistics Status Panel */}
+                    <div className="flex flex-col p-6 rounded-3xl bg-[#1C212D] backdrop-blur-xl border border-white/10 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Package size={120} strokeWidth={1} />
                         </div>
+                        <SectionHeader icon={Package} title="Storage & Logistics" color="#6BCEBB" right={
+                            <div className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units Telemetry</div>
+                        } />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mt-4">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Total Crates</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-4xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
+                                    <span className="text-[14px] font-black text-[#6BCEBB] uppercase">Verified</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col border-l border-white/5 pl-8">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Inventory Status</span>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-mono font-black text-white/40">Packed</span>
+                                        <span className="text-[11px] font-mono font-black text-emerald-400">{globalTotals.packedCrates}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-mono font-black text-white/20">Free (Empty)</span>
+                                        <span className="text-[11px] font-mono font-black text-white/40">{globalTotals.freeCrates}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col border-l border-white/5 pl-8">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Common Sizes</span>
+                                <p className="text-[11px] font-mono font-black text-white/40 leading-relaxed uppercase">{globalTotals.logisticsDims || 'Calculating...'}</p>
+                            </div>
+                            <div className="flex flex-col border-l border-white/5 pl-8">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Fleet layer</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-2xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'pallet').length}</span>
+                                    <span className="text-[11px] font-black text-white/20 uppercase tracking-widest">Pallets</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* High-Density Financial KPIs */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                         <KpiStat label="Units" value={globalTotals.totalItems.toLocaleString()} accent="#6BCEBB" onClick={() => setActiveView('inventory')} />
                         <KpiStat label="Acq Value" value={fmtUSDCompact(globalTotals.totalAcqValueUsd)} accent="#6BCEBB" />
                         <KpiStat label="Requested" value={fmtUSDCompact(globalTotals.requestedUnpaidUsd)} sub={showFinancials ? fmtMXN(globalTotals.requestedUnpaidMxn) : undefined} accent="#FBBF24" />
@@ -381,11 +427,9 @@ export const ClientOverview: React.FC = () => {
                         <KpiStat label="Total Unpaid" value={fmtUSDCompact(globalTotals.totalUnpaidUsd)} accent="#EF4444" onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }} />
                     </div>
 
-                    {/* Non-Merch vs Merch Breakdown Panel */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Expenses Panel */}
-                        <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl">
-                            <SectionHeader icon={CreditCard} title="Expenses" color="#00AEEF" />
+                    {/* Expenses Panel */}
+                    <div className="flex flex-col p-6 rounded-3xl bg-[#1C212D]/60 backdrop-blur-xl border border-white/10 col-span-1 lg:col-span-2">
+                        <SectionHeader icon={CreditCard} title="Expenses" color="#00AEEF" />
                             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4">
                                 {[
                                     { label: 'Monthly', v: opsBreakdown.Monthly, color: 'text-sky-400', icon: Calendar },
@@ -394,17 +438,17 @@ export const ClientOverview: React.FC = () => {
                                     { label: 'Packing', v: opsBreakdown.Packing, color: 'text-rose-400', icon: Archive },
                                     { label: 'Operations', v: opsBreakdown.Operations, color: 'text-indigo-400', icon: Cpu },
                                 ].map(c => (
-                                    <div key={c.label} className="group flex flex-col p-3 rounded-2xl bg-white/4 hover:bg-white/8 transition-all border border-white/5">
-                                        <div className="flex items-center gap-2 mb-2 opacity-30 group-hover:opacity-100 transition-opacity">
-                                            <c.icon size={12} className={c.color} />
+                                    <div key={c.label} className="group flex flex-col p-2 transition-all">
+                                        <div className="flex items-center gap-2 mb-1 opacity-20 group-hover:opacity-100 transition-opacity">
+                                            <c.icon size={10} className={c.color} />
                                             <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white grow">{c.label}</span>
                                         </div>
                                         <div className="flex flex-col gap-0.5">
-                                            <span className={`text-[12px] font-mono font-black ${c.color} flex items-baseline gap-1`}>
-                                                {fmtUSDCompact(c.v.usd)}
-                                                <span className="text-[7px] opacity-40 font-bold uppercase tracking-widest">USD</span>
+                                            <span className={`text-xl font-mono font-black ${c.color} flex items-baseline gap-1`}>
+                                                {fmtUSDCompact(c.v.usd).replace('$','')}
+                                                <span className="text-[8px] opacity-40 font-black uppercase tracking-[0.4em]">USD</span>
                                             </span>
-                                            <span className="text-[10px] font-mono font-bold text-white/20 flex items-baseline gap-1">
+                                            <span className="text-[11px] font-mono font-bold text-white/20 flex items-baseline gap-1">
                                                 {fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')}
                                                 <span className="text-[7px] opacity-40 uppercase tracking-widest">MXN</span>
                                             </span>
@@ -413,24 +457,6 @@ export const ClientOverview: React.FC = () => {
                                 ))}
                             </div>
                         </div>
-
-                        {/* Merchandise Summary */}
-                        <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl px-2">
-                            <SectionHeader icon={Package} title="Merchandise Status" color="#6BCEBB" />
-                            <div className="grid grid-cols-2 gap-8 mt-4 px-6 italic">
-                                <div>
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10">Acquisitions</span>
-                                    <p className="text-lg font-mono font-black text-white/70 leading-tight">{fmtUSDCompact(merchBreakdown.Acquisitions / currentExchangeRate)}</p>
-                                    <p className="text-[10px] font-mono text-white/20 mt-1">Total value in acquisition phase</p>
-                                </div>
-                                <div className="border-l border-white/5 pl-8">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10">Production</span>
-                                    <p className="text-lg font-mono font-black text-white/70 leading-tight">{fmtUSDCompact(merchBreakdown.Production / currentExchangeRate)}</p>
-                                    <p className="text-[10px] font-mono text-white/20 mt-1">Total value currently in production</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* ── UNIFIED PRIORITY QUEUE ───────────────────────────────── */}
@@ -538,7 +564,7 @@ export const ClientOverview: React.FC = () => {
                 </div>
 
                 {/* ── DISTRIBUTION ANALYSIS ───────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-5xl bg-white/2 backdrop-blur-2xl border border-white/5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-3xl bg-[#1C212D] backdrop-blur-xl border border-white/10 shadow-2xl">
                     <div className="col-span-1 lg:col-span-2">
                         <SectionHeader icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" />
                     </div>
@@ -576,8 +602,8 @@ export const ClientOverview: React.FC = () => {
                     </div>
 
                     {/* Value Distribution - Integrated Pie + Context */}
-                    <div className="flex flex-col col-span-1 lg:col-span-2 pt-6 border-t border-white/5 mt-4">
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Value Concentration concentration</span>
+                    <div className="flex flex-col col-span-1 lg:col-span-2 pt-12 border-t border-white/5 mt-4">
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Portfolio Concentration Analysis</span>
                         <div className="flex flex-row items-center gap-12">
                             <div className="w-1/2">
                                 <EChart option={pieChartOption} style={{ height: '240px' }} />
@@ -607,21 +633,47 @@ export const ClientOverview: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Color & Material Analysis */}
-                    <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl col-span-1 lg:col-span-2">
-                        <SectionHeader icon={Layers} title="Material + Color Analysis" color="#EF4444" />
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 mt-4">
-                            {attributeStats.topCM.map(([label, count]) => (
-                                <div key={label} className="flex items-center justify-between border-b border-white/5 pb-1">
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate max-w-[150px]">{label}</span>
-                                    <span className="text-[10px] font-mono font-black text-white">{count}</span>
-                                </div>
-                            ))}
+                    {/* Material & Color Analysis Graph */}
+                    <div className="flex flex-col p-8 rounded-3xl bg-[#1C212D] backdrop-blur-xl col-span-1 lg:col-span-2 border border-white/10 shadow-2xl">
+                        <SectionHeader icon={Layers} title="Material + Color Attribution" color="#EF4444" />
+                        <div className="mt-6 flex flex-col gap-6">
+                            {/* Segmented Horizontal Bar */}
+                            <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/5">
+                                {attributeStats.topCM.map(([label, count], idx) => {
+                                    const share = (count / globalTotals.totalItems) * 100;
+                                    const hue = (idx * 45) % 360;
+                                    return (
+                                        <div 
+                                            key={label}
+                                            style={{ width: `${share}%`, backgroundColor: `hsla(${hue}, 70%, 50%, 0.8)` }}
+                                            className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
+                                        >
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
+                                                {label}: {count} units
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Detailed Grid Map */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+                                {attributeStats.topCM.map(([label, count], idx) => {
+                                    const hue = (idx * 45) % 360;
+                                    return (
+                                        <div key={label} className="flex flex-col group">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
+                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white/60 transition-colors">{label}</span>
+                                            </div>
+                                            <span className="text-[12px] font-mono font-black text-white/10 group-hover:text-white/40">{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
-
-
             </div>
         </div>
     );
