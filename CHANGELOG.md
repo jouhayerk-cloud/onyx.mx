@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.37.6] - 2026-03-28
+### Fixed
+- **Dashboard Layout Fix**: Resolved the persistent vertical stacking of primary panels. The `Active Request Queue` (75%) and `Upcoming Payments` (25%) now correctly stack horizontally side-by-side using a 12-column grid starting at the `md` (768px) breakpoint.
+
+### Optimized
+- **Information Density**: Further refined typography to support high-density monitoring:
+    - Main KPI values reduced to **22px** for a more compact dashboard.
+    - Expense category labels increased to **11px** with significantly larger icons (**24px**) and persistent color-coding.
+
 ## [1.37.5] - 2026-03-28
 ### Optimized
 - **Financial Hierarchy**: Increased the size of category labels (10px) and icons (20px) in the Expenses panel, matching them to their respective brand colors.

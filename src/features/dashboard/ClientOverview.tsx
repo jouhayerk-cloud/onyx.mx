@@ -417,8 +417,8 @@ export const ClientOverview: React.FC = () => {
                                             <div key={c.label} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (c.label !== 'Non-Merch') setPaymentCategoryFilter((c.v as any).tag); }}
                                                 className="group relative flex flex-col p-2.5 rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 hover:border-(--main-color)/20 transition-all cursor-pointer"
                                             >
-                                                <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={20} style={{ color: c.color }} /></div>
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] mb-2.5 block w-fit" style={{ color: c.color }}>{c.label}</span>
+                                                <div className="absolute top-2 right-2 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={24} style={{ color: c.color }} /></div>
+                                                <span className="text-[11px] font-black uppercase tracking-[0.2em] mb-2.5 block w-fit" style={{ color: c.color }}>{c.label}</span>
                                                 <div className="space-y-1.5">
                                                     <CurrencyTag type="USD" amount={c.v.usd} />
                                                     <CurrencyTag type="MXN" amount={c.v.mxn} />
@@ -437,7 +437,7 @@ export const ClientOverview: React.FC = () => {
                                                 <div className="absolute top-4 right-4 opacity-30 transition-opacity"><stat.icon size={22} style={{ color: stat.color }} /></div>
                                                 <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-3">{stat.label}</span>
                                                 <div className="flex flex-col leading-none">
-                                                    <span className="text-[26px] font-black font-mono tracking-tighter" style={{ color: stat.color }}>
+                                                    <span className="text-[22px] font-black font-mono tracking-tighter" style={{ color: stat.color }}>
                                                         {stat.isCurrency ? fmtUSDCompact(stat.v as number) : (stat.v as number).toLocaleString()}
                                                         {stat.isCurrency && <span className="text-[12px] opacity-20 ml-2">USD</span>}
                                                     </span>
@@ -455,8 +455,8 @@ export const ClientOverview: React.FC = () => {
                     </div>
 
                     {/* ROW 2: Queue & Upcoming */}
-                    <div className="grid grid-cols-1 lg:grid-cols-[3fr,1fr] gap-4">
-                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div className={`md:col-span-9 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Activity} title="Active Request Queue" color="#F43F5E" 
                                 onToggle={() => setIsQueueCollapsed(!isQueueCollapsed)} isCollapsed={isQueueCollapsed}
@@ -515,7 +515,7 @@ export const ClientOverview: React.FC = () => {
                             )}
                         </div>
 
-                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                        <div className={`md:col-span-3 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Wallet} title="Upcoming Payments" color="#FBBF24" 
                                 onToggle={() => setIsPaymentsCollapsed(!isPaymentsCollapsed)} isCollapsed={isPaymentsCollapsed}
