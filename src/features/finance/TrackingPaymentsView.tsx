@@ -1121,15 +1121,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── Top Floating Add Button ── */}
-            <div className="absolute top-4 right-4 z-20">
-                <button onClick={() => setShowAdd(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-(--main-color) text-black font-black uppercase tracking-widest leading-none transition-all active:scale-95 shadow-2xl hover:scale-105">
-                    <Plus size={18} strokeWidth={3} />
-                    <span className="text-[10px]">RECORD</span>
-                </button>
-            </div>
-
             {/* ── General Overview & Stats Grids ── */}
             {overviewMode !== 'collapsed' && (
                 <div className={`flex flex-col shrink-0 border-b border-white/5 bg-black/10 ${overviewMode === 'extended' ? 'p-3' : 'p-1.5'} transition-all duration-300 relative`}>
@@ -1208,13 +1199,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {/* Secondary Grid: Vendor Request Cards (Upcoming) */}
                     {overviewMode === 'extended' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                            <button onClick={() => setShowAdd(true)}
-                                className="group relative flex flex-col items-center justify-center p-4 rounded-xl bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 transition-all hover:-translate-y-1 active:scale-95 shadow-xl">
-                                <div className="w-10 h-10 rounded-full bg-(--main-color)/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                    <Plus size={20} className="text-(--main-color)" />
-                                </div>
-                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-widest text-center leading-tight">Add New<br />Transaction</span>
-                            </button>
                             {pendingGroups.map(group => {
                                 const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
@@ -1282,9 +1266,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const isActive = subcatFilter === s;
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[8px] font-black tracking-widest transition-all whitespace-nowrap shrink-0 border ${isActive ? 'bg-(--main-color)/20 border-(--main-color)/40 text-white shadow-lg' : 'bg-white/5 text-white/30 border-white/5 hover:border-white/10 hover:text-white/60'}`}>
-                                        <cfg.icon size={10} style={{ color: isActive ? '#FFF' : cfg.color }} />
-                                        {cfg.label}
+                                        className={`flex items-center gap-2 px-2 py-1.5 transition-all whitespace-nowrap shrink-0 group/f`}>
+                                        <cfg.icon size={12} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-125' : 'opacity-40 group-hover/f:opacity-100'}`} />
+                                        <span className={`text-[9px] font-black tracking-[0.2em] transition-all ${isActive ? 'opacity-100 scale-105' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
+                                            {cfg.label}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -1345,40 +1331,40 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         return (
                             <div key={r.id} 
                                 onClick={() => toggleRow(r.id)}
-                                className={`group relative flex flex-col p-2.5 rounded-xl border transition-all cursor-pointer overflow-hidden ${isExpanded ? 'bg-white/5 border-(--main-color)/30 shadow-2xl z-10' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
+                                className={`group relative flex flex-col p-1.5 rounded-xl border transition-all cursor-pointer overflow-hidden ${isExpanded ? 'bg-white/5 border-(--main-color)/30 shadow-2xl z-10' : 'bg-white/2 border-white/5 hover:bg-white/8 hover:border-white/10'}`}>
                                 
                                 {isExpanded && <div className="absolute top-0 left-0 w-0.5 h-full bg-(--main-color)" />}
                                 
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     {/* Column 1: Date & Type Icon */}
-                                    <div className="flex items-center gap-2.5 shrink-0 w-[100px]">
-                                        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 text-white/40 group-hover:text-white transition-colors">
-                                            <cat.icon size={14} style={{ color: cat.color }} />
+                                    <div className="flex items-center gap-2 shrink-0 w-[110px]">
+                                        <div className="w-8 h-8 flex items-center justify-center text-white/40 group-hover:text-white transition-colors">
+                                            <cat.icon size={18} style={{ color: cat.color }} className="drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[9px] font-mono font-black text-white/60 tracking-tighter leading-none mb-0.5">{fmtDate(r.date)}</span>
-                                            <span className="text-[7px] font-black uppercase tracking-[0.15em] leading-none opacity-60" style={{ color: cat.color }}>{cat.label}</span>
+                                            <span className="text-[11px] font-mono font-black text-white/80 tracking-tighter leading-none mb-0.5">{fmtDate(r.date)}</span>
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] leading-none opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: cat.color }}>{cat.label}</span>
                                         </div>
                                     </div>
                                     
                                     {/* Column 2: Description & Tags */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <h4 className="text-[10px] font-black text-white/90 uppercase tracking-wide truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
-                                            {r.recurring && <div className="p-0.5 rounded bg-orange-500/10 border border-orange-500/20" title="Recurring"><Clock size={10} className="text-orange-500" /></div>}
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="text-[12px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                            {r.recurring && <Clock size={12} className="text-orange-500 opacity-50" />}
                                         </div>
-                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                        <div className="flex flex-wrap gap-3 items-center">
                                             {r.vendor_id && (
-                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{r.vendor_id}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: vendorColor }}>{r.vendor_id}</span>
                                             )}
                                             {(() => {
                                                 const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
                                                 const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
                                                 if (ids.length > 0) {
                                                     return (
-                                                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
-                                                            <LayoutGrid size={8} className="text-white/30" />
-                                                            <span className="text-[8px] font-mono font-black text-white/40 uppercase">{ids.length} Linked Tags</span>
+                                                        <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                            <LayoutGrid size={10} className="text-white/40" />
+                                                            <span className="text-[9px] font-mono font-black text-white/40 uppercase">{ids.length} TAGS</span>
                                                         </div>
                                                     );
                                                 }
@@ -1388,23 +1374,23 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     </div>
 
                                     {/* Column 3: Destination Account */}
-                                    <div className="shrink-0 w-8 h-8 flex items-center justify-center">
+                                    <div className="shrink-0 w-10 h-10 flex items-center justify-center">
                                         {destCfg ? (
-                                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1.5 shadow-inner" title={destCfg.name}>
-                                                <img src={destCfg.icon} className="max-w-full max-h-full object-contain brightness-110 drop-shadow-md" />
-                                            </div>
+                                            <img src={destCfg.icon} className="max-w-[28px] max-h-[22px] object-contain brightness-110 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
                                         ) : (
-                                            <div className="w-8 h-8 rounded-lg border border-dashed border-white/10 flex items-center justify-center">
-                                                <Info size={10} className="text-white/10" />
-                                            </div>
+                                            <Info size={12} className="text-white/10" />
                                         )}
                                     </div>
 
                                     {/* Column 4: Financials */}
-                                    <div className="shrink-0 flex flex-col items-end gap-1 w-[120px]">
+                                    <div className="shrink-0 flex flex-col items-end gap-0.5 w-[130px]">
                                         <div className="flex items-center justify-end gap-2 leading-none">
-                                            <span className="text-[13px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
-                                            <CurrencyTag type="USD" amount={totalUSD} size="small" className="opacity-40 scale-75 origin-right" />
+                                            <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
+                                            <span className="text-[10px] font-mono font-black text-white/20 uppercase">MXN</span>
+                                        </div>
+                                        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-90 origin-right">
+                                            <span className="text-[11px] font-mono font-black text-white/60 tracking-tighter">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            <span className="text-[8px] font-black text-white/20">USD</span>
                                         </div>
                                     </div>
 
@@ -1472,10 +1458,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                         e.stopPropagation();
                                                                         setArtifactConfig({ isOpen: true, itemIds: [id], title: `Tag ID: ${tag}` });
                                                                     }}
-                                                                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/40 border border-white/10 shadow-inner group/tag hover:border-(--main-color)/50 hover:bg-(--main-color)/5 transition-all outline-none"
+                                                                    className="flex items-center gap-2 px-1 py-1 transition-all outline-none group/tag"
                                                                 >
-                                                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendorColor }} />
-                                                                    <span className="text-[10px] font-mono font-black text-white/80 group-hover/tag:text-(--main-color)">{tag}</span>
+                                                                    <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: vendorColor }} />
+                                                                    <span className="text-[11px] font-mono font-black text-white/40 group-hover/tag:text-white group-hover/tag:opacity-100 transition-all uppercase">{tag}</span>
                                                                 </button>
                                                             );
                                                         });

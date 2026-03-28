@@ -476,16 +476,6 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
 
-                {/* Export Master Unified XLSX */}
-                <button
-                    onClick={onExport}
-                    disabled={isExporting || docs.length === 0}
-                    className="p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 text-white/40 hover:text-(--color-inventory) disabled:opacity-20 disabled:cursor-not-allowed"
-                    title={`Export MASTER XLSX`}
-                >
-                    <Download size={18} strokeWidth={2} className={isExporting ? 'animate-bounce' : ''} />
-                    <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
-                </button>
             </div>
         </div>
     );
