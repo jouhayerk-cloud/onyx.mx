@@ -9,7 +9,7 @@ import { useDatabase } from '../../lib/hooks';
 import {
     RefreshCcw, DollarSign, Wallet,
     ShoppingCart, CreditCard, Package, ArrowUpRight, ChevronDown, ChevronUp,
-    TrendingUp, AlertCircle, Grid, Layers
+    TrendingUp, AlertCircle, Grid, Layers, Calendar, Users, Archive, Cpu, Box
 } from 'lucide-react';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { pendingCardIcon } from './paymentsIcons.svg';
@@ -33,11 +33,11 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
 }) => (
     <div
         onClick={onClick}
-        className={`flex flex-col gap-1 p-3 rounded-2xl border border-white/5 bg-white/3 ${onClick ? 'cursor-pointer hover:bg-white/5 hover:border-white/10 transition-all' : ''}`}
+        className={`group flex flex-col gap-1 p-4 rounded-3xl border border-white/5 bg-white/3 hover:bg-white/8 hover:border-white/10 hover:scale-[1.02] transform transition-all duration-300 shadow-xl ${onClick ? 'cursor-pointer' : ''}`}
     >
-        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-50 leading-none">{label}</span>
-        <span className="text-[15px] font-mono font-black text-(--text-color) leading-none" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
-        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-40 leading-none">{sub}</span>}
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) opacity-30 leading-none group-hover:opacity-60 transition-opacity">{label}</span>
+        <span className="text-[18px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
     </div>
 );
 
@@ -365,11 +365,14 @@ export const ClientOverview: React.FC = () => {
                 {/* ── TOP TRACKING & KPI STRIP ────────────────────────────────── */}
                 <div className="flex flex-col gap-6 mb-6">
                     {/* High-Level Overview Stats */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                        <div className="flex flex-col p-4 rounded-[2rem] bg-white/[0.03] backdrop-blur-3xl">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Crates</span>
-                            <span className="text-2xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
-                            <span className="text-[9px] font-bold text-white/20 mt-1 uppercase tracking-widest">{logisticsData.filter(d => d.type === 'pallet').length} Pallets</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <div className="group flex flex-col p-4 rounded-3xl bg-white/5 backdrop-blur-3xl border border-white/5 hover:bg-white/8 hover:scale-[1.02] transition-all duration-300 cursor-default">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 group-hover:opacity-60 transition-opacity">Logistics Status</span>
+                            <div className="flex items-end gap-2">
+                                <span className="text-3xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
+                                <span className="text-[12px] font-black text-(--main-color) mb-0.5">Crates</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-white/10 mt-2 uppercase tracking-widest">{logisticsData.filter(d => d.type === 'pallet').length} Pallets Tracked</span>
                         </div>
                         <KpiStat label="Units" value={globalTotals.totalItems.toLocaleString()} accent="#6BCEBB" onClick={() => setActiveView('inventory')} />
                         <KpiStat label="Acq Value" value={fmtUSDCompact(globalTotals.totalAcqValueUsd)} accent="#6BCEBB" />
@@ -380,41 +383,50 @@ export const ClientOverview: React.FC = () => {
 
                     {/* Non-Merch vs Merch Breakdown Panel */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Non-Merchandise Tracking */}
-                        <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
-                            <SectionHeader icon={CreditCard} title="Non-Merchandise Tracking" color="#00AEEF" />
-                            <div className="grid grid-cols-5 gap-3 mt-3">
+                        {/* Expenses Panel */}
+                        <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl">
+                            <SectionHeader icon={CreditCard} title="Expenses" color="#00AEEF" />
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-4">
                                 {[
-                                    { label: 'Monthly', v: opsBreakdown.Monthly, color: 'text-sky-400' },
-                                    { label: 'Supplies', v: opsBreakdown.Supplies, color: 'text-emerald-400' },
-                                    { label: 'Labor', v: opsBreakdown.Labor, color: 'text-amber-400' },
-                                    { label: 'Packing', v: opsBreakdown.Packing, color: 'text-rose-400' },
-                                    { label: 'Ops', v: opsBreakdown.Operations, color: 'text-indigo-400' },
+                                    { label: 'Monthly', v: opsBreakdown.Monthly, color: 'text-sky-400', icon: Calendar },
+                                    { label: 'Supplies', v: opsBreakdown.Supplies, color: 'text-emerald-400', icon: Box },
+                                    { label: 'Labor', v: opsBreakdown.Labor, color: 'text-amber-400', icon: Users },
+                                    { label: 'Packing', v: opsBreakdown.Packing, color: 'text-rose-400', icon: Archive },
+                                    { label: 'Operations', v: opsBreakdown.Operations, color: 'text-indigo-400', icon: Cpu },
                                 ].map(c => (
-                                    <div key={c.label} className="flex flex-col">
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-white/20 mb-1">{c.label}</span>
-                                        <span className={`text-[10px] font-mono font-black ${c.color}`}>{fmtUSDCompact(c.v.usd)}</span>
-                                        <span className="text-[8px] font-mono text-white/10">{fmtMXN(c.v.mxn).replace(' MXN','')}</span>
+                                    <div key={c.label} className="group flex flex-col p-3 rounded-2xl bg-white/4 hover:bg-white/8 transition-all border border-white/5">
+                                        <div className="flex items-center gap-2 mb-2 opacity-30 group-hover:opacity-100 transition-opacity">
+                                            <c.icon size={12} className={c.color} />
+                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white grow">{c.label}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className={`text-[12px] font-mono font-black ${c.color} flex items-baseline gap-1`}>
+                                                {fmtUSDCompact(c.v.usd)}
+                                                <span className="text-[7px] opacity-40 font-bold uppercase tracking-widest">USD</span>
+                                            </span>
+                                            <span className="text-[10px] font-mono font-bold text-white/20 flex items-baseline gap-1">
+                                                {fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')}
+                                                <span className="text-[7px] opacity-40 uppercase tracking-widest">MXN</span>
+                                            </span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Merchandise Summary */}
-                        <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl px-2">
+                        <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl px-2">
                             <SectionHeader icon={Package} title="Merchandise Status" color="#6BCEBB" />
-                            <div className="grid grid-cols-3 gap-4 mt-2 px-4 italic">
+                            <div className="grid grid-cols-2 gap-8 mt-4 px-6 italic">
                                 <div>
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/10">Acquisitions</span>
-                                    <p className="text-[12px] font-mono font-black text-white/70">{fmtUSDCompact(merchBreakdown.Acquisitions / currentExchangeRate)}</p>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10">Acquisitions</span>
+                                    <p className="text-lg font-mono font-black text-white/70 leading-tight">{fmtUSDCompact(merchBreakdown.Acquisitions / currentExchangeRate)}</p>
+                                    <p className="text-[10px] font-mono text-white/20 mt-1">Total value in acquisition phase</p>
                                 </div>
-                                <div>
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/10">Production</span>
-                                    <p className="text-[12px] font-mono font-black text-white/70">{fmtUSDCompact(merchBreakdown.Production / currentExchangeRate)}</p>
-                                </div>
-                                <div className="border-l border-white/5 pl-4">
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-rose-500/30">Paid Partials</span>
-                                    <p className="text-[12px] font-mono font-black text-rose-500/80">{fmtUSDCompact(merchBreakdown.Partial / currentExchangeRate)}</p>
+                                <div className="border-l border-white/5 pl-8">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/10">Production</span>
+                                    <p className="text-lg font-mono font-black text-white/70 leading-tight">{fmtUSDCompact(merchBreakdown.Production / currentExchangeRate)}</p>
+                                    <p className="text-[10px] font-mono text-white/20 mt-1">Total value currently in production</p>
                                 </div>
                             </div>
                         </div>
@@ -443,10 +455,10 @@ export const ClientOverview: React.FC = () => {
                                 )).filter(Boolean);
 
                                 return (
-                                    <div key={key} className="group relative rounded-[2rem] bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-500 overflow-hidden">
+                                    <div key={key} className="group relative rounded-4xl bg-white/3 hover:bg-white/6 transition-all duration-500 overflow-hidden">
                                         <div className="flex items-center gap-5 p-5 cursor-pointer" onClick={() => toggleDest(key)}>
-                                            <div className="w-12 h-9 flex items-center justify-center overflow-hidden shrink-0">
-                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]" />
+                                            <div className="w-16 h-10 flex items-center justify-center overflow-hidden shrink-0">
+                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform" />
                                             </div>
                                             <div className="flex gap-1 shrink-0">
                                                 {vendorIdsForDest.slice(0, 3).map((vid: any) => (
@@ -501,19 +513,21 @@ export const ClientOverview: React.FC = () => {
                                     color="#FBBF24"
                                 />
                             </div>
-                            <div className="flex flex-col gap-2">
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                 {comingPaymentsByVendor.map(group => {
                                     const color = (vendors as any)[group.vendorId]?.color || '#888';
                                     return (
-                                        <div key={group.vendorId} className="flex items-center gap-4 px-4 py-3 rounded-[2rem] bg-white/[0.02] hover:bg-white/[0.04] transition-all">
-                                            <VendorDot vendorId={group.vendorId} color={color} size="w-7 h-7" textSize="text-[9px]" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-black text-white uppercase tracking-widest truncate">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
-                                                <p className="text-[8px] font-bold text-amber-500 mt-0.5 uppercase tracking-[0.2em] opacity-50">Pending Request</p>
+                                        <div key={group.vendorId} className="group flex flex-col p-4 rounded-3xl bg-white/[0.02] hover:bg-white/5 transition-all border border-white/5">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <VendorDot vendorId={group.vendorId} color={color} size="w-6 h-6" textSize="text-[8px]" />
+                                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate">{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-[13px] font-mono font-black text-white/40 leading-none">{fmtMXN(group.total)}</p>
-                                                <p className="text-[9px] font-mono text-amber-600/30 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
+                                            <div className="flex flex-col grow justify-end">
+                                                <p className="text-[15px] font-mono font-black text-white leading-none">{fmtMXN(group.total).replace(' MXN','')}</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500/80 text-[8px] font-black uppercase tracking-widest">Pending</span>
+                                                    <span className="text-[10px] font-mono font-bold text-sky-400 group-hover:text-sky-300 transition-colors">{fmtUSD(group.total / currentExchangeRate).replace(' USD','')}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -523,13 +537,17 @@ export const ClientOverview: React.FC = () => {
                     )}
                 </div>
 
-                {/* ── VISUALIZATION GRID ───────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Units by Vendor - Horizontal Segmented Bar */}
-                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
-                        <SectionHeader icon={TrendingUp} title="Units Share" color="#6BCEBB" />
-                        <div className="mt-4 flex flex-col gap-4">
-                            <div className="h-6 w-full rounded-2xl overflow-hidden flex shadow-2xl">
+                {/* ── DISTRIBUTION ANALYSIS ───────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-5xl bg-white/2 backdrop-blur-2xl border border-white/5">
+                    <div className="col-span-1 lg:col-span-2">
+                        <SectionHeader icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" />
+                    </div>
+
+                    {/* Units by Vendor - Horizontal Segmented Bar - FULL WIDTH */}
+                    <div className="flex flex-col col-span-1 lg:col-span-2">
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Units Share by Vendor</span>
+                        <div className="flex flex-col gap-4">
+                            <div className="h-4 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5">
                                 {vendorSummaries.map((v, idx) => {
                                     const share = (v.itemCount / globalTotals.totalItems) * 100;
                                     return (
@@ -538,29 +556,60 @@ export const ClientOverview: React.FC = () => {
                                             style={{ width: `${share}%`, backgroundColor: v.color }} 
                                             className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
                                         >
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 bg-black/80 backdrop-blur-md px-2 py-1 rounded text-[10px] whitespace-nowrap z-10 pointer-events-none font-mono">
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
                                                 {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
-                                {vendorSummaries.slice(0, 8).map(v => (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+                                {vendorSummaries.map(v => (
                                     <div key={v.vendorId} className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: v.color }} />
+                                        <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: v.color }} />
                                         <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate">{v.vendorId}</span>
-                                        <span className="text-[10px] font-mono font-bold text-white/20 ml-auto">{v.itemCount}</span>
+                                        <span className="text-[10px] font-mono font-bold text-white/60 ml-auto">{v.itemCount}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
 
+                    {/* Value Distribution - Integrated Pie + Context */}
+                    <div className="flex flex-col col-span-1 lg:col-span-2 pt-6 border-t border-white/5 mt-4">
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Value Concentration concentration</span>
+                        <div className="flex flex-row items-center gap-12">
+                            <div className="w-1/2">
+                                <EChart option={pieChartOption} style={{ height: '240px' }} />
+                            </div>
+                            <div className="w-1/2 grid grid-cols-2 gap-8">
+                                {vendorSummaries.slice(0, 6).map(v => (
+                                    <div key={v.vendorId} className="flex flex-col border-b border-white/5 pb-2">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{v.vendorId}</span>
+                                            <span className="text-[11px] font-mono font-black text-white">{fmtUSDCompact(v.totalAcqUsd)}</span>
+                                        </div>
+                                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="col-span-2 pt-4 flex items-center justify-between">
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Total Portfolio Value</span>
+                                    <div className="text-right">
+                                        <span className="text-[20px] font-mono font-black text-emerald-400 block">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
+                                        <span className="text-[10px] font-mono text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Color & Material Analysis */}
-                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl col-span-1 lg:col-span-2">
-                        <SectionHeader icon={Layers} title="Material + Color" color="#EF4444" />
+                    <div className="flex flex-col p-6 rounded-4xl bg-white/2 backdrop-blur-2xl col-span-1 lg:col-span-2">
+                        <SectionHeader icon={Layers} title="Material + Color Analysis" color="#EF4444" />
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 mt-4">
                             {attributeStats.topCM.map(([label, count]) => (
                                 <div key={label} className="flex items-center justify-between border-b border-white/5 pb-1">
@@ -568,33 +617,6 @@ export const ClientOverview: React.FC = () => {
                                     <span className="text-[10px] font-mono font-black text-white">{count}</span>
                                 </div>
                             ))}
-                        </div>
-                    </div>
-
-                    {/* Value Distribution - Integrated Pie + Context */}
-                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
-                        <SectionHeader icon={DollarSign} title="Value Concentration" color="#FBBF24" />
-                        <div className="flex flex-row items-center gap-4 mt-2">
-                            <div className="w-1/2">
-                                <EChart option={pieChartOption} style={{ height: '180px' }} />
-                            </div>
-                            <div className="w-1/2 flex flex-col gap-3">
-                                {vendorSummaries.slice(0, 4).map(v => (
-                                    <div key={v.vendorId} className="flex flex-col">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{v.vendorId}</span>
-                                            <span className="text-[10px] font-mono font-black text-white">{fmtUSDCompact(v.totalAcqUsd)}</span>
-                                        </div>
-                                        <div className="h-0.5 w-full bg-white/5 mt-1">
-                                            <div className="h-full" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
-                                        </div>
-                                    </div>
-                                ))}
-                                <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
-                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Total Value</span>
-                                    <span className="text-[14px] font-mono font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
