@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.36.2] - 2026-03-28
+### Changed
+- **Navigation**: Renamed "Shipping" module to "**Crates**" and "Packing" module to "**Labels**" in the main sidebar for better functional clarity.
+
 ## [1.36.1] - 2026-03-28
 ### Refined
 - **Overview Module**: Significantly increased font sizes for financial and logistics KPIs to improve readability.

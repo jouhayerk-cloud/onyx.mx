@@ -213,7 +213,7 @@ export function MainAppView() {
             }
         },
         {
-            id: 'packing', label: 'Pack', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
+            id: 'packing', label: 'Labels', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
                 setActiveView('logistics');
                 setLogisticsSubTab('packing');
                 if (window.innerWidth <= 768) setSidebarState('hidden');
@@ -352,9 +352,9 @@ export function MainAppView() {
                             <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Truck size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Shipping</span>
+                                    <span className="sidebar-list-item-text">Crates</span>
                                 </div>
-                                <span className="sidebar-compact-tooltip">Shipping</span>
+                                <span className="sidebar-compact-tooltip">Crates</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin') && (
@@ -362,9 +362,9 @@ export function MainAppView() {
                                 <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                     <div className="sidebar-list-item-main">
                                         <Package size={20} strokeWidth={1.75} />
-                                        <span className="sidebar-list-item-text">Packing</span>
+                                        <span className="sidebar-list-item-text">Labels</span>
                                     </div>
-                                    <span className="sidebar-compact-tooltip">Packing</span>
+                                    <span className="sidebar-compact-tooltip">Labels</span>
                                 </li>
                                 <li className={`sidebar-list-item ${activeView === 'process' ? 'active' : ''}`} onClick={() => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                     <div className="sidebar-list-item-main">
