@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom
+    financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom,
+    inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -98,6 +99,7 @@ export const ClientOverview: React.FC = () => {
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setPaymentCategoryFilter = useSetAtom(paymentCategoryFilterAtom);
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
 
     const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
     const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(false);
@@ -470,12 +472,12 @@ export const ClientOverview: React.FC = () => {
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-3 border-t border-white/5">
                                                     {[
-                                                        { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers, size: 'text-[22px]' },
+                                                        { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers, size: 'text-[22px]', action: () => setArtifactConfig({ isOpen: true, itemIds: items.map(i => i.data.id), title: 'All Active Units' }) },
                                                         { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true, size: 'text-[18px]' },
                                                         { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true, size: 'text-[18px]' },
                                                         { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true, size: 'text-[18px]' },
                                                     ].map(stat => (
-                                                        <div key={stat.label} className="group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
+                                                        <div key={stat.label} onClick={stat.action} className={`group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all ${stat.action ? 'cursor-pointer active:scale-95' : ''}`}>
                                                             <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity"><stat.icon size={18} style={{ color: stat.color }} /></div>
                                                             <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
                                                             <div className="flex flex-col leading-none">
@@ -563,7 +565,14 @@ export const ClientOverview: React.FC = () => {
                                                     <div className="w-12 h-8 flex items-center justify-center shrink-0 bg-white/5 rounded-lg border border-white/5 shadow-inner">
                                                         <img src={req.cfg.icon} alt={req.cfg.name} className="max-w-[70%] max-h-[70%] object-contain opacity-100 drop-shadow-lg" />
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
+                                                    <div className="flex-1 min-w-0 pointer-events-auto hover:bg-white/5 transition-colors p-1 rounded-md" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const docIds = req.docs.flatMap(d => {
+                                                            const r = d.related_ids || d.related_inventory_ids || [];
+                                                            return Array.isArray(r) ? r : (typeof r === 'string' ? r.split(',').filter(Boolean) : []);
+                                                        });
+                                                        if (docIds.length) setArtifactConfig({ isOpen: true, itemIds: docIds, title: `${req.cfg.name} items` });
+                                                    }}>
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || 'Mixed'}</div>
                                                             <p className="text-[11px] font-black text-white/80 uppercase truncate tracking-widest">{req.cfg.name}</p>
@@ -600,8 +609,17 @@ export const ClientOverview: React.FC = () => {
                                                                             if (!tagIds.length) return null;
                                                                             return (
                                                                                 <div className="flex flex-wrap gap-1 mt-1 mb-1">
-                                                                                    {tagIds.map((tid: string) => (
-                                                                                        <span key={tid} className="text-[7.5px] font-mono font-black border border-white/10 bg-white/5 px-1 py-0.5 rounded-sm text-(--main-color) uppercase tracking-tighter shadow-sm">{tid}</span>
+                                                                                    {tagIds.map((tid: string, idx: number) => (
+                                                                                        <span 
+                                                                                            key={`${tid}-${idx}`} 
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                setArtifactConfig({ isOpen: true, itemIds: [ids[idx]], title: `Item ${tid}` });
+                                                                                            }}
+                                                                                            className="text-[7.5px] font-mono font-black border border-white/10 bg-white/5 hover:bg-(--main-color)/20 hover:border-(--main-color)/30 cursor-pointer transition-all px-1 py-0.5 rounded-sm text-(--main-color) uppercase tracking-tighter shadow-sm"
+                                                                                        >
+                                                                                            {tid}
+                                                                                        </span>
                                                                                     ))}
                                                                                 </div>
                                                                             );

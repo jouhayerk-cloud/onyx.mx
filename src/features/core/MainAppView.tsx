@@ -46,6 +46,7 @@ import { PackingModule } from '../logistics/PackingModule';
 import { ProcessView } from '../process/ProcessView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { AboutModal } from '../../components/AboutModal';
+import { InventoryArtifact } from '../inventory/InventoryArtifact';
 
 declare const __APP_VERSION__: string;
 
@@ -411,6 +412,7 @@ export function MainAppView() {
             <BatchActionsModal />
             <UploadWizard />
             <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+            <InventoryArtifact />
         </>
     );
 }

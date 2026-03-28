@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useAtomValue, useAtom } from 'jotai/react';
-import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom } from '../../lib/atoms';
+import { useAtomValue, useAtom, useSetAtom } from 'jotai';
+import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
@@ -243,6 +243,7 @@ const ActiveCrateSidebar: React.FC<{
     onClear: () => void;
 }> = ({ crate, selectedItemIds, selectedQtys, allInventory, crates: _crates, exchangeRate, onClear }) => {
     const [collapsed, setCollapsed] = useState(false);
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
 
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
@@ -388,7 +389,17 @@ const ActiveCrateSidebar: React.FC<{
 
             {/* Staged items */}
             <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-1 custom-scrollbar">
-                <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mb-1">Staged ({selectedItems.length})</p>
+                <div className="flex items-center justify-between mb-1">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-white/20">Staged ({selectedItems.length})</p>
+                    {selectedItems.length > 0 && (
+                        <button 
+                            onClick={() => setArtifactConfig({ isOpen: true, itemIds: selectedItems.map(i => i.id), title: 'Staged Items' })}
+                            className="text-[6.5px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition-colors"
+                        >
+                            View All
+                        </button>
+                    )}
+                </div>
                 {selectedItems.map(item => (
                     <div key={item.id} className="flex items-start gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-xl">
                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-black mt-0.5" style={{ backgroundColor: item.tagColor }}>
@@ -415,6 +426,7 @@ const CrateSelectCard: React.FC<{
     onClick: () => void;
 }> = ({ crate, isSelected, onClick }) => {
     const packedCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     return (
         <button
             onClick={onClick}
@@ -446,7 +458,19 @@ const CrateSelectCard: React.FC<{
                     <p className={`text-[8px] font-black uppercase tracking-widest ${statusText(crate.status)}`}>
                         {crate.status}
                     </p>
-                    <span className="text-[8px] text-white/20 font-mono">· {packedCount} items</span>
+                    <span className="text-[8px] text-white/20 font-mono flex items-center gap-1">
+                        · 
+                        <span 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const ids = crate.inventory_ids ? crate.inventory_ids.split(',').map(entry => entry.split(':')[0].trim()).filter(Boolean) : [];
+                                if (ids.length) setArtifactConfig({ isOpen: true, itemIds: ids, title: `Crate Contents` });
+                            }}
+                            className="hover:text-(--main-color) cursor-pointer transition-colors underline decoration-white/10 underline-offset-2"
+                        >
+                            {packedCount} items
+                        </span>
+                    </span>
                 </div>
             </div>
 
@@ -473,6 +497,7 @@ const PackingInventoryRow: React.FC<{
     const vendorPrefix = String(norm.itemId || d.vendor_id || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
 
     const mediaUrls = useMemo(() => {
         const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -919,7 +944,7 @@ export const CratePackingManager: React.FC = () => {
                             ) : (
                                 <div className="flex flex-col gap-2 relative">
                                     <button onClick={() => setActiveGroupKey(null)} className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer">Back</button>
-                                    <div className="w-full aspect-[2/1] mt-6 flex flex-col justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner px-2 pt-2 pb-6">
+                                    <div className="w-full aspect-2/1 mt-6 flex flex-col justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner px-2 pt-2 pb-6">
                                         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-size-[10px_10px]" />
                                         <div className="grid grid-cols-5 gap-2 relative z-10">
                                             {Array.from({ length: 10 }).map((_, i) => (
