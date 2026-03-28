@@ -1,5 +1,90 @@
 # Changelog
 
+## [1.37.5] - 2026-03-28
+### Optimized
+- **Financial Hierarchy**: Increased the size of category labels (10px) and icons (20px) in the Expenses panel, matching them to their respective brand colors.
+- **KPI Refinement**: Reduced the main metric font size from 32px to 26px for a more balanced and professional layout.
+- **Queue Cleanup**: Removed the item-count percentage progress bar from individual requisition rows in the `Active Request Queue` to improve data scannability.
+- **Layout Persistence**: Confirmed the 75/25 side-by-side grid split for the primary workspace on Desktop screens.
+
+## [1.37.4] - 2026-03-28
+### Optimized
+- **Financial UI Refinement**: Relocated category icons to the top-right corner and enlarged them for better visual scanning.
+- **Typography**: Main financial values now use color-matched typography (Emerald, Green, Amber, Rose) instead of default white.
+- **Opacity**: Removed transparency from all text elements in the Expenses & Financials panel to improve readability.
+- **Layout Distribution**: Updated the dashboard grid to a **75% / 25%** split between the Active Request Queue and Upcoming Payments.
+
+## [1.37.3] - 2026-03-28
+### Added
+- **UI Restoration**: Reinstated high-fidelity v1.36.3 dashboard features.
+- **Financial Layout**: Moved `Non-Merch` to the first position in the financials row.
+- **KPI Enhancements**: Increased text size (32px) and relocated icons to the top-right corner for all bottom KPI panels.
+- **Queue Optimization**: Expanded `Active Request Queue` width and integrated vendor color tags and payment descriptions.
+- **Analysis Restoration**: Restored full Two-Panel Global Distribution Analysis, Horizontal Units Share bar, and Material/Color Attribution.
+
+## [1.37.2] - 2026-03-28
+### Dashboard Restoration & Financial Enrichment
+- **Dual-Currency System**: Integrated MXN/USD color-coded tags across the entire Overview dashboard (Emerald for USD, Sky/Blue for MXN).
+- **Active Request Queue**: Fixed icon transparency (100% opacity) and added dual-currency tracking for all queued items.
+- **Upcoming Payments**: 
+  - Enhanced grid density (up to 5 columns on large screens).
+  - Implemented full vendor-brand background tiles with automated text contrast optimization.
+  - Added horizontal progress bars for partial payment tracking.
+- **Analysis Restoration**: Reinstated the "Global Distribution Analysis" and "Material + Color Attribution" to their full-width v1.36.3 layout for better data visibility.
+- **UI Standardization**: Unified 18px/9px typography and border-radius tokens across all new panels.
+
+## [1.37.1] - 2026-03-28
+### Fixed
+- **Overview Module [crit]**: Performed a complete structural restoration of the dashboard to resolve critical syntax errors, unclosed JSX tags, and state corruption.
+- **Icon Restoration**: Restored missing `Activity` icon imports and stabilized the `isLoading` skeleton logic.
+### Refined
+- **UI Consistency**: Standardized the high-density "Studio" aesthetic across all collapsible panels (Storage, Financials, Requests, Payments).
+- **Typography**: Optimized font sizes (18px KPIs, 9px labels) and color brightness (60% white for MXN) for maximum scannability.
+
+## [1.36.3] - 2026-03-28
+### Refined
+- **Expenses & Financials**: Significant readability improvements for MXN values (increased font size to 18px and brightness to 60% white).
+- **Label Consistency**: Standardized all bottom-row KPI labels (Non-Merch, Units, etc.) to a consistent size and color for better visual alignment.
+
+## [1.36.2] - 2026-03-28
+### Changed
+- **Navigation**: Renamed "Shipping" module to "**Crates**" and "Packing" module to "**Labels**" in the main sidebar for better functional clarity.
+
+## [1.36.1] - 2026-03-28
+### Refined
+- **Overview Module**: Significantly increased font sizes for financial and logistics KPIs to improve readability.
+- **Data Density**: Added "Packed Efficiency" progress bar and percentage to the Storage & Logistics panel.
+- **Logistics Logic**: Refined font weight and data label clarity for Pallets, Crates, and packed items.
+
+### Fixed
+- **Build Pipeline**: Installed missing `@google/genai` dependency to resolve Rollup resolution errors.
+- **CSS Syntax**: Cleaned up Tailwind 4 `--variable` syntax in `MainHeader` to resolve build warnings.
+
+### v1.36.0 — 2026-03-28
+- **Global Exchange Rate [feat]:** Relocated the USD/MXN exchange rate to the main application top bar for persistent global visibility.
+- **Top Bar XLSX Export [feat]:** Added a "Master Export" button directly to the Overview top bar, consolidating inventory and finance reporting access.
+- **Overview Module UI Refinement [ui]:** Massively upgraded font sizes and information density across the Storage & Logistics and Expenses & Financials panels.
+- **Vendor Color Coding [ui]:** Implemented vendor-specific color-coded backgrounds for Upcoming Payment cards to match established brand identities.
+- **Partial Payment Progress Bars [feat]:** Integrated horizontal progress bars in both Upcoming Payments and the Active Request Queue to visualize completion status of partial disbursements.
+- **Terminology Alignment [standard]:** Renamed all "Portfolio" references to "Acquisitions" for business logic consistency (e.g., Total Acquisitions Value).
+
+### v1.35.1 — 2026-03-28
+- **UI Squaring [ui]:** Standardized all dashboard and inventory panels to `rounded-xl` for a more professional, "squared" Studio aesthetic.
+- **Dual-Currency Dashboard [feat]:** Added explicit USD/MXN labels to *all* financial KPIs in the Overview, including Acq Value, Req Unpaid, Total Unpaid, and Expense categories.
+- **Logistics Dimension Fix [fix]:** Corrected dimension fetching in the Storage panel by mapping to `length_cm`, `width_cm`, and `height_cm` properties.
+- **Storage Panel Density [ui]:** Refactored the Storage & Logistics panel to be smaller and more data-dense.
+- **Upcoming Payments Refactor [ui]:** Transformed the payments grid into large, squared tiles with high-contrast centered typography.
+- **Cleanup [ui]:** Removed the "Platform Sync" title from the main top bar for a cleaner interface.
+
+### v1.35.0 — 2026-03-28
+- **Studio Unification [ui]:** Unified Overview and Inventory modules with theme-aware CSS variables (`--sidebar-bg`, `--border-color`), replacing all hardcoded dark backgrounds for full Obsidian/Nacar/Stitch theme compatibility.
+- **Financial Consolidation [feat]:** Merged individual KPI cards (Units, Acq Value, Requested, Pending, Total Unpaid) and the Expenses panel into a single high-density "Expenses & Financials" section.
+- **Interactive Expense Navigation [feat]:** Clicking any expense category (Monthly, Supplies, Labor, Packing, Operations) now navigates to Finance > Payments with the corresponding filter pre-applied.
+- **Total Expenses Logic [logic]:** "Total Expenses" now correctly sums only non-merchandise operational costs, excluding acquisition values.
+- **Logistics Overhaul [ui]:** Renamed panel to "Total Crates and Pallets", fixed dimension fetching, added glass glow effect, and removed redundant telemetry/verification tags.
+- **Upcoming Payments Density [ui]:** Upgraded from 2-col grid to a high-density 3–8 col adaptive grid for maximum vendor visibility.
+- **Lint Fix [fix]:** Resolved duplicate `color` property in the `SectionHeader` component style object.
+
 ### v1.34.1 — 2026-03-28
 - **Design Unification [ui]:** Unified the Overview module with the Inventory's "Stitch" aesthetic, adopting `#1C212D` card backgrounds, `border-white/10`, and standardized `rounded-3xl` radii.
 - **Typography Cleanup [ui]:** Standardized all dashboard labels and section headers with the `font-black uppercase tracking-widest` style.
@@ -311,7 +396,7 @@
 ## v1.11.97 — 2026-03-05 (Data Sync Fix)
 - **Packing Sync [fix]:** Implemented direct database listeners in the Packing module to ensure inventory and production items are always loaded and synchronized, even when accessing the module directly.
 - **Packing Header [ui]:** Updated summary header to include "Types", "Count" (total qty), and "Selected" metrics, matching the Unified Inventory View aesthetic.
-- **Search Logic [fix]:** Refined filter to include Tag ID (Barcodes) in the search strings.
+- **Search Logic [fix]:** Refined filter to include Tag ID (Barcode) in the search strings.
 
 ## v1.11.96 — 2026-03-05 (Packing Overhaul)
 - **Packing Module [feat]:** Relocated the Packing module to be a primary sidebar navigation item. Improved filtering logic to include ALL inventory items for labeling.
@@ -431,3 +516,4 @@
 - Re-designed the details tab to properly include data-dense table and removed filter bar bloat
 - Dashboard adjusted to a four column responsive grid, removed the land and retail totals
 - Fixed placeholder image overlay bugs across inventory layouts
+

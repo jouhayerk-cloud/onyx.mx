@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.37.5] - 2026-03-28
+### Optimized
+- **Financial Hierarchy**: Increased the size of category labels (10px) and icons (20px) in the Expenses panel, matching them to their respective brand colors.
+- **KPI Refinement**: Reduced the main metric font size from 32px to 26px for a more balanced and professional layout.
+- **Queue Cleanup**: Removed the item-count percentage progress bar from individual requisition rows in the `Active Request Queue` to improve data scannability.
+- **Layout Persistence**: Confirmed the 75/25 side-by-side grid split for the primary workspace on Desktop screens.
+
 ## [1.37.4] - 2026-03-28
 ### Optimized
 - **Financial UI Refinement**: Relocated category icons to the top-right corner and enlarged them for better visual scanning.
@@ -78,7 +85,7 @@
 - **Upcoming Payments Density [ui]:** Upgraded from 2-col grid to a high-density 3–8 col adaptive grid for maximum vendor visibility.
 - **Lint Fix [fix]:** Resolved duplicate `color` property in the `SectionHeader` component style object.
 
-
+### v1.34.1 — 2026-03-28
 - **Design Unification [ui]:** Unified the Overview module with the Inventory's "Stitch" aesthetic, adopting `#1C212D` card backgrounds, `border-white/10`, and standardized `rounded-3xl` radii.
 - **Typography Cleanup [ui]:** Standardized all dashboard labels and section headers with the `font-black uppercase tracking-widest` style.
 - **Sync Fix [logic]:** Fixed nested div and useMemo syntax errors introduced in the previous refactor.
