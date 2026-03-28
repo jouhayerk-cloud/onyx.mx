@@ -464,16 +464,7 @@ export const ClientOverview: React.FC = () => {
 
                         {/* Combined Financials & Expenses Panel */}
                         <div className="lg:col-span-2 flex flex-col p-5 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden">
-                            <SectionHeader icon={CreditCard} title="Expenses & Financials" color="#00AEEF" right={
-                                <div className="flex items-center gap-3">
-                                    <div className="flex flex-col items-end">
-                                        <div className="flex items-center gap-2 leading-none">
-                                            <span className="text-[28px] font-mono font-black text-white drop-shadow-[0_0_10px_rgba(0,174,239,0.3)]">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] opacity-40 font-black">USD</span></span>
-                                            <span className="text-[16px] font-mono font-bold text-white/30 truncate max-w-[120px]">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[12px] opacity-40 font-black">MXN</span></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            } />
+                            <SectionHeader icon={CreditCard} title="Expenses & Financials" color="#00AEEF" />
                             <div className="grid grid-cols-5 gap-2 mt-3">
                                 {[
                                     { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
@@ -506,7 +497,10 @@ export const ClientOverview: React.FC = () => {
                                 {!(globalTotals.totalOpsMxn > 0) ? <div /> : (
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-black text-emerald-400 opacity-60 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
-                                        <span className="text-[22px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)}</span>
+                                        <div className="flex flex-col leading-none">
+                                            <span className="text-[28px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
+                                            <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
+                                        </div>
                                     </div>
                                 )}
                                 <div className="flex flex-col">
