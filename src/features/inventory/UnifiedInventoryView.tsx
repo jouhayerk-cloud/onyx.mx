@@ -33,8 +33,9 @@ import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, 
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
-    if (data.payReq) return 'YELLOW';
-    if (data.status === 'YES' || data.printDate) return 'RED';
+    const payReqBool = data.payReq && data.payReq !== 'false' && data.payReq !== '0' && data.payReq !== '';
+    if (payReqBool) return 'YELLOW';
+    if (data.printDate) return 'RED';
     return '';
 };
 
@@ -151,6 +152,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 };
 
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode }: any) => {
+    const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
@@ -217,6 +219,27 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             setInventoryVersion(v => v + 1);
         } catch (err: any) {
             toast.error(`Error hiding item: ${err.message}`, { id: toastId });
+        }
+    };
+
+    const isAlreadyApproved = norm.dispersal_status === 'Approved';
+    const handleApprove = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isAlreadyApproved) return;
+        const toastId = toast.loading('Marking as Approved...');
+        try {
+            const { error } = await supabase.from('inventory').update({ dispersal_status: 'Approved', updated_at: new Date().toISOString() }).eq('id', item.row);
+            if (error) throw error;
+            if (db) {
+                try {
+                    const lInv = await db.inventory.findOne({ selector: { id: String(item.row) } }).exec();
+                    if (lInv) await lInv.patch({ dispersal_status: 'Approved' });
+                } catch (e) { console.error(e); }
+            }
+            toast.success('Item Approved', { id: toastId });
+            setInventoryVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(`Error: ${err.message}`, { id: toastId });
         }
     };
 
@@ -320,6 +343,20 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-2 shrink-0 bg-white/5 border-l border-white/5 backdrop-blur-md">
+                        {/* Client Approve button */}
+                        {user?.role === 'Client' && (
+                            <button
+                                onClick={handleApprove}
+                                title={isAlreadyApproved ? 'Already Approved' : 'Approve this item'}
+                                className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${
+                                    isAlreadyApproved
+                                        ? 'bg-green-500/15 text-green-400 cursor-default'
+                                        : 'bg-white/5 text-white/40 hover:bg-green-500/15 hover:text-green-400'
+                                }`}
+                            >
+                                {isAlreadyApproved ? '✓ Aprd' : 'Approve'}
+                            </button>
+                        )}
                         {isEditable && (
                             <button onClick={(e) => handleEdit(e)} className="p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-colors">
                                 <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2" />

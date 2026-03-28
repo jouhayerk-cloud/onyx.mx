@@ -970,10 +970,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
     const handleToggleStatus = async (r: any) => {
         const next = r.status === 'Requested' ? 'Paid' : 'Requested';
+        const nowIso = new Date().toISOString();
         const updatePayload = {
             status: next,
-            pay_date: next === 'Paid' ? new Date().toISOString() : null,
-            updated_at: new Date().toISOString()
+            pay_date: next === 'Paid' ? nowIso : null,
+            updated_at: nowIso
         };
 
         const { error } = await supabase.from('finance').update(updatePayload).eq('id', r.id);
@@ -988,10 +989,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 console.error('Error patching local doc', e);
             }
 
-            if (next === 'Paid') {
-                const ids = r.related_ids || r.related_inventory_ids?.split(',');
-                if (ids?.length > 0) {
-                    const isCrate = r.subcategory === 'Pack';
+            // Stamp / clear pay_date on linked inventory items
+            const ids: string[] = (() => {
+                if (r.related_ids?.length > 0) return r.related_ids.map((i: any) => String(i));
+                if (r.related_inventory_ids) return r.related_inventory_ids.split(',').map((s: string) => s.trim()).filter(Boolean);
+                return [];
+            })();
+
+            if (ids.length > 0) {
+                const isCrate = r.subcategory === 'Pack' || r.subcategory === 'Packing';
+                if (next === 'Paid') {
                     if (isCrate) {
                         const upStr = r.description?.includes('%') ? `paid ${r.description.match(/(\d+)%/)?.[1] || 'partial'}%` : 'true';
                         await supabase.from('logistics').update({ pay_req: upStr }).in('id', ids);
@@ -1007,26 +1014,24 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         if (r.description?.includes('%')) {
                             const perc = r.description.match(/(\d+)%/)?.[1];
                             const upStr = `paid ${perc || 'partial'}%`;
-                            await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
+                            await supabase.from('inventory').update({ pay_req: upStr, pay_date: nowIso }).in('id', ids);
                             if (db) {
                                 for (const iid of ids) {
                                     try {
                                         const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                        if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr });
+                                        if (lInv) await lInv.patch({ pay_req: upStr, payReq: upStr, pay_date: nowIso, payDate: nowIso });
                                     } catch (e) { console.error(e); }
                                 }
                             }
                         } else {
-                            // Full Liquidation
+                            // Full liquidation — mark paid and stamp pay_date
                             const isProdPayment = r.subcategory === 'Prod' || r.description?.toLowerCase().includes('liquidation');
-                            const updateData: any = { pay_req: 'true' };
-                            if (isProdPayment) {
-                                updateData.status = 'Acquisition';
-                            }
+                            const invUpdate: any = { pay_req: 'true', pay_date: nowIso };
+                            if (isProdPayment) invUpdate.status = 'Acquisition';
 
-                            await supabase.from('inventory').update(updateData).in('id', ids);
+                            await supabase.from('inventory').update(invUpdate).in('id', ids);
                             if (db) {
-                                const lUpdates: any = { pay_req: 'true', payReq: 'true' };
+                                const lUpdates: any = { pay_req: 'true', payReq: 'true', pay_date: nowIso, payDate: nowIso };
                                 if (isProdPayment) lUpdates.status = 'Acquisition';
                                 for (const iid of ids) {
                                     try {
@@ -1037,8 +1042,22 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             }
                         }
                     }
+                } else {
+                    // Reverted to Requested — clear pay_date on inventory items
+                    if (!isCrate) {
+                        await supabase.from('inventory').update({ pay_date: null }).in('id', ids);
+                        if (db) {
+                            for (const iid of ids) {
+                                try {
+                                    const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
+                                    if (lInv) await lInv.patch({ pay_date: null, payDate: null });
+                                } catch (e) { console.error(e); }
+                            }
+                        }
+                    }
                 }
             }
+
             setPaymentsVersion(v => v + 1);
             setInventoryVersion(v => v + 1);
             onRefresh();
