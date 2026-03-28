@@ -12,6 +12,11 @@
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 
+### v1.30.5
+- **Dynamic Payment Mapping**: Refactored the Inventory and Production filters to dynamically cross-reference the Finance module.
+- **Cross-Module Sync**: Production items with partial payments (e.g. 50%) are now correctly identified and filtered despite database boolean column limitations.
+- **Filtering Hardening**: Fixed a bug where partial status was lost due to database casting; the UI now derives payment status from live finance record descriptions.
+
 ## v1.30.4 — 2026-03-28
 ### Fixed
 - **Partial Payment Tracking [fix]:** Resolved an issue where partially paid items (e.g., "50% paid") were erroneously stamped with a `pay_date`, causing them to show as **Green/Paid**. 
