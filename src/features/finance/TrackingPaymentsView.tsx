@@ -1127,28 +1127,31 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     
                     {/* Compact Mode Vendor Bubbles */}
                     {overviewMode !== 'extended' && pendingGroups.length > 0 && (
-                        <div className="flex items-center gap-1.5 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                        <div className="flex items-center gap-2 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
                             {pendingGroups.map(group => {
                                 const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
+                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
                                 return (
                                     <div key={group.vendorId} 
-                                        className="group relative flex items-center justify-center"
-                                        title={`${group.vendorId}: ${fmtMXN(group.total - group.paidTotal)} pending`}>
-                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black transition-all hover:scale-110 active:scale-95 cursor-help"
-                                            style={{ 
-                                                backgroundColor: `${color}20`, 
-                                                border: `1px solid ${color}40`,
-                                                color: color 
-                                            }}>
+                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-help"
+                                        title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
+                                        style={{ 
+                                            background: `conic-gradient(${color} 0% ${paidPerc}%, rgba(255,255,255,0.05) ${paidPerc}% 100%)`,
+                                            padding: '1.5px'
+                                        }}>
+                                        <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm"
+                                            style={{ color }}>
                                             {group.vendorId[0]}
                                         </div>
-                                        {/* Optional Glow/Indicator */}
-                                        <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ backgroundColor: color }} />
+                                        {/* Minimal pulse indicator if 0% paid */}
+                                        {paidPerc === 0 && (
+                                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse border border-white/10" style={{ backgroundColor: color }} />
+                                        )}
                                     </div>
                                 );
                             })}
                             <div className="w-px h-3 bg-white/10 mx-1" />
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Pending Liquidation</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Ongoing Liquidations</span>
                         </div>
                     )}
                     {/* Primary Grid: Rates & Summary Totals */}
