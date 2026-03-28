@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.37.3] - 2026-03-28
+### Added
+- **UI Restoration**: Reinstated high-fidelity v1.36.3 dashboard features.
+- **Financial Layout**: Moved `Non-Merch` to the first position in the financials row.
+- **KPI Enhancements**: Increased text size (32px) and relocated icons to the top-right corner for all bottom KPI panels.
+- **Queue Optimization**: Expanded `Active Request Queue` width and integrated vendor color tags and payment descriptions.
+- **Analysis Restoration**: Restored full Two-Panel Global Distribution Analysis, Horizontal Units Share bar, and Material/Color Attribution.
+
+## [1.37.2] - 2026-03-28
+### Dashboard Restoration & Financial Enrichment
+- **Dual-Currency System**: Integrated MXN/USD color-coded tags across the entire Overview dashboard (Emerald for USD, Sky/Blue for MXN).
+- **Active Request Queue**: Fixed icon transparency (100% opacity) and added dual-currency tracking for all queued items.
+- **Upcoming Payments**: 
+  - Enhanced grid density (up to 5 columns on large screens).
+  - Implemented full vendor-brand background tiles with automated text contrast optimization.
+  - Added horizontal progress bars for partial payment tracking.
+- **Analysis Restoration**: Reinstated the "Global Distribution Analysis" and "Material + Color Attribution" to their full-width v1.36.3 layout for better data visibility.
+- **UI Standardization**: Unified 18px/9px typography and border-radius tokens across all new panels.
+
 ## [1.37.1] - 2026-03-28
 ### Fixed
 - **Overview Module [crit]**: Performed a complete structural restoration of the dashboard to resolve critical syntax errors, unclosed JSX tags, and state corruption.
