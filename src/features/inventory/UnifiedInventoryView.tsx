@@ -866,12 +866,16 @@ export const UnifiedInventoryView = () => {
             // Hide Available / Catalog items — they belong to the Store view
             if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
-            if (statusFilter === 'AcqProd') {
-                const isAcq = ['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status);
-                const isProd = item.source === 'production' || item.data.status === 'Production';
-                if (!isAcq && !isProd) return false;
+            if (statusFilter === 'Partial') {
+                // Partially paid: pay_req contains a percentage string but no full pay_date
+                const payReqStr = String(item.data.payReq || '').toLowerCase();
+                const isPartial = payReqStr.includes('%');
+                if (!isPartial || item.data.payDate) return false;
             } else if (statusFilter === 'Requested') {
-                if (!item.data.payReq || item.data.payDate) return false;
+                // Full payment requested (pay_req = 'true') but not yet paid
+                const payReqStr = String(item.data.payReq || '').toLowerCase();
+                const isFullReq = payReqStr === 'true';
+                if (!isFullReq || item.data.payDate) return false;
             } else if (statusFilter === 'Paid') {
                 if (!item.data.payDate) return false;
             }
