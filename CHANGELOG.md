@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.39.0] - 2026-03-28
+### Added
+- **Global Currency Toggle**: Introduced a high-contrast `$+USD` / `$+MXN` switch in the `MainHeader`, enabling dynamic, real-time currency switching across the application.
+- **Dynamic Financial Rendering**: Transitioned all list items and summary cards to a single, high-density currency field based on the global preference.
+- **Large Vendor Tags**: Implemented expansive, color-coded vendor tags in the `TrackingPaymentsView` list for instant visual recognition of transactions.
+### Changed
+- **Payments UI Density**: 
+    - Increased financial amount text size to `18px` in summary cards and list rows.
+    - Improved layout vertical rhythm by condensing the subcategory filters and fixing status/action button overlaps.
+- **Overview Module Alignment**: Updated KPI cards and request queue items to support the global currency toggle, ensuring cross-module data consistency.
+### Fixed
+- **JSX Structural Stability**: Corrected multiple nested tag mismatches and missing braces in `TrackingPaymentsView.tsx`.
+
 ## [1.38.1] - 2026-03-28
 ### Added
 - **Filter Bar Toggle**: Integrated a sleek "Filters" On/Off switch in the top header for persistent visibility control.

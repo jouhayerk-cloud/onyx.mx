@@ -31,6 +31,8 @@ export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 export const themeAtom = atomWithStorage<string>('appTheme', 'obsidian');
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
 export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 18.0);
+export type CurrencyMode = 'MXN' | 'USD';
+export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
 export const workflowStepAtom = atom<
   | 'idle'
