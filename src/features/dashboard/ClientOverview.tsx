@@ -2,14 +2,14 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    financeSubTabAtom, liveExchangeRateAtom, inventoryAtom
+    financeSubTabAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import {
     RefreshCcw, DollarSign, Wallet,
     ShoppingCart, CreditCard, Package, ArrowUpRight, ChevronDown, ChevronUp,
-    TrendingUp, AlertCircle
+    TrendingUp, AlertCircle, Grid, Layers
 } from 'lucide-react';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { pendingCardIcon } from './paymentsIcons.svg';
@@ -106,9 +106,9 @@ export const ClientOverview: React.FC = () => {
         const map: Record<string, ClientVendorSummary> = {};
         for (const item of items) {
             const norm = item.data;
-            const vid = String(norm?.itemId || '').split('-')[0] || '?';
+            const vid = String(norm?.itemId || norm?.item_id || '').split('-')[0] || '?';
             if (!map[vid]) map[vid] = { vendorId: vid, color: (vendors as any)[vid]?.color || '#888', itemCount: 0, totalAcqMxn: 0, totalAcqUsd: 0 };
-            const price = parseFloat(String(norm?.price || 0));
+            const price = parseFloat(String(norm?.price_mxn || norm?.price || 0));
             const qty = parseInt(String(norm?.quantity || 1)) || 1;
             const totalPrice = price * qty;
             map[vid].itemCount += qty;
@@ -117,6 +117,57 @@ export const ClientOverview: React.FC = () => {
         }
         return Object.values(map).sort((a, b) => b.totalAcqMxn - a.totalAcqMxn);
     }, [items, currentExchangeRate]);
+
+    const logisticsData = useAtomValue(logisticsDataAtom);
+
+    // ── Non-Merchandise Breakdown ───────────────────────────────────
+    const opsBreakdown = useMemo(() => {
+        const cats = { Monthly: 0, Supplies: 0, Labor: 0, Packing: 0, Operations: 0 };
+        financeData.forEach(d => {
+            const sub = String(d.subcategory || '').toLowerCase();
+            if (sub.includes('month') || sub.includes('mo-exp')) cats.Monthly += (d.amount || 0);
+            else if (sub.includes('suppl') || sub.includes('sppl')) cats.Supplies += (d.amount || 0);
+            else if (sub.includes('labr') || sub.includes('labor')) cats.Labor += (d.amount || 0);
+            else if (sub.includes('pack')) cats.Packing += (d.amount || 0);
+            else if (sub.includes('oprt') || sub.includes('operation')) cats.Operations += (d.amount || 0);
+        });
+        return cats;
+    }, [financeData]);
+
+    // ── Merchandise Breakdown ───────────────────────────────────────
+    const merchBreakdown = useMemo(() => {
+        const stats = { Acquisitions: 0, Production: 0, Partial: 0 };
+        items.forEach(i => {
+            const status = (i.data?.status || '').toLowerCase();
+            const price = parseFloat(String(i.data?.price_mxn || i.data?.price || 0)) * (parseInt(i.data?.quantity || '1') || 1);
+            const data = i.data as any;
+            const payReqStr = String(data?.payReq || data?.pay_req || '').toLowerCase();
+            
+            if (status.includes('acq')) stats.Acquisitions += price;
+            if (status.includes('prod')) stats.Production += price;
+            if (payReqStr.includes('%')) stats.Partial += price;
+        });
+        return stats;
+    }, [items]);
+
+    // ── Attribute Breakdowns ────────────────────────────────────────
+    const attributeStats = useMemo(() => {
+        const shapeTypeMap: Record<string, number> = {};
+        const colorMatMap: Record<string, number> = {};
+        
+        items.forEach(i => {
+            const qty = parseInt(i.data?.quantity || '1') || 1;
+            const st = `${i.data?.shape || 'Unknown'} ${i.data?.category || 'Item'}`;
+            const cm = `${i.data?.color || 'Unknown'} ${i.data?.material || 'Unknown'}`;
+            shapeTypeMap[st] = (shapeTypeMap[st] || 0) + qty;
+            colorMatMap[cm] = (colorMatMap[cm] || 0) + qty;
+        });
+
+        const topST = Object.entries(shapeTypeMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
+        const topCM = Object.entries(colorMatMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
+        return { topST, topCM };
+    }, [items]);
+
 
     const activeDestPendingRecords = useMemo(() =>
         financeData.filter(d => (d.status === 'Requested' || !d.status) && d.destination),
@@ -294,289 +345,247 @@ export const ClientOverview: React.FC = () => {
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-4 pb-20">
 
-                {/* ── KPI Strip ──────────────────────────────────────────── */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    <KpiStat
-                        label="Units"
-                        value={globalTotals.totalItems.toLocaleString()}
-                        accent="#6BCEBB"
-                        onClick={() => setActiveView('inventory')}
-                    />
-                    <KpiStat
-                        label="Acq Value"
-                        value={fmtUSDCompact(globalTotals.totalAcqValueUsd)}
-                        sub={showFinancials ? '$' + globalTotals.totalAcqValueUsd.toFixed(0) + ' USD' : undefined}
-                        accent="#6BCEBB"
-                    />
-                    <KpiStat
-                        label="Catalog"
-                        value={globalTotals.storeCount.toLocaleString()}
-                        sub={globalTotals.newStoreCount > 0 ? `+${globalTotals.newStoreCount} new` : undefined}
-                        accent="#34D399"
-                        onClick={() => setActiveView('store')}
-                    />
-                    <KpiStat
-                        label="Requested"
-                        value={fmtUSDCompact(globalTotals.requestedUnpaidUsd)}
-                        sub={showFinancials ? fmtMXN(globalTotals.requestedUnpaidMxn) : undefined}
-                        accent="#FBBF24"
-                    />
-                    <KpiStat
-                        label="Pending Req"
-                        value={fmtUSDCompact(globalTotals.pendingToRequestUsd)}
-                        sub={showFinancials ? fmtMXN(globalTotals.pendingToRequestMxn) : undefined}
-                        accent="#F97316"
-                    />
-                    <KpiStat
-                        label="Total Unpaid"
-                        value={fmtUSDCompact(globalTotals.totalUnpaidUsd)}
-                        sub={showFinancials ? fmtMXN(globalTotals.totalUnpaidMxn) : undefined}
-                        accent="#EF4444"
-                        onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
-                    />
-                </div>
-
-                {/* ── Priority Requisitions ───────────────────────────────── */}
-                <div>
-                    <SectionHeader
-                        icon={RefreshCcw}
-                        title="Priority Requisitions"
-                        badge={requisitions.length > 0 ? `${requisitions.length} entities` : undefined}
-                        right={
-                            <div className="flex items-center gap-1 text-[9px] font-black text-(--text-color-secondary) opacity-50">
-                                <DollarSign size={10} />
-                                {currentExchangeRate.toFixed(2)} MXN/USD
-                            </div>
-                        }
-                    />
-
-                    {requisitions.length === 0 ? (
-                        <div className="flex items-center justify-center gap-2 py-6 text-(--text-color-secondary) opacity-30">
-                            <AlertCircle size={14} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">No Pending Requisitions</span>
+                {/* ── TOP TRACKING & KPI STRIP ────────────────────────────────── */}
+                <div className="flex flex-col gap-6 mb-6">
+                    {/* High-Level Overview Stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                        <div className="flex flex-col p-4 rounded-[2rem] bg-white/[0.03] backdrop-blur-3xl">
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Crates</span>
+                            <span className="text-2xl font-black text-white leading-none">{logisticsData.filter(d => d.type === 'crate').length}</span>
+                            <span className="text-[9px] font-bold text-white/20 mt-1 uppercase tracking-widest">{logisticsData.filter(d => d.type === 'pallet').length} Pallets</span>
                         </div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            {requisitions.map((req) => {
-                                const { key, cfg, docs: destDocs, type, vendorId } = req;
-                                const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                                const isExpanded = !!expandedDests[key];
-                                const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
-                                    destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
-                                )).filter(Boolean);
+                        <KpiStat label="Units" value={globalTotals.totalItems.toLocaleString()} accent="#6BCEBB" onClick={() => setActiveView('inventory')} />
+                        <KpiStat label="Acq Value" value={fmtUSDCompact(globalTotals.totalAcqValueUsd)} accent="#6BCEBB" />
+                        <KpiStat label="Catalog" value={globalTotals.storeCount.toLocaleString()} accent="#34D399" onClick={() => setActiveView('store')} />
+                        <KpiStat label="Requested" value={fmtUSDCompact(globalTotals.requestedUnpaidUsd)} sub={showFinancials ? fmtMXN(globalTotals.requestedUnpaidMxn) : undefined} accent="#FBBF24" />
+                        <KpiStat label="Pending Req" value={fmtUSDCompact(globalTotals.pendingToRequestUsd)} sub={showFinancials ? fmtMXN(globalTotals.pendingToRequestMxn) : undefined} accent="#F97316" />
+                        <KpiStat label="Total Unpaid" value={fmtUSDCompact(globalTotals.totalUnpaidUsd)} accent="#EF4444" onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }} />
+                    </div>
 
-                                return (
-                                    <div key={key} className={`rounded-3xl border ${type === 'independent' ? 'border-(--main-color)/20 bg-(--main-color)/5 shadow-lg' : 'border-white/10 bg-white/4 shadow-sm'} overflow-hidden transition-all duration-300`}>
-                                        {/* Row header - Larger sizing */}
-                                        <div className="flex items-center gap-5 p-5 cursor-pointer hover:bg-white/5 transition-all" onClick={() => toggleDest(key)}>
-                                            {/* Bank logo */}
-                                            <div className="w-14 h-10 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-md">
-                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
-                                            </div>
-
-                                            {/* Vendor dots - Larger sizing */}
-                                            <div className="flex gap-1.5 shrink-0">
-                                                {vendorIdsForDest.slice(0, 4).map((vid: any) => (
-                                                    <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} size="w-7 h-7" textSize="text-[11px]" />
-                                                ))}
-                                                {vendorIdsForDest.length > 4 && (
-                                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 self-center">+{vendorIdsForDest.length - 4}</span>
-                                                )}
-                                            </div>
-
-                                            {/* Name */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-[13px] font-black text-(--text-color) uppercase tracking-[0.1em] leading-none truncate">{cfg.name}</p>
-                                                    {type === 'independent' && <span className="text-[10px] font-black text-(--main-color) uppercase">{vendorId}</span>}
-                                                </div>
-                                                <p className="text-[10px] font-bold text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-1">{destDocs.length} unit{destDocs.length !== 1 ? 's' : ''} in request</p>
-                                            </div>
-
-                                            {/* Amounts */}
-                                            <div className="text-right shrink-0">
-                                                <p className="text-[18px] font-mono font-black text-(--text-color) leading-none">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[12px] font-mono font-bold text-[#00AEEF] opacity-80 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
-                                            </div>
-
-                                            {/* Expand + pay */}
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); handleMarkAsPaid(key, destReqMXN, destDocs); }}
-                                                    className="px-5 py-2.5 rounded-2xl bg-(--main-color) text-black font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-md"
-                                                >
-                                                    Report Payment
-                                                </button>
-                                                {isExpanded
-                                                    ? <ChevronUp size={20} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-40" />
-                                                    : <ChevronDown size={20} strokeWidth={2.5} className="text-(--text-color-secondary) opacity-40" />
-                                                }
-                                            </div>
-                                        </div>
-
-                                        {/* Accordion detail rows - Larger sizing */}
-                                        {isExpanded && (
-                                            <div className="border-t border-white/10 px-6 py-5 space-y-3 animate-in fade-in slide-in-from-top-4 duration-300">
-                                                <div className="grid grid-cols-2 text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color-secondary) opacity-50 px-2 mb-2">
-                                                    <span>Documentation & Description</span><span className="text-right">Net · Commission · Total</span>
-                                                </div>
-                                                {destDocs.map(d => (
-                                                    <div key={d.id} className="flex items-center justify-between gap-5 py-4 px-5 rounded-2xl bg-black/40 border border-white/5 hover:border-white/10 transition-colors shadow-inner">
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-[13px] font-bold text-(--text-color) truncate mb-1">{d.description || 'Payment Request'}</p>
-                                                            <div className="flex items-center gap-2">
-                                                                <VendorDot vendorId={d.vendor_id || '?'} color={(vendors as any)[d.vendor_id]?.color || '#888'} size="w-5 h-5" textSize="text-[8px]" />
-                                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60" style={{ color: (vendors as any)[d.vendor_id]?.color || '#888' }}>{d.vendor_id}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-6 text-[12px] font-mono shrink-0">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-[8px] opacity-40 uppercase">Net</span>
-                                                                <span className="text-(--text-color-secondary) opacity-70">{fmtMXN(d.amount || 0)}</span>
-                                                            </div>
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-[8px] opacity-40 uppercase">Fee</span>
-                                                                <span className="text-(--text-color-secondary) opacity-50">+{fmtMXN(d.commission || 0)}</span>
-                                                            </div>
-                                                            <div className="flex flex-col items-end pl-4 border-l border-white/5">
-                                                                <span className="text-[8px] opacity-40 uppercase">Total</span>
-                                                                <span className="font-bold text-(--text-color) text-[14px]">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                    {/* Non-Merch vs Merch Breakdown Panel */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Non-Merchandise Tracking */}
+                        <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
+                            <SectionHeader icon={CreditCard} title="Non-Merchandise Tracking" color="#00AEEF" />
+                            <div className="grid grid-cols-5 gap-4 mt-2">
+                                {[
+                                    { label: 'Monthly', val: opsBreakdown.Monthly, color: 'text-sky-400' },
+                                    { label: 'Supplies', val: opsBreakdown.Supplies, color: 'text-emerald-400' },
+                                    { label: 'Labor', val: opsBreakdown.Labor, color: 'text-amber-400' },
+                                    { label: 'Packing', val: opsBreakdown.Packing, color: 'text-rose-400' },
+                                    { label: 'Ops', val: opsBreakdown.Operations, color: 'text-indigo-400' },
+                                ].map(c => (
+                                    <div key={c.label} className="flex flex-col gap-1">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{c.label}</span>
+                                        <span className={`text-[12px] font-mono font-black ${c.color}`}>{fmtUSDCompact(c.val / currentExchangeRate)}</span>
                                     </div>
-                                );
-                            })}
+                                ))}
+                            </div>
                         </div>
-                    )}
+
+                        {/* Merchandise Summary */}
+                        <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl px-2">
+                            <SectionHeader icon={Package} title="Merchandise Status" color="#6BCEBB" />
+                            <div className="grid grid-cols-3 gap-4 mt-2 px-4">
+                                <div>
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20">Acquisitions</span>
+                                    <p className="text-[12px] font-mono font-black text-white">{fmtUSDCompact(merchBreakdown.Acquisitions / currentExchangeRate)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20">Production</span>
+                                    <p className="text-[12px] font-mono font-black text-white">{fmtUSDCompact(merchBreakdown.Production / currentExchangeRate)}</p>
+                                </div>
+                                <div className="border-l border-white/5 pl-4">
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-rose-400/50">Partial Pymts</span>
+                                    <p className="text-[12px] font-mono font-black text-rose-400">{fmtUSDCompact(merchBreakdown.Partial / currentExchangeRate)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* ── Coming Payments ─────────────────────────────────────── */}
-                {comingPaymentsByVendor.length > 0 && (
-                    <div>
-                        <div
-                            className="flex items-center justify-between mb-3 cursor-pointer group"
-                            onClick={() => setIsComingExpanded(!isComingExpanded)}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Wallet size={14} strokeWidth={2} className="text-[#F97316]" />
-                                <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-(--text-color) group-hover:text-[#F97316] transition-colors">
-                                    To Be Requested
-                                </h2>
-                                <span className="px-2 py-0.5 rounded-full bg-white/8 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{comingPaymentsByVendor.length}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-mono font-black text-[#F97316]">{fmtUSDCompact(globalTotals.pendingToRequestUsd)}</span>
-                                {isComingExpanded
-                                    ? <ChevronUp size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
-                                    : <ChevronDown size={14} strokeWidth={2} className="text-(--text-color-secondary) opacity-40" />
-                                }
-                            </div>
-                        </div>
+                {/* ── UNIFIED PRIORITY QUEUE ───────────────────────────────── */}
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between px-2">
+                        <SectionHeader 
+                            icon={RefreshCcw} 
+                            title="Active Request Queue" 
+                            badge={requisitions.length + comingPaymentsByVendor.length > 0 ? `${requisitions.length + comingPaymentsByVendor.length} elements` : undefined}
+                        />
+                        <div className="text-[10px] font-mono font-black text-white/20">1 USD = {currentExchangeRate.toFixed(2)} MXN</div>
+                    </div>
 
-                        {isComingExpanded && (
-                            <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                                {comingPaymentsByVendor.map(group => {
-                                    const color = (vendors as any)[group.vendorId]?.color || '#888';
-                                    return (
-                                        <div key={group.vendorId} className="flex items-center gap-3 px-3 py-2.5 rounded-2xl border border-white/6 bg-white/3 hover:bg-white/5 transition-colors">
-                                            <VendorDot vendorId={group.vendorId} color={color} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-black text-(--text-color) uppercase tracking-widest leading-none truncate">
-                                                    {(vendors as any)[group.vendorId]?.name || group.vendorId}
-                                                </p>
-                                                {group.partials.length > 0 && (
-                                                    <p className="text-[8px] font-bold text-[#f7d666] mt-0.5 truncate opacity-70">{group.partials[0]}{group.partials.length > 1 ? ` +${group.partials.length - 1}` : ''}</p>
-                                                )}
+                    <div className="flex flex-col gap-2">
+                        {/* Requisitions (Paid soon) */}
+                        {requisitions.map((req) => {
+                            const { key, cfg, docs: destDocs, type, vendorId } = req;
+                            const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+                            const isExpanded = !!expandedDests[key];
+                            const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
+                                destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
+                            )).filter(Boolean);
+
+                            return (
+                                <div key={key} className="group relative rounded-[2rem] bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-500 overflow-hidden">
+                                    <div className="flex items-center gap-5 p-5 cursor-pointer" onClick={() => toggleDest(key)}>
+                                        <div className="w-12 h-9 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                                            <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain mix-blend-multiply" />
+                                        </div>
+                                        <div className="flex gap-1 shrink-0">
+                                            {vendorIdsForDest.slice(0, 3).map((vid: any) => (
+                                                <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} size="w-6 h-6" />
+                                            ))}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[13px] font-black text-white uppercase tracking-widest truncate">{cfg.name} {type === 'independent' ? `· ${vendorId}` : ''}</p>
+                                            <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-0.5">{destDocs.length} units</p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[16px] font-mono font-black text-white leading-none">{fmtMXN(destReqMXN)}</p>
+                                            <p className="text-[11px] font-mono font-bold text-sky-400 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
+                                        </div>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); handleMarkAsPaid(key, destReqMXN, destDocs); }}
+                                            className="px-4 py-2 rounded-xl bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ml-4"
+                                        >
+                                            Mark Paid
+                                        </button>
+                                        {isExpanded ? <ChevronUp size={16} className="text-white/20" /> : <ChevronDown size={16} className="text-white/20" />}
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="px-6 pb-6 pt-2 space-y-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
+                                            {destDocs.map(d => (
+                                                <div key={d.id} className="flex items-center justify-between py-3 px-4 rounded-2xl bg-black/20 text-[11px] font-mono">
+                                                    <span className="text-white/60 truncate max-w-[200px]">{d.description || 'Payment'}</span>
+                                                    <div className="flex gap-4">
+                                                        <span className="text-white/30">{fmtMXN(d.amount || 0)}</span>
+                                                        <span className="text-white/20">+{fmtMXN(d.commission || 0)}</span>
+                                                        <span className="font-bold text-white">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Upcoming (To be requested) */}
+                        {comingPaymentsByVendor.length > 0 && (
+                            <div className="mt-4">
+                                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 px-2 mb-3">Upcoming Requests</p>
+                                <div className="flex flex-col gap-2">
+                                    {comingPaymentsByVendor.map(group => {
+                                        const color = (vendors as any)[group.vendorId]?.color || '#888';
+                                        return (
+                                            <div key={group.vendorId} className="flex items-center gap-4 px-5 py-4 rounded-[2rem] bg-white/[0.02] hover:bg-white/[0.04] transition-all">
+                                                <VendorDot vendorId={group.vendorId} color={color} size="w-8 h-8" textSize="text-[10px]" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-[12px] font-black text-white uppercase tracking-widest truncate">{(vendors as any)[group.vendorId]?.name || group.vendorId}</p>
+                                                    <p className="text-[9px] font-bold text-amber-400 mt-1 uppercase tracking-widest opacity-60">Pending Request</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[14px] font-mono font-black text-white/50 leading-none">{fmtMXN(group.total)}</p>
+                                                    <p className="text-[10px] font-mono text-amber-500/50 mt-1">{fmtUSD(group.total / currentExchangeRate)}</p>
+                                                </div>
                                             </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-[12px] font-mono font-black text-(--text-color-secondary) leading-none">{fmtMXN(group.total)}</p>
-                                                <p className="text-[9px] font-mono text-[#F97316] mt-0.5">{fmtUSD(group.total / currentExchangeRate)}</p>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── VISUALIZATION GRID ───────────────────────────────────── */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Units by Vendor - Horizontal Segmented Bar */}
+                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
+                        <SectionHeader icon={TrendingUp} title="Units Share" color="#6BCEBB" />
+                        <div className="mt-4 flex flex-col gap-4">
+                            <div className="h-6 w-full rounded-2xl overflow-hidden flex shadow-2xl">
+                                {vendorSummaries.map((v, idx) => {
+                                    const share = (v.itemCount / globalTotals.totalItems) * 100;
+                                    return (
+                                        <div 
+                                            key={v.vendorId} 
+                                            style={{ width: `${share}%`, backgroundColor: v.color }} 
+                                            className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
+                                        >
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 bg-black/80 backdrop-blur-md px-2 py-1 rounded text-[10px] whitespace-nowrap z-10 pointer-events-none font-mono">
+                                                {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Charts ─────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Units by Vendor */}
-                    <div className="rounded-2xl border border-white/6 bg-white/3 p-4">
-                        <SectionHeader icon={TrendingUp} title="Units by Vendor" color="var(--main-color)" />
-                        <EChart option={vendorChartOption} style={{ height: '200px' }} />
-                    </div>
-
-                    {/* Value Concentration */}
-                    <div className="rounded-2xl border border-white/6 bg-white/3 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <SectionHeader icon={TrendingUp} title="Acquisition Value" color="#FBBF24" />
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
+                                {vendorSummaries.slice(0, 8).map(v => (
+                                    <div key={v.vendorId} className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: v.color }} />
+                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate">{v.vendorId}</span>
+                                        <span className="text-[10px] font-mono font-bold text-white/20 ml-auto">{v.itemCount}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <EChart option={pieChartOption} style={{ height: '160px' }} />
-                        <div className="mt-2 pt-2 border-t border-white/6 flex justify-between items-center">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40">Total</span>
-                            <span className="text-[13px] font-mono font-black text-(--text-color)">{fmtUSD(globalTotals.totalAcqValueUsd)}</span>
+                    </div>
+
+                    {/* Quality & Type Breakdown */}
+                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
+                        <SectionHeader icon={Grid} title="Shape + Category" color="#F97316" />
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
+                            {attributeStats.topST.map(([label, count]) => (
+                                <div key={label} className="flex items-center justify-between border-b border-white/5 pb-1">
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate max-w-[120px]">{label}</span>
+                                    <span className="text-[10px] font-mono font-black text-white">{count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Color & Material Analysis */}
+                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
+                        <SectionHeader icon={Layers} title="Material + Color" color="#EF4444" />
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
+                            {attributeStats.topCM.map(([label, count]) => (
+                                <div key={label} className="flex items-center justify-between border-b border-white/5 pb-1">
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest truncate max-w-[120px]">{label}</span>
+                                    <span className="text-[10px] font-mono font-black text-white">{count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Value Distribution - Integrated Pie + Context */}
+                    <div className="flex flex-col p-6 rounded-[2.5rem] bg-white/[0.02] backdrop-blur-2xl">
+                        <SectionHeader icon={DollarSign} title="Value Concentration" color="#FBBF24" />
+                        <div className="flex flex-row items-center gap-4 mt-2">
+                            <div className="w-1/2">
+                                <EChart option={pieChartOption} style={{ height: '180px' }} />
+                            </div>
+                            <div className="w-1/2 flex flex-col gap-3">
+                                {vendorSummaries.slice(0, 4).map(v => (
+                                    <div key={v.vendorId} className="flex flex-col">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{v.vendorId}</span>
+                                            <span className="text-[10px] font-mono font-black text-white">{fmtUSDCompact(v.totalAcqUsd)}</span>
+                                        </div>
+                                        <div className="h-0.5 w-full bg-white/5 mt-1">
+                                            <div className="h-full" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
+                                        </div>
+                                    </div>
+                                ))}
+                                <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Total Value</span>
+                                    <span className="text-[14px] font-mono font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* ── Vendor Table ────────────────────────────────────────── */}
-                {vendorSummaries.length > 0 && (
-                    <div className="rounded-2xl border border-white/6 bg-white/3 overflow-hidden">
-                        <div className="px-3 pt-3 pb-2">
-                            <SectionHeader icon={Package} title="Vendor Breakdown" color="#6BCEBB" />
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="border-t border-white/6">
-                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40">Vendor</th>
-                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Units</th>
-                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Acq MXN</th>
-                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Acq USD</th>
-                                        <th className="px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 text-right">Share</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {vendorSummaries.map(v => {
-                                        const totalItems = globalTotals.totalItems || 1;
-                                        const share = ((v.itemCount / totalItems) * 100).toFixed(1);
-                                        return (
-                                            <tr key={v.vendorId} className="border-t border-white/4 hover:bg-white/3 transition-colors group">
-                                                <td className="px-3 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <VendorDot vendorId={v.vendorId} color={v.color} />
-                                                        <span className="text-[11px] font-black text-(--text-color) uppercase">{v.vendorId}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-2 text-right text-[11px] font-mono font-black text-(--text-color)">{v.itemCount.toLocaleString()}</td>
-                                                <td className="px-3 py-2 text-right text-[10px] font-mono text-(--text-color-secondary) opacity-60">
-                                                    {showFinancials ? '$' + v.totalAcqMxn.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}
-                                                </td>
-                                                <td className="px-3 py-2 text-right text-[11px] font-mono font-black text-[#6BCEBB]">
-                                                    {showFinancials ? '$' + v.totalAcqUsd.toFixed(0) : '***'}
-                                                </td>
-                                                <td className="px-3 py-2 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <div className="h-1 w-16 rounded-full bg-white/10 overflow-hidden hidden sm:block">
-                                                            <div className="h-full rounded-full transition-all" style={{ width: `${share}%`, backgroundColor: v.color }} />
-                                                        </div>
-                                                        <span className="text-[10px] font-mono font-black text-(--text-color-secondary)">{share}%</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
 
             </div>
         </div>

@@ -1,5 +1,13 @@
 # Changelog
 
+### v1.32.0 — 2026-03-28
+- **Overview Dashboard Overhaul [ui]:** Transitioned to a "Frameless" modern aesthetic with floating elements, backdrop-blurs (`bg-white/2`), and zero borders for a professional Studio look.
+- **Unified Payment Queue [feat]:** Merged 'Priority Requisitions' and 'To be Requested' into a single, high-density vertical stack for faster payment processing.
+- **Segmented Unit Share [ui]:** Replaced the legacy pie chart with a horizontal segmented bar graph for scannable vendor unit distribution.
+- **Top-Level Payment Tracking [feat]:** Integrated a new tracking strip for Non-Merchandise (Monthly, Supplies, Labor, Packing, Ops) vs. Merchandise (Acquisitions, Production).
+- **Attribute Analysis Dashboards [feat]:** Added new multi-dimensional visualizations for **Shape+Category** and **Material+Color** item concentrations.
+- **Logistics Breakdown [ui]:** Added global Crates and Pallets count KPI to the dashboard strip.
+
 ### v1.31.3 — 2026-03-28
 - **About Modal Reliability [fix]:** Resolved documentation loading failures by migrating logs to source-controlled assets, ensuring the 'About' popup is always high-fidelity.
 - **Security Redaction [standard]:** Successfully scrubbed sensitive Cypher Keys and private development markers from all public-facing logs in the repository.
