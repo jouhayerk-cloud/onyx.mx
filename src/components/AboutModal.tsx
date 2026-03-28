@@ -1,8 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Info, History, Sparkles, ExternalLink, Github, Zap } from 'lucide-react';
+import { X, Info, History, Sparkles, Github, Zap } from 'lucide-react';
 import { OnyxMiniLogo } from './OnyxLogo';
+
+// Import markdown files as raw strings
+import changelogText from '../../CHANGELOG.md?raw';
+import versionLogText from '../../version_log.md?raw';
 
 interface AboutModalProps {
     isOpen: boolean;
@@ -13,45 +17,6 @@ declare const __APP_VERSION__: string;
 
 export function AboutModal({ isOpen, onClose }: AboutModalProps) {
     const [activeTab, setActiveTab] = useState<'latest' | 'history'>('latest');
-    const [changelog, setChangelog] = useState<string>('Loading latest changes...');
-    const [versionLog, setVersionLog] = useState<string>('Loading version history...');
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                const baseUrl = import.meta.env.BASE_URL || '/';
-                const [changelogRes, versionLogRes] = await Promise.all([
-                    fetch(`${baseUrl}CHANGELOG.md`),
-                    fetch(`${baseUrl}version_log.md`)
-                ]);
-
-                if (changelogRes.ok) {
-                    const text = await changelogRes.text();
-                    setChangelog(text);
-                } else {
-                    setChangelog('Failed to load CHANGELOG.md');
-                }
-
-                if (versionLogRes.ok) {
-                    const text = await versionLogRes.text();
-                    setVersionLog(text);
-                } else {
-                    setVersionLog('Failed to load version_log.md');
-                }
-            } catch (err) {
-                console.error('Error fetching logs:', err);
-                setChangelog('Error connecting to the update server.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -152,16 +117,9 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
 
                 {/* Content Viewer */}
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-black/10 select-text">
-                    {isLoading ? (
-                        <div className="h-full flex flex-col items-center justify-center gap-4 text-white/20">
-                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500/30 border-t-blue-500" />
-                            <span className="text-xs font-black uppercase tracking-widest">Synchronizing Logs...</span>
-                        </div>
-                    ) : (
-                        <div className="max-w-2xl mx-auto py-4">
-                            {activeTab === 'latest' ? renderMarkdown(changelog) : renderMarkdown(versionLog)}
-                        </div>
-                    )}
+                    <div className="max-w-2xl mx-auto py-4">
+                        {activeTab === 'latest' ? renderMarkdown(changelogText) : renderMarkdown(versionLogText)}
+                    </div>
                 </div>
 
                 {/* Footer */}
