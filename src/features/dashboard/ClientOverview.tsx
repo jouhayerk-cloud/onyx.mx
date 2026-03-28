@@ -7,12 +7,11 @@ import {
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import {
-    RefreshCcw, DollarSign, Wallet,
+    RefreshCcw, DollarSign, Wallet, Activity,
     ShoppingCart, CreditCard, Package, ArrowUpRight, ChevronDown, ChevronUp,
     TrendingUp, AlertCircle, Grid, Layers, Calendar, Users, Archive, Cpu, Box
 } from 'lucide-react';
 import { destinationsConfig } from '../../lib/paymentConfig';
-import { pendingCardIcon } from './paymentsIcons.svg';
 import { PaymentDestination } from '../../lib/Types';
 import { default as toast } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -33,27 +32,44 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
 }) => (
     <div
         onClick={onClick}
-        className={`group flex flex-col gap-1.5 p-4 rounded-2xl border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
+        className={`group flex flex-col gap-1 p-3 rounded-xl border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:shadow-lg transition-all duration-300 ${onClick ? 'cursor-pointer' : ''}`}
     >
-        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
-        <span className="text-[24px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
-        {sub && <span className="text-[11px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
+        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
+        <span className="text-[20px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-0.5">{sub}</span>}
     </div>
 );
 
 // ── Section Header ───────────────────────────────────────────────
-const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', right }: {
-    icon: React.FC<any>; title: string; badge?: string; color?: string; right?: React.ReactNode;
+const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', right, onToggle, isCollapsed, compactSummary }: {
+    icon: React.FC<any>; title: string; badge?: string; color?: string; right?: React.ReactNode; 
+    onToggle?: () => void; isCollapsed?: boolean; compactSummary?: React.ReactNode;
 }) => (
-    <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-            <Icon size={16} strokeWidth={2.5} style={{ color }} />
-            <h2 className="text-[14px] font-black uppercase tracking-widest text-(--text-color) opacity-80">{title}</h2>
-            {badge && (
-                <span className="px-2 py-0.5 rounded-full bg-(--text-color)/5 text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
-            )}
+    <div className={`flex items-center justify-between ${isCollapsed ? '' : 'mb-3'}`}>
+        <div className="flex items-center gap-2 cursor-pointer group/header" onClick={onToggle}>
+            <div className={`p-1.5 rounded-lg transition-colors ${isCollapsed ? 'bg-white/5' : ''}`} style={{ color: isCollapsed ? '#fff' : color }}>
+                <Icon size={14} strokeWidth={2.5} />
+            </div>
+            <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                    <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-80 group-hover/header:opacity-100 transition-opacity">{title}</h2>
+                    {badge && (
+                        <span className="px-1.5 py-0.5 rounded bg-(--text-color)/5 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
+                    )}
+                    {onToggle && (
+                        <div className="text-white/20 group-hover/header:text-white/60 transition-colors">
+                            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                        </div>
+                    )}
+                </div>
+                {isCollapsed && compactSummary && (
+                    <div className="mt-0.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                        {compactSummary}
+                    </div>
+                )}
+            </div>
         </div>
-        {right}
+        {!isCollapsed && right}
     </div>
 );
 
@@ -76,21 +92,22 @@ export const ClientOverview: React.FC = () => {
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const currentExchangeRate = liveExchangeRate || exchangeRate;
     const [showFinancials] = useAtom(showFinancialsAtom);
-    // Read-only — DataSyncProvider is the single writer for financeDataAtom
     const financeData = useAtomValue(financeDataAtom);
-    // Read-only — DataSyncProvider drives inventoryAtom via Supabase realtime
     const allInventoryItems = useAtomValue(inventoryAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setPaymentCategoryFilter = useSetAtom(paymentCategoryFilterAtom);
 
+    const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
+    const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(false);
+    const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
+    const [isPaymentsCollapsed, setIsPaymentsCollapsed] = useState(false);
+
     const [isLoading, setIsLoading] = useState(true);
     const [expandedDests, setExpandedDests] = useState<Record<string, boolean>>({});
-    const [isComingExpanded, setIsComingExpanded] = useState(true);
 
     const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
-    // Derive items and storeItems from the centralized inventoryAtom
     const items = useMemo(() =>
         allInventoryItems.filter(i => !['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '') && i.data.status !== 'Pending Deletion'),
         [allInventoryItems]
@@ -100,7 +117,6 @@ export const ClientOverview: React.FC = () => {
         [allInventoryItems]
     );
 
-    // Show skeleton only on first load
     useEffect(() => { const t = setTimeout(() => setIsLoading(false), 800); return () => clearTimeout(t); }, []);
 
     const vendorSummaries = useMemo<ClientVendorSummary[]>(() => {
@@ -121,7 +137,6 @@ export const ClientOverview: React.FC = () => {
 
     const logisticsData = useAtomValue(logisticsDataAtom);
 
-    // ── Non-Merchandise Breakdown ───────────────────────────────────
     const opsBreakdown = useMemo(() => {
         const cats = { 
             Monthly: { mxn: 0, usd: 0, tag: 'MONTHLY' as const }, 
@@ -144,49 +159,6 @@ export const ClientOverview: React.FC = () => {
         return cats;
     }, [financeData, currentExchangeRate]);
 
-    // ── Merchandise Breakdown ───────────────────────────────────────
-    const merchBreakdown = useMemo(() => {
-        const stats = { Acquisitions: 0, Production: 0, Partial: 0 };
-        items.forEach(i => {
-            const status = (i.data?.status || '').toLowerCase();
-            const price = parseFloat(String(i.data?.price_mxn || i.data?.price || 0)) * (parseInt(i.data?.quantity || '1') || 1);
-            const data = i.data as any;
-            const payReqStr = String(data?.payReq || data?.pay_req || '').toLowerCase();
-            
-            if (status.includes('acq')) stats.Acquisitions += price;
-            if (status.includes('prod')) stats.Production += price;
-            
-            // For partials, we track the disbursed amount vs total
-            if (payReqStr.includes('%')) {
-                const match = payReqStr.match(/(\d+)%/);
-                if (match) {
-                    const perc = parseInt(match[1]);
-                    stats.Partial += (price * (perc / 100));
-                }
-            }
-        });
-        return stats;
-    }, [items]);
-
-    // ── Attribute Breakdowns ────────────────────────────────────────
-    const attributeStats = useMemo(() => {
-        const shapeTypeMap: Record<string, number> = {};
-        const colorMatMap: Record<string, number> = {};
-        
-        items.forEach(i => {
-            const qty = parseInt(i.data?.quantity || '1') || 1;
-            const st = `${i.data?.shape || ''} ${i.data?.description || i.data?.category || 'Item'}`.trim();
-            const cm = `${i.data?.color || 'Unknown'} ${i.data?.material || 'Unknown'}`.trim();
-            shapeTypeMap[st] = (shapeTypeMap[st] || 0) + qty;
-            colorMatMap[cm] = (colorMatMap[cm] || 0) + qty;
-        });
-
-        const topST = Object.entries(shapeTypeMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
-        const topCM = Object.entries(colorMatMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
-        return { topST, topCM };
-    }, [items]);
-
-
     const activeDestPendingRecords = useMemo(() =>
         financeData.filter(d => (d.status === 'Requested' || !d.status) && d.destination),
         [financeData]);
@@ -197,12 +169,9 @@ export const ClientOverview: React.FC = () => {
 
     const requisitions = useMemo(() => {
         const groups: { key: string; cfg: any; docs: any[]; type: 'grouped' | 'independent'; vendorId?: string; progress?: number }[] = [];
-        
         Object.entries(destinationsConfig).forEach(([key, cfg]) => {
             const docs = activeDestPendingRecords.filter(d => d.destination === key);
             if (docs.length === 0) return;
-
-            // Simple progress calculation based on description or notes if available
             const getProgress = (records: any[]) => {
                 const firstPartial = records.find(r => r.description?.includes('%') || r.notes?.includes('%'));
                 if (firstPartial) {
@@ -211,7 +180,6 @@ export const ClientOverview: React.FC = () => {
                 }
                 return 0;
             };
-
             if (key === PaymentDestination.Fast_Cash_Wire) {
                 const byVendor: Record<string, any[]> = {};
                 docs.forEach(d => {
@@ -233,7 +201,6 @@ export const ClientOverview: React.FC = () => {
                 groups.push({ key, cfg, docs, type: 'grouped', progress: getProgress(docs) });
             }
         });
-        
         return groups.sort((a,b) => {
             const sumA = a.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
             const sumB = b.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
@@ -287,27 +254,18 @@ export const ClientOverview: React.FC = () => {
         const crates = logisticsData.filter(d => (d.type || '').toLowerCase().includes('crate'));
         const pallets = logisticsData.filter(d => (d.type || '').toLowerCase().includes('pallet'));
         const packedCrates = crates.filter(c => (c as any).inventoryItems?.length > 0).length;
-        const freeCrates = crates.length - packedCrates;
         
-        // Find dimensions logic with counts
         const dimensionCounts: Record<string, number> = {};
         logisticsData.forEach(d => {
             if (d.type === 'crate' || d.type === 'pallet') {
                 const s = `${d.width_cm || d.w || 0}x${d.height_cm || d.h || 0}x${d.length_cm || d.d || 0}`;
-                if (s !== '0x0x0') {
-                    dimensionCounts[s] = (dimensionCounts[s] || 0) + 1;
-                }
+                if (s !== '0x0x0') dimensionCounts[s] = (dimensionCounts[s] || 0) + 1;
             }
         });
-        const dims = Object.entries(dimensionCounts)
-            .sort((a,b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([size, count]) => `${size} (${count})`)
-            .join(', ');
+        const dims = Object.entries(dimensionCounts).sort((a,b) => b[1] - a[1]).slice(0, 3).map(([size, count]) => `${size} (${count})`).join(', ');
 
         const totalOpsUsd = Object.values(opsBreakdown).reduce((acc, c) => acc + c.usd, 0);
         const totalOpsMxn = Object.values(opsBreakdown).reduce((acc, c) => acc + c.mxn, 0);
-
         const packedItems = items.filter(i => (i.data as any).logisticsId || (i.data as any).logistics_id).reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0);
 
         return {
@@ -319,56 +277,33 @@ export const ClientOverview: React.FC = () => {
             pendingToRequestMxn,
             totalUnpaidUsd: (requestedUnpaidMxn + pendingToRequestMxn) / currentExchangeRate,
             totalUnpaidMxn: requestedUnpaidMxn + pendingToRequestMxn,
-            storeCount: storeItems.reduce((acc, x) => acc + (parseInt(x.data.quantity) || 1), 0),
-            newStoreCount: storeItems.filter(x => Date.now() - new Date((x.data as any).updatedAt || (x.data as any).updated_at || 0).getTime() < 7 * 864e5).length,
             packedCrates,
-            freeCrates,
+            freeCrates: crates.length - packedCrates,
             packedItems,
             logisticsDims: dims,
             totalCratesAndPallets: crates.length + pallets.length,
-            cratesCount: crates.length,
-            palletsCount: pallets.length,
             totalOpsUsd,
             totalOpsMxn
         };
-    }, [vendorSummaries, storeItems, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items]);
+    }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items]);
+
+    const attributeStats = useMemo(() => {
+        const colorMatMap: Record<string, number> = {};
+        items.forEach(i => {
+            const qty = parseInt(i.data?.quantity || '1') || 1;
+            const cm = `${i.data?.color || 'Unknown'} ${i.data?.material || 'Unknown'}`.trim();
+            colorMatMap[cm] = (colorMatMap[cm] || 0) + qty;
+        });
+        return { topCM: Object.entries(colorMatMap).sort((a,b) => b[1]-a[1]).slice(0, 8) };
+    }, [items]);
 
     const fmtMXN = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN' : '***';
-    const fmtUSD = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD' : '***';
     const fmtUSDCompact = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***';
-
-    const vendorChartOption = useMemo<EChartsOption>(() => ({
-        tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: ${p.value} units (${p.percent}%)` },
-        legend: {
-            orient: 'vertical', right: '0%', top: 'center',
-            textStyle: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'inherit' },
-            itemWidth: 8, itemHeight: 8,
-            formatter: (name: string) => {
-                const v = vendorSummaries.find(x => x.vendorId === name);
-                return `${name}  ${v?.itemCount ?? ''}`;
-            }
-        },
-        series: [{
-            name: 'Units by Vendor', type: 'pie',
-            radius: ['40%', '68%'], center: ['35%', '50%'],
-            data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.itemCount })),
-            label: { show: false },
-            itemStyle: { borderRadius: 6, borderColor: 'rgba(0,0,0,0.4)', borderWidth: 1 }
-        }],
-        color: vendorSummaries.map(v => v.color),
-        backgroundColor: 'transparent',
-    }), [vendorSummaries]);
 
     const pieChartOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: $${p.value.toFixed(0)} USD (${p.percent}%)` },
-        legend: {
-            orient: 'vertical', right: '0%', top: 'center',
-            textStyle: { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'inherit' },
-            itemWidth: 8, itemHeight: 8,
-        },
         series: [{
-            name: 'Acq Value', type: 'pie',
-            radius: ['45%', '72%'], center: ['35%', '50%'],
+            name: 'Acq Value', type: 'pie', radius: ['45%', '72%'], center: ['35%', '50%'],
             data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd })),
             label: { show: false },
             itemStyle: { borderRadius: 6, borderColor: 'rgba(0,0,0,0.4)', borderWidth: 1 }
@@ -402,7 +337,6 @@ export const ClientOverview: React.FC = () => {
         }
     };
 
-    // ── Skeleton ─────────────────────────────────────────────────
     if (isLoading) return (
         <div className="flex flex-col gap-4 p-4 animate-pulse">
             <div className="grid grid-cols-3 gap-3">
@@ -416,351 +350,135 @@ export const ClientOverview: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative">
-            <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-4 pb-20">
-
-                {/* ── TOP LOGISTICS & KPI STRIP ────────────────────────────────── */}
-                <div className="flex flex-col gap-4 mb-6">
-                    {/* Compact Logistics & Financial Merger */}
+        <div className="flex-1 overflow-hidden relative flex flex-col h-full bg-(--app-bg)">
+            <div className="grow min-h-0 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4 pb-24">
+                <div className="max-w-[1700px] mx-auto space-y-4">
+                    
+                    {/* ROW 1: Logistics & Financials */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        {/* Storage & Logistics Panel */}
-                        <div className="lg:col-span-1 flex flex-col p-4 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group">
-                            {/* Decorative Glass Glow */}
-                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#6BCEBB]/5 blur-[80px] pointer-events-none group-hover:bg-[#6BCEBB]/10 transition-colors" />
-                            
-                            <SectionHeader icon={Package} title="Storage & Logistics" color="#6BCEBB" />
-                            <div className="grid grid-cols-2 gap-3 mt-1">
-                                <div className="flex flex-col">
-                                    <span className="text-[26px] font-black text-(--text-color) leading-tight">{globalTotals.totalCratesAndPallets}</span>
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Pallets & Crates</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[22px] font-black text-(--text-color) leading-tight">{globalTotals.packedCrates} <span className="text-[10px] opacity-30">/ {globalTotals.freeCrates}</span></span>
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed / Free</span>
-                                </div>
-                                <div className="flex flex-col col-span-2 mt-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex flex-col">
-                                            <span className="text-[26px] font-black text-(--text-color) leading-tight">{globalTotals.packedItems}</span>
-                                            <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed Items</span>
-                                        </div>
-                                        {globalTotals.totalItems > 0 && (
-                                            <div className="flex flex-col items-end">
-                                                <span className="text-[18px] font-black text-(--main-color)">{Math.round((globalTotals.packedItems / globalTotals.totalItems) * 100)}%</span>
-                                                <span className="text-[9px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest leading-none mt-1">Efficiency</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
-                                        <div className="h-full bg-(--main-color) transition-all duration-1000 shadow-[0_0_10px_var(--main-color)]" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-5 pt-3 border-t border-(--border-color)/50">
-                                <span className="text-[10px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
-                                <p className="text-[14px] font-mono font-black text-(--text-color) opacity-80 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
-                            </div>
-                        </div>
-
-                        {/* Combined Financials & Expenses Panel */}
-                        <div className="lg:col-span-2 flex flex-col p-5 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden">
-                            <SectionHeader icon={CreditCard} title="Expenses & Financials" color="#00AEEF" />
-                            <div className="grid grid-cols-5 gap-2 mt-3">
-                                {[
-                                    { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
-                                    { label: 'Supplies', v: opsBreakdown.Supplies, color: '#34d399', icon: Box },
-                                    { label: 'Labor', v: opsBreakdown.Labor, color: '#fbbf24', icon: Users },
-                                    { label: 'Packing', v: opsBreakdown.Packing, color: '#fb7185', icon: Archive },
-                                    { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
-                                ].map(c => (
-                                    <div 
-                                        key={c.label} 
-                                        onClick={() => {
-                                            setActiveView('finance');
-                                            setFinanceSubTab('payments');
-                                            setPaymentCategoryFilter(c.v.tag);
-                                        }}
-                                        className="group flex flex-col p-2.5 rounded-lg bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all cursor-pointer border border-transparent hover:border-(--main-color)/20"
-                                    >
-                                        <div className="flex items-center gap-2 mb-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                            <c.icon size={12} style={{ color: c.color }} />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
-                                        </div>
-                                        <span className="text-[26px] font-mono font-black text-white leading-none mb-1">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[10px] opacity-40">USD</span></span>
-                                        <span className="text-[18px] font-mono font-bold text-white/60">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[10px] opacity-40">MXN</span></span>
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            {/* Combined KPIs row at bottom of big panel */}
-                            <div className="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-(--border-color)">
-                                {!(globalTotals.totalOpsMxn > 0) ? <div /> : (
-                                    <div className="flex flex-col">
-                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
-                                        <div className="flex flex-col leading-none">
-                                            <span className="text-[28px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                            <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Units</span>
-                                    <span className="text-[28px] font-black text-(--text-color) leading-none">{globalTotals.totalItems}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Acq Value</span>
-                                    <div className="flex flex-col leading-none">
-                                        <span className="text-[28px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Req Unpaid</span>
-                                    <div className="flex flex-col leading-none">
-                                        <span className="text-[28px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Total Unpaid</span>
-                                    <div 
-                                        onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
-                                        className="flex flex-col leading-none cursor-pointer group/unpaid"
-                                    >
-                                        <span className="text-[28px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── UNIFIED PRIORITY QUEUE ───────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between px-2">
+                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isLogisticsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
-                                icon={RefreshCcw} 
-                                title="Active Request Queue" 
-                                badge={requisitions.length > 0 ? `${requisitions.length} elements` : undefined}
+                                icon={Package} title="Storage & Logistics" color="#6BCEBB" 
+                                onToggle={() => setIsLogisticsCollapsed(!isLogisticsCollapsed)} isCollapsed={isLogisticsCollapsed}
+                                compactSummary={<div className="flex gap-3"><span className="text-[12px] font-black text-white">{globalTotals.packedItems} <span className="opacity-30 text-[8px] uppercase">Packed</span></span></div>}
                             />
+                            {!isLogisticsCollapsed && (
+                                <div className="mt-2 animate-in fade-in duration-300">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col"><span className="text-[18px] font-black text-white leading-tight">{globalTotals.totalCratesAndPallets}</span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-0.5 whitespace-nowrap">Pallets & Crates</span></div>
+                                        <div className="flex flex-col"><span className="text-[18px] font-black text-white leading-tight">{globalTotals.packedCrates} <span className="text-[9px] opacity-20">/ {globalTotals.freeCrates}</span></span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-0.5 whitespace-nowrap">Packed / Free</span></div>
+                                        <div className="flex flex-col col-span-2 pt-2">
+                                            <div className="flex items-center justify-between mb-1.5"><div className="flex flex-col leading-none"><span className="text-[18px] font-mono font-black text-white">{globalTotals.packedItems}</span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1">Packed Items</span></div><div className="text-right"><span className="text-[13px] font-black text-(--main-color)">{Math.round((globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100)}%</span></div></div>
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} /></div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-white/5"><span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">Active Sizes (cm)</span><p className="text-[11px] font-mono font-black text-white/60 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p></div>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                            {requisitions.map((req) => {
-                                const { key, cfg, docs: destDocs, type, vendorId, progress } = req;
-                                const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-                                const isExpanded = !!expandedDests[key];
-                                const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
-                                    destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
-                                )).filter(Boolean);
-
-                                return (
-                                    <div key={key} className="group relative rounded-xl bg-(--text-color)/3 hover:bg-(--text-color)/6 border border-(--border-color) transition-all duration-500 overflow-hidden">
-                                        <div className="flex items-center gap-5 p-5 cursor-pointer" onClick={() => toggleDest(key)}>
-                                            <div className="w-16 h-10 flex items-center justify-center overflow-hidden shrink-0">
-                                                <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform" />
-                                            </div>
-                                            <div className="flex gap-1 shrink-0">
-                                                {vendorIdsForDest.slice(0, 3).map((vid: any) => (
-                                                    <VendorDot key={vid} vendorId={vid} color={(vendors as any)[vid]?.color || '#888'} size="w-6 h-6" />
-                                                ))}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[13px] font-black text-white uppercase tracking-widest truncate">{cfg.name} {type === 'independent' ? `· ${vendorId}` : ''}</p>
-                                                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-0.5">{destDocs.length} units</p>
-                                                {progress && progress > 0 && progress < 100 ? (
-                                                    <div className="w-full max-w-[100px] h-1 bg-white/5 rounded-full overflow-hidden mt-2">
-                                                        <div className="h-full bg-(--main-color)" style={{ width: `${progress}%` }} />
-                                                    </div>
-                                                ) : null}
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <p className="text-[16px] font-mono font-black text-white leading-none">{fmtMXN(destReqMXN)}</p>
-                                                <p className="text-[11px] font-mono font-bold text-sky-400 mt-1">{fmtUSD(destReqMXN / currentExchangeRate)}</p>
-                                            </div>
-                                            <button
-                                                onClick={e => { e.stopPropagation(); handleMarkAsPaid(key, destReqMXN, destDocs); }}
-                                                className="px-3 py-1.5 rounded-xl bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all ml-4"
+                        <div className={`lg:col-span-2 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isFinancialsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                            <SectionHeader 
+                                icon={CreditCard} title="Expenses & Financials" color="#00AEEF" 
+                                onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
+                                compactSummary={<div className="flex gap-4"><span className="text-[12px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="opacity-30 text-[8px] uppercase">Ops</span></span></div>}
+                            />
+                            {!isFinancialsCollapsed && (
+                                <div className="mt-2 animate-in fade-in duration-300">
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {[
+                                            { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
+                                            { label: 'Supplies', v: opsBreakdown.Supplies, color: '#34d399', icon: Box },
+                                            { label: 'Labor', v: opsBreakdown.Labor, color: '#fbbf24', icon: Users },
+                                            { label: 'Packing', v: opsBreakdown.Packing, color: '#fb7185', icon: Archive },
+                                            { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
+                                        ].map(c => (
+                                            <div key={c.label} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); setPaymentCategoryFilter(c.v.tag); }}
+                                                className="group flex flex-col p-2 rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 hover:border-(--main-color)/20 transition-all cursor-pointer"
                                             >
-                                                Mark Paid
-                                            </button>
-                                            {isExpanded ? <ChevronUp size={16} className="text-white/20" /> : <ChevronDown size={16} className="text-white/20" />}
-                                        </div>
-
-                                        {isExpanded && (
-                                            <div className="px-6 pb-6 pt-2 space-y-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
-                                                {destDocs.map(d => (
-                                                    <div key={d.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-black/20 text-[11px] font-mono">
-                                                        <span className="text-white/60 truncate max-w-[200px]">{d.description || 'Payment'}</span>
-                                                        <div className="flex gap-4">
-                                                            <span className="text-white/30">{fmtMXN(d.amount || 0)}</span>
-                                                            <span className="text-white/20">+{fmtMXN(d.commission || 0)}</span>
-                                                            <span className="font-bold text-white">{fmtMXN((d.amount || 0) + (d.commission || 0))}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                <div className="flex items-center gap-1 opacity-30 group-hover:opacity-100 transition-opacity mb-2"><c.icon size={10} style={{ color: c.color }} /><span className="text-[8px] font-black uppercase tracking-widest text-white truncate">{c.label}</span></div>
+                                                <span className="text-[16px] font-mono font-black text-white leading-none mb-1">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[9px] opacity-20">USD</span></span>
+                                                <span className="text-[11px] font-mono font-bold text-white/40 leading-none">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[9px] opacity-20">MXN</span></span>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Upcoming (To be requested) */}
-                    {comingPaymentsByVendor.length > 0 && (
-                        <div className="flex flex-col p-5 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group">
-                            <SectionHeader 
-                                icon={Wallet} 
-                                title="Upcoming Payments" 
-                                badge="By Vendor"
-                                color="#FBBF24"
-                            />
-                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                {comingPaymentsByVendor.map(group => {
-                                    const color = (vendors as any)[group.vendorId]?.color || '#888';
-                                    const paidPerc = Math.round((group.totalPaid / group.totalPossible) * 100);
-                                    return (
-                                        <div key={group.vendorId} 
-                                            className="group relative flex flex-col items-center justify-center p-6 min-h-[140px] rounded-xl transition-all border border-(--border-color) hover:border-(--main-color)/20 text-center overflow-hidden"
-                                            style={{ backgroundColor: `${color}10` }}
-                                        >
-                                            <div className="absolute top-3 right-3">
-                                                <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: color, color }} />
-                                            </div>
-                                            
-                                            <span className="text-[11px] font-black text-(--text-color) opacity-80 uppercase tracking-[0.2em] mb-4 truncate w-full" style={{ color }}>{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
-                                            
-                                            <div className="flex flex-col gap-1.5 items-center">
-                                                <p className="text-[20px] font-mono font-black text-(--text-color) leading-none tracking-tight">{fmtUSD(group.total / currentExchangeRate).replace(' USD','')}</p>
-                                                <span className="text-[9px] font-mono font-black text-sky-400 group-hover:text-sky-300 transition-colors uppercase tracking-widest">USD</span>
-                                                
-                                                <div className="w-12 h-px bg-(--border-color)/50 my-2" />
-                                                
-                                                {paidPerc > 0 ? (
-                                                    <div className="w-full max-w-[60px] h-1.5 bg-black/30 rounded-full overflow-hidden mb-1">
-                                                        <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
-                                                    </div>
-                                                ) : null}
-                                                <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{group.partials.length > 0 ? 'Partial' : 'Liquidation'}</div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* ── DISTRIBUTION ANALYSIS ───────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl">
-                    <div className="col-span-1 lg:col-span-2">
-                        <SectionHeader icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" />
-                    </div>
-
-                    {/* Units by Vendor - Horizontal Segmented Bar - FULL WIDTH */}
-                    <div className="flex flex-col col-span-1 lg:col-span-2">
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Units Share by Vendor</span>
-                        <div className="flex flex-col gap-4">
-                            <div className="h-4 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5">
-                                {vendorSummaries.map((v, idx) => {
-                                    const share = (v.itemCount / globalTotals.totalItems) * 100;
-                                    return (
-                                        <div 
-                                            key={v.vendorId} 
-                                            style={{ width: `${share}%`, backgroundColor: v.color }} 
-                                            className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
-                                        >
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
-                                                {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                                {vendorSummaries.map(v => (
-                                    <div key={v.vendorId} className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: v.color }} />
-                                        <span className="text-[10px] font-black text-(--text-color) opacity-40 uppercase tracking-widest truncate">{v.vendorId}</span>
-                                        <span className="text-[10px] font-mono font-bold text-(--text-color) opacity-60 ml-auto">{v.itemCount}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Value Distribution - Integrated Pie + Context */}
-                    <div className="flex flex-col col-span-1 lg:col-span-2 pt-12 border-t border-white/5 mt-4">
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Acquisitions Concentration Analysis</span>
-                        <div className="flex flex-row items-center gap-12">
-                            <div className="w-1/2">
-                                <EChart option={pieChartOption} style={{ height: '240px' }} />
-                            </div>
-                            <div className="w-1/2 grid grid-cols-2 gap-8">
-                                {vendorSummaries.slice(0, 6).map(v => (
-                                    <div key={v.vendorId} className="flex flex-col border-b border-white/5 pb-2">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{v.vendorId}</span>
-                                            <span className="text-[11px] font-mono font-black text-white">{fmtUSDCompact(v.totalAcqUsd)}</span>
-                                        </div>
-                                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
-                                        </div>
-                                    </div>
-                                ))}
-                                <div className="col-span-2 pt-4 flex items-center justify-between">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Total Acquisitions Value</span>
-                                    <div className="text-right">
-                                        <span className="text-[20px] font-mono font-black text-emerald-400 block">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
-                                        <span className="text-[10px] font-mono text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate)}</span>
+                                    <div className="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-white/5">
+                                        <div className="flex flex-col"><span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Non-Merch</span><span className="text-[18px] font-mono font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalOpsUsd)}</span><span className="text-[12px] font-mono font-bold text-white/40 mt-1">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')}</span></div>
+                                        <div className="flex flex-col"><span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Units</span><span className="text-[18px] font-black text-white">{globalTotals.totalItems}</span></div>
+                                        <div className="flex flex-col"><span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Acq Value</span><span className="text-[18px] font-mono font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span><span className="text-[12px] font-mono font-bold text-white/40 mt-1">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')}</span></div>
+                                        <div className="flex flex-col"><span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Req Unpaid</span><span className="text-[18px] font-mono font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)}</span><span className="text-[12px] font-mono font-bold text-white/40 mt-1">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')}</span></div>
+                                        <div className="flex flex-col"><span className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Total Unpaid</span><span className="text-[18px] font-mono font-black text-rose-500">{fmtUSDCompact(globalTotals.totalUnpaidUsd)}</span><span className="text-[12px] font-mono font-bold text-white/40 mt-1">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')}</span></div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Material & Color Analysis Graph */}
-                    <div className="flex flex-col p-8 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl col-span-1 lg:col-span-2">
-                        <SectionHeader icon={Layers} title="Material + Color Attribution" color="#EF4444" />
-                        <div className="mt-6 flex flex-col gap-6">
-                            {/* Segmented Horizontal Bar */}
-                            <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/5">
-                                {attributeStats.topCM.map(([label, count], idx) => {
-                                    const share = (count / globalTotals.totalItems) * 100;
-                                    const hue = (idx * 45) % 360;
-                                    return (
-                                        <div 
-                                            key={label}
-                                            style={{ width: `${share}%`, backgroundColor: `hsla(${hue}, 70%, 50%, 0.8)` }}
-                                            className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
-                                        >
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
-                                                {label}: {count} units
+                    {/* ROW 2: Queue & Upcoming */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                            <SectionHeader 
+                                icon={Activity} title="Active Request Queue" color="#F43F5E" 
+                                onToggle={() => setIsQueueCollapsed(!isQueueCollapsed)} isCollapsed={isQueueCollapsed}
+                                compactSummary={<div className="flex gap-4"><span className="text-[12px] font-black text-rose-500">{requisitions.length} <span className="opacity-30 text-[8px] uppercase">Dests</span></span></div>}
+                            />
+                            {!isQueueCollapsed && (
+                                <div className="mt-4 space-y-2 animate-in fade-in duration-300">
+                                    {requisitions.length === 0 ? <p className="text-[10px] font-black text-white/20 uppercase text-center py-6">Queue Empty</p> : requisitions.map((req) => {
+                                        const destReqMXN = req.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
+                                        const isExpanded = !!expandedDests[req.key];
+                                        return (
+                                            <div key={req.key} className="group rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 transition-all overflow-hidden">
+                                                <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => toggleDest(req.key)}>
+                                                    <div className="w-10 h-6 flex items-center justify-center shrink-0"><img src={req.cfg.icon} alt={req.cfg.name} className="max-w-full max-h-full object-contain opacity-60" /></div>
+                                                    <div className="flex-1 min-w-0"><p className="text-[11px] font-black text-white/80 uppercase truncate">{req.cfg.name} {req.vendorId ? `· ${req.vendorId}` : ''}</p><p className="text-[8px] font-bold text-white/20 uppercase mt-1">{req.docs.length} units</p></div>
+                                                    <div className="text-right shrink-0"><p className="text-[14px] font-mono font-black text-white">{fmtMXN(destReqMXN).replace(' MXN','')}</p></div>
+                                                    <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-2 py-1 rounded-md bg-(--main-color) text-black font-black text-[8px] uppercase tracking-widest ml-2">Paid</button>
+                                                </div>
+                                                {isExpanded && <div className="px-3 pb-3 pt-1 space-y-1 border-t border-white/5">{req.docs.map(d => <div key={d.id} className="flex justify-between py-1.5 text-[9px] font-mono"><span className="text-white/40 truncate">{d.description || 'Payment'}</span><span className="font-bold text-white/60">{fmtMXN((d.amount || 0) + (d.commission || 0)).replace(' MXN','')}</span></div>)}</div>}
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
 
-                            {/* Detailed Grid Map */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                                {attributeStats.topCM.map(([label, count], idx) => {
-                                    const hue = (idx * 45) % 360;
-                                    return (
-                                        <div key={label} className="flex flex-col group">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
-                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white/60 transition-colors">{label}</span>
-                                            </div>
-                                            <span className="text-[12px] font-mono font-black text-white/10 group-hover:text-white/40">{count}</span>
+                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                            <SectionHeader 
+                                icon={Wallet} title="Upcoming Payments" color="#FBBF24" 
+                                onToggle={() => setIsPaymentsCollapsed(!isPaymentsCollapsed)} isCollapsed={isPaymentsCollapsed}
+                                compactSummary={<div className="flex gap-4"><span className="text-[12px] font-black text-amber-500">{comingPaymentsByVendor.length} <span className="opacity-30 text-[8px] uppercase">Vendors</span></span></div>}
+                            />
+                            {!isPaymentsCollapsed && (
+                                <div className="mt-4 grid grid-cols-2 xl:grid-cols-3 gap-2 animate-in fade-in duration-300">
+                                    {comingPaymentsByVendor.map(group => (
+                                        <div key={group.vendorId} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }} className="group p-3 rounded-lg border border-white/5 bg-white/1 cursor-pointer">
+                                            <div className="flex items-center justify-between mb-2.5"><span className="text-[10px] font-black text-white/60 uppercase" style={{ color: (vendors as any)[group.vendorId]?.color }}>{(vendors as any)[group.vendorId]?.name || group.vendorId}</span></div>
+                                            <div className="flex items-baseline gap-1"><span className="text-[16px] font-mono font-black text-white">{fmtUSDCompact(group.total / currentExchangeRate).replace('$','')}</span><span className="text-[8px] font-black text-white/20">USD</span></div>
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ROW 3: Analysis */}
+                    <div className="p-4 rounded-xl border border-(--border-color) bg-(--sidebar-bg) shadow-lg">
+                        <SectionHeader icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" />
+                        <div className="mt-6 flex flex-col pt-8 border-t border-white/5 lg:flex-row gap-8">
+                            <div className="w-40 h-40 shrink-0"><EChart option={pieChartOption} style={{ height: '100%' }} /></div>
+                            <div className="flex-1 space-y-4">
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-3 block">Material + Color Attribution</span>
+                                <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-white/5 mb-4">
+                                    {attributeStats.topCM.map(([label, count], idx) => (
+                                        <div key={label} style={{ width: `${(count / Math.max(1, globalTotals.totalItems)) * 100}%`, backgroundColor: `hsla(${(idx * 45) % 360}, 70%, 50%, 0.8)` }} className="h-full" />
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-4 gap-3">
+                                    {attributeStats.topCM.slice(0, 4).map(([label, count], idx) => (
+                                        <div key={label} className="flex flex-col"><div className="flex items-center gap-1.5 mb-1"><div className="w-1 h-1 rounded-full" style={{ backgroundColor: `hsla(${(idx * 45) % 360}, 80%, 60%, 1)` }} /><span className="text-[8px] font-black text-white/30 uppercase truncate">{label}</span></div><span className="text-[11px] font-mono font-black text-white/20">{count}</span></div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -769,3 +487,4 @@ export const ClientOverview: React.FC = () => {
         </div>
     );
 };
+export default ClientOverview;
