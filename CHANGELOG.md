@@ -1,5 +1,8 @@
 # Changelog
 
+### v1.32.2 — 2026-03-28
+- **Overview Optimization [ui]:** Removed the redundant 'Catalog' KPI and the 'Shape + Description' visualization panel to focus strictly on Logistics and Active Financials.
+
 ### v1.32.1 — 2026-03-28
 - **Grid-Stackable Dashboard [ui]:** Refactored the 'Active Queue' and 'Upcoming Payments' into a side-by-side grid layout for optimized screen usage.
 - **Floating Payment Tags [ui]:** Removed rigid background boxes from payment destination icons, making them "free floating" with backdrop drop-shadows.
