@@ -11,7 +11,16 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
-## v1.30.0 — 2026-03-28
+
+## v1.30.2 — 2026-03-28
+### Fixed
+- **Payment Status Write-Back [fix]:** When a finance record is marked **Paid**, linked inventory items now correctly receive a `pay_date` timestamp, showing as **Green/Paid** in the Inventory list.
+- **Pay Date Revert [fix]:** Reverting a Paid finance record to Requested clears `pay_date` from linked inventory items.
+- **`getStatusClass` Guard [fix]:** Items with `payReq = 'false'` or empty string no longer incorrectly show as YELLOW.
+- **Client Approval [feat]:** `Client` role users can now mark inventory items as **Approved** from the list view (`dispersal_status = 'Approved'`).
+- **Payment Indicator List View [feat]:** Each list item now shows a Pay Status chip (Paid/Requested/Pending) with accent border and glow dot.
+
+## v1.30.1 — 2026-03-28
 ### Added
 - **Inventory Sub-Header Redesign [ui]:** Refactored the "Types / Count / Total" panel into a compact, glassy sticky header (`backdrop-blur-xl`) with reduced font sizes and deep transparency for a professional "Studio" look.
 - **Glassmorphic Sub-Header [ui]:** Content now scrolls seamlessly behind the semi-transparent sub-header with real-time blur.
