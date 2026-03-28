@@ -10,6 +10,12 @@ import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
+import { 
+    Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
+    TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List
+} from 'lucide-react';
+import { CurrencyTag } from '@/components/CurrencyTag';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
@@ -1108,388 +1114,350 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── General Overview ── */}
+            {/* ── General Overview & Stats Grids ── */}
             {overviewMode !== 'collapsed' && (
                 <div className={`flex flex-col shrink-0 border-b border-white/10 bg-black/20 ${overviewMode === 'extended' ? 'p-6' : 'p-3'} transition-all duration-300 relative`}>
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-4">
-                            {/* Exchange Rates inline */}
-                            <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shadow-inner">
-                                <span className="text-[10px] uppercase font-black tracking-widest text-(--text-color-secondary)">Rates</span>
-                                <div className="h-4 w-px bg-white/10" />
-                                <span className="text-xs font-mono font-bold text-[#FACC15]" title="Book Rate">Workbook {exchangeRate.toFixed(2)}</span>
-                                <div className="h-4 w-px bg-white/10" />
-                                <span className="text-xs font-mono font-bold text-[#6BCEBB]" title="Live Rate">Internet {liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                    
+                    {/* Primary Grid: Rates & Summary Totals */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                        {/* Exchange Rates Card */}
+                        <div className="group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
+                            <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity">
+                                <TrendingUp size={18} className="text-[#6BCEBB]" />
                             </div>
+                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">FX Rates</span>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-white/30 uppercase">Workbook</span>
+                                    <span className="text-sm font-mono font-black text-[#FACC15]">{exchangeRate.toFixed(2)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-white/30 uppercase">Internet Live</span>
+                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                                </div>
+                            </div>
+                        </div>
 
-                            {/* Dynamic Pending Net Total for Active Destination */}
-                            {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                                <div className="flex items-center gap-3 px-4 py-1.5 bg-(--main-color)/10 border border-(--main-color)/30 rounded-xl animate-in fade-in zoom-in-95 shrink-0 shadow-inner">
-                                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">
-                                        PENDING REQ
+                        {/* Paid Total Card */}
+                        <div className="group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
+                            <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity">
+                                <CheckCircle size={18} className="text-[#6BCEBB]" />
+                            </div>
+                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">Total Paid</span>
+                            <div className="flex flex-col leading-tight">
+                                <span className="text-[18px] font-black font-mono text-[#6BCEBB] tracking-tighter">
+                                    {fmtMXN(statusTotals.Paid || 0)}
+                                </span>
+                                <div className="mt-2 opacity-60">
+                                    <CurrencyTag type="USD" amount={(statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)} size="small" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Pending Total Card */}
+                        <div className="group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
+                            <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity">
+                                <Clock size={18} className="text-[#FACC15]" />
+                            </div>
+                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">Total Pending</span>
+                            <div className="flex flex-col leading-tight">
+                                <span className="text-[18px] font-black font-mono text-[#FACC15] tracking-tighter">
+                                    {fmtMXN(statusTotals.Requested + statusTotals.Pending || 0)}
+                                </span>
+                                <div className="mt-2 opacity-60">
+                                    <CurrencyTag type="USD" amount={(statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)} size="small" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Active Selection Card */}
+                        <div className="group relative flex flex-col p-3.5 rounded-xl bg-(--main-color)/5 border border-(--main-color)/20 shadow-inner overflow-hidden">
+                            <div className="absolute top-0 right-0 w-20 h-20 bg-(--main-color)/5 blur-2xl -mr-10 -mt-10 rounded-full" />
+                            <span className="text-[8px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-2">Selected Account</span>
+                            {destinationFilter !== 'All' ? (
+                                <div className="flex flex-col leading-tight relative z-10">
+                                    <span className="text-[18px] font-black font-mono text-white tracking-tighter">
+                                        {fmtMXN(activeDestReqNetMXN)}
                                     </span>
-                                    <div className="h-4 w-px bg-(--main-color)/20" />
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-[13px] font-mono font-black text-(--text-color)">
-                                            {fmtMXN(activeDestReqNetMXN)}
-                                        </span>
-                                        <span className="text-[10px] font-mono font-bold text-(--main-color)/70">
-                                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                                        </span>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <div className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-md p-1 border border-white/10">
+                                            <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
+                                        </div>
+                                        <span className="text-[10px] font-black text-white/40 uppercase truncate">{destinationsConfig[destinationFilter].name}</span>
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center relative z-10">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">No Account Selected</span>
+                                </div>
                             )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {/* Deprecated FULL MIN HIDE buttons removed */}
                         </div>
                     </div>
 
-                    {/* ─── EXTENDED VIEW ─── */}
+                    {/* Secondary Grid: Vendor Request Cards (Upcoming) */}
                     {overviewMode === 'extended' && (
-                        <div className="flex gap-4 items-stretch">
-                            {/* Payment Summary panel — Total, Paid, Pending, and USD */}
-                            <div className="flex flex-col justify-center gap-2.5 p-4 bg-white/5 border border-white/10 rounded-2xl shrink-0">
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 w-12">Total</span>
-                                    <span className="text-sm font-mono font-black text-white">{fmtMXN(statusTotals.Paid + statusTotals.Requested + statusTotals.Pending || 0)}</span>
-                                </div>
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6BCEBB]/60 w-12">Paid</span>
-                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
-                                </div>
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#FACC15]/60 w-12">Pend</span>
-                                    <span className="text-sm font-mono font-black text-[#FACC15]">{fmtMXN(statusTotals.Requested + statusTotals.Pending || 0)}</span>
-                                    <span className="text-[10px] font-mono font-black text-[#A78BFA] ml-2 shrink-0">≈ ${((statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
-                                </div>
-                            </div>
-
-                            {/* Add Payment button + Vendor request cards inline */}
-                            <div className="flex-1 overflow-x-auto flex items-center gap-3 custom-scrollbar pr-2 pb-2">
-                                <button onClick={() => setShowAdd(true)}
-                                    className="shrink-0 rounded-2xl flex flex-col items-center justify-center gap-2 p-3 min-w-[100px] h-full bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) cursor-pointer hover:-translate-y-1 transition-all shadow-lg">
-                                    <svg className="w-6 h-6 shrink-0"><use href="#plus" /></svg>
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight">Add<br />Payment</span>
-                                </button>
-                                {pendingGroups.map(group => {
-                                    const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
-                                    const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-
-                                    return (
-                                        <div key={group.vendorId}
-                                            className="shrink-0 rounded-2xl flex flex-col justify-between p-3 min-w-[150px] border border-white/10 shadow-lg bg-black/20"
-                                            style={{ borderTopColor: color }}>
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="font-black text-[11px] uppercase tracking-wider" style={{ color }}>{group.vendorId}</p>
-                                                <span className="text-[9px] font-mono font-bold bg-white/10 text-(--text-color) px-1.5 py-0.5 rounded">{group.items.length} ITM</span>
-                                            </div>
-                                            <p className="font-mono font-black text-sm text-(--text-color)">{fmtMXN(group.total)}</p>
-                                            {paidPerc > 0 ? (
-                                                <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2">
-                                                    <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
-                                                </div>
-                                            ) : (
-                                                <div className="text-[9px] font-black tracking-widest uppercase opacity-70 mt-2 text-(--text-color-secondary)">Pending Request</div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ─── MINIMAL VIEW ─── */}
-                    {overviewMode === 'minimal' && (
-                        <div className="flex items-center gap-4">
-                            {/* Compact totals */}
-                            <div className="flex items-center gap-4 p-3 bg-white/5 border border-white/10 rounded-2xl">
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary)">Paid</span>
-                                    <span className="text-sm font-mono font-black text-[#6BCEBB]">{fmtMXN(statusTotals.Paid || 0)}</span>
-                                </div>
-                                <div className="w-px h-6 bg-white/10" />
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color-secondary)">Req</span>
-                                    <span className="text-sm font-mono font-black text-[#FACC15]">{fmtMXN((statusTotals.Requested || 0) + (statusTotals.Pending || 0))}</span>
-                                </div>
-                            </div>
-
-                            {/* Add payment button */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                             <button onClick={() => setShowAdd(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-xl transition-all shadow-sm hover:scale-105 active:scale-95">
-                                <svg className="w-4 h-4 shrink-0"><use href="#plus" /></svg>
-                                <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
-                            </button>
-
-                            {/* Vendor color-coded bubbles */}
-                            {pendingGroups.length > 0 && (
-                                <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar no-scrollbar">
-                                    {pendingGroups.map(group => {
-                                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#555';
-                                        const paidPerc = group.total > 0 ? Math.round((group.paidTotal / group.total) * 100) : 0;
-                                        return (
-                                            <div key={group.vendorId}
-                                                title={`${group.vendorId}: ${fmtMXN(group.total)}${paidPerc > 0 ? ` (${paidPerc}% paid)` : ''}`}
-                                                className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 relative group/bubble"
-                                                style={{ backgroundColor: color, borderColor: `${color}80` }}>
-                                                <span className="text-[8px] font-black text-black leading-none">
-                                                    {paidPerc > 0 ? `${paidPerc}%` : fmtMXN(group.total).replace('MXN', '').replace('$', '').trim().split('.')[0]}
-                                                </span>
-                                                {/* Progress ring for partial payments */}
-                                                {paidPerc > 0 && (
-                                                    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
-                                                        <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="2" />
-                                                        <circle cx="18" cy="18" r="16" fill="none" stroke="white" strokeWidth="2"
-                                                            strokeDasharray={`${paidPerc} ${100 - paidPerc}`} strokeLinecap="round" />
-                                                    </svg>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                className="group relative flex flex-col items-center justify-center p-4 rounded-xl bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 transition-all hover:-translate-y-1 active:scale-95 shadow-xl">
+                                <div className="w-10 h-10 rounded-full bg-(--main-color)/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                    <Plus size={20} className="text-(--main-color)" />
                                 </div>
-                            )}
+                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-widest text-center leading-tight">Add New<br />Transaction</span>
+                            </button>
+                            {pendingGroups.map(group => {
+                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
+                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                return (
+                                    <div key={group.vendorId}
+                                        className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
+                                        style={{ borderTop: `2px solid ${color}` }}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
+                                                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
+                                            </div>
+                                            <div className="p-1.5 bg-white/5 rounded-lg border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
+                                                <Archive size={14} style={{ color }} />
+                                            </div>
+                                        </div>
+                                        <div className="mt-auto">
+                                            <div className="flex items-baseline gap-2 mb-2">
+                                                <span className="text-[14px] font-black font-mono text-white leading-none">{fmtMXN(group.total)}</span>
+                                                <span className="text-[10px] font-mono text-white/30 truncate">≈ ${Math.ceil(group.total / (liveExchangeRate || exchangeRate))}</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
+                                            </div>
+                                            {paidPerc > 0 && <span className="text-[8px] font-black text-white/30 uppercase mt-1 block">{paidPerc}% Paid</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
             )}
 
-            {/* ── Payments Details Section ── */}
+            {/* ── Filter Bar with Iconographic Categories ── */}
             <div className="flex-1 flex flex-col min-h-0 bg-(--glass-bg)">
-                {/* Header/Controls below general overview */}
-                {filterMode === 'left' && (
-                    <div className="flex items-center p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
-                        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full">
-                            {SUBCATEGORIES.map(s => {
-                                const labels: Record<string, string> = {
-                                    'All': 'All', 'Acq': 'Acquisition', 'Prod': 'Production',
-                                    'Monthly': 'Monthly Fixed', 'Oprt': 'Operations', 'Packing': 'Packaging',
-                                    'Sppl': 'Supplies', 'Labr': 'Labor', 'Other': 'Other'
-                                };
-                                return (
-                                    <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${subcatFilter === s ? 'bg-(--main-color) text-black shadow-md' : 'bg-white/5 text-(--text-color-secondary) hover:text-(--text-color) border border-transparent hover:border-white/10'}`}>
-                                        {(labels[s] || s).toUpperCase()}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10 gap-4">
+                    <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar w-full sm:w-auto pr-4 no-scrollbar">
+                        {SUBCATEGORIES.map(s => {
+                            const labels: Record<string, { label: string; icon: any; color: string }> = {
+                                'All': { label: 'All', icon: LayoutGrid, color: '#888' },
+                                'Acq': { label: 'Acquis', icon: DollarSign, color: '#10b981' },
+                                'Prod': { label: 'Produc', icon: Cpu, color: '#6366f1' },
+                                'Monthly': { label: 'Monthly', icon: Calendar, color: '#38bdf8' },
+                                'Oprt': { label: 'Operat', icon: Activity, color: '#818cf8' },
+                                'Packing': { label: 'Packing', icon: Archive, color: '#fb7185' },
+                                'Sppl': { label: 'Supply', icon: Box, color: '#34d399' },
+                                'Labr': { label: 'Labor', icon: Users, color: '#fbbf24' }
+                            };
+                            const cfg = labels[s];
+                            const isActive = subcatFilter === s;
+                            return (
+                                <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all whitespace-nowrap shrink-0 border ${isActive ? 'bg-(--main-color)/10 border-(--main-color)/40 text-white shadow-lg' : 'bg-white/5 text-white/30 border-transparent hover:border-white/10 hover:text-white/60'}`}>
+                                    <cfg.icon size={11} style={{ color: isActive ? '#FFF' : cfg.color }} />
+                                    {cfg.label.toUpperCase()}
+                                </button>
+                            );
+                        })}
                     </div>
-                )}
 
-                {filterMode === 'right' && (
-                    <div className="flex items-center justify-between p-4 border-b border-(--border-color) shrink-0 bg-black/5 dark:bg-black/10">
-                        <div className="flex items-center">
-                            {destinationFilter !== 'All' ? (
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">SELECTED CARD TOTAL</span>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-sm font-mono font-black text-(--text-color)">
-                                            {fmtMXN(activeDestReqNetMXN)}
-                                        </span>
-                                        <span className="text-[10px] font-mono text-(--text-color-secondary)">
-                                            ≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD
-                                        </span>
+                    <div className="flex items-center gap-2 shrink-0 ml-auto bg-black/20 p-1 rounded-xl border border-white/5">
+                        {Object.entries(destinationsConfig).map(([key, cfg]) => {
+                            const isActive = destinationFilter === key;
+                            return (
+                                <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
+                                    className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all border ${isActive ? 'bg-(--main-color)/20 border-(--main-color) scale-110 shadow-lg' : 'bg-white/5 border-transparent opacity-40 hover:opacity-100 hover:bg-white/10'}`}>
+                                    <img src={cfg.icon} alt={cfg.name} className="max-w-[70%] max-h-[70%] object-contain" />
+                                    {isActive && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-(--main-color)" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                </div>
+
+                {/* High Density Payment Card List */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                    {filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-20">
+                            <Info size={40} className="mb-4" />
+                            <p className="text-xs font-black uppercase tracking-[0.3em]">No Records Found</p>
+                        </div>
+                    ) : filtered.map(r => {
+                        const isExpanded = expandedRow === r.id;
+                        const totalNet = (r.amount || 0) + (r.commission || 0);
+                        const totalUSD = totalNet / (liveExchangeRate || exchangeRate);
+                        const vendorColor = vendors[r.vendor_id as keyof typeof vendors]?.color || '#888';
+                        const destCfg = r.destination ? destinationsConfig[r.destination as PaymentDestination] : null;
+                        
+                        const labels: Record<string, { label: string; icon: any; color: string }> = {
+                            'All': { label: 'All', icon: LayoutGrid, color: '#888' },
+                            'Acq': { label: 'Acquis', icon: DollarSign, color: '#10b981' },
+                            'Prod': { label: 'Produc', icon: Cpu, color: '#6366f1' },
+                            'Monthly': { label: 'Monthly', icon: Calendar, color: '#38bdf8' },
+                            'Oprt': { label: 'Operat', icon: Activity, color: '#818cf8' },
+                            'Packing': { label: 'Packing', icon: Archive, color: '#fb7185' },
+                            'Sppl': { label: 'Supply', icon: Box, color: '#34d399' },
+                            'Labr': { label: 'Labor', icon: Users, color: '#fbbf24' }
+                        };
+                        const cat = labels[normalizeSubcat(r.subcategory || r.category)] || labels['All'];
+
+                        return (
+                            <div key={r.id} 
+                                onClick={() => setExpandedRow(isExpanded ? null : r.id)}
+                                className={`group relative flex flex-col p-3 rounded-xl border transition-all cursor-pointer overflow-hidden ${isExpanded ? 'bg-white/5 border-(--main-color)/30 shadow-2xl scale-[1.01] z-10' : 'bg-white/2 border-white/5 hover:bg-white/5 hover:border-white/10'}`}>
+                                
+                                {isExpanded && <div className="absolute top-0 left-0 w-1 h-full bg-(--main-color)" />}
+                                
+                                <div className="flex items-center gap-4">
+                                    {/* Column 1: Date & Type Icon */}
+                                    <div className="flex items-center gap-3 shrink-0 w-[120px]">
+                                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/5 text-white/40 group-hover:text-white transition-colors">
+                                            <cat.icon size={16} style={{ color: cat.color }} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-mono font-black text-white/60 tracking-tighter">{fmtDate(r.date)}</span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest leading-none" style={{ color: cat.color }}>{cat.label}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Column 2: Description & Tags */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h4 className="text-[11px] font-black text-white/90 uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                            {r.recurring && <div className="p-0.5 rounded bg-orange-500/10 border border-orange-500/20" title="Recurring"><Clock size={10} className="text-orange-500" /></div>}
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                            {r.vendor_id && (
+                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{r.vendor_id}</span>
+                                            )}
+                                            {(() => {
+                                                const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                                                const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                                if (ids.length > 0) {
+                                                    return (
+                                                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                                                            <LayoutGrid size={8} className="text-white/30" />
+                                                            <span className="text-[8px] font-mono font-black text-white/40 uppercase">{ids.length} Linked Tags</span>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    {/* Column 3: Destination Account */}
+                                    <div className="shrink-0 w-10 h-10 flex items-center justify-center">
+                                        {destCfg ? (
+                                            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center p-1.5 shadow-inner" title={destCfg.name}>
+                                                <img src={destCfg.icon} className="max-w-full max-h-full object-contain brightness-110 drop-shadow-md" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-9 h-9 rounded-xl border border-dashed border-white/10 flex items-center justify-center">
+                                                <Info size={12} className="text-white/10" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Column 4: Financials */}
+                                    <div className="shrink-0 flex flex-col items-end gap-1.5 w-[140px]">
+                                        <div className="flex flex-col items-end leading-none">
+                                            <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
+                                            <div className="mt-1">
+                                                <CurrencyTag type="USD" amount={totalUSD} size="small" className="opacity-40" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Column 5: Status Action */}
+                                    <div className="shrink-0 w-[120px] flex justify-end gap-2">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
+                                            className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
+                                            {r.status}
+                                        </button>
+                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100 border border-red-500/20" title="Delete record">
+                                                ✕
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            ) : (
-                                <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">SELECT A CARD</span>
-                            )}
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                            {/* Destination Picker — stacked card animation */}
-                            <div className="flex items-center justify-center relative h-14 px-2">
-                                {Object.entries(destinationsConfig).map(([key, cfg], idx, arr) => {
-                                    const isActive = destinationFilter === key;
-                                    const total = arr.length;
-                                    const offset = idx - (total - 1) / 2;
-                                    const spread = isActive ? -8 : Math.pow(offset, 2) * 2;
-                                    const rotation = isActive ? 0 : offset * 6;
-
-                                    return (
-                                        <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
-                                            className={`p-0 bg-transparent border-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] cursor-pointer outline-none relative ${isActive ? 'scale-150 z-20 mx-4 brightness-125 drop-shadow-2xl' : 'opacity-70 hover:opacity-100 -mx-2.5 hover:scale-125 hover:-translate-y-2 hover:z-30'}`}
-                                            style={{
-                                                transform: `translateY(${spread}px) rotate(${rotation}deg)`,
-                                                zIndex: isActive ? 40 : 10 - Math.abs(offset),
-                                            }}
-                                            title={cfg.name}>
-
-                                            <img src={cfg.icon} alt={cfg.name} className={`h-9 w-auto object-contain transition-all drop-shadow-lg`} />
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Data dense table */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 bg-(--glass-bg) z-10 backdrop-blur-3xl shadow-sm">
-                            <tr className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) bg-black/5 dark:bg-black/20 border-b border-(--border-color)">
-                                <th className="px-5 py-3 border-r border-white/5">Date</th>
-                                <th className="px-2 py-3 border-r border-white/5 text-center"></th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Category</th>
-                                <th className="px-5 py-3 border-r border-white/5">Description</th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Vendor</th>
-                                <th className="px-5 py-3 border-r border-white/5 text-right">Amount</th>
-                                <th className="px-3 py-3 border-r border-white/5 text-center">Account</th>
-                                <th className="px-5 py-3 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-(--border-color)">
-                            {filtered.map(r => {
-                                const isExpanded = expandedRow === r.id;
-                                const relatedIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                                const totalNet = (r.amount || 0) + (r.commission || 0);
-                                const totalUSD = totalNet / (liveExchangeRate || exchangeRate);
-
-                                return (
-                                    <React.Fragment key={r.id}>
-                                        <tr
-                                            onClick={(e) => {
-
-                                                if ((e.target as HTMLElement).closest('button')) return;
-                                                setExpandedRow(isExpanded ? null : r.id);
-                                            }}
-                                            className={`hover:bg-black/5 dark:hover:bg-white/5 transition-all group cursor-pointer ${isExpanded ? 'bg-black/5 dark:bg-white/5' : ''}`}>
-                                            <td className="px-5 py-3 font-mono text-[10px] text-(--text-color-secondary) whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    <svg className={`w-3 h-3 transition-transform text-(--text-color-secondary) ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
-                                                    {fmtDate(r.date)}
+                                {/* Expanded Content: Deep Metadata */}
+                                {isExpanded && (
+                                    <div className="mt-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {/* Logic Details */}
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-2">Transactional Detail</span>
+                                                    <p className="text-[11px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided for this transaction.'}"</p>
                                                 </div>
-                                            </td>
-                                            <td className="px-2 py-3 text-center">
-                                                {r.recurring && (
-                                                    <div className="flex items-center justify-center" title={`Recurring every day ${r.recurring_day}`}>
-                                                        <svg className="w-4 h-4 text-[#F7941D] animate-spin-slow"><use href="#repeat" /></svg>
+                                                <div className="flex items-center gap-6">
+                                                    <div>
+                                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Linked Requisition Net</span>
+                                                        <span className="text-[10px] font-black text-white/80 uppercase">{r.payment_method || 'Standard Wire'}</span>
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-3 text-center">
-                                                <span className="px-2 py-0.5 rounded-[4px] text-[9px] font-black bg-black/10 dark:bg-white/10 text-(--text-color)">
-                                                    {normalizeSubcat(r.subcategory || r.category)}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-xs font-medium text-(--text-color) max-w-[250px] truncate">{r.description || r.notes || '—'}</td>
-                                            <td className="px-3 py-3 text-center">
-                                                {r.vendor_id ? (
-                                                    <span className="px-2 py-1 rounded-[4px] text-[9px] font-black shadow-sm"
-                                                        style={{ backgroundColor: vendors[r.vendor_id as keyof typeof vendors]?.color || '#555', color: getTextColorForBg(vendors[r.vendor_id as keyof typeof vendors]?.color || '#555') }}>
-                                                        {r.vendor_id}
-                                                    </span>
-                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
-                                            </td>
-                                            <td className="px-5 py-3 text-right">
-                                                <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(r.amount)}</span>
-                                                {(r.commission || 0) > 0 && <span className="text-(--text-color-secondary) font-mono text-[9px] block">+{fmtMXN(r.commission)} fee</span>}
-                                            </td>
-                                            <td className="px-3 py-3 text-center">
-                                                {r.destination && destinationsConfig[r.destination as PaymentDestination] ? (
-                                                    <img src={destinationsConfig[r.destination as PaymentDestination].icon}
-                                                        alt={r.destination} title={destinationsConfig[r.destination as PaymentDestination].name}
-                                                        className="h-5 mx-auto w-auto object-contain drop-shadow-sm" />
-                                                ) : <span className="text-(--text-color-secondary) text-[9px]">—</span>}
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <div className="flex items-center justify-center gap-3">
-                                                    <button onClick={() => handleToggleStatus(r)}
-                                                        className={`min-w-[80px] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-sm ${r.status === 'Paid' ? 'bg-[#8DC63F]/20 text-[#8DC63F] border border-[#8DC63F]/50 hover:bg-[#8DC63F]/30' : 'bg-[#FACC15]/20 text-[#FACC15] border border-[#FACC15]/50 hover:bg-[#FACC15]/30'}`}>
-                                                        {r.status || 'Requested'}
-                                                    </button>
-                                                    {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                                        <button onClick={() => handleDeletePayment(r)}
-                                                            className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs opacity-0 group-hover:opacity-100" title="Delete record">
-                                                            ✕
-                                                        </button>
-                                                    )}
+                                                    <div>
+                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Fee %</span>
+                                                        <span className="text-[10px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
+                                                    </div>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                        {/* EXPANDED DETAILS PANEL */}
-                                        {isExpanded && (
-                                            <tr>
-                                                <td colSpan={7} className="p-0 border-b border-(--border-color)">
-                                                    <div className="bg-black/5 dark:bg-black/30 p-4 border-l-2 border-(--main-color) flex flex-wrap gap-x-8 gap-y-4 shadow-inner animate-fade-in relative z-0">
+                                            </div>
 
-                                                        {/* Financial Detail */}
-                                                        <div className="flex flex-col gap-1 min-w-[120px]">
-                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Total Net</span>
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="font-mono text-sm font-black text-(--text-color)">{fmtMXN(totalNet)}</span>
-                                                                <span className="font-mono text-[10px] text-(--text-color-secondary)">≈ ${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Dates Detail */}
-                                                        <div className="flex flex-col gap-1 min-w-[120px]">
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Requested</span>
-                                                                <span className="font-mono text-[10px] text-(--text-color)">{new Date(r.date || r.created_at).toLocaleDateString()}</span>
-                                                            </div>
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Paid</span>
-                                                                <span className="font-mono text-[10px] text-(--text-color)">{r.pay_date ? new Date(r.pay_date).toLocaleDateString() : '—'}</span>
-                                                            </div>
-                                                            {r.recurring && (
-                                                                <div className="flex justify-between gap-4 mt-1 pt-1 border-t border-white/5">
-                                                                    <span className="text-[9px] font-black text-[#F7941D] uppercase tracking-widest">Recurring</span>
-                                                                    <span className="font-mono text-[10px] text-[#F7941D]">Next: Day {r.recurring_day}</span>
+                                            {/* Linked Items / Tags */}
+                                            <div className="lg:col-span-2">
+                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-3">Linked Traceability Tags</span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(() => {
+                                                        const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                                                        const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                                        if (ids.length === 0) return <span className="text-[10px] font-mono text-white/10 uppercase py-2">No items linked to this finance record</span>;
+                                                        
+                                                        return ids.slice(0, 15).map((id: any) => {
+                                                            const item = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
+                                                            const data = item?.data || item;
+                                                            if (!data) return <span key={id} className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-mono text-white/30 truncate max-w-[120px]">{id}</span>;
+                                                            
+                                                            const calculated = calculateCodesAndPrices(data, exchangeRate, (data as any).workbook || '326');
+                                                            const tag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : ((data as any).itemNumber ? `#${(data as any).itemNumber}` : id);
+                                                            
+                                                            return (
+                                                                <div key={id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/40 border border-white/10 shadow-inner group/tag hover:border-(--main-color)/30 transition-all">
+                                                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendorColor }} />
+                                                                    <span className="text-[10px] font-mono font-black text-white/80 group-hover/tag:text-(--main-color)">{tag}</span>
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                    {(() => {
+                                                        const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                                                        const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                                        if (ids.length > 15) return <span className="text-[9px] font-black text-white/20 flex items-center">+{ids.length - 15} MORE</span>;
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                                    {/* Tags Deployable List */}
-                                                    {relatedIds.length > 0 && (
-                                                        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Tags ({relatedIds.length})</span>
-                                                            <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto custom-scrollbar pr-2 mt-1">
-                                                                {relatedIds.map((id: string, i: number) => {
-                                                                    const invItem = inventory.find(inv => inv.row === id || String(inv.row) === id || (inv.data as any).item_id === id || inv.data.itemId === id);
-                                                                    let displayTag = id;
-                                                                    if (invItem) {
-                                                                        const norm = normalizeInventoryData(invItem.data);
-                                                                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-                                                                        displayTag = (calculated.bookBardcode && calculated.bookBardcode !== '-') ? calculated.bookBardcode : (norm.itemNumber ? `#${norm.itemNumber}` : id);
-                                                                    } else if (typeof id === 'string' && id.length > 10) {
-                                                                        displayTag = id.slice(0, 8) + '...';
-                                                                    }
-                                                                    return (
-                                                                        <span key={i} className="px-1.5 py-0.5 bg-(--glass-bg) border border-(--border-color) rounded font-mono text-[9px] font-black text-(--text-color-secondary)" title={id}>
-                                                                            {displayTag}
-                                                                        </span>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Notes detail if any */}
-                                                    {r.notes && (
-                                                        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                                                            <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">Notes</span>
-                                                            <p className="text-[10px] text-(--text-color) font-mono opacity-80 leading-snug">{r.notes}</p>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
-                            {filtered.length === 0 && (
-                                <tr><td colSpan={7} className="px-4 py-16 text-center text-(--text-color-secondary) text-xs font-black tracking-[0.2em] uppercase">No payment records match criteria</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                                        <div className="mt-4 flex justify-end gap-3">
+                                            <button className="h-8 px-4 rounded-lg bg-white/5 border border-white/10 text-white/60 text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Download Receipt</button>
+                                            <button className="h-8 px-4 rounded-lg bg-(--main-color)/10 border border-(--main-color)/20 text-(--main-color) text-[9px] font-black uppercase tracking-widest hover:bg-(--main-color)/20 transition-all">Audit Logs</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
-            </div>
-
-            {/* SVG Icons for Wizard */}
+                {/* SVG Icons for Wizard */}
             <svg style={{ display: 'none' }}>
                 <defs>
                     <symbol id="pkg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
