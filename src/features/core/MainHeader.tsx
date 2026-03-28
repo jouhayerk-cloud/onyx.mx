@@ -38,6 +38,7 @@ import {
     paymentsOverviewModeAtom,
     paymentDestinationFilterAtom,
     liveExchangeRateAtom,
+    currencyModeAtom,
     storeSearchTermAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
@@ -402,6 +403,9 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
     const CATEGORIES: PaymentCategory[] = ['All', 'ACQ', 'PROD', 'MONTHLY', 'SPPL', 'LABR', 'PACK', 'OPRT'];
 
 
+    const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
+    const toggleCurrency = () => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN');
+
     return (
         <div className="flex flex-1 items-center gap-3 ml-2 relative">
             <CreditCard size={22} strokeWidth={1.75} color="var(--color-finance)" className="shrink-0 hidden sm:block" />
@@ -427,14 +431,35 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
 
             {/* Pending net total for active destination (floats center above) */}
             {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-10 pointer-events-none" style={{ backgroundColor: 'color-mix(in srgb, var(--color-finance) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-finance) 30%, transparent)' }}>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-20 pointer-events-none" style={{ backgroundColor: 'color-mix(in srgb, var(--color-finance) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-finance) 30%, transparent)' }}>
                     <span className="text-[9px] font-black text-(--color-finance) uppercase tracking-[0.2em]" style={{ color: 'var(--color-finance)' }}>PENDING</span>
-                    <span className="text-[11px] font-mono font-black text-(--color-finance)" style={{ color: 'var(--color-finance)' }}>{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(activeDestReqNetMXN)}</span>
-                    <span className="text-[9px] font-mono text-(--color-finance)/60" style={{ color: 'color-mix(in srgb, var(--color-finance) 60%, transparent)' }}>≈ ${activeDestReqNetUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD</span>
+                    <span className="text-[12px] font-mono font-black text-(--color-finance)" style={{ color: 'var(--color-finance)' }}>
+                        {currencyMode === 'MXN' 
+                            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(activeDestReqNetMXN)
+                            : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(activeDestReqNetUSD)
+                        }
+                    </span>
+                    <span className="text-[8px] font-black bg-white/10 px-1.5 py-0.5 rounded ml-1" style={{ color: currencyMode === 'USD' ? '#10b981' : '#38bdf8' }}>{currencyMode}</span>
                 </div>
             )}
 
             <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
+                
+                {/* Global Currency Toggle */}
+                <button
+                    onClick={toggleCurrency}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 group/curr ${
+                        currencyMode === 'USD' 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                        : 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                    }`}
+                >
+                    <span className="text-[12px] font-black">$</span>
+                    <div className="w-px h-3 bg-white/10 mx-0.5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{currencyMode}</span>
+                </button>
+
+                <div className="w-px h-5 bg-white/10 mx-1" />
 
                 <div className="relative">
                     <button
@@ -581,6 +606,7 @@ export function MainHeader() {
     const [performanceMode, setPerformanceMode] = useAtom(performanceModeAtom);
     const [language, setLanguage] = useAtom(languageAtom);
     const [theme, setTheme] = useAtom(themeAtom);
+    const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
 
     const inventory = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
@@ -771,6 +797,20 @@ export function MainHeader() {
                             <div className="h-4 w-px bg-white/10" />
                             <span className="text-[11px] font-mono font-black text-white/40">1 USD = {(liveExchangeRateValue || exchangeRate).toFixed(2)} MXN</span>
                         </div>
+
+                        {/* Global Currency Toggle */}
+                        <button
+                            onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 group/curr ${
+                                currencyMode === 'USD' 
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                : 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                            }`}
+                        >
+                            <span className="text-[12px] font-black">$</span>
+                            <div className="w-px h-3 bg-white/10 mx-0.5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{currencyMode}</span>
+                        </button>
 
                         <button 
                             onClick={handleMasterExportXLSX}

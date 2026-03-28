@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, currencyModeAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -18,7 +18,8 @@ import {
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 
-const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
+const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
+const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const getVendorIdFromDescription = (desc: string) => desc?.match(/from (\w+)$/)?.[1] ?? null;
 const normalizeSubcat = (s: string | null | undefined): string => {
@@ -739,6 +740,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const currencyMode = useAtomValue(currencyModeAtom);
 
     const toggleRow = (id: string) => {
         setExpandedRows(prev => {
@@ -1103,7 +1105,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
     }, [activeDestPendingRecords]);
 
-    const activeDestReqNetUSD = activeDestReqNetMXN / (liveExchangeRate || exchangeRate);
+    const rate = liveExchangeRate || exchangeRate;
 
     if (isLoading) return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
 
@@ -1180,11 +1182,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <CheckCircle size={12} className="text-[#6BCEBB]" />
                             </div>
                             <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Paid</span>
-                            <div className="flex items-center justify-between gap-1 leading-tight">
-                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
-                                    {fmtMXN(statusTotals.Paid || 0)}
+                            <div className="flex items-center gap-1.5 leading-tight">
+                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                                    {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
                                 </span>
-                                <CurrencyTag type="USD" amount={(statusTotals.Paid || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-30 scale-[0.65] origin-right" />
+                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                    {currencyMode}
+                                </span>
                             </div>
                         </div>
 
@@ -1194,11 +1198,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 <Clock size={12} className="text-[#FACC15]" />
                             </div>
                             <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Pending</span>
-                            <div className="flex items-center justify-between gap-1 leading-tight">
-                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
-                                    {fmtMXN(statusTotals.Requested + statusTotals.Pending || 0)}
+                            <div className="flex items-center gap-1.5 leading-tight">
+                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                                    {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
                                 </span>
-                                <CurrencyTag type="USD" amount={(statusTotals.Requested + statusTotals.Pending || 0) / (liveExchangeRate || exchangeRate)} size="small" className="opacity-30 scale-[0.65] origin-right" />
+                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                    {currencyMode}
+                                </span>
                             </div>
                         </div>
 
@@ -1211,11 +1217,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         <div className="w-4 h-4 flex items-center justify-center bg-white/10 rounded p-0.5 border border-white/10">
                                             <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
                                         </div>
-                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-base' : 'text-xs'}`}>
-                                            {fmtMXN(activeDestReqNetMXN)}
+                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                                            {currencyMode === 'MXN' ? fmtMXN(activeDestReqNetMXN) : fmtUSD(activeDestReqNetMXN / rate)}
                                         </span>
                                     </div>
-                                    <CurrencyTag type="USD" amount={activeDestReqNetUSD} size="small" className="opacity-30 scale-[0.65] origin-right" />
+                                    <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                        {currencyMode}
+                                    </span>
                                 </div>
                             ) : (
                                 <div className="flex-1 flex items-center relative z-10">
@@ -1245,9 +1253,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             </div>
                                         </div>
                                         <div className="mt-auto">
-                                            <div className="flex items-baseline gap-1.5 mb-1.5">
-                                                <span className="text-[12px] font-black font-mono text-white leading-none">{fmtMXN(group.total)}</span>
-                                                <span className="text-[8px] font-mono text-white/30 truncate">≈ ${Math.ceil(group.total / (liveExchangeRate || exchangeRate))}</span>
+                                            <div className="flex items-center gap-1.5 mb-1.5 overflow-hidden">
+                                                <span className="text-[14px] font-black font-mono text-white leading-none whitespace-nowrap">
+                                                    {currencyMode === 'MXN' ? fmtMXN(group.total) : fmtUSD(group.total / rate)}
+                                                </span>
+                                                <span className={`text-[7px] font-black px-1 rounded shrink-0 ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
+                                                    {currencyMode}
+                                                </span>
                                             </div>
                                             <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
                                                 <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
@@ -1380,39 +1392,55 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h4 className="text-[12px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
-                                            {r.recurring && <Clock size={12} className="text-orange-500 opacity-50" />}
+                                            {r.recurring && <Clock size={12} className="text-orange-500 opacity-50 shrink-0" />}
                                         </div>
-                                        <div className="flex flex-wrap gap-3 items-center">
-                                            {r.vendor_id && (
-                                                <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: vendorColor }}>{r.vendor_id}</span>
-                                            )}
-                                            {(() => {
-                                                const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                                                const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
-                                                if (ids.length > 0) {
-                                                    return (
-                                                        <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                            <LayoutGrid size={10} className="text-white/40" />
-                                                            <span className="text-[9px] font-mono font-black text-white/40 uppercase">{ids.length} TAGS</span>
-                                                        </div>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                        </div>
+                                        {(() => {
+                                            const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                                            const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                            if (ids.length > 0) {
+                                                return (
+                                                    <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity overflow-hidden">
+                                                        <LayoutGrid size={10} className="text-white/40 shrink-0" />
+                                                        <span className="text-[9px] font-mono font-black text-white/40 uppercase whitespace-nowrap">{ids.length} TAGS</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </div>
 
+                                    {/* Column 2.5: LARGE VENDOR TAG */}
+                                    {r.vendor_id && (
+                                        <div className="shrink-0 flex items-center justify-center">
+                                            <div className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 relative group/vendor shadow-inner transition-transform group-hover:scale-110 active:scale-95 duration-300" 
+                                                 style={{ borderColor: `${vendorColor}40` }}>
+                                                <div className="absolute inset-0 bg-white/2 rounded-xl" style={{ backgroundColor: `${vendorColor}10` }} />
+                                                <span className="relative z-10 text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: vendorColor }}>{r.vendor_id}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Clean Vertical Separator */}
+                                    <div className="shrink-0 w-px h-7 bg-white/10 mx-1.5" />
+                                    
                                     {/* Column 3: Financials & Account Icon Segment */}
-                                    <div className="shrink-0 flex items-center justify-end gap-3 w-[150px]">
-                                        <div className="flex flex-col items-end gap-0.5 min-w-[90px]">
-                                            <div className="flex items-center justify-end gap-1 leading-none">
-                                                <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
-                                                <span className="text-[9px] font-mono font-black text-white/20 uppercase">MXN</span>
+                                    <div className="shrink-0 flex items-center justify-end gap-3 w-[160px]">
+                                        <div className="flex flex-col items-end gap-0.5 min-w-[100px]">
+                                            <div className="flex items-center justify-end gap-2 leading-none">
+                                                <span className="text-[18px] font-black font-mono text-white tracking-tighter">
+                                                    {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalNet / rate)}
+                                                </span>
+                                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                    {currencyMode}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-[0.85] origin-right">
-                                                <span className="text-[11px] font-mono font-black text-white/60 tracking-tighter">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                <span className="text-[8px] font-black text-white/20">USD</span>
-                                            </div>
+                                            {(r.commission || 0) > 0 && (
+                                                <div className="flex items-center gap-1 opacity-40 scale-[0.85] origin-right">
+                                                    <span className="text-[10px] font-mono font-black text-white/60 tracking-tight">
+                                                        + {currencyMode === 'MXN' ? fmtMXN(r.commission) : fmtUSD(r.commission / rate)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Small Card/Account Icon */}
@@ -1428,16 +1456,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     {/* Clean Vertical Separator */}
                                     <div className="shrink-0 w-px h-7 bg-white/10 mx-1.5" />
 
-                                    {/* Column 4: Status Action Area */}
-                                    <div className="shrink-0 w-[110px] flex items-center justify-end gap-1.5 relative">
+                                    {/* Column 4: Status Action Area (Fixed Overlap Width) */}
+                                    <div className="shrink-0 w-[140px] flex items-center justify-end gap-2 relative pr-1">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
-                                            className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
+                                            className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
                                             {r.status}
                                         </button>
                                         {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                             <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
-                                                className="absolute -right-7 w-6 h-6 flex items-center justify-center rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[8px] opacity-0 group-hover:opacity-100 border border-red-500/20" title="Delete record">
+                                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-500/5 text-red-500/40 hover:bg-red-500/20 hover:text-red-500 transition-all text-[10px] shrink-0 border border-white/5 hover:border-red-500/20" title="Delete record">
                                                 ✕
                                             </button>
                                         )}

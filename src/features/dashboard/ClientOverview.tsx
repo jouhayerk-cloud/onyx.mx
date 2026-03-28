@@ -3,7 +3,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
     financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom,
-    inventoryArtifactConfigAtom
+    inventoryArtifactConfigAtom, currencyModeAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -100,6 +100,7 @@ export const ClientOverview: React.FC = () => {
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setPaymentCategoryFilter = useSetAtom(paymentCategoryFilterAtom);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const currencyMode = useAtomValue(currencyModeAtom);
 
     const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
     const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(false);
@@ -444,9 +445,13 @@ export const ClientOverview: React.FC = () => {
                                                 <div className="group relative flex flex-col p-2 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
                                                     <div className="absolute top-0 right-0 w-24 h-24 bg-(--main-color)/5 blur-2xl -mr-12 -mt-12 rounded-full" />
                                                     <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
-                                                    <div className="flex flex-wrap items-baseline gap-2.5 relative z-10">
-                                                        <span className="text-[14px] md:text-[16px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">{fmtUSD(totalPortfolioUsd)}</span>
-                                                        <span className="text-[9px] md:text-[10px] font-mono text-white/40 font-bold">{totalPortfolioMxn ? fmtMXN(totalPortfolioMxn) : 'Calculating...'}</span>
+                                                    <div className="flex flex-wrap items-baseline gap-2.5 relative z-10 leading-none">
+                                                        <span className="text-[20px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
+                                                            {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
+                                                        </span>
+                                                        <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                            {currencyMode}
+                                                        </span>
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -482,14 +487,14 @@ export const ClientOverview: React.FC = () => {
                                                             <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
                                                             <div className="flex flex-col leading-none">
                                                                 <span className={`font-black font-mono tracking-tighter ${stat.size || 'text-[18px]'}`} style={{ color: stat.color }}>
-                                                                    {stat.isCurrency ? fmtUSDCompact(stat.v as number) : (stat.v as number).toLocaleString()}
-                                                                    {stat.isCurrency && <span className="text-[10px] opacity-20 ml-1.5">USD</span>}
+                                                                    {stat.isCurrency 
+                                                                        ? (currencyMode === 'MXN' ? fmtMXN(stat.v as number * currentExchangeRate) : fmtUSD(stat.v as number))
+                                                                        : (stat.v as number).toLocaleString()}
                                                                 </span>
-                                                                {stat.sub && (
-                                                                    <div className={`inline-flex items-center gap-1.5 mt-2 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 w-fit`}>
-                                                                        <span className="text-[7.5px] font-black uppercase tracking-widest px-1 py-0.5 rounded" style={{ backgroundColor: stat.color, color: '#000' }}>MXN</span>
-                                                                        <span className="text-[12px] font-mono font-bold text-white">{stat.sub}</span>
-                                                                    </div>
+                                                                {stat.isCurrency && (
+                                                                    <span className={`text-[8px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                        {currencyMode}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -581,9 +586,15 @@ export const ClientOverview: React.FC = () => {
                                                             <p className="text-[9px] font-mono text-white/30 truncate max-w-[300px]">{req.docs[0]?.description || 'Multiple units'}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1 shrink-0 px-2">
-                                                        <CurrencyTag type="MXN" amount={destReqMXN} />
-                                                        <CurrencyTag type="USD" amount={destReqUSD} className="opacity-40" />
+                                                    <div className="flex flex-col items-end gap-1 shrink-0 px-2 min-w-[100px]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[14px] font-black font-mono text-white tracking-tighter">
+                                                                {currencyMode === 'MXN' ? fmtMXN(destReqMXN) : fmtUSD(destReqUSD)}
+                                                            </span>
+                                                            <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                {currencyMode}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-3 py-1.5 h-full rounded-lg bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest ml-1 self-stretch shadow-lg">Paid</button>
                                                 </div>
@@ -668,13 +679,11 @@ export const ClientOverview: React.FC = () => {
                                                     </div>
                                                     
                                                     <div className="space-y-1">
-                                                        <div className="flex items-baseline justify-between overflow-hidden">
-                                                            <span className="text-[14px] font-mono font-black" style={{ color: contrastColor }}>${(group.total / currentExchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-                                                            <span className="text-[7px] font-black opacity-40" style={{ color: contrastColor }}>USD</span>
-                                                        </div>
-                                                        <div className="flex items-baseline justify-between opacity-80 overflow-hidden">
-                                                            <span className="text-[10px] font-mono font-bold" style={{ color: contrastColor }}>${group.total.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-                                                            <span className="text-[7px] font-black opacity-40" style={{ color: contrastColor }}>MXN</span>
+                                                        <div className="flex items-center justify-between overflow-hidden">
+                                                            <span className="text-[16px] font-mono font-black" style={{ color: contrastColor }}>
+                                                                {currencyMode === 'MXN' ? fmtMXN(group.total) : fmtUSD(group.total / currentExchangeRate)}
+                                                            </span>
+                                                            <span className="text-[8px] font-black px-1 rounded border border-black/10" style={{ color: contrastColor, backgroundColor: `${contrastColor}10` }}>{currencyMode}</span>
                                                         </div>
                                                     </div>
 
