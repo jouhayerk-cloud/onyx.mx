@@ -354,18 +354,23 @@ const InventoryBar: React.FC = () => {
                     <button
                         className="p-2 text-white/50 hover:text-white hover:scale-110 transition-all flex items-center justify-center shrink-0"
                         onClick={() => {
-                            const next: Record<string, 'All' | 'AcqProd' | 'Requested' | 'Paid'> = {
-                                'All': 'AcqProd',
-                                'AcqProd': 'Requested',
+                            const next: Record<string, 'All' | 'Partial' | 'Requested' | 'Paid'> = {
+                                'All': 'Partial',
+                                'Partial': 'Requested',
                                 'Requested': 'Paid',
                                 'Paid': 'All'
                             };
                             setStatusFilter(next[statusFilter] || 'All');
                         }}
-                        title={`Status Filter: ${statusFilter}`}
+                        title={
+                            statusFilter === 'All' ? 'Filter: All items' :
+                            statusFilter === 'Partial' ? 'Filter: Partially Paid' :
+                            statusFilter === 'Requested' ? 'Filter: Payment Requested' :
+                            'Filter: Paid'
+                        }
                     >
                         {statusFilter === 'All' && <div className="w-5 h-5 rounded-full border-2 border-white/50" />}
-                        {statusFilter === 'AcqProd' && <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]" />}
+                        {statusFilter === 'Partial' && <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]" />}
                         {statusFilter === 'Requested' && <div className="w-5 h-5 rounded-full bg-yellow-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]" />}
                         {statusFilter === 'Paid' && <div className="w-5 h-5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]" />}
                     </button>
