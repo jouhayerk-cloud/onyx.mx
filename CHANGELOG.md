@@ -1,5 +1,98 @@
 # Changelog
 
+## [1.38.0] - 2026-03-28
+### Added
+- **CurrencyTag Component**: Introduced a standardized, reusable component for displaying multi-currency financial data (MXN/USD) with consistent formatting and opacity-based visual hierarchy.
+### Changed
+- **Payments Module UI Overhaul**: Complete redesign of `TrackingPaymentsView.tsx` to align with the "Studio" aesthetic:
+    - **Dynamic Stats Grids**: Replaced linear displays with responsive, stackable grid cards for FX Rates and Status Totals.
+    - **Iconographic Filter Bar**: Implemented a blurred, floating filter bar with Lucide icons and specific color-coded subcategory buttons (Acq, Prod, Monthly, etc.).
+    - **High-Density Card List**: Transitioned from a legacy HTML table to a modern, expandable card-list view with glassmorphism, depth-based shadow states, and animated row expansions.
+    - **Finance Traceability**: Integrated Tag ID resolution directly into the payment cards, showing up to 15 linked items with vendor-specific color coding.
+
+## [1.37.25] - 2026-03-28
+### Changed
+- **Dashboard Layout**: Reordered the primary dashboard panels. **Expenses & Financials** is now positioned on the left side (wider span), and **Storage & Logistics** is positioned on the right side.
+
+## [1.37.24] - 2026-03-28
+### Fixed
+- **Distribution Analysis Data**: Optimized the **Shape + Description** grouping logic by implementing a robust description fallback chain. The system now resolves data through `short_description`, `item_description`, and `generatedDescription` if the primary field is empty, significantly reducing the "No Description" count in the distribution graph.
+
+## [1.37.23] - 2026-03-28
+### Improved
+- **Financials Compaction**: Reduced the vertical footprint of the **Expenses & Financials** panel by ~20%. Optimized padding, font sizes, and layout density for high-fidelity information display.
+- **Tag ID Parity**: Synchronized the Tag ID calculation logic between the **Overview** (Active Request Queue) and the **Finance/Payments** module. Both modules now use the same on-the-fly calculation utility, ensuring 1:1 matching for tags like `EM3265E0X`.
+
+## [1.37.22] - 2026-03-28
+### Fixed
+- **Tag ID Parity**: Synchronized the Tag ID calculation logic between the **Overview** (Active Request Queue) and the **Finance/Payments** module. Both modules now use the same on-the-fly calculation utility, ensuring 1:1 matching for tags like `EM3265E0X`.
+- **Logic Correction**: Fixed a variable naming mismatch that caused a lint error during tag resolution.
+
+## [1.37.21] - 2026-03-28
+### Fixed
+- **Payment ID Correction**: Corrected the identifier displayed in the **Active Request Queue** details. Swapped generic barcodes for the official **Acquisition Code** (`book_aq_code`), matching the `EM3261ACQ` format for financial traceability.
+
+## [1.37.20] - 2026-03-28
+### Added
+- **Shape + Description Analysis**: Introduced a new high-fidelity circle graph (donut chart) at the bottom of the **Global Distribution Analysis**. This combined metric provides a detailed view of item categories and their descriptions, complete with a categorical legend and frequency breakdown.
+- **Enhanced Data Visualization**: Integrated a responsive ECharts implementation for attribute composition, featuring interactive tooltips and category-specific progress scales.
+
+## [1.37.19] - 2026-03-28
+### Fixed
+- **Traceability Precision**: Corrected the identifier used in the `Active Request Queue` detail tags. Swapped generated codes for the official **Barcode Tag ID** (`book_barcode`), ensuring exact alignment with physical tracking labels.
+- **Data Model Alignment**: Updated the core inventory schema and normalization logic to prioritize and correctly surface the database-level barcode and acquisition codes.
+
+## [1.37.18] - 2026-03-28
+### Fixed
+- **Traceability Accuracy**: Corrected the identifier used in the `Active Request Queue` detail tags. Swapped generic item IDs for the specific **Book TAG ID** (full alphanumeric code, e.g. `AN...`) as generated in the internal tagging engine.
+
+## [1.37.17] - 2026-03-28
+### Optimized
+- **Compact Hero Module**: Significantly reduced the footprint of the 'Mexico Total' panel by tightening padding and margins.
+- **Micro-Typography**: Scaled down font sizes across all states of the total panel, including shortening the compact summary label to 'MX Total' for maximum space efficiency.
+
+## [1.37.16] - 2026-03-28
+### Added
+- **Inventory Tag Tracking**: Integrated searchable 'Book Tag IDs' (e.g., AN-24-XXX) into the `Active Request Queue` payment details. This provides direct visibility into which specific inventory items are being paid for at a glance.
+
+## [1.37.15] - 2026-03-28
+### Optimized
+- **Hover Interactions**: Key bottom stat icons (Acquisitions Value, Req Unpaid, Total Unpaid) now transition to full opacity on panel hover for improved interactive feedback.
+
+## [1.37.14] - 2026-03-28
+### Optimized
+- **UI Refinement**: Reduced the font sizes for all text elements in the 'Mexico Total' hero panel (Label, USD, and MXN amounts) for a more compact and consistent high-density design.
+
+## [1.37.13] - 2026-03-28
+### Optimized
+- **Financial Clarity**: Renamed the operational 'TOTAL' card to **EXPENSES** to better represent non-merch operational spend.
+- **UI Refinement**: Added a subtle background tint and reduced the header font size for the `EXPENSES` card to distinguish it as the aggregate total of operational categories.
+
+## [1.37.12] - 2026-03-28
+### Optimized
+- **UI Refinement**: Reduced the font sizes for "Mexico Total" elements across both expanded and compact views to improve visual density and balance.
+- **Component Update**: Added a `small` variant to the `CurrencyTag` component for use in high-density areas of the dashboard.
+
+## [1.37.11] - 2026-03-28
+### Added
+- **Logistics Financial Tracking**: Integrated financial data for Crates and Pallets directly into the `Storage & Logistics` panel, surfacing total USD/MXN payments alongside physical unit counts.
+
+## [1.37.10] - 2026-03-28
+### Optimized
+- **UI Refinement**: Reduced the font size of the "Mexico Total:" label for better visual balance in both the main dashboard and compact summaries.
+
+## [1.37.9] - 2026-03-28
+### Added
+- **Mexico Total Panel**: Promoted the global portfolio total to a dedicated high-fidelity "Mexico Total" panel within the Financials module.
+- **Collapsible Analysis**: The `Global Distribution Analysis` section is now collapsible, featuring a rich compact summary of unit counts and total acquisition values.
+- **Enriched Compact Summaries**:
+    - `Active Request Queue`: Now displays total pending USD/MXN financial volume when collapsed.
+    - `Expenses & Financials`: Now displays the "Mexico Total" (USD/MXN) as bullet info when collapsed.
+
+### Optimized
+- **Mobile Responsiveness**: Replaced static multi-column grids with adaptive Tailwind layouts (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-6`) to ensure readability on small screens.
+- **Grid Layouts**: Operational categories and financial metrics now stack and scale correctly across breakpoints.
+
 ## [1.37.8] - 2026-03-28
 ### Added
 - **Portfolio Aggregation**: Implemented a global "Portfolio Total" summary in the `Expenses & Financials` panel, consolidating all Operational Expenses and Acquisitions Values.

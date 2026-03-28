@@ -102,6 +102,8 @@ export interface InventoryItemData {
   acquired_by?: string;
   id?: string;
   rating?: number;
+  book_barcode?: string;
+  book_aq_code?: string;
 }
 
 export interface InventoryItem {

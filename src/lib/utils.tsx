@@ -785,7 +785,9 @@ export const normalizeInventoryData = (data: any): any => {
     rating: data.rating !== undefined ? data.rating : 0,
     is_hidden: data.is_hidden !== undefined ? data.is_hidden : false,
     hidden_reason: data.hidden_reason || '',
-    dispersal_status: data.dispersal_status
+    dispersal_status: data.dispersal_status,
+    book_barcode: data.book_barcode || data.bookBardcode,
+    book_aq_code: data.book_aq_code || data.bookAqCode
   };
 };
 
