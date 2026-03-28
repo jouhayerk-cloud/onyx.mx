@@ -320,3 +320,14 @@ export const processTriggerBatchAtom = atom<number>(0);
 export const processActiveStepLabelAtom = atom<string>('ENGINE READY');
 export const processIsProcessingAtom = atom<boolean>(false);
 export const processLogsAtom = atom<{ id: string, msg: string, time: string, type: 'info' | 'error' | 'success' | 'warn' }[]>([]);
+// Inventory Artifact Atom
+export type InventoryArtifactConfig = {
+  isOpen: boolean;
+  itemIds: (string | number)[];
+  title?: string;
+};
+export const inventoryArtifactConfigAtom = atom<InventoryArtifactConfig>({
+  isOpen: false,
+  itemIds: [],
+  title: 'Inventory Artifact',
+});

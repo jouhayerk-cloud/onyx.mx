@@ -1,5 +1,5 @@
-import { useAtom, useAtomValue } from 'jotai';
-import { inventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { inventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM, inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
 import {
@@ -168,6 +168,7 @@ export const PackingModule: React.FC = () => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
     const [isSendingToDesigner, setIsSendingToDesigner] = useState(false);
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [labelSize, setLabelSize] = useState<'40x30' | '50x30' | '50x80'>('50x30');
     const [isConfigExpanded, setIsConfigExpanded] = useState(false);
@@ -502,6 +503,15 @@ export const PackingModule: React.FC = () => {
                             <Filter size={15} />
                         </button>
                     </div>
+
+                    {selectedIds.size > 0 && (
+                        <button 
+                            onClick={() => setArtifactConfig({ isOpen: true, itemIds: Array.from(selectedIds), title: `Selection (${selectedIds.size} items)` })}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 text-[10px] font-black text-(--main-color) hover:bg-(--main-color)/20 transition-all active:scale-95"
+                        >
+                            <Eye size={12} /> View Selection
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -591,7 +601,7 @@ export const PackingModule: React.FC = () => {
 
             {/* ── LABEL PREVIEW OVERLAY — Fullscreen Glass Panel ── */}
             {showPreviewOverlay && (
-                <div className="absolute inset-0 z-[100] flex flex-col animate-in fade-in duration-200">
+                <div className="absolute inset-0 z-100 flex flex-col animate-in fade-in duration-200">
 
                     {/* ━━ Floating glass top bar ━━ */}
                     <div className="relative z-10 flex items-center justify-between px-6 py-3 bg-black/70 backdrop-blur-2xl border-b border-white/8">

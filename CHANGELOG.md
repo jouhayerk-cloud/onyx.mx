@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.38.1] - 2026-03-28
+### Added
+- **Filter Bar Toggle**: Integrated a sleek "Filters" On/Off switch in the top header for persistent visibility control.
+- **Multi-Row Expansion**: Upgraded the payment item list to support simultaneous expansion of multiple transaction details for better comparison.
+### Changed
+- **Iconography**: Restored large, free-floating account icons (BBVA, BoA, etc.) in the filter bar, removing all frames and containers for a modern look.
+- **Data Density Optimization**: 
+    - Compacted the **FX Rates** and **Status Totals** overview panels by 20%, reducing padding and font sizes.
+    - Global padding reduction across the Payments module to maximize information density.
+    - Re-styled Subcategory filters as rounded pills with color-coded Lucide icons.
+- **UI Refinement**: Standardized financial displays with side-by-side MXN/USD amounts using the `CurrencyTag` small variant.
+
 ## [1.38.0] - 2026-03-28
 ### Added
 - **CurrencyTag Component**: Introduced a standardized, reusable component for displaying multi-currency financial data (MXN/USD) with consistent formatting and opacity-based visual hierarchy.
