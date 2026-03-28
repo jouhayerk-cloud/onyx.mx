@@ -1,5 +1,16 @@
 # Changelog
 
+### v1.34.1 — 2026-03-28
+- **Design Unification [ui]:** Unified the Overview module with the Inventory's "Stitch" aesthetic, adopting `#1C212D` card backgrounds, `border-white/10`, and standardized `rounded-3xl` radii.
+- **Typography Cleanup [ui]:** Standardized all dashboard labels and section headers with the `font-black uppercase tracking-widest` style.
+- **Sync Fix [logic]:** Fixed nested div and useMemo syntax errors introduced in the previous refactor.
+
+### v1.34.0 — 2026-03-28
+- **Logistics Hub [feat]:** Extracted Crates/Pallets into a standalone, high-density panel at the top of the dashboard with real-time telemetry for Packed vs. Empty units.
+- **Interactive Material Graph [ui]:** Transformed the static 'Material + Color' analysis into a horizontal segmented bar graph with interactive tooltips.
+- **Expenses Overhaul [ui]:** Refactored the Expenses section into a borderless, high-density tag-grid with large typography and MXN/USD breakdowns.
+- **Clean-Up [ui]:** Removed the redundant 'Merchandise Status' panel to focus strictly on Logistics and Financials.
+
 ### v1.32.2 — 2026-03-28
 - **Overview Optimization [ui]:** Removed the redundant 'Catalog' KPI and the 'Shape + Description' visualization panel to focus strictly on Logistics and Active Financials.
 
