@@ -1,6 +1,23 @@
 # Changelog
 
-### v1.34.1 — 2026-03-28
+### v1.35.1 — 2026-03-28
+- **UI Squaring [ui]:** Standardized all dashboard and inventory panels to `rounded-xl` for a more professional, "squared" Studio aesthetic.
+- **Dual-Currency Dashboard [feat]:** Added explicit USD/MXN labels to *all* financial KPIs in the Overview, including Acq Value, Req Unpaid, Total Unpaid, and Expense categories.
+- **Logistics Dimension Fix [fix]:** Corrected dimension fetching in the Storage panel by mapping to `length_cm`, `width_cm`, and `height_cm` properties.
+- **Storage Panel Density [ui]:** Refactored the Storage & Logistics panel to be smaller and more data-dense.
+- **Upcoming Payments Refactor [ui]:** Transformed the payments grid into large, squared tiles with high-contrast centered typography.
+- **Cleanup [ui]:** Removed the "Platform Sync" title from the main top bar for a cleaner interface.
+
+### v1.35.0 — 2026-03-28
+- **Studio Unification [ui]:** Unified Overview and Inventory modules with theme-aware CSS variables (`--sidebar-bg`, `--border-color`), replacing all hardcoded dark backgrounds for full Obsidian/Nacar/Stitch theme compatibility.
+- **Financial Consolidation [feat]:** Merged individual KPI cards (Units, Acq Value, Requested, Pending, Total Unpaid) and the Expenses panel into a single high-density "Expenses & Financials" section.
+- **Interactive Expense Navigation [feat]:** Clicking any expense category (Monthly, Supplies, Labor, Packing, Operations) now navigates to Finance > Payments with the corresponding filter pre-applied.
+- **Total Expenses Logic [logic]:** "Total Expenses" now correctly sums only non-merchandise operational costs, excluding acquisition values.
+- **Logistics Overhaul [ui]:** Renamed panel to "Total Crates and Pallets", fixed dimension fetching, added glass glow effect, and removed redundant telemetry/verification tags.
+- **Upcoming Payments Density [ui]:** Upgraded from 2-col grid to a high-density 3–8 col adaptive grid for maximum vendor visibility.
+- **Lint Fix [fix]:** Resolved duplicate `color` property in the `SectionHeader` component style object.
+
+
 - **Design Unification [ui]:** Unified the Overview module with the Inventory's "Stitch" aesthetic, adopting `#1C212D` card backgrounds, `border-white/10`, and standardized `rounded-3xl` radii.
 - **Typography Cleanup [ui]:** Standardized all dashboard labels and section headers with the `font-black uppercase tracking-widest` style.
 - **Sync Fix [logic]:** Fixed nested div and useMemo syntax errors introduced in the previous refactor.

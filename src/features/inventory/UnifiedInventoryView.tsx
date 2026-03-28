@@ -266,8 +266,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     const payStatus = getStatusClass(norm, partialPayIds);
                     const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
                     return (
-                <div className={`flex items-stretch overflow-hidden bg-(--stitch-card-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
-                    style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, rgba(255,255,255,0.05))` : 'rgba(255,255,255,0.05)' }}>
+                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                    style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     {/* Payment status accent stripe */}
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
                     <div className={`w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative group/img ${imageUrl ? 'cursor-pointer' : ''}`}
@@ -417,13 +417,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     return (
         <div
-            className="group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer bg-white/5 border border-white/10 hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-(--main-color)/10"
+            className="group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border border-(--border-color) hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/40"
             onClick={onToggleExpand}
         >
             {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
 
             {/* Image section */}
-            <div className="aspect-4/3 relative overflow-hidden bg-linear-to-br from-white/5 to-black/30 group/img">
+            <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/img">
                 {imageUrl ? (
                     <>
                         <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
