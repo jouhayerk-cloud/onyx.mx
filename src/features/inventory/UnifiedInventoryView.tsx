@@ -228,7 +228,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-stretch overflow-hidden bg-(--stitch-card-bg) border border-white/5 rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}>
+                {(() => {
+                    const payStatus = getStatusClass(norm);
+                    const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
+                    return (
+                <div className={`flex items-stretch overflow-hidden bg-(--stitch-card-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                    style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, rgba(255,255,255,0.05))` : 'rgba(255,255,255,0.05)' }}>
+                    {/* Payment status accent stripe */}
+                    <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
                     <div className={`w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative group/img ${imageUrl ? 'cursor-pointer' : ''}`}
                         onClick={() => imageUrl && setShowViewer(true)}>
                         {imageUrl ? (
@@ -288,6 +295,28 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">LD Code</span>
                             <span className="text-[11px] sm:text-[13px] text-white/80 font-mono">{calculated.bookLandCode || '—'}</span>
                         </div>
+
+                        {/* Payment Status column */}
+                        {(() => {
+                            const ps = getStatusClass(norm);
+                            if (!ps) return null;
+                            const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
+                                GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+                                YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+                                RED:    { label: 'Pending',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                            };
+                            const { label, color, bg } = cfg[ps];
+                            return (
+                                <div className="flex flex-col min-w-[72px] shrink-0 pl-3 justify-center h-full gap-0.5">
+                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Pay Status</span>
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit"
+                                        style={{ color, backgroundColor: bg }}>
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}` }} />
+                                        {label}
+                                    </span>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-2 shrink-0 bg-white/5 border-l border-white/5 backdrop-blur-md">
@@ -306,6 +335,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </button>
                     </div>
                 </div>
+                    );
+                })()} {/* end payStatus IIFE */}
                 {isExpanded && (
                     <div className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative">
                         {/* Summary Grid */}
