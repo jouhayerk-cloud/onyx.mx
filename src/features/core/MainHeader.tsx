@@ -790,12 +790,9 @@ export function MainHeader() {
                 {activeView === 'upload' && <UploadBar />}
                 {activeView === 'control' && <ControlBar />}
                 {activeView === 'overview' && (
-                    <div className="flex items-center gap-3">
+                    <>
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
-                        <div className="px-2 py-1 rounded bg-white/5 border border-white/10 text-[10px] font-mono font-black text-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.2)]">
-                            1 USD = {Number(liveExchangeRateValue || exchangeRate || 20).toFixed(2)} MXN
-                        </div>
-                    </div>
+                    </>
                 )}
                 {activeView === 'dashboard' && (
                     <>
