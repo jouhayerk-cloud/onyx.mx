@@ -19,7 +19,8 @@ import {
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
-    inventoryAtom
+    inventoryAtom,
+    financeDataAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile } from '../../lib/utils';
@@ -31,16 +32,22 @@ import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleto
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
-    if (data.payDate) return 'GREEN';
-    const hasPayReq = data.payReq && data.payReq !== 'false' && data.payReq !== '0' && data.payReq !== '';
-    if (hasPayReq) {
-        // Red for partial payments, Yellow for full request
-        if (String(data.payReq).includes('%')) return 'RED';
-        return 'YELLOW';
-    }
-    if (data.printDate) return 'RED';
-    return '';
+export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
+    const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
+    
+    // Priority 1: Dynamic Partial from Finance Records
+    if (partialPayIds?.has(String(item.id))) return 'RED';
+
+    // Priority 2: Manual Partial (Legacy support)
+    if (payReqStr.includes('%')) return 'RED';
+
+    // Priority 3: Fully Paid
+    if (item.payDate || item.pay_date) return 'GREEN';
+
+    // Priority 4: Requested but not paid
+    if (payReqStr === 'true' || payReqStr === 'paid') return 'YELLOW';
+
+    return null;
 };
 
 const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block mb-1.5";
@@ -155,7 +162,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds }: any) => {
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -189,7 +196,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const weightStr = weightKg ? `${weightKg}kg (${weightLbs}lbs)` : '';
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-    const statusClass = getStatusClass(norm);
+    const statusClass = getStatusClass(norm, partialPayIds);
 
     const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);
     const setSelectedItemData = useSetAtom(SelectedItemDataAtom);
@@ -198,7 +205,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const user = useAtomValue(userAtom);
     const isEditable = user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor';
 
-    const descLine = [norm.color, norm.material, norm.shape, norm.shortDescription].filter(Boolean).map(s => s.toUpperCase()).join(' Â· ');
+    const descLine = [norm.color, norm.material, norm.shape, norm.shortDescription].filter(Boolean).map(s => s.toUpperCase()).join(' · ');
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -256,7 +263,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             <div className="flex flex-col gap-0.5">
                 {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
                 {(() => {
-                    const payStatus = getStatusClass(norm);
+                    const payStatus = getStatusClass(norm, partialPayIds);
                     const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
                     return (
                 <div className={`flex items-stretch overflow-hidden bg-(--stitch-card-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
@@ -325,12 +332,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                         {/* Payment Status column */}
                         {(() => {
-                            const ps = getStatusClass(norm);
+                            const ps = getStatusClass(norm, partialPayIds);
                             if (!ps) return null;
                             const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
                                 GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
                                 YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-                                RED:    { label: String(norm.payReq || '').includes('%') ? 'Partial' : 'Pending', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                                RED:    { label: 'Partial',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
                             };
                             const { label, color, bg } = cfg[ps];
                             return (
@@ -487,11 +494,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <div className="flex gap-2 justify-end">
                         <div className="flex flex-col items-end">
                             <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-0.5 leading-none">AQ</span>
-                            <span className="text-[10px] font-mono font-black text-(--main-color)/90">{calculated.bookAqCode || 'Aâ€”'}</span>
+                            <span className="text-[10px] font-mono font-black text-(--main-color)/90">{calculated.bookAqCode || 'A—'}</span>
                         </div>
                         <div className="flex flex-col items-end">
                             <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-[0.2em] mb-0.5 leading-none">LD</span>
-                            <span className="text-[10px] font-mono font-black text-yellow-500/90">{calculated.bookLandCode || 'Lâ€”'}</span>
+                            <span className="text-[10px] font-mono font-black text-yellow-500/90">{calculated.bookLandCode || 'L—'}</span>
                         </div>
                     </div>
                 </div>
@@ -657,12 +664,28 @@ export const UnifiedInventoryView = () => {
     const t = useTranslation();
     const db = useDatabase();
     const items = useAtomValue(inventoryAtom);
+    const financeDocs = useAtomValue(financeDataAtom);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const isVendorFilterOpen = useAtomValue(isInventoryVendorFilterOpenAtom);
     
+    const partialPayIds = useMemo(() => {
+        const ids = new Set<string>();
+        financeDocs.forEach(d => {
+            if (d.status === 'Paid' && d.description?.includes('%')) {
+                const rel = d.related_ids || (d.related_inventory_ids ? d.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                if (Array.isArray(rel)) {
+                    rel.forEach((id: string) => ids.add(String(id)));
+                } else if (typeof rel === 'string' && rel.includes(',')) {
+                    rel.split(',').forEach((id: string) => ids.add(id.trim()));
+                }
+            }
+        });
+        return ids;
+    }, [financeDocs]);
+
     const toggleExpandCard = (id: string) => {
         setExpandedCards(prev => {
             const next = new Set(prev);
@@ -870,18 +893,14 @@ export const UnifiedInventoryView = () => {
             // Hide Available / Catalog items — they belong to the Store view
             if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
+            const status = getStatusClass(item.data, partialPayIds);
+
             if (statusFilter === 'Partial') {
-                // Partially paid: pay_req contains a percentage string but no full pay_date
-                const payReqStr = String(item.data.payReq || '').toLowerCase();
-                const isPartial = payReqStr.includes('%');
-                if (!isPartial || item.data.payDate) return false;
+                if (status !== 'RED') return false;
             } else if (statusFilter === 'Requested') {
-                // Full payment requested (pay_req = 'true') but not yet paid
-                const payReqStr = String(item.data.payReq || '').toLowerCase();
-                const isFullReq = payReqStr === 'true';
-                if (!isFullReq || item.data.payDate) return false;
+                if (status !== 'YELLOW') return false;
             } else if (statusFilter === 'Paid') {
-                if (!item.data.payDate) return false;
+                if (status !== 'GREEN') return false;
             }
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
 
@@ -1004,6 +1023,7 @@ export const UnifiedInventoryView = () => {
                                     exchangeRate={exchangeRate}
                                     showFinancials={showFinancials}
                                     viewMode={viewMode}
+                                    partialPayIds={partialPayIds}
                                 />
                             ))
                         )}

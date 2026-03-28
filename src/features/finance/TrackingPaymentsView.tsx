@@ -874,7 +874,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             const ids = itemIdsStr.split(',');
 
             const isCrateGroup = requestGroup.vendorId === 'Pack';
-            const upVal = isPartial ? `requested ${percentage}%` : 'true';
+            const upVal = 'true';
             
             if (isCrateGroup) {
                 await supabase.from('logistics').update({ pay_req: upVal }).in('id', ids);
@@ -1000,7 +1000,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 const isCrate = r.subcategory === 'Pack' || r.subcategory === 'Packing';
                 if (next === 'Paid') {
                     if (isCrate) {
-                        const upStr = r.description?.includes('%') ? `paid ${r.description.match(/(\d+)%/)?.[1] || 'partial'}%` : 'true';
+                        const upStr = 'true';
                         await supabase.from('logistics').update({ pay_req: upStr }).in('id', ids);
                         if (db) {
                             for (const iid of ids) {
@@ -1012,8 +1012,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         }
                     } else {
                         if (r.description?.includes('%')) {
-                            const perc = r.description.match(/(\d+)%/)?.[1];
-                            const upStr = `paid ${perc || 'partial'}%`;
+                            const upStr = 'true';
                             await supabase.from('inventory').update({ pay_req: upStr }).in('id', ids);
                             if (db) {
                                 for (const iid of ids) {
