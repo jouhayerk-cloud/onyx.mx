@@ -58,6 +58,7 @@ import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import { OnyxLogo } from '../../components/OnyxLogo';
+import { getStatusClass } from '../inventory/UnifiedInventoryView';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
@@ -175,7 +176,7 @@ const ShippingStats: React.FC = () => {
 };
 
 
-const InventoryBar: React.FC = () => {
+const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ onExport, isExporting }) => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
@@ -183,133 +184,10 @@ const InventoryBar: React.FC = () => {
     const activeVendors = useAtomValue(activeVendorsAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const inventory = useAtomValue(inventoryAtom);
-    const exchangeRate = useAtomValue(exchangeRateAtom);
-    const [isExporting, setIsExporting] = useState(false);
 
     // Statuses that are store/catalog items — excluded from the export
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
 
-    const handleExportInventoryXLSX = async () => {
-        if (isExporting) return;
-        setIsExporting(true);
-        try {
-            const XLSX = await import('xlsx');
-
-            // Filter to acquisition / production items only
-            const exportItems = inventory.filter(item => {
-                const status = (item.data.status || '').toLowerCase().trim();
-                return !EXCLUDED_STATUSES.has(status);
-            });
-
-            if (exportItems.length === 0) {
-                toast.error('No acquisition or production items to export.');
-                setIsExporting(false);
-                return;
-            }
-
-            // Group by vendor
-            const vendorMap: Record<string, typeof exportItems> = {};
-            for (const item of exportItems) {
-                const d = item.data as any;
-                const itemIdStr = String(d.item_id || d.itemId || '');
-                let vid: string = d.vendor_id || d.vendorId || '';
-                if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
-                if (!vid) vid = 'Unknown';
-                if (!vendorMap[vid]) vendorMap[vid] = [];
-                vendorMap[vid].push(item);
-            }
-
-            const wb = XLSX.utils.book_new();
-
-            // Sort vendors — known ones first in consts order, then unknown
-            const vendorOrder = Object.keys(vendors);
-            const sortedVendorIds = [
-                ...vendorOrder.filter(v => vendorMap[v]),
-                ...Object.keys(vendorMap).filter(v => !vendorOrder.includes(v)),
-            ];
-
-            for (const vid of sortedVendorIds) {
-                const items = vendorMap[vid];
-
-                const rows = items.map(item => {
-                    const d = item.data as any;
-                    const norm = normalizeInventoryData(d);
-                    const itemIdStr = String(d.item_id || d.itemId || '');
-                    const price = parseFloat(String(d.price_mxn || d.price || '0')) || 0;
-                    const qty = parseFloat(String(d.quantity || '1')) || 1;
-                    const payReq = d.pay_req || d.payReq || '';
-                    let payStatus = 'Unpaid';
-                    if (payReq === 'true' || payReq === true) payStatus = 'Paid';
-                    else if (String(payReq).startsWith('requested')) payStatus = payReq;
-                    else if (String(payReq).startsWith('paid')) payStatus = payReq;
-
-                    // Compute codes live using the workbook exchange rate
-                    const computed = calculateCodesAndPrices(norm, exchangeRate, norm.workbook || '326');
-
-                    return {
-                        'Tag ID': itemIdStr,
-                        'Item #': d.item_number || d.itemNumber || '',
-                        'Status': d.status || '',
-                        'Shape': d.shape || '',
-                        'Material': d.material || '',
-                        'Color': d.color || '',
-                        'Description': d.description || d.short_description || d.shortDescription || '',
-                        'Qty': qty,
-                        'Price (MXN)': price,
-                        'Subtotal (MXN)': +(price * qty).toFixed(2),
-                        'ACQ Code': computed.bookAqCode,
-                        'LND Code': computed.bookLandCode,
-                        'Retail (USD)': computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
-                        'Pay Status': payStatus,
-                        'Weight (kg)': parseFloat(String(d.weight_kg || d.weightKg || '0')) || '',
-                        'H (cm)': parseFloat(String(d.height_cm || d.heightCm || '0')) || '',
-                        'W (cm)': parseFloat(String(d.width_cm || d.widthCm || '0')) || '',
-                        'L (cm)': parseFloat(String(d.length_cm || d.lengthCm || '0')) || '',
-                        'Workbook': d.workbook || '',
-                        'Notes': d.notes || '',
-                    };
-                });
-
-                // Sort rows by Tag ID
-                rows.sort((a, b) => String(a['Tag ID']).localeCompare(String(b['Tag ID'])));
-
-                // Totals row
-                const totalQty = rows.reduce((s, r) => s + (Number(r['Qty']) || 0), 0);
-                const totalMXN = rows.reduce((s, r) => s + (Number(r['Subtotal (MXN)']) || 0), 0);
-                rows.push({
-                    'Tag ID': '', 'Item #': '', 'Status': '', 'Shape': '', 'Material': '',
-                    'Color': '', 'Description': `TOTAL — ${rows.length - 1} items`,
-                    'Qty': totalQty,
-                    'Price (MXN)': '',
-                    'Subtotal (MXN)': +totalMXN.toFixed(2),
-                    'ACQ Code': '', 'LND Code': '', 'Retail (USD)': '',
-                    'Pay Status': '', 'Weight (kg)': '', 'H (cm)': '', 'W (cm)': '', 'L (cm)': '',
-                    'Workbook': '', 'Notes': '',
-                } as any);
-
-                const ws = XLSX.utils.json_to_sheet(rows);
-                ws['!cols'] = [
-                    { wch: 20 }, { wch: 10 }, { wch: 13 }, { wch: 14 }, { wch: 14 },
-                    { wch: 12 }, { wch: 36 }, { wch: 6 }, { wch: 14 }, { wch: 15 },
-                    { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 13 },
-                    { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
-                    { wch: 12 }, { wch: 28 },
-                ];
-
-                // Sheet name max 31 chars, must be unique
-                const sheetName = vid.slice(0, 31);
-                XLSX.utils.book_append_sheet(wb, ws, sheetName);
-            }
-
-            const ts = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `Onyx_Inventory_${ts}.xlsx`);
-            toast.success(`Exported ${exportItems.length} items across ${sortedVendorIds.length} vendor sheets`);
-        } catch (err: any) {
-            toast.error(`Export failed: ${err.message}`);
-        } finally {
-            setIsExporting(false);
-        }
-    };
 
     return (
         <>
@@ -390,12 +268,12 @@ const InventoryBar: React.FC = () => {
 
                     <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
 
-                    {/* Export Inventory XLSX */}
+                    {/* Export Master Unified XLSX */}
                     <button
-                        onClick={handleExportInventoryXLSX}
+                        onClick={onExport}
                         disabled={isExporting || inventory.length === 0}
                         className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-inventory) disabled:opacity-20 disabled:cursor-not-allowed"
-                        title={`Export Inventory to XLSX — one sheet per vendor (acquisition & production only)`}
+                        title={`Export MASTER XLSX — combined Finance (Ledger/Summary) & Inventory (one sheet per vendor)`}
                     >
                         <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
                         <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
@@ -483,7 +361,7 @@ const StoreBar: React.FC = () => {
     );
 };
 
-const FinanceBar: React.FC = () => {
+const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ onExport, isExporting }) => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
     const docs = useAtomValue(financeDataAtom);
@@ -495,7 +373,6 @@ const FinanceBar: React.FC = () => {
     const [isDestOpen, setIsDestOpen] = useAtom(isPaymentDestinationFilterOpenAtom);
     const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
-    const [isExporting, setIsExporting] = useState(false);
 
     const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
     const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
@@ -524,105 +401,6 @@ const FinanceBar: React.FC = () => {
 
     const CATEGORIES: PaymentCategory[] = ['All', 'ACQ', 'PROD', 'MONTHLY', 'SPPL', 'LABR', 'PACK', 'OPRT'];
 
-    const handleExportXLSX = async () => {
-        if (isExporting || docs.length === 0) return;
-        setIsExporting(true);
-        try {
-            const XLSX = await import('xlsx');
-
-            // ── Sheet 1: Full Ledger ──────────────────────────────────────
-            const ledgerRows = docs.map(r => ({
-                'Date': r.date ? new Date(r.date).toLocaleDateString('en-US') : '',
-                'Description': r.description || '',
-                'Category': r.subcategory || r.category || '',
-                'Vendor': r.vendor_id || '',
-                'Amount (MXN)': r.amount ?? 0,
-                'Commission (MXN)': r.commission ?? 0,
-                'Total (MXN)': (r.amount ?? 0) + (r.commission ?? 0),
-                'Status': r.status || 'Requested',
-                'Destination': r.destination || '',
-                'Payment Method': r.payment_method || '',
-                'Reference': r.reference || '',
-                'Pay Date': r.pay_date ? new Date(r.pay_date).toLocaleDateString('en-US') : '',
-                'Notes': r.notes || '',
-                'Recurring': r.recurring ? 'Yes' : 'No',
-                'ID': r.id || '',
-            }));
-
-            const ledgerSheet = XLSX.utils.json_to_sheet(ledgerRows);
-
-            // Column widths
-            ledgerSheet['!cols'] = [
-                { wch: 12 }, { wch: 48 }, { wch: 12 }, { wch: 10 },
-                { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
-                { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 12 },
-                { wch: 32 }, { wch: 10 }, { wch: 36 },
-            ];
-
-            // ── Sheet 2: Summary ──────────────────────────────────────────
-            const totalAll  = docs.reduce((s, d) => s + (d.amount ?? 0), 0);
-            const totalPaid = docs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0), 0);
-            const totalPend = totalAll - totalPaid;
-            const rate = liveExchangeRate || exchangeRate;
-
-            const catMap: Record<string, { total: number; paid: number }> = {};
-            docs.forEach(d => {
-                const cat = d.subcategory || d.category || 'Other';
-                if (!catMap[cat]) catMap[cat] = { total: 0, paid: 0 };
-                catMap[cat].total += d.amount ?? 0;
-                if (d.status === 'Paid') catMap[cat].paid += d.amount ?? 0;
-            });
-
-            const destMap: Record<string, { total: number; paid: number }> = {};
-            docs.forEach(d => {
-                const dest = d.destination || 'Unknown';
-                if (!destMap[dest]) destMap[dest] = { total: 0, paid: 0 };
-                destMap[dest].total += d.amount ?? 0;
-                if (d.status === 'Paid') destMap[dest].paid += d.amount ?? 0;
-            });
-
-            const summaryRows: any[] = [
-                { 'Section': '── OVERVIEW ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': 'Finance Database', 'Label': 'Grand Total', 'Total (MXN)': totalAll, 'Paid (MXN)': totalPaid, 'Pending (MXN)': totalPend, 'Total (USD)': +(totalAll / rate).toFixed(2) },
-                { 'Section': '', 'Label': `Exchange Rate Used`, 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': rate },
-                { 'Section': '', 'Label': `Records`, 'Total (MXN)': docs.length, 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': '── BY CATEGORY ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                ...Object.entries(catMap).sort((a, b) => b[1].total - a[1].total).map(([cat, v]) => ({
-                    'Section': 'Category', 'Label': cat,
-                    'Total (MXN)': v.total,
-                    'Paid (MXN)': v.paid,
-                    'Pending (MXN)': v.total - v.paid,
-                    'Total (USD)': +(v.total / rate).toFixed(2),
-                })),
-                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': '── BY ACCOUNT ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                ...Object.entries(destMap).sort((a, b) => b[1].total - a[1].total).map(([dest, v]) => ({
-                    'Section': 'Account', 'Label': dest,
-                    'Total (MXN)': v.total,
-                    'Paid (MXN)': v.paid,
-                    'Pending (MXN)': v.total - v.paid,
-                    'Total (USD)': +(v.total / rate).toFixed(2),
-                })),
-            ];
-
-            const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
-            summarySheet['!cols'] = [{ wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }];
-
-            // ── Build & Download ──────────────────────────────────────────
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Finance Ledger');
-            XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
-
-            const ts = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `Onyx_Finance_${ts}.xlsx`);
-            toast.success(`Exported ${docs.length} records`);
-        } catch (err: any) {
-            toast.error(`Export failed: ${err.message}`);
-        } finally {
-            setIsExporting(false);
-        }
-    };
 
     return (
         <div className="flex flex-1 items-center gap-3 ml-2 relative">
@@ -688,12 +466,12 @@ const FinanceBar: React.FC = () => {
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
 
-                {/* Export XLSX button */}
+                {/* Export Master Unified XLSX */}
                 <button
-                    onClick={handleExportXLSX}
+                    onClick={onExport}
                     disabled={isExporting || docs.length === 0}
                     className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-finance) disabled:opacity-20 disabled:cursor-not-allowed"
-                    title={`Export Finance Database to XLSX (${docs.length} records)`}
+                    title={`Export MASTER XLSX — combined Finance (Ledger/Summary) & Inventory (one sheet per vendor)`}
                 >
                     <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
                     <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
@@ -831,6 +609,153 @@ export function MainHeader() {
     const [language, setLanguage] = useAtom(languageAtom);
     const [theme, setTheme] = useAtom(themeAtom);
 
+    const inventory = useAtomValue(inventoryAtom);
+    const financeDocs = useAtomValue(financeDataAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
+    const liveExchangeRateValue = useAtomValue(liveExchangeRateAtom);
+    const [isExporting, setIsExporting] = useState(false);
+
+    // Statuses that are store/catalog items — excluded from the export
+    const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
+
+    const handleMasterExportXLSX = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            const XLSX = await import('xlsx');
+            const wb = XLSX.utils.book_new();
+
+            // 1. DYNAMIC PARTIAL PAYMENT TRACKING (Reflecting latest app balance logic)
+            const partialPayIds = new Set<string>();
+            financeDocs.forEach(d => {
+                if (d.status === 'Paid' && d.description?.includes('%')) {
+                    const rel = d.related_ids || (d.related_inventory_ids ? d.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                    if (Array.isArray(rel)) rel.forEach((id: string) => partialPayIds.add(String(id)));
+                    else if (typeof rel === 'string' && rel.includes(',')) rel.split(',').forEach((id: string) => partialPayIds.add(id.trim()));
+                }
+            });
+
+            // 2. FINANCE DATA (Ledger and Summary)
+            const rate = liveExchangeRateValue || exchangeRate;
+            const ledgerRows = financeDocs.map(r => ({
+                'Date': r.date ? new Date(r.date).toLocaleDateString('en-US') : '',
+                'Description': r.description || '',
+                'Category': r.subcategory || r.category || '',
+                'Vendor': r.vendor_id || '',
+                'Amount (MXN)': r.amount ?? 0,
+                'Commission (MXN)': r.commission ?? 0,
+                'Total (MXN)': (r.amount ?? 0) + (r.commission ?? 0),
+                'Status': r.status || 'Requested',
+                'Destination': r.destination || '',
+                'Payment Method': r.payment_method || '',
+                'Reference': r.reference || '',
+                'Pay Date': r.pay_date ? new Date(r.pay_date).toLocaleDateString('en-US') : '',
+                'Notes': r.notes || '',
+                'Recurring': r.recurring ? 'Yes' : 'No',
+                'ID': r.id || '',
+            }));
+
+            const totalAll = financeDocs.reduce((s, d) => s + (d.amount ?? 0), 0);
+            const totalPaid = financeDocs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0), 0);
+            const totalPend = totalAll - totalPaid;
+            
+            const catMap: Record<string, { total: number; paid: number }> = {};
+            financeDocs.forEach(d => {
+                const cat = d.subcategory || d.category || 'Other';
+                if (!catMap[cat]) catMap[cat] = { total: 0, paid: 0 };
+                catMap[cat].total += d.amount ?? 0;
+                if (d.status === 'Paid') catMap[cat].paid += d.amount ?? 0;
+            });
+
+            const summaryRows: any[] = [
+                { 'Section': '── OVERVIEW ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': 'Finance Database', 'Label': 'Grand Total', 'Total (MXN)': totalAll, 'Paid (MXN)': totalPaid, 'Pending (MXN)': totalPend, 'Total (USD)': +(totalAll / rate).toFixed(2) },
+                { 'Section': '', 'Label': `Exchange Rate Used`, 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': rate },
+                { 'Section': '', 'Label': `Records`, 'Total (MXN)': financeDocs.length, 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                { 'Section': '── BY CATEGORY ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
+                ...Object.entries(catMap).sort((a,b) => b[1].total - a[1].total).map(([cat, v]) => ({
+                    'Section': 'Category', 'Label': cat, 'Total (MXN)': v.total, 'Paid (MXN)': v.paid, 'Pending (MXN)': v.total - v.paid, 'Total (USD)': +(v.total / rate).toFixed(2)
+                }))
+            ];
+
+            const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+            XLSX.utils.book_append_sheet(wb, summarySheet, 'Finance Summary');
+            const ledgerSheet = XLSX.utils.json_to_sheet(ledgerRows);
+            XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Finance Ledger');
+
+            // 3. INVENTORY DATA (Acquisition & Production)
+            const exportItems = inventory.filter(item => {
+                const status = (item.data.status || '').toLowerCase().trim();
+                return !EXCLUDED_STATUSES.has(status);
+            });
+
+            const vendorMap: Record<string, typeof exportItems> = {};
+            for (const item of exportItems) {
+                const d = item.data as any;
+                const itemIdStr = String(d.item_id || d.itemId || '');
+                let vid: string = d.vendor_id || d.vendorId || '';
+                if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
+                if (!vid) vid = 'Unknown';
+                if (!vendorMap[vid]) vendorMap[vid] = [];
+                vendorMap[vid].push(item);
+            }
+
+            const vendorOrder = Object.keys(vendors);
+            const sortedVendorIds = [
+                ...vendorOrder.filter(v => vendorMap[v]),
+                ...Object.keys(vendorMap).filter(v => !vendorOrder.includes(v)),
+            ];
+
+            for (const vid of sortedVendorIds) {
+                const items = vendorMap[vid];
+                const rows = items.map(item => {
+                    const d = item.data as any;
+                    const norm = normalizeInventoryData(d);
+                    const tagId = String(d.item_id || d.itemId || '');
+                    const price = parseFloat(String(d.price_mxn || d.price || '0')) || 0;
+                    const qty = parseFloat(String(d.quantity || '1')) || 1;
+                    
+                    const payStatusClass = getStatusClass(norm, partialPayIds);
+                    const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
+
+                    const computed = calculateCodesAndPrices(norm, rate, norm.workbook || '326');
+
+                    return {
+                        'TAG ID': computed.bookBardcode,
+                        'Item #': d.item_number || d.itemNumber || '',
+                        'Status': d.status || '',
+                        'Shape': d.shape || '',
+                        'Material': d.material || '',
+                        'Color': d.color || '',
+                        'Description': d.description || d.short_description || d.shortDescription || '',
+                        'Qty': qty,
+                        'Price (MXN)': price,
+                        'Subtotal (MXN)': +(price * qty).toFixed(2),
+                        'ACQ Code': computed.bookAqCode,
+                        'LND Code': computed.bookLandCode,
+                        'Retail (USD)': computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
+                        'Pay Status': payStatus,
+                        'Workbook': d.workbook || '',
+                        'Update Date': (item as any).updated_at ? new Date((item as any).updated_at).toLocaleDateString() : ''
+                    };
+                });
+
+                rows.sort((a,b) => String(a['TAG ID']).localeCompare(String(b['TAG ID'])));
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, vid.slice(0, 31));
+            }
+
+            const ts = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Onyx_Master_Export_${ts}.xlsx`);
+            toast.success('Unified Master Export Complete');
+        } catch (err: any) {
+            toast.error(`Export failed: ${err.message}`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
 
     const user = useAtomValue(userAtom);
@@ -857,9 +782,9 @@ export function MainHeader() {
 
             {/* Dynamic module bar — grows to fill available space */}
             <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">
-                {activeView === 'inventory' && <InventoryBar />}
+                {activeView === 'inventory' && <InventoryBar onExport={handleMasterExportXLSX} isExporting={isExporting} />}
                 {activeView === 'store' && <StoreBar />}
-                {activeView === 'finance' && <FinanceBar />}
+                {activeView === 'finance' && <FinanceBar onExport={handleMasterExportXLSX} isExporting={isExporting} />}
                 {activeView === 'logistics' && <LogisticsBar />}
                 {activeView === 'packing' && <PackingBar />}
                 {activeView === 'upload' && <UploadBar />}
