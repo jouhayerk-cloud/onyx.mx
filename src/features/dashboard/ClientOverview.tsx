@@ -35,9 +35,9 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
         onClick={onClick}
         className={`group flex flex-col gap-1.5 p-4 rounded-2xl border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
     >
-        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
-        <span className="text-[18px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
-        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
+        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
+        <span className="text-[24px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[11px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
     </div>
 );
 
@@ -47,10 +47,10 @@ const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', 
 }) => (
     <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-            <Icon size={14} strokeWidth={2.5} style={{ color }} />
-            <h2 className="text-[11px] font-black uppercase tracking-widest text-(--text-color) opacity-80">{title}</h2>
+            <Icon size={16} strokeWidth={2.5} style={{ color }} />
+            <h2 className="text-[14px] font-black uppercase tracking-widest text-(--text-color) opacity-80">{title}</h2>
             {badge && (
-                <span className="px-2 py-0.5 rounded-full bg-(--text-color)/5 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
+                <span className="px-2 py-0.5 rounded-full bg-(--text-color)/5 text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
             )}
         </div>
         {right}
@@ -431,21 +431,34 @@ export const ClientOverview: React.FC = () => {
                             <SectionHeader icon={Package} title="Storage & Logistics" color="#6BCEBB" />
                             <div className="grid grid-cols-2 gap-3 mt-1">
                                 <div className="flex flex-col">
-                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.totalCratesAndPallets}</span>
-                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Pallets & Crates</span>
+                                    <span className="text-[26px] font-black text-(--text-color) leading-tight">{globalTotals.totalCratesAndPallets}</span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Pallets & Crates</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.packedCrates} <span className="text-[9px] opacity-30">/ {globalTotals.freeCrates}</span></span>
-                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed / Free</span>
+                                    <span className="text-[22px] font-black text-(--text-color) leading-tight">{globalTotals.packedCrates} <span className="text-[10px] opacity-30">/ {globalTotals.freeCrates}</span></span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed / Free</span>
                                 </div>
-                                <div className="flex flex-col col-span-2 mt-1">
-                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.packedItems}</span>
-                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed Items</span>
+                                <div className="flex flex-col col-span-2 mt-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-[26px] font-black text-(--text-color) leading-tight">{globalTotals.packedItems}</span>
+                                            <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed Items</span>
+                                        </div>
+                                        {globalTotals.totalItems > 0 && (
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[18px] font-black text-(--main-color)">{Math.round((globalTotals.packedItems / globalTotals.totalItems) * 100)}%</span>
+                                                <span className="text-[9px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest leading-none mt-1">Efficiency</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
+                                        <div className="h-full bg-(--main-color) transition-all duration-1000 shadow-[0_0_10px_var(--main-color)]" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="mt-4 pt-3 border-t border-(--border-color)/50">
-                                <span className="text-[9px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
-                                <p className="text-[12px] font-mono font-black text-(--text-color) opacity-60 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
+                            <div className="mt-5 pt-3 border-t border-(--border-color)/50">
+                                <span className="text-[10px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
+                                <p className="text-[14px] font-mono font-black text-(--text-color) opacity-80 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
                             </div>
                         </div>
 
@@ -454,9 +467,9 @@ export const ClientOverview: React.FC = () => {
                             <SectionHeader icon={CreditCard} title="Expenses & Financials" color="#00AEEF" right={
                                 <div className="flex items-center gap-3">
                                     <div className="flex flex-col items-end">
-                                        <div className="flex items-center gap-1.5 leading-none">
-                                            <span className="text-[20px] font-mono font-black text-white">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[10px] opacity-40 font-black">USD</span></span>
-                                            <span className="text-[12px] font-mono font-bold text-white/30">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] opacity-40 font-black">MXN</span></span>
+                                        <div className="flex items-center gap-2 leading-none">
+                                            <span className="text-[28px] font-mono font-black text-white drop-shadow-[0_0_10px_rgba(0,174,239,0.3)]">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] opacity-40 font-black">USD</span></span>
+                                            <span className="text-[16px] font-mono font-bold text-white/30 truncate max-w-[120px]">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[12px] opacity-40 font-black">MXN</span></span>
                                         </div>
                                     </div>
                                 </div>
@@ -478,12 +491,12 @@ export const ClientOverview: React.FC = () => {
                                         }}
                                         className="group flex flex-col p-2.5 rounded-lg bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all cursor-pointer border border-transparent hover:border-(--main-color)/20"
                                     >
-                                        <div className="flex items-center gap-1.5 mb-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                                            <c.icon size={10} style={{ color: c.color }} />
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
+                                        <div className="flex items-center gap-2 mb-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                            <c.icon size={12} style={{ color: c.color }} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
                                         </div>
-                                        <span className="text-[20px] font-mono font-black text-white leading-none mb-0.5">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[8px] opacity-40">USD</span></span>
-                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[8px] opacity-40">MXN</span></span>
+                                        <span className="text-[26px] font-mono font-black text-white leading-none mb-1">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[10px] opacity-40">USD</span></span>
+                                        <span className="text-[15px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[10px] opacity-40">MXN</span></span>
                                     </div>
                                 ))}
                             </div>
@@ -492,36 +505,36 @@ export const ClientOverview: React.FC = () => {
                             <div className="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-(--border-color)">
                                 {!(globalTotals.totalOpsMxn > 0) ? <div /> : (
                                     <div className="flex flex-col">
-                                        <span className="text-[7px] font-black text-emerald-400 opacity-60 uppercase tracking-widest mb-1 leading-none">Non-Merch</span>
-                                        <span className="text-[16px] font-black text-emerald-400 font-mono tracking-tighter truncate">{fmtUSDCompact(globalTotals.totalOpsUsd)}</span>
+                                        <span className="text-[10px] font-black text-emerald-400 opacity-60 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
+                                        <span className="text-[22px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)}</span>
                                     </div>
                                 )}
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Units</span>
-                                    <span className="text-[22px] font-black text-(--text-color)">{globalTotals.totalItems}</span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Units</span>
+                                    <span className="text-[28px] font-black text-(--text-color) leading-none">{globalTotals.totalItems}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Acq Value</span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Acq Value</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[22px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[28px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Req Unpaid</span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Req Unpaid</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[22px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[28px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Total Unpaid</span>
+                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Total Unpaid</span>
                                     <div 
                                         onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
                                         className="flex flex-col leading-none cursor-pointer group/unpaid"
                                     >
-                                        <span className="text-[22px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[28px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
                                     </div>
                                 </div>
                             </div>

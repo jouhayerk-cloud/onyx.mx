@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.36.1] - 2026-03-28
+### Refined
+- **Overview Module**: Significantly increased font sizes for financial and logistics KPIs to improve readability.
+- **Data Density**: Added "Packed Efficiency" progress bar and percentage to the Storage & Logistics panel.
+- **Logistics Logic**: Refined font weight and data label clarity for Pallets, Crates, and packed items.
+
+### Fixed
+- **Build Pipeline**: Installed missing `@google/genai` dependency to resolve Rollup resolution errors.
+- **CSS Syntax**: Cleaned up Tailwind 4 `--variable` syntax in `MainHeader` to resolve build warnings.
+
 ### v1.36.0 — 2026-03-28
 - **Global Exchange Rate [feat]:** Relocated the USD/MXN exchange rate to the main application top bar for persistent global visibility.
 - **Top Bar XLSX Export [feat]:** Added a "Master Export" button directly to the Overview top bar, consolidating inventory and finance reporting access.
