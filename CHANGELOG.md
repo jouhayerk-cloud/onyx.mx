@@ -12,6 +12,14 @@
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 
+### v1.31.2 — 2026-03-28
+- **Unified Master XLSX Export [feat]:** Consolidated Inventory and Finance reporting into a single, high-fidelity workbook.
+- **App-Generated TAG IDs [standard]:** Standardized the export to use `[Vendor][Workbook][ItemNumber][Cypher]` format (e.g., `EM3261HXF`) for all inventory rows.
+- **Dynamic Partial Payment Tracking [logic]:** Implemented live finance cross-referencing to correctly label items with active partial payments (identified by `%` in descriptions).
+- **Vendor-Specific Sheets [ui]:** Automated generation of unique sheets per vendor within the master workbook.
+- **Finance Ledger & Summary [ui]:** Included complete transaction history and aggregated balance summaries in the export.
+- **TypeScript Lint Errors [fix]:** Resolved `setIsExporting` scope issues and ensured type safety for `updated_at` properties in the export routine.
+
 ### v1.30.5
 - **Dynamic Payment Mapping**: Refactored the Inventory and Production filters to dynamically cross-reference the Finance module.
 - **Cross-Module Sync**: Production items with partial payments (e.g. 50%) are now correctly identified and filtered despite database boolean column limitations.
