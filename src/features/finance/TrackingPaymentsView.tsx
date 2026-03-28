@@ -1279,7 +1279,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-white/5 animate-in slide-in-from-top-2 duration-300 relative z-10">
                     <div className="flex flex-col md:flex-row items-center justify-between px-4 py-2 gap-4">
                         {/* Subcategories Filter */}
-                        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
+                        <div className="flex items-center gap-0.5 overflow-x-auto custom-scrollbar w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
                             {SUBCATEGORIES.map(s => {
                                 const labels: Record<string, { label: string; icon: any; color: string }> = {
                                     'All': { label: 'ALL', icon: LayoutGrid, color: '#888' },
@@ -1295,9 +1295,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const isActive = subcatFilter === s;
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex items-center gap-2 px-2 py-1.5 transition-all whitespace-nowrap shrink-0 group/f`}>
-                                        <cfg.icon size={12} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-125' : 'opacity-40 group-hover/f:opacity-100'}`} />
-                                        <span className={`text-[9px] font-black tracking-[0.2em] transition-all ${isActive ? 'opacity-100 scale-105' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
+                                        className={`flex items-center gap-1.5 px-1.5 py-1 transition-all whitespace-nowrap shrink-0 group/f`}>
+                                        <cfg.icon size={12} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-110' : 'opacity-40 group-hover/f:opacity-100'}`} />
+                                        <span className={`text-[9px] font-black tracking-widest transition-all ${isActive ? 'opacity-100 scale-105' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
                                             {cfg.label}
                                         </span>
                                     </button>
@@ -1402,25 +1402,25 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         </div>
                                     </div>
 
-                                    {/* Column 3: Destination Account */}
-                                    <div className="shrink-0 w-10 h-10 flex items-center justify-center">
-                                        {destCfg ? (
-                                            <img src={destCfg.icon} className="max-w-[28px] max-h-[22px] object-contain brightness-110 drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
-                                        ) : (
-                                            <Info size={12} className="text-white/10" />
-                                        )}
-                                    </div>
-
-                                    {/* Column 4: Financials */}
-                                    <div className="shrink-0 flex flex-col items-end gap-0.5 w-[130px]">
-                                        <div className="flex items-center justify-end gap-2 leading-none">
+                                    {/* Column 3: Financials */}
+                                    <div className="shrink-0 flex flex-col items-end gap-0.5 w-[110px] mr-2">
+                                        <div className="flex items-center justify-end gap-1.5 leading-none">
                                             <span className="text-[15px] font-black font-mono text-white tracking-tighter">{fmtMXN(totalNet)}</span>
-                                            <span className="text-[10px] font-mono font-black text-white/20 uppercase">MXN</span>
+                                            <span className="text-[9px] font-mono font-black text-white/20 uppercase">MXN</span>
                                         </div>
-                                        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-90 origin-right">
+                                        <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-80 transition-opacity scale-[0.85] origin-right">
                                             <span className="text-[11px] font-mono font-black text-white/60 tracking-tighter">${totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             <span className="text-[8px] font-black text-white/20">USD</span>
                                         </div>
+                                    </div>
+
+                                    {/* Column 4: Destination Account */}
+                                    <div className="shrink-0 w-8 h-10 flex items-center justify-center">
+                                        {destCfg ? (
+                                            <img src={destCfg.icon} className="max-w-[24px] max-h-[20px] object-contain brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
+                                        ) : (
+                                            <Info size={12} className="text-white/10" />
+                                        )}
                                     </div>
 
                                     {/* Column 5: Status Action */}
