@@ -415,12 +415,13 @@ export const ClientOverview: React.FC = () => {
                                             { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
                                         ].map(c => (
                                             <div key={c.label} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (c.label !== 'Non-Merch') setPaymentCategoryFilter((c.v as any).tag); }}
-                                                className="group flex flex-col p-2.5 rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 hover:border-(--main-color)/20 transition-all cursor-pointer"
+                                                className="group relative flex flex-col p-2.5 rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 hover:border-(--main-color)/20 transition-all cursor-pointer"
                                             >
-                                                <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity mb-2.5"><c.icon size={11} style={{ color: c.color }} /><span className="text-[8px] font-black uppercase tracking-widest text-white truncate">{c.label}</span></div>
+                                                <div className="absolute top-2 right-2 opacity-20 group-hover:opacity-100 transition-opacity"><c.icon size={16} style={{ color: c.color }} /></div>
+                                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/50 group-hover:text-white transition-colors mb-2.5 block w-fit">{c.label}</span>
                                                 <div className="space-y-1.5">
                                                     <CurrencyTag type="USD" amount={c.v.usd} />
-                                                    <CurrencyTag type="MXN" amount={c.v.mxn} className="opacity-60" />
+                                                    <CurrencyTag type="MXN" amount={c.v.mxn} />
                                                 </div>
                                             </div>
                                         ))}
@@ -433,16 +434,16 @@ export const ClientOverview: React.FC = () => {
                                             { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true },
                                         ].map(stat => (
                                             <div key={stat.label} className="group relative flex flex-col p-5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
-                                                <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-30 transition-opacity"><stat.icon size={22} style={{ color: stat.color }} /></div>
-                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-3">{stat.label}</span>
+                                                <div className="absolute top-4 right-4 opacity-30 transition-opacity"><stat.icon size={22} style={{ color: stat.color }} /></div>
+                                                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-3">{stat.label}</span>
                                                 <div className="flex flex-col leading-none">
-                                                    <span className="text-[32px] font-black text-white font-mono tracking-tighter">
+                                                    <span className="text-[32px] font-black font-mono tracking-tighter" style={{ color: stat.color }}>
                                                         {stat.isCurrency ? fmtUSDCompact(stat.v as number) : (stat.v as number).toLocaleString()}
                                                         {stat.isCurrency && <span className="text-[12px] opacity-20 ml-2">USD</span>}
                                                     </span>
                                                     <div className={`inline-flex items-center gap-2 mt-2 px-2 py-1 rounded bg-white/5 border border-white/10 w-fit`}>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest opacity-40 px-1 py-0.5 rounded" style={{ backgroundColor: stat.color, color: '#000' }}>MXN</span>
-                                                        <span className="text-[14px] font-mono font-bold text-white/50">{stat.sub}</span>
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded" style={{ backgroundColor: stat.color, color: '#000' }}>MXN</span>
+                                                        <span className="text-[14px] font-mono font-bold text-white">{stat.sub}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -454,7 +455,7 @@ export const ClientOverview: React.FC = () => {
                     </div>
 
                     {/* ROW 2: Queue & Upcoming */}
-                    <div className="grid grid-cols-1 lg:grid-cols-[1.8fr,1fr] gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-[3fr,1fr] gap-4">
                         <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Activity} title="Active Request Queue" color="#F43F5E" 

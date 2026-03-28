@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.37.4] - 2026-03-28
+### Optimized
+- **Financial UI Refinement**: Relocated category icons to the top-right corner and enlarged them for better visual scanning.
+- **Typography**: Main financial values now use color-matched typography (Emerald, Green, Amber, Rose) instead of default white.
+- **Opacity**: Removed transparency from all text elements in the Expenses & Financials panel to improve readability.
+- **Layout Distribution**: Updated the dashboard grid to a **75% / 25%** split between the Active Request Queue and Upcoming Payments.
+
 ## [1.37.3] - 2026-03-28
 ### Added
 - **UI Restoration**: Reinstated high-fidelity v1.36.3 dashboard features.
