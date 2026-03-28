@@ -33,10 +33,10 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
 }) => (
     <div
         onClick={onClick}
-        className={`group flex flex-col gap-1.5 p-4 rounded-2xl border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
+        className={`group flex flex-col gap-1.5 p-4 rounded-lg border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
     >
         <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
-        <span className="text-[18px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        <span className="text-[20px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
         {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
     </div>
 );
@@ -402,9 +402,9 @@ export const ClientOverview: React.FC = () => {
                 {/* ── TOP LOGISTICS & KPI STRIP ────────────────────────────────── */}
                 <div className="flex flex-col gap-4 mb-6">
                     {/* Compact Logistics & Financial Merger */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="flex flex-col lg:flex-row gap-4 items-stretch">
                         {/* Storage & Logistics Panel */}
-                        <div className="lg:col-span-1 flex flex-col p-4 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group">
+                        <div className="w-full lg:w-1/4 flex flex-col p-4 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group min-h-[160px]">
                             {/* Decorative Glass Glow */}
                             <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#6BCEBB]/5 blur-[80px] pointer-events-none group-hover:bg-[#6BCEBB]/10 transition-colors" />
                             
@@ -430,18 +430,23 @@ export const ClientOverview: React.FC = () => {
                         </div>
 
                         {/* Combined Financials & Expenses Panel */}
-                        <div className="lg:col-span-2 flex flex-col p-5 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden">
-                            <SectionHeader icon={CreditCard} title="Expenses & Financials" color="#00AEEF" right={
+                        <div className="flex-1 flex flex-col p-5 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden">
+                            <div className="flex items-center justify-between mb-3 min-h-[30px]">
+                                <div className="flex items-center gap-2">
+                                    <CreditCard size={14} strokeWidth={2.5} style={{ color: '#00AEEF' }} />
+                                    {/* Removed Title */}
+                                </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="flex flex-col items-end">
+                                    {/* Moved and Renamed: Total Expenses */}
+                                    <div className="flex flex-col items-end pr-4 border-r border-white/10">
                                         <div className="flex items-center gap-1.5 leading-none">
-                                            <span className="text-[18px] font-mono font-black text-white">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[8px] opacity-40 font-black">USD</span></span>
-                                            <span className="text-[11px] font-mono font-bold text-white/30">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[8px] opacity-40 font-black">MXN</span></span>
+                                            <span className="text-[22px] font-mono font-black text-white">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[9px] opacity-40 font-black">USD</span></span>
+                                            <span className="text-[12px] font-mono font-bold text-white/30">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[9px] opacity-40 font-black">MXN</span></span>
                                         </div>
-                                        <span className="text-[7px] font-black uppercase text-emerald-400 mt-1">Total Non-Merch Expenses</span>
+                                        <span className="text-[8px] font-black uppercase text-emerald-400 mt-1">Total Expenses</span>
                                     </div>
                                 </div>
-                            } />
+                            </div>
                             <div className="grid grid-cols-5 gap-2 mt-3">
                                 {[
                                     { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
@@ -457,14 +462,14 @@ export const ClientOverview: React.FC = () => {
                                             setFinanceSubTab('payments');
                                             setPaymentCategoryFilter(c.v.tag);
                                         }}
-                                        className="group flex flex-col p-2.5 rounded-lg bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all cursor-pointer border border-transparent hover:border-(--main-color)/20"
+                                        className="group flex flex-col p-2.5 rounded bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all cursor-pointer border border-transparent hover:border-(--main-color)/20"
                                     >
                                         <div className="flex items-center gap-1.5 mb-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <c.icon size={10} style={{ color: c.color }} />
                                             <span className="text-[7px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
                                         </div>
-                                        <span className="text-[16px] font-mono font-black text-white leading-none mb-0.5">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[7px] opacity-40">USD</span></span>
-                                        <span className="text-[10px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[7px] opacity-40">MXN</span></span>
+                                        <span className="text-[18px] font-mono font-black text-white leading-none mb-0.5">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[8px] opacity-40">USD</span></span>
+                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[8px] opacity-40">MXN</span></span>
                                     </div>
                                 ))}
                             </div>
@@ -473,20 +478,20 @@ export const ClientOverview: React.FC = () => {
                             <div className="grid grid-cols-4 gap-3 mt-4 pt-3 border-t border-(--border-color)">
                                 <div className="flex flex-col">
                                     <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Units</span>
-                                    <span className="text-[18px] font-black text-(--text-color)">{globalTotals.totalItems}</span>
+                                    <span className="text-[22px] font-black text-(--text-color)">{globalTotals.totalItems}</span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Acq Value</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[18px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[9px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[9px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Req Unpaid</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[18px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[9px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[9px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
@@ -495,8 +500,8 @@ export const ClientOverview: React.FC = () => {
                                         onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
                                         className="flex flex-col leading-none cursor-pointer group/unpaid"
                                     >
-                                        <span className="text-[18px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[9px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[9px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                             </div>
@@ -505,15 +510,14 @@ export const ClientOverview: React.FC = () => {
                 </div>
 
                 {/* ── UNIFIED PRIORITY QUEUE ───────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-4">
-                    <div className="flex flex-col gap-4">
+                <div className="flex flex-col lg:flex-row gap-6 pb-4 items-stretch">
+                    <div className={`${comingPaymentsByVendor.length > 0 ? 'lg:flex-1' : 'w-full'} flex flex-col gap-4`}>
                         <div className="flex items-center justify-between px-2">
                             <SectionHeader 
                                 icon={RefreshCcw} 
                                 title="Active Request Queue" 
                                 badge={requisitions.length > 0 ? `${requisitions.length} elements` : undefined}
                             />
-                            <div className="text-[10px] font-mono font-black text-white/20">1 USD = {currentExchangeRate.toFixed(2)} MXN</div>
                         </div>
 
                         <div className="flex flex-col gap-2">
@@ -523,10 +527,10 @@ export const ClientOverview: React.FC = () => {
                                 const isExpanded = !!expandedDests[key];
                                 const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
                                     destDocs.map(d => d.vendor_id || d.description?.match(/from (\w+)$/)?.[1])
-                                )).filter(Boolean);
+                                 )).filter(Boolean);
 
                                 return (
-                                    <div key={key} className="group relative rounded-xl bg-(--text-color)/3 hover:bg-(--text-color)/6 border border-(--border-color) transition-all duration-500 overflow-hidden">
+                                    <div key={key} className="group relative rounded-lg bg-(--text-color)/3 hover:bg-(--text-color)/6 border border-(--border-color) transition-all duration-500 overflow-hidden">
                                         <div className="flex items-center gap-5 p-5 cursor-pointer" onClick={() => toggleDest(key)}>
                                             <div className="w-16 h-10 flex items-center justify-center overflow-hidden shrink-0">
                                                 <img src={cfg.icon} alt={cfg.name} className="w-full h-full object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform" />
@@ -575,32 +579,33 @@ export const ClientOverview: React.FC = () => {
 
                     {/* Upcoming (To be requested) */}
                     {comingPaymentsByVendor.length > 0 && (
-                        <div className="flex flex-col p-5 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group">
+                        <div className="w-full lg:w-fit min-w-[320px] max-w-[500px] flex flex-col p-5 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group h-fit">
                             <SectionHeader 
                                 icon={Wallet} 
                                 title="Upcoming Payments" 
                                 badge="By Vendor"
                                 color="#FBBF24"
                             />
-                             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                             <div className="flex flex-col gap-3">
                                 {comingPaymentsByVendor.map(group => {
                                     const color = (vendors as any)[group.vendorId]?.color || '#888';
                                     return (
-                                        <div key={group.vendorId} className="group relative flex flex-col items-center justify-center p-6 min-h-[140px] rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all border border-(--border-color) hover:border-(--main-color)/20 text-center">
-                                            <div className="absolute top-3 right-3">
-                                                <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: color, color }} />
+                                        <div key={group.vendorId} className="group relative flex items-center gap-4 p-4 rounded bg-white/5 hover:bg-white/10 transition-all border-l-4 border-l-(--border-color) hover:border-l-(--main-color) overflow-hidden" style={{ borderLeftColor: color }}>
+                                            <div className="w-10 h-10 rounded bg-(--text-color)/5 flex items-center justify-center shrink-0">
+                                                <span className="text-[12px] font-black text-white">{group.vendorId.slice(0,2).toUpperCase()}</span>
                                             </div>
-                                            
-                                            <span className="text-[11px] font-black text-(--text-color) opacity-80 uppercase tracking-[0.2em] mb-4 truncate w-full">{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
-                                            
-                                            <div className="flex flex-col gap-1.5 items-center">
-                                                <p className="text-[20px] font-mono font-black text-(--text-color) leading-none tracking-tight">{fmtUSD(group.total / currentExchangeRate).replace(' USD','')}</p>
-                                                <span className="text-[9px] font-mono font-black text-sky-400 group-hover:text-sky-300 transition-colors uppercase tracking-widest">USD</span>
-                                                
-                                                <div className="w-12 h-px bg-(--border-color)/50 my-2" />
-                                                
-                                                <p className="text-[14px] font-mono font-bold text-white/30 leading-none">{fmtMXN(group.total).replace(' MXN','').replace('$','')}</p>
-                                                <span className="text-[7px] font-mono font-black text-white/10 uppercase tracking-widest">MXN</span>
+
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-[10px] font-black text-(--text-color) opacity-60 uppercase tracking-[0.1em] truncate block">{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
+                                                <div className="flex items-baseline gap-2 mt-1">
+                                                    <p className="text-[16px] font-mono font-black text-(--text-color) leading-none tracking-tight">{fmtUSD(group.total / currentExchangeRate).replace(' USD','')}</p>
+                                                    <span className="text-[8px] font-mono font-black text-sky-400 uppercase">USD</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right">
+                                                <p className="text-[11px] font-mono font-bold text-white/30 leading-none">{fmtMXN(group.total).replace(' MXN','').replace('$','')}</p>
+                                                <span className="text-[6px] font-mono font-black text-white/10 uppercase tracking-widest block mt-0.5">MXN</span>
                                             </div>
                                         </div>
                                     );
@@ -611,7 +616,7 @@ export const ClientOverview: React.FC = () => {
                 </div>
 
                 {/* ── DISTRIBUTION ANALYSIS ───────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-xl bg-(--sidebar-bg) border border-(--border-color) shadow-2xl">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-8 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl">
                     <div className="col-span-1 lg:col-span-2">
                         <SectionHeader icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" />
                     </div>
