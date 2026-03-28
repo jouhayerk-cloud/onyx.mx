@@ -19,7 +19,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
     processIsProcessingAtom,
     processActiveStepLabelAtom
 } from '../../lib/atoms';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette
@@ -45,6 +45,7 @@ import { StoreView } from '../store/StoreView';
 import { PackingModule } from '../logistics/PackingModule';
 import { ProcessView } from '../process/ProcessView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
+import { AboutModal } from '../../components/AboutModal';
 
 declare const __APP_VERSION__: string;
 
@@ -141,6 +142,7 @@ export function MainAppView() {
     const setWorkflowStep = useSetAtom(workflowStepAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
+    const [isAboutOpen, setIsAboutOpen] = useState(false);
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
@@ -375,18 +377,22 @@ export function MainAppView() {
                         )}
                     </ul>
 
-                    {/* Branding & Global Progress at bottom of sidebar */}
-                    <div className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) shrink-0 relative overflow-hidden">
+                    {/* Branding & Global Progress at bottom of sidebar — Clickable About Tag */}
+                    <div 
+                        className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) shrink-0 relative overflow-hidden cursor-pointer hover:bg-white/5 active:bg-white/10 transition-all group"
+                        onClick={() => setIsAboutOpen(true)}
+                        title="About Onyx.mx Studio"
+                    >
                         {sidebarState === 'expanded' && (
                             <>
-                                <OnyxMiniLogo className="w-7 h-7 mb-2" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-(--text-color-secondary)">v{__APP_VERSION__}</span>
+                                <OnyxMiniLogo className="w-7 h-7 mb-2 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] transition-all" />
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300 transition-colors">v{__APP_VERSION__}</span>
                             </>
                         )}
                         {sidebarState === 'compact' && (
                             <>
-                                <OnyxMiniLogo className="w-6 h-6 mb-2" />
-                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary)">{__APP_VERSION__}</span>
+                                <OnyxMiniLogo className="w-6 h-6 mb-2 group-hover:scale-110 transition-all" />
+                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300">v{__APP_VERSION__}</span>
                             </>
                         )}
                     </div>
@@ -404,6 +410,7 @@ export function MainAppView() {
 
             <BatchActionsModal />
             <UploadWizard />
+            <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
         </>
     );
 }
