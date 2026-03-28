@@ -748,7 +748,7 @@ export async function extractGradientFromMask(
 
 export const numberToCypher = (num: number): string => {
 
-  const key = (import.meta.env.VITE_CYPHER_KEY as string) || 'ONYX_SECURE_DEFAULT';
+  const key = (import.meta.env.VITE_CYPHER_KEY as string) || 'DOXHELFANM';
   if (!key || key.length < 10) return '—';
 
   return String(Math.floor(num))
