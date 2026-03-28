@@ -496,7 +496,7 @@ export const ClientOverview: React.FC = () => {
                             <div className="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-(--border-color)">
                                 {!(globalTotals.totalOpsMxn > 0) ? <div /> : (
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-emerald-400 opacity-60 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
+                                        <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
                                         <div className="flex flex-col leading-none">
                                             <span className="text-[28px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
                                             <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
@@ -504,11 +504,11 @@ export const ClientOverview: React.FC = () => {
                                     </div>
                                 )}
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Units</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Units</span>
                                     <span className="text-[28px] font-black text-(--text-color) leading-none">{globalTotals.totalItems}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Acq Value</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Acq Value</span>
                                     <div className="flex flex-col leading-none">
                                         <span className="text-[28px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
                                         <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
