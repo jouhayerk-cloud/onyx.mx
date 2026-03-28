@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize the API using the API key from environment variables
 // Centralized for security and simple maintenance.
@@ -8,4 +8,4 @@ if (!apiKey) {
     console.warn("⚠️ Gemini API Key is missing. AI features will not work.");
 }
 
-export const ai = new GoogleGenAI({ apiKey: apiKey as string });
+export const ai = new GoogleGenerativeAI(apiKey as string);

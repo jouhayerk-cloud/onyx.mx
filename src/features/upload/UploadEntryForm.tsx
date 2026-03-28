@@ -11,7 +11,7 @@ import { useDatabase } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { UploadedFile } from '../../lib/Types';
 import { ai } from '../../lib/ai';
-import { Type } from '@google/genai';
+import { SchemaType } from '@google/generative-ai';
 import toast from 'react-hot-toast';
 
 
@@ -211,24 +211,24 @@ export function UploadEntryForm() {
                     description: "${itemData.description || ''}",
                     itemType: "${itemData.itemType || ''}"`;
 
-                    const schema = {
-                        type: Type.OBJECT,
+                    const schema: any = {
+                        type: SchemaType.OBJECT,
                         properties: {
-                            shape: { type: Type.STRING },
-                            material: { type: Type.STRING },
-                            color: { type: Type.STRING },
-                            description: { type: Type.STRING },
-                            itemType: { type: Type.STRING }
+                            shape: { type: SchemaType.STRING },
+                            material: { type: SchemaType.STRING },
+                            color: { type: SchemaType.STRING },
+                            description: { type: SchemaType.STRING },
+                            itemType: { type: SchemaType.STRING }
                         }
                     };
 
-                    const aiResult = await ai.models.generateContent({
-                        model: 'gemini-2.5-flash',
-                        contents: promptText,
-                        config: { responseMimeType: 'application/json', responseSchema: schema, thinkingConfig: { thinkingBudget: 0 } }
+                    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash' });
+                    const aiResult = await model.generateContent({
+                        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                        generationConfig: { responseMimeType: 'application/json', responseSchema: schema }
                     });
 
-                    const parsed = JSON.parse(aiResult.text.trim());
+                    const parsed = JSON.parse(aiResult.response.text().trim());
                     translatedShape = parsed.shape || translatedShape;
                     translatedMaterial = parsed.material || translatedMaterial;
                     translatedColor = parsed.color || translatedColor;
