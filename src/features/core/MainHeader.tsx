@@ -341,14 +341,14 @@ const StoreBar: React.FC = () => {
 
             <div className="flex-1 w-full relative group/search max-w-2xl mx-auto">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-[var(--main-color)] transition-colors" />
+                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--main-color) transition-colors" />
                 </div>
                 <input
                     type="text"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search Tag ID, Shape, Color... (space = AND)"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-[var(--main-color)]/40 transition-all shadow-lg backdrop-blur-md"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-(--main-color)/40 transition-all shadow-lg backdrop-blur-md"
                 />
                 {search && (
                     <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
