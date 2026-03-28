@@ -1,5 +1,12 @@
 # Changelog
 
+### v1.36.1 — 2026-03-28
+- **Studio Aesthetics [ui]:** Removed "Expenses & Financials" title for a cleaner look and standardized all borders to squared `rounded-lg`.
+- **Top Bar Integration [feat]:** Relocated the USD/MXN exchange rate tag to the main top bar, integrated into the Overview module badge.
+- **KPI Restructure [ui]:** Moved "Total Expenses" to the primary KPI strip and repositioned it left of the Units count.
+- **Dynamic Layout [ui]:** Reduced Storage & Logistics panel width by 25% and implemented dynamic size adjustment for Request Queue and Upcoming Payments.
+- **Vendor Color Coding [ui]:** Transformed Upcoming Payments into high-density, vendor-color-coded panels for better categorization.
+
 ### v1.36.0 — 2026-03-28
 - **Refined Metrics [feat]:** Added "Packed Items" count and quantity-per-size labels to the Storage & Logistics panel.
 - **Financial Typography [ui]:** Enlarged font sizes for all primary amounts in the Dashboard Overview for improved legibility.
