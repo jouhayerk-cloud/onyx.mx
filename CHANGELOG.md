@@ -12,6 +12,11 @@
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
 
+## v1.30.3 — 2026-03-28
+### Added
+- **Status Filter Refinement [ui]:** Refined the Global Status Toggle cycle to: All → **Partial** (Red) → **Requested** (Yellow) → **Paid** (Green).
+- **Payment Filtering Logic [fix]:** Updated the Inventory view to distinguish between **Partial** payments (items with payReq matching a percentage) and **Requested** payments (items with payReq as true).
+
 ## v1.30.2 — 2026-03-28
 ### Fixed
 - **Payment Status Write-Back [fix]:** When a finance record is marked **Paid**, linked inventory items now correctly receive a `pay_date` timestamp, showing as **Green/Paid** in the Inventory list.
