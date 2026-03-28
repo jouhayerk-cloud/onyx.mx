@@ -798,12 +798,14 @@ export const UnifiedInventoryView = () => {
             // Hide Available / Catalog items — they belong to the Store view
             if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
-            if (statusFilter === 'Acquisition') {
-                if (!['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status)) return false;
-            } else if (statusFilter === 'Production') {
-                if (item.source !== 'production' && item.data.status !== 'Production') return false;
-            } else if (statusFilter === 'Shipped') {
-                if (!['Shipped', 'shipped'].includes(item.data.status)) return false;
+            if (statusFilter === 'AcqProd') {
+                const isAcq = ['Acquired', 'Acquisitions', 'Acquisition'].includes(item.data.status);
+                const isProd = item.source === 'production' || item.data.status === 'Production';
+                if (!isAcq && !isProd) return false;
+            } else if (statusFilter === 'Requested') {
+                if (!item.data.payReq || item.data.payDate) return false;
+            } else if (statusFilter === 'Paid') {
+                if (!item.data.payDate) return false;
             }
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
 
@@ -865,38 +867,46 @@ export const UnifiedInventoryView = () => {
     }, [filteredItems]);
 
     return (
-        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-2 transition-all duration-300 ${isVendorFilterOpen ? 'pt-14' : ''}`}>
+        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0 transition-all duration-300 ${isVendorFilterOpen ? 'pt-14' : ''}`}>
 
-            {/* Stitch-inspired Sub-Header */}
-            <div className={`flex items-end gap-8 px-4 py-6 mt-4 mx-2 shrink-0 z-30 relative transition-transform duration-300 ${isVendorFilterOpen ? 'translate-y-2' : ''}`}>
-                <div>
-                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+            {/* Glass Sub-Header - Smaller & Compact */}
+            <div className={`sticky top-0 z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40 transition-all duration-300 ${isVendorFilterOpen ? 'translate-y-0' : ''}`}>
+                <div className="flex flex-col">
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
                         Types
                     </div>
-                    <div className="text-[2.5rem] font-bold text-white leading-none tracking-tighter">
+                    <div className="text-xl font-bold text-white leading-none tracking-tighter">
                         {filteredItems.length.toLocaleString('en-US')}
                     </div>
                 </div>
-                <div>
-                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+                <div className="w-px h-6 bg-white/5" />
+                <div className="flex flex-col">
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
                         Count
                     </div>
-                    <div className="text-[2.5rem] font-bold text-[#6BCEBB] leading-none tracking-tighter">
+                    <div className="text-xl font-bold text-[#6BCEBB] leading-none tracking-tighter">
                         {totalCount.toLocaleString('en-US')}
                     </div>
                 </div>
-                <div>
-                    <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 leading-none">
+                <div className="w-px h-6 bg-white/5" />
+                <div className="flex flex-col">
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
                         Total {showFinancials ? 'MXN' : ''}
                     </div>
-                    <div className="text-[2.5rem] font-bold text-(--main-color) leading-none tracking-tighter">
+                    <div className="text-xl font-bold text-(--main-color) leading-none tracking-tighter">
                         {showFinancials ? `$${totalValueMXN.toLocaleString('en-US')}` : '***'}
                     </div>
                 </div>
             </div>
 
-            <div className="grow min-h-0 overflow-hidden m-2 mt-0 relative z-20">
+            <div className="grow min-h-0 overflow-hidden relative z-20">
                 <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
+                    {/* Ghost top padding for subheader overlap if needed, but sticky top-0 handles it if inside scroll div. 
+                        Wait, sticky top-0 in flex-col child only works if the flex-col itself isn't scrolling. 
+                        Moving sub-header INSIDE the scroll div below would achieve the 'show behind' effect better. 
+                        But the user said "at the right of Main and Cont", implying top bar area.
+                        Lets keep it at top, but with the glass effect.
+                    */}
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
                         {isLoading ? (
                             <div className="col-span-full">

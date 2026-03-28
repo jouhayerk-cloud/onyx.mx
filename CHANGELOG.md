@@ -11,6 +11,16 @@
   LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
   git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
   git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
+## v1.30.0 — 2026-03-28
+### Added
+- **Inventory Sub-Header Redesign [ui]:** Refactored the "Types / Count / Total" panel into a compact, glassy sticky header (`backdrop-blur-xl`) with reduced font sizes and deep transparency for a professional "Studio" look.
+- **Glassmorphic Sub-Header [ui]:** Content now scrolls seamlessly behind the semi-transparent sub-header with real-time blur.
+- **Enhanced Status Toggle [feat]:** Replaced the linear status cycle with a business-driven multi-state filter:
+  - **All** (Clear/Inactive)
+  - **Acq+Prod** (Red): Unified filter for Acquisitions and Production items.
+  - **Requested** (Yellow): Filters for items with active payment requests (`payReq`).
+  - **Paid** (Green): Filters for items with confirmed payment dates (`payDate`).
+
 ## v1.29.9 — 2026-03-25
 ### Changed
 - **Full-Width Crate Cards:** Refactored the "Empty Inventory" and "Packed Crates" views in the Crates tab to use a horizontal, full-width card layout for better information density and readability.
