@@ -825,8 +825,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             group.paidTotal = relatedExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
         }
 
-        return groupList;
-    }, [inventory, docs]);
+        return groupList.filter(g => (g.total - g.paidTotal) > 0.5);
+    }, [inventory, docs, logisticsData]);
 
     const vendorTotals = useMemo(() => {
         const totals: Record<string, number> = {};
@@ -1125,6 +1125,32 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             {overviewMode !== 'collapsed' && (
                 <div className={`flex flex-col shrink-0 border-b border-white/5 bg-black/10 ${overviewMode === 'extended' ? 'p-3' : 'p-1.5'} transition-all duration-300 relative`}>
                     
+                    {/* Compact Mode Vendor Bubbles */}
+                    {overviewMode !== 'extended' && pendingGroups.length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                            {pendingGroups.map(group => {
+                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
+                                return (
+                                    <div key={group.vendorId} 
+                                        className="group relative flex items-center justify-center"
+                                        title={`${group.vendorId}: ${fmtMXN(group.total - group.paidTotal)} pending`}>
+                                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black transition-all hover:scale-110 active:scale-95 cursor-help"
+                                            style={{ 
+                                                backgroundColor: `${color}20`, 
+                                                border: `1px solid ${color}40`,
+                                                color: color 
+                                            }}>
+                                            {group.vendorId[0]}
+                                        </div>
+                                        {/* Optional Glow/Indicator */}
+                                        <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ backgroundColor: color }} />
+                                    </div>
+                                );
+                            })}
+                            <div className="w-px h-3 bg-white/10 mx-1" />
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Pending Liquidation</span>
+                        </div>
+                    )}
                     {/* Primary Grid: Rates & Summary Totals */}
                     <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-2.5' : 'gap-1'} mb-1`}>
                         {/* Exchange Rates Card */}
