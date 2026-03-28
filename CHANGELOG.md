@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.37.1] - 2026-03-28
+### Fixed
+- **Overview Module [crit]**: Performed a complete structural restoration of the dashboard to resolve critical syntax errors, unclosed JSX tags, and state corruption.
+- **Icon Restoration**: Restored missing `Activity` icon imports and stabilized the `isLoading` skeleton logic.
+### Refined
+- **UI Consistency**: Standardized the high-density "Studio" aesthetic across all collapsible panels (Storage, Financials, Requests, Payments).
+- **Typography**: Optimized font sizes (18px KPIs, 9px labels) and color brightness (60% white for MXN) for maximum scannability.
+
 ## [1.36.3] - 2026-03-28
 ### Refined
 - **Expenses & Financials**: Significant readability improvements for MXN values (increased font size to 18px and brightness to 60% white).
