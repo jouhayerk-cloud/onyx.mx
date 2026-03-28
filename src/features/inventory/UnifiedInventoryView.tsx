@@ -33,8 +33,12 @@ import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, 
 
 const getStatusClass = (data: InventoryItemData): 'RED' | 'YELLOW' | 'GREEN' | '' => {
     if (data.payDate) return 'GREEN';
-    const payReqBool = data.payReq && data.payReq !== 'false' && data.payReq !== '0' && data.payReq !== '';
-    if (payReqBool) return 'YELLOW';
+    const hasPayReq = data.payReq && data.payReq !== 'false' && data.payReq !== '0' && data.payReq !== '';
+    if (hasPayReq) {
+        // Red for partial payments, Yellow for full request
+        if (String(data.payReq).includes('%')) return 'RED';
+        return 'YELLOW';
+    }
     if (data.printDate) return 'RED';
     return '';
 };
@@ -326,7 +330,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
                                 GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
                                 YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-                                RED:    { label: 'Pending',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                                RED:    { label: String(norm.payReq || '').includes('%') ? 'Partial' : 'Pending', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
                             };
                             const { label, color, bg } = cfg[ps];
                             return (
