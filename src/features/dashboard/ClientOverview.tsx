@@ -35,9 +35,9 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
         onClick={onClick}
         className={`group flex flex-col gap-1.5 p-4 rounded-lg border border-(--border-color) bg-(--sidebar-bg) hover:bg-(--app-bg-solid) hover:border-(--main-color)/30 hover:scale-[1.02] transform transition-all duration-300 shadow-xl shadow-black/20 ${onClick ? 'cursor-pointer' : ''}`}
     >
-        <span className="text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
-        <span className="text-[20px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
-        {sub && <span className="text-[9px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
+        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary) opacity-40 leading-none group-hover:opacity-100 transition-opacity">{label}</span>
+        <span className="text-[24px] font-mono font-black text-(--text-color) leading-none drop-shadow-sm" style={{ color: accent !== 'var(--main-color)' ? accent : undefined }}>{value}</span>
+        {sub && <span className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-30 leading-none mt-1">{sub}</span>}
     </div>
 );
 
@@ -404,7 +404,7 @@ export const ClientOverview: React.FC = () => {
                     {/* Compact Logistics & Financial Merger */}
                     <div className="flex flex-col lg:flex-row gap-4 items-stretch">
                         {/* Storage & Logistics Panel */}
-                        <div className="w-full lg:w-1/4 flex flex-col p-4 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group min-h-[160px]">
+                        <div className="w-full lg:w-[18.75%] flex flex-col p-4 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group min-h-[160px]">
                             {/* Decorative Glass Glow */}
                             <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#6BCEBB]/5 blur-[80px] pointer-events-none group-hover:bg-[#6BCEBB]/10 transition-colors" />
                             
@@ -579,7 +579,7 @@ export const ClientOverview: React.FC = () => {
 
                     {/* Upcoming (To be requested) */}
                     {comingPaymentsByVendor.length > 0 && (
-                        <div className="w-full lg:w-fit min-w-[320px] max-w-[500px] flex flex-col p-5 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group h-fit">
+                        <div className="w-full lg:w-fit min-w-[280px] max-w-[450px] flex flex-col p-5 rounded-lg bg-(--sidebar-bg) border border-(--border-color) shadow-2xl relative overflow-hidden group h-fit transition-all duration-500">
                             <SectionHeader 
                                 icon={Wallet} 
                                 title="Upcoming Payments" 
