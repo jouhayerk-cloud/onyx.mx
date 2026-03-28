@@ -1227,42 +1227,42 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                     {/* Secondary Grid: Vendor Request Cards (Upcoming) */}
                     {overviewMode === 'extended' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2">
                             {pendingGroups.map(group => {
                                 const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
                                 return (
                                     <div key={group.vendorId}
-                                        className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
+                                        className="group relative flex flex-col p-2 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
                                         style={{ borderTop: `2px solid ${color}` }}>
-                                        <div className="flex justify-between items-start mb-3">
+                                        <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
-                                                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
+                                                <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
+                                                <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
                                             </div>
-                                            <div className="p-1.5 bg-white/5 rounded-lg border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
-                                                <Archive size={14} style={{ color }} />
+                                            <div className="p-1 bg-white/5 rounded-md border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
+                                                <Archive size={11} style={{ color }} />
                                             </div>
                                         </div>
                                         <div className="mt-auto">
-                                            <div className="flex items-baseline gap-2 mb-2">
-                                                <span className="text-[14px] font-black font-mono text-white leading-none">{fmtMXN(group.total)}</span>
-                                                <span className="text-[10px] font-mono text-white/30 truncate">≈ ${Math.ceil(group.total / (liveExchangeRate || exchangeRate))}</span>
+                                            <div className="flex items-baseline gap-1.5 mb-1.5">
+                                                <span className="text-[12px] font-black font-mono text-white leading-none">{fmtMXN(group.total)}</span>
+                                                <span className="text-[8px] font-mono text-white/30 truncate">≈ ${Math.ceil(group.total / (liveExchangeRate || exchangeRate))}</span>
                                             </div>
-                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
                                                 <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
                                             </div>
                                             <div className="flex items-center justify-between mt-1">
-                                                {paidPerc > 0 ? <span className="text-[8px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
+                                                {paidPerc > 0 ? <span className="text-[7px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
                                                         setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
                                                     }}
-                                                    className="flex items-center gap-1 text-[8px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
+                                                    className="flex items-center gap-1 text-[7px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-[0.1em]"
                                                 >
-                                                    <LayoutGrid size={10} /> View Items
+                                                    <LayoutGrid size={9} /> View Items
                                                 </button>
                                             </div>
                                         </div>
@@ -1279,25 +1279,25 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-white/5 animate-in slide-in-from-top-2 duration-300 relative z-10">
                     <div className="flex flex-col md:flex-row items-center justify-between px-4 py-2 gap-4">
                         {/* Subcategories Filter */}
-                        <div className="flex items-center gap-0.5 overflow-x-auto custom-scrollbar w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
+                        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar w-full md:w-auto py-2 no-scrollbar">
                             {SUBCATEGORIES.map(s => {
                                 const labels: Record<string, { label: string; icon: any; color: string }> = {
                                     'All': { label: 'ALL', icon: LayoutGrid, color: '#888' },
-                                    'Acq': { label: 'ACQUIS', icon: DollarSign, color: '#10b981' },
-                                    'Prod': { label: 'PRODUC', icon: Cpu, color: '#6366f1' },
+                                    'Acq': { label: 'ACQUISITION', icon: DollarSign, color: '#10b981' },
+                                    'Prod': { label: 'PRODUCTION', icon: Cpu, color: '#6366f1' },
                                     'Monthly': { label: 'MONTHLY', icon: Calendar, color: '#38bdf8' },
-                                    'Oprt': { label: 'OPERAT', icon: Activity, color: '#818cf8' },
+                                    'Oprt': { label: 'OPERATION', icon: Activity, color: '#818cf8' },
                                     'Packing': { label: 'PACKING', icon: Archive, color: '#fb7185' },
-                                    'Sppl': { label: 'SUPPLY', icon: Box, color: '#34d399' },
+                                    'Sppl': { label: 'SUPPLIES', icon: Box, color: '#34d399' },
                                     'Labr': { label: 'LABOR', icon: Users, color: '#fbbf24' }
                                 };
                                 const cfg = labels[s];
                                 const isActive = subcatFilter === s;
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex items-center gap-1.5 px-1.5 py-1 transition-all whitespace-nowrap shrink-0 group/f`}>
-                                        <cfg.icon size={12} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-110' : 'opacity-40 group-hover/f:opacity-100'}`} />
-                                        <span className={`text-[9px] font-black tracking-widest transition-all ${isActive ? 'opacity-100 scale-105' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
+                                        className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl border border-transparent transition-all whitespace-nowrap shrink-0 group/f hover:bg-white/5 ${isActive ? 'bg-white/5 border-white/5' : ''}`}>
+                                        <cfg.icon size={18} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-110 opacity-100' : 'opacity-30 group-hover/f:opacity-100 group-hover/f:scale-110'}`} />
+                                        <span className={`text-[8px] font-black tracking-[0.2em] transition-all uppercase ${isActive ? 'opacity-100' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
                                             {cfg.label}
                                         </span>
                                     </button>
