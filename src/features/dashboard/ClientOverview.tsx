@@ -487,7 +487,7 @@ export const ClientOverview: React.FC = () => {
                                             <span className="text-[10px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
                                         </div>
                                         <span className="text-[26px] font-mono font-black text-white leading-none mb-1">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[10px] opacity-40">USD</span></span>
-                                        <span className="text-[15px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[10px] opacity-40">MXN</span></span>
+                                        <span className="text-[18px] font-mono font-bold text-white/60">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[10px] opacity-40">MXN</span></span>
                                     </div>
                                 ))}
                             </div>
@@ -499,7 +499,7 @@ export const ClientOverview: React.FC = () => {
                                         <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Non-Merch</span>
                                         <div className="flex flex-col leading-none">
                                             <span className="text-[28px] font-black text-emerald-400 font-mono tracking-tighter truncate leading-none">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                            <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
+                                            <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
                                         </div>
                                     </div>
                                 )}
@@ -511,24 +511,24 @@ export const ClientOverview: React.FC = () => {
                                     <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Acq Value</span>
                                     <div className="flex flex-col leading-none">
                                         <span className="text-[28px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
+                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Req Unpaid</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Req Unpaid</span>
                                     <div className="flex flex-col leading-none">
                                         <span className="text-[28px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
+                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1.5 leading-none">Total Unpaid</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1.5 leading-none">Total Unpaid</span>
                                     <div 
                                         onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
                                         className="flex flex-col leading-none cursor-pointer group/unpaid"
                                     >
                                         <span className="text-[28px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[12px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[15px] font-mono font-bold text-white/20 leading-none mt-1">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-20">MXN</span></span>
+                                        <span className="text-[18px] font-mono font-bold text-white/60 leading-none mt-1.5">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-40">MXN</span></span>
                                     </div>
                                 </div>
                             </div>
