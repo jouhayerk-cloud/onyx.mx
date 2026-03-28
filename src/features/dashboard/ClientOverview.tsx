@@ -332,7 +332,10 @@ export const ClientOverview: React.FC = () => {
     const fmtUSDCompact = (v: number) => showFinancials ? '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***';
 
     const pieChartOption = useMemo<EChartsOption>(() => ({
-        tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: $${p.value.toFixed(0)} USD (${p.percent}%)` },
+        tooltip: { 
+            trigger: 'item', 
+            formatter: (p: any) => `${p.name}: ${currencyMode === 'MXN' ? fmtMXN(p.value * currentExchangeRate) : fmtUSD(p.value)} (${p.percent}%)` 
+        },
         series: [{
             name: 'Acq Value', type: 'pie', radius: ['45%', '72%'], center: ['35%', '50%'],
             data: vendorSummaries.map(v => ({ name: v.vendorId, value: v.totalAcqUsd })),
@@ -341,7 +344,7 @@ export const ClientOverview: React.FC = () => {
         }],
         color: vendorSummaries.map(v => v.color),
         backgroundColor: 'transparent',
-    }), [vendorSummaries]);
+    }), [vendorSummaries, currencyMode, currentExchangeRate]);
     
     const shapeDescPieOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'item', formatter: (p: any) => `${p.name}: ${p.value} units (${p.percent}%)` },
@@ -444,7 +447,14 @@ export const ClientOverview: React.FC = () => {
                                             <div className="mt-2 animate-in fade-in duration-300">
                                                 <div className="group relative flex flex-col p-2 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
                                                     <div className="absolute top-0 right-0 w-24 h-24 bg-(--main-color)/5 blur-2xl -mr-12 -mt-12 rounded-full" />
-                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
+                                                    <div className="flex items-center gap-2 mb-1 relative z-10">
+                                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em]">Mexico Total:</span>
+                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 border border-white/10 rounded-lg">
+                                                            <span className="text-[7px] font-black text-(--main-color) opacity-40 uppercase tracking-widest">Rate</span>
+                                                            <div className="w-px h-2 bg-white/10" />
+                                                            <span className="text-[9px] font-mono font-black text-(--main-color) opacity-60">1 USD = {currentExchangeRate.toFixed(2)} MXN</span>
+                                                        </div>
+                                                    </div>
                                                     <div className="flex flex-wrap items-baseline gap-2.5 relative z-10 leading-none">
                                                         <span className="text-[20px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
                                                             {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
@@ -468,9 +478,13 @@ export const ClientOverview: React.FC = () => {
                                                         >
                                                             {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
                                                             <span className={`${c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
-                                                            <div className="space-y-1">
-                                                                <CurrencyTag type="USD" amount={c.v.usd} size="small" />
-                                                                <CurrencyTag type="MXN" amount={c.v.mxn} size="small" className="opacity-40" />
+                                                            <div className="flex flex-col leading-none">
+                                                                <span className="text-[14px] font-black font-mono text-white tracking-tighter">
+                                                                    {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
+                                                                </span>
+                                                                <span className={`text-[7px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                    {currencyMode}
+                                                                </span>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -765,7 +779,14 @@ export const ClientOverview: React.FC = () => {
                                         <div key={v.vendorId} className="flex flex-col border-b border-white/2 pb-2 group">
                                             <div className="flex items-center justify-between mb-1.5">
                                                 <span className="text-[10px] font-black text-white/30 uppercase tracking-widest group-hover:text-white/60">{v.vendorId}</span>
-                                                <span className="text-[12px] font-mono font-black text-white/80">{fmtUSDCompact(v.totalAcqUsd)}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[12px] font-mono font-black text-white/80">
+                                                        {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
+                                                    </span>
+                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                        {currencyMode}
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                                                 <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />

@@ -7,7 +7,8 @@ import {
     inventoryArtifactConfigAtom, 
     exchangeRateAtom, 
     showFinancialsAtom,
-    financeDataAtom
+    financeDataAtom,
+    currencyModeAtom
 } from '../../lib/atoms';
 import { X, Package, ChevronRight } from 'lucide-react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
@@ -21,6 +22,7 @@ export const InventoryArtifact: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
     const financeDocs = useAtomValue(financeDataAtom);
+    const currencyMode = useAtomValue(currencyModeAtom);
 
     const partialPayIds = useMemo(() => {
         const ids = new Set<string>();
@@ -147,15 +149,21 @@ export const InventoryArtifact: React.FC = () => {
                                             <div className="flex flex-col min-w-[70px] items-end justify-center">
                                                 <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.15em] mb-1 leading-none">Price x Qty</span>
                                                 <div className="flex items-baseline gap-1">
-                                                    <span className="text-[11px] sm:text-[12px] font-bold text-white/80">{showFinancials ? `$${itemPriceMXN}` : '***'}</span>
+                                                    <span className="text-[11px] sm:text-[12px] font-bold text-white/80">
+                                                        {showFinancials 
+                                                            ? (currencyMode === 'MXN' ? `$${itemPriceMXN.toLocaleString()}` : `$${(itemPriceMXN / exchangeRate).toFixed(2)}`) 
+                                                            : '***'}
+                                                    </span>
                                                     <span className="text-[9px] text-white/20 font-mono font-black">x{itemQuantity}</span>
                                                 </div>
                                             </div>
 
                                             <div className="flex flex-col min-w-[80px] items-end justify-center">
-                                                <span className="text-[8px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.15em] mb-1 leading-none">Total MXN</span>
-                                                <span className="text-[14px] sm:text-[16px] font-black text-(--main-color) font-mono">
-                                                    {showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}
+                                                <span className={`text-[8px] font-black uppercase tracking-[0.15em] mb-1 leading-none ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>Total {currencyMode}</span>
+                                                <span className={`text-[14px] sm:text-[16px] font-black font-mono ${currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'}`}>
+                                                    {showFinancials 
+                                                       ? (currencyMode === 'MXN' ? `$${itemTotalMXN.toLocaleString()}` : `$${(itemTotalMXN / exchangeRate).toFixed(2)}`) 
+                                                       : '***'}
                                                 </span>
                                             </div>
                                         </div>
@@ -193,10 +201,15 @@ export const InventoryArtifact: React.FC = () => {
                         <div className="flex flex-col">
                             <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total Artifact Value</span>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-xl font-mono font-black text-(--main-color)">
-                                    {showFinancials ? `$${Math.ceil(filteredItems.reduce((acc, item) => acc + (parseFloat(String(item.data.price || 0)) * (parseInt(String(item.data.quantity || 1)) || 1)), 0)).toLocaleString()}` : '***'}
+                                <span className={`text-xl font-mono font-black ${currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'}`}>
+                                    {(() => {
+                                        const sumMxn = filteredItems.reduce((acc, item) => acc + (parseFloat(String(item.data.price || 0)) * (parseInt(String(item.data.quantity || 1)) || 1)), 0);
+                                        return showFinancials 
+                                            ? (currencyMode === 'MXN' ? `$${Math.ceil(sumMxn).toLocaleString()}` : `$${(sumMxn / exchangeRate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`) 
+                                            : '***';
+                                    })()}
                                 </span>
-                                <span className="text-[10px] font-black text-white/20 tracking-widest">MXN</span>
+                                <span className={`text-[10px] font-black tracking-widest ${currencyMode === 'USD' ? 'text-emerald-400/40' : 'text-sky-400/40'}`}>{currencyMode}</span>
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.40.0] - 2026-03-28
+### Added
+- **Dynamic Inventory Artifacts**: Upgraded the item detail pop-up (Artifact Overlay) to fully support the global USD/MXN toggle. All unit prices and totals now switch dynamically with color-coded tags.
+- **Contextual Exchange Rate**: Relocated the global exchange rate indicator from the Top Bar to the `Overview` module's "Expenses & Financials" section, positioning it next to the Mexico Total label for better relevance.
+### Changed
+- **Overview Module Density**: 
+    - Converted the 6 operational expense category cards (Monthly, Supplies, Labor, Packing, Operations) to high-density dynamic currency fields.
+    - Updated the Acquisitions Concentration pie chart tooltips to display values in the user's preferred currency.
+- **Layout Alignment**: Standardized emerald/sky color logic across all currency tags for unified visual feedback.
+
 ## [1.39.0] - 2026-03-28
 ### Added
 - **Global Currency Toggle**: Introduced a high-contrast `$+USD` / `$+MXN` switch in the `MainHeader`, enabling dynamic, real-time currency switching across the application.
