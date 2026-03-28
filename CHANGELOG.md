@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.37.8] - 2026-03-28
+### Added
+- **Portfolio Aggregation**: Implemented a global "Portfolio Total" summary in the `Expenses & Financials` panel, consolidating all Operational Expenses and Acquisitions Values.
+- **Multi-Currency Restoration**: Restored USD/MXN dual-currency visibility across all financial metrics and category labels.
+
+### Optimized
+- **Categorical Refinement**: Renamed the operational baseline from "Non-Merch" to **TOTAL** and removed its icon for improved visual focus.
+- **Metric Scalability**: Increased the `Units` count font size to **28px** for better visual weighting in the stats row.
+
 ## [1.37.7] - 2026-03-28
 ### Optimized
 - **Financial UI Cleanup**: Streamlined the `Expenses & Financials` panel by removing secondary MXN currency tags from operational categories.
