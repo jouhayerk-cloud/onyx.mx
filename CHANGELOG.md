@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.36.3] - 2026-03-28
+### Refined
+- **Expenses & Financials**: Significant readability improvements for MXN values (increased font size to 18px and brightness to 60% white).
+- **Label Consistency**: Standardized all bottom-row KPI labels (Non-Merch, Units, etc.) to a consistent size and color for better visual alignment.
+
 ## [1.36.2] - 2026-03-28
 ### Changed
 - **Navigation**: Renamed "Shipping" module to "**Crates**" and "Packing" module to "**Labels**" in the main sidebar for better functional clarity.
