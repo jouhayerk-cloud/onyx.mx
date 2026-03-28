@@ -1,5 +1,13 @@
 # Changelog
 
+### v1.36.0 — 2026-03-28
+- **Global Exchange Rate [feat]:** Relocated the USD/MXN exchange rate to the main application top bar for persistent global visibility.
+- **Top Bar XLSX Export [feat]:** Added a "Master Export" button directly to the Overview top bar, consolidating inventory and finance reporting access.
+- **Overview Module UI Refinement [ui]:** Massively upgraded font sizes and information density across the Storage & Logistics and Expenses & Financials panels.
+- **Vendor Color Coding [ui]:** Implemented vendor-specific color-coded backgrounds for Upcoming Payment cards to match established brand identities.
+- **Partial Payment Progress Bars [feat]:** Integrated horizontal progress bars in both Upcoming Payments and the Active Request Queue to visualize completion status of partial disbursements.
+- **Terminology Alignment [standard]:** Renamed all "Portfolio" references to "Acquisitions" for business logic consistency (e.g., Total Acquisitions Value).
+
 ### v1.35.1 — 2026-03-28
 - **UI Squaring [ui]:** Standardized all dashboard and inventory panels to `rounded-xl` for a more professional, "squared" Studio aesthetic.
 - **Dual-Currency Dashboard [feat]:** Added explicit USD/MXN labels to *all* financial KPIs in the Overview, including Acq Value, Req Unpaid, Total Unpaid, and Expense categories.
