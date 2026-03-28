@@ -1,17 +1,5 @@
 # Changelog
 
-<!--
-  Version Scheme: v[General].[Feature_Count].[Build]
-  ─────────────────────────────────────────────────
-  General      (v1)  — Stable production generation. Bump on full architectural rewrite.
-  Feature_Count(.11) — Increments per new module / major feature shipped.
-  Build        (.72) — Increments on every production deployment, hotfix, or patch.
-
-  All-time deployment count (LEGACY Onyx.mx/app + git/app): ~100 versions
-  LEGACY versionLog.md      : 13 entries  (v0.9.1 → v1.0.0, Aug 2024)
-  git/app v1.x tagged builds: 53 entries  (v1.10.20 → v1.11.73)
-  git/app v2.x branch builds: ~34 entries (earlier parallel branch, now merged)
-
 ### v1.31.2 — 2026-03-28
 - **Unified Master XLSX Export [feat]:** Consolidated Inventory and Finance reporting into a single, high-fidelity workbook.
 - **App-Generated TAG IDs [standard]:** Standardized the export to use `[Vendor][Workbook][ItemNumber][Cypher]` format (e.g., `EM3261HXF`) for all inventory rows.
