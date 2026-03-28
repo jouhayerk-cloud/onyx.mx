@@ -51,6 +51,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@types/react-resizable": "^3.0.7",
