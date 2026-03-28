@@ -197,7 +197,7 @@ const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = (
                 {/* Search bar — full width, centered */}
                 <div className="flex-1 relative group/search mx-auto max-w-2xl">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--color-inventory) transition-colors" />
+                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--main-color) transition-colors" />
                     </div>
                     <input
                         type="text"
@@ -771,7 +771,7 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-[var(--main-header-bg)]">
+        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
 
             {/* Mobile Sidebar toggle if needed, or simply let FAB handle it mostly, but good to have a simple button here */}
             {sidebarState !== 'expanded' && (
@@ -790,9 +790,24 @@ export function MainHeader() {
                 {activeView === 'upload' && <UploadBar />}
                 {activeView === 'control' && <ControlBar />}
                 {activeView === 'overview' && (
-                    <>
+                    <div className="flex items-center gap-3">
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
-                    </>
+                        
+                        <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl shrink-0">
+                            <span className="text-[10px] uppercase font-black tracking-widest text-white/20">Rate</span>
+                            <div className="h-4 w-px bg-white/10" />
+                            <span className="text-[11px] font-mono font-black text-white/40">1 USD = {(liveExchangeRateValue || exchangeRate).toFixed(2)} MXN</span>
+                        </div>
+
+                        <button 
+                            onClick={handleMasterExportXLSX}
+                            disabled={isExporting}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-xl transition-all shadow-sm disabled:opacity-50"
+                        >
+                            <Download size={14} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : ''} />
+                            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
+                        </button>
+                    </div>
                 )}
                 {activeView === 'dashboard' && (
                     <>

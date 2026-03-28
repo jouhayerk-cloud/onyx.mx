@@ -196,11 +196,21 @@ export const ClientOverview: React.FC = () => {
         [activeDestPendingRecords]);
 
     const requisitions = useMemo(() => {
-        const groups: { key: string; cfg: any; docs: any[]; type: 'grouped' | 'independent'; vendorId?: string }[] = [];
+        const groups: { key: string; cfg: any; docs: any[]; type: 'grouped' | 'independent'; vendorId?: string; progress?: number }[] = [];
         
         Object.entries(destinationsConfig).forEach(([key, cfg]) => {
             const docs = activeDestPendingRecords.filter(d => d.destination === key);
             if (docs.length === 0) return;
+
+            // Simple progress calculation based on description or notes if available
+            const getProgress = (records: any[]) => {
+                const firstPartial = records.find(r => r.description?.includes('%') || r.notes?.includes('%'));
+                if (firstPartial) {
+                    const match = (firstPartial.description + firstPartial.notes).match(/(\d+)%/);
+                    if (match) return parseInt(match[1]);
+                }
+                return 0;
+            };
 
             if (key === PaymentDestination.Fast_Cash_Wire) {
                 const byVendor: Record<string, any[]> = {};
@@ -215,11 +225,12 @@ export const ClientOverview: React.FC = () => {
                         cfg: { ...cfg, name: `${cfg.name}` },
                         docs: vDocs,
                         type: 'independent',
-                        vendorId: vid
+                        vendorId: vid,
+                        progress: getProgress(vDocs)
                     });
                 });
             } else {
-                groups.push({ key, cfg, docs, type: 'grouped' });
+                groups.push({ key, cfg, docs, type: 'grouped', progress: getProgress(docs) });
             }
         });
         
@@ -238,23 +249,32 @@ export const ClientOverview: React.FC = () => {
     }), [items]);
 
     const comingPaymentsByVendor = useMemo(() => {
-        const groups: Record<string, { total: number; partials: string[] }> = {};
+        const groups: Record<string, { total: number; totalPaid: number; totalPossible: number; partials: string[] }> = {};
         for (const item of pendingItems) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
             if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
             if (!vid) vid = 'Unknown';
-            if (!groups[vid]) groups[vid] = { total: 0, partials: [] };
+            if (!groups[vid]) groups[vid] = { total: 0, totalPaid: 0, totalPossible:0, partials: [] };
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
-            let ratio = 1;
+            const itemTotal = price * qty;
             const payReqStr = String(data.payReq || (data as any).pay_req || '').toLowerCase();
             if (payReqStr.includes('%')) {
                 const match = payReqStr.match(/(\d+)%/);
-                if (match) { ratio = Math.max(0, (100 - parseInt(match[1])) / 100); groups[vid].partials.push(`${match[1]}% paid on ${itemIdStr}`); }
+                if (match) { 
+                    const perc = parseInt(match[1]);
+                    const paid = itemTotal * (perc / 100);
+                    groups[vid].total += (itemTotal - paid); 
+                    groups[vid].totalPaid += paid;
+                    groups[vid].totalPossible += itemTotal;
+                    groups[vid].partials.push(`${match[1]}% paid on ${itemIdStr}`); 
+                }
+            } else {
+                groups[vid].total += itemTotal;
+                groups[vid].totalPossible += itemTotal;
             }
-            groups[vid].total += price * ratio * qty;
         }
         return Object.entries(groups).map(([vid, data]) => ({ vendorId: vid, ...data })).filter(g => g.total > 0).sort((a, b) => b.total - a.total);
     }, [pendingItems]);
@@ -411,21 +431,21 @@ export const ClientOverview: React.FC = () => {
                             <SectionHeader icon={Package} title="Storage & Logistics" color="#6BCEBB" />
                             <div className="grid grid-cols-2 gap-3 mt-1">
                                 <div className="flex flex-col">
-                                    <span className="text-[13px] font-black text-(--text-color)">{globalTotals.totalCratesAndPallets}</span>
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Pallets & Crates</span>
+                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.totalCratesAndPallets}</span>
+                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Pallets & Crates</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[13px] font-black text-(--text-color)">{globalTotals.packedCrates} <span className="text-[8px] opacity-30">/ {globalTotals.freeCrates}</span></span>
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed / Free</span>
+                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.packedCrates} <span className="text-[9px] opacity-30">/ {globalTotals.freeCrates}</span></span>
+                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed / Free</span>
                                 </div>
                                 <div className="flex flex-col col-span-2 mt-1">
-                                    <span className="text-[13px] font-black text-(--text-color)">{globalTotals.packedItems}</span>
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed Items</span>
+                                    <span className="text-[16px] font-black text-(--text-color)">{globalTotals.packedItems}</span>
+                                    <span className="text-[9px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mt-0.5">Packed Items</span>
                                 </div>
                             </div>
                             <div className="mt-4 pt-3 border-t border-(--border-color)/50">
-                                <span className="text-[7px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
-                                <p className="text-[10px] font-mono font-black text-(--text-color) opacity-60 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
+                                <span className="text-[9px] font-black text-(--text-color-secondary) opacity-30 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
+                                <p className="text-[12px] font-mono font-black text-(--text-color) opacity-60 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
                             </div>
                         </div>
 
@@ -435,10 +455,9 @@ export const ClientOverview: React.FC = () => {
                                 <div className="flex items-center gap-3">
                                     <div className="flex flex-col items-end">
                                         <div className="flex items-center gap-1.5 leading-none">
-                                            <span className="text-[18px] font-mono font-black text-white">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[8px] opacity-40 font-black">USD</span></span>
-                                            <span className="text-[11px] font-mono font-bold text-white/30">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[8px] opacity-40 font-black">MXN</span></span>
+                                            <span className="text-[20px] font-mono font-black text-white">{fmtUSDCompact(globalTotals.totalOpsUsd)} <span className="text-[10px] opacity-40 font-black">USD</span></span>
+                                            <span className="text-[12px] font-mono font-bold text-white/30">{fmtMXN(globalTotals.totalOpsMxn).replace(' MXN','')} <span className="text-[10px] opacity-40 font-black">MXN</span></span>
                                         </div>
-                                        <span className="text-[7px] font-black uppercase text-emerald-400 mt-1">Total Non-Merch Expenses</span>
                                     </div>
                                 </div>
                             } />
@@ -461,42 +480,48 @@ export const ClientOverview: React.FC = () => {
                                     >
                                         <div className="flex items-center gap-1.5 mb-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <c.icon size={10} style={{ color: c.color }} />
-                                            <span className="text-[7px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-white truncate">{c.label}</span>
                                         </div>
-                                        <span className="text-[16px] font-mono font-black text-white leading-none mb-0.5">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[7px] opacity-40">USD</span></span>
-                                        <span className="text-[10px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[7px] opacity-40">MXN</span></span>
+                                        <span className="text-[20px] font-mono font-black text-white leading-none mb-0.5">{fmtUSDCompact(c.v.usd).replace('$','')} <span className="text-[8px] opacity-40">USD</span></span>
+                                        <span className="text-[12px] font-mono font-bold text-white/20">{fmtMXN(c.v.mxn).replace(' MXN','').replace('$','')} <span className="text-[8px] opacity-40">MXN</span></span>
                                     </div>
                                 ))}
                             </div>
                             
                             {/* Combined KPIs row at bottom of big panel */}
-                            <div className="grid grid-cols-4 gap-3 mt-4 pt-3 border-t border-(--border-color)">
+                            <div className="grid grid-cols-5 gap-3 mt-4 pt-3 border-t border-(--border-color)">
+                                {!(globalTotals.totalOpsMxn > 0) ? <div /> : (
+                                    <div className="flex flex-col">
+                                        <span className="text-[7px] font-black text-emerald-400 opacity-60 uppercase tracking-widest mb-1 leading-none">Non-Merch</span>
+                                        <span className="text-[16px] font-black text-emerald-400 font-mono tracking-tighter truncate">{fmtUSDCompact(globalTotals.totalOpsUsd)}</span>
+                                    </div>
+                                )}
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Units</span>
-                                    <span className="text-[18px] font-black text-(--text-color)">{globalTotals.totalItems}</span>
+                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Units</span>
+                                    <span className="text-[22px] font-black text-(--text-color)">{globalTotals.totalItems}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Acq Value</span>
+                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Acq Value</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[18px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-emerald-400">{fmtUSDCompact(globalTotals.totalAcqValueUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Req Unpaid</span>
+                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Req Unpaid</span>
                                     <div className="flex flex-col leading-none">
-                                        <span className="text-[18px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-amber-500">{fmtUSDCompact(globalTotals.requestedUnpaidUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Total Unpaid</span>
+                                    <span className="text-[8px] font-black text-(--text-color-secondary) opacity-40 uppercase tracking-widest mb-1 leading-none">Total Unpaid</span>
                                     <div 
                                         onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); }}
                                         className="flex flex-col leading-none cursor-pointer group/unpaid"
                                     >
-                                        <span className="text-[18px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[8px] font-black opacity-30">USD</span></span>
-                                        <span className="text-[11px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[8px] font-black opacity-30">MXN</span></span>
+                                        <span className="text-[22px] font-black text-rose-500 group-hover/unpaid:underline">{fmtUSDCompact(globalTotals.totalUnpaidUsd)} <span className="text-[10px] font-black opacity-30">USD</span></span>
+                                        <span className="text-[13px] font-mono font-bold text-white/20">{fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN','')} <span className="text-[10px] font-black opacity-30">MXN</span></span>
                                     </div>
                                 </div>
                             </div>
@@ -513,12 +538,11 @@ export const ClientOverview: React.FC = () => {
                                 title="Active Request Queue" 
                                 badge={requisitions.length > 0 ? `${requisitions.length} elements` : undefined}
                             />
-                            <div className="text-[10px] font-mono font-black text-white/20">1 USD = {currentExchangeRate.toFixed(2)} MXN</div>
                         </div>
 
                         <div className="flex flex-col gap-2">
                             {requisitions.map((req) => {
-                                const { key, cfg, docs: destDocs, type, vendorId } = req;
+                                const { key, cfg, docs: destDocs, type, vendorId, progress } = req;
                                 const destReqMXN = destDocs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
                                 const isExpanded = !!expandedDests[key];
                                 const vendorIdsForDest = type === 'independent' ? [vendorId] : Array.from(new Set(
@@ -539,6 +563,11 @@ export const ClientOverview: React.FC = () => {
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[13px] font-black text-white uppercase tracking-widest truncate">{cfg.name} {type === 'independent' ? `· ${vendorId}` : ''}</p>
                                                 <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-0.5">{destDocs.length} units</p>
+                                                {progress && progress > 0 && progress < 100 ? (
+                                                    <div className="w-full max-w-[100px] h-1 bg-white/5 rounded-full overflow-hidden mt-2">
+                                                        <div className="h-full bg-(--main-color)" style={{ width: `${progress}%` }} />
+                                                    </div>
+                                                ) : null}
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="text-[16px] font-mono font-black text-white leading-none">{fmtMXN(destReqMXN)}</p>
@@ -585,13 +614,17 @@ export const ClientOverview: React.FC = () => {
                              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {comingPaymentsByVendor.map(group => {
                                     const color = (vendors as any)[group.vendorId]?.color || '#888';
+                                    const paidPerc = Math.round((group.totalPaid / group.totalPossible) * 100);
                                     return (
-                                        <div key={group.vendorId} className="group relative flex flex-col items-center justify-center p-6 min-h-[140px] rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 transition-all border border-(--border-color) hover:border-(--main-color)/20 text-center">
+                                        <div key={group.vendorId} 
+                                            className="group relative flex flex-col items-center justify-center p-6 min-h-[140px] rounded-xl transition-all border border-(--border-color) hover:border-(--main-color)/20 text-center overflow-hidden"
+                                            style={{ backgroundColor: `${color}10` }}
+                                        >
                                             <div className="absolute top-3 right-3">
                                                 <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentColor]" style={{ backgroundColor: color, color }} />
                                             </div>
                                             
-                                            <span className="text-[11px] font-black text-(--text-color) opacity-80 uppercase tracking-[0.2em] mb-4 truncate w-full">{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
+                                            <span className="text-[11px] font-black text-(--text-color) opacity-80 uppercase tracking-[0.2em] mb-4 truncate w-full" style={{ color }}>{(vendors as any)[group.vendorId]?.name || group.vendorId}</span>
                                             
                                             <div className="flex flex-col gap-1.5 items-center">
                                                 <p className="text-[20px] font-mono font-black text-(--text-color) leading-none tracking-tight">{fmtUSD(group.total / currentExchangeRate).replace(' USD','')}</p>
@@ -599,8 +632,12 @@ export const ClientOverview: React.FC = () => {
                                                 
                                                 <div className="w-12 h-px bg-(--border-color)/50 my-2" />
                                                 
-                                                <p className="text-[14px] font-mono font-bold text-white/30 leading-none">{fmtMXN(group.total).replace(' MXN','').replace('$','')}</p>
-                                                <span className="text-[7px] font-mono font-black text-white/10 uppercase tracking-widest">MXN</span>
+                                                {paidPerc > 0 ? (
+                                                    <div className="w-full max-w-[60px] h-1.5 bg-black/30 rounded-full overflow-hidden mb-1">
+                                                        <div className="h-full bg-(--main-color)" style={{ width: `${paidPerc}%` }} />
+                                                    </div>
+                                                ) : null}
+                                                <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{group.partials.length > 0 ? 'Partial' : 'Liquidation'}</div>
                                             </div>
                                         </div>
                                     );
@@ -650,7 +687,7 @@ export const ClientOverview: React.FC = () => {
 
                     {/* Value Distribution - Integrated Pie + Context */}
                     <div className="flex flex-col col-span-1 lg:col-span-2 pt-12 border-t border-white/5 mt-4">
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Portfolio Concentration Analysis</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4">Acquisitions Concentration Analysis</span>
                         <div className="flex flex-row items-center gap-12">
                             <div className="w-1/2">
                                 <EChart option={pieChartOption} style={{ height: '240px' }} />
@@ -668,7 +705,7 @@ export const ClientOverview: React.FC = () => {
                                     </div>
                                 ))}
                                 <div className="col-span-2 pt-4 flex items-center justify-between">
-                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Total Portfolio Value</span>
+                                    <span className="text-[11px] font-black text-white/40 uppercase tracking-[0.4em]">Total Acquisitions Value</span>
                                     <div className="text-right">
                                         <span className="text-[20px] font-mono font-black text-emerald-400 block">{fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
                                         <span className="text-[10px] font-mono text-white/20">{fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate)}</span>
