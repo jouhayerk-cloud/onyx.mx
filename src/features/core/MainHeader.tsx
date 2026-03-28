@@ -792,9 +792,6 @@ export function MainHeader() {
                 {activeView === 'overview' && (
                     <>
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
-                        <div className="ml-auto">
-                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Platform Sync</span>
-                        </div>
                     </>
                 )}
                 {activeView === 'dashboard' && (
