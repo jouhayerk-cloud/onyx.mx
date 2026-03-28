@@ -792,12 +792,6 @@ export function MainHeader() {
                     <div className="flex items-center gap-3">
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
                         
-                        <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl shrink-0">
-                            <span className="text-[10px] uppercase font-black tracking-widest text-white/20">Rate</span>
-                            <div className="h-4 w-px bg-white/10" />
-                            <span className="text-[11px] font-mono font-black text-white/40">1 USD = {(liveExchangeRateValue || exchangeRate).toFixed(2)} MXN</span>
-                        </div>
-
                         {/* Global Currency Toggle */}
                         <button
                             onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
