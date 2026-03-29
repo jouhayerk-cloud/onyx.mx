@@ -258,15 +258,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         const itemPriceMXN = Math.ceil(Number(norm.price || 0));
         const itemQuantity = Number(norm.quantity || 1);
         const itemTotalMXN = itemPriceMXN * itemQuantity;
+        const payStatus = getStatusClass(norm, partialPayIds);
+        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
 
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
-                {(() => {
-                    const payStatus = getStatusClass(norm, partialPayIds);
-                    const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
-                    return (
-                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                    onClick={onToggleExpand}
                     style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     {/* Payment status accent stripe */}
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
@@ -281,12 +280,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         ) : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                         
                         {mediaUrls.length > 1 && (
-                            <div className="absolute inset-0 flex items-center justify-between px-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-                                <button onClick={handlePrevMedia} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10">
-                                    <ChevronLeft className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                            <div className="absolute inset-x-0 inset-y-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
+                                <button onClick={handlePrevMedia} className="text-white drop-shadow-lg hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
                                 </button>
-                                <button onClick={handleNextMedia} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 flex items-center justify-center text-white pointer-events-auto border border-white/10">
-                                    <ChevronRight className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                <button onClick={handleNextMedia} className="text-white drop-shadow-lg hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
                                 </button>
                             </div>
                         )}
@@ -330,27 +329,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[11px] sm:text-[13px] text-white/80 font-mono">{calculated.bookLandCode || '—'}</span>
                         </div>
 
-                        {/* Payment Status column */}
-                        {(() => {
-                            const ps = getStatusClass(norm, partialPayIds);
-                            if (!ps) return null;
-                            const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
-                                GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-                                YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
-                                RED:    { label: 'Partial',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-                            };
-                            const { label, color, bg } = cfg[ps];
-                            return (
-                                <div className="flex flex-col min-w-[72px] shrink-0 pl-3 justify-center h-full gap-0.5">
-                                    <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Pay Status</span>
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit"
-                                        style={{ color, backgroundColor: bg }}>
-                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}` }} />
-                                        {label}
-                                    </span>
-                                </div>
-                            );
-                        })()}
+                        {payStatus && (
+                            <div className="flex flex-col min-w-[72px] shrink-0 pl-3 justify-center h-full gap-0.5">
+                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Pay Status</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit"
+                                    style={{ color: accentColor, backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)` }}>
+                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor, boxShadow: `0 0 4px ${accentColor}` }} />
+                                    {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : 'Partial'}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-2 shrink-0 bg-white/5 border-l border-white/5 backdrop-blur-md">
@@ -374,13 +362,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <span>Aprd</span>
                             </div>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-all ${isExpanded ? 'text-(--main-color) scale-110' : 'text-white/40'}`}>
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white transition-all ${isExpanded ? 'text-(--main-color) scale-110' : 'text-white/40'}`}>
                             <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 transition-all duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
                     </div>
                 </div>
-                    );
-                })()} {/* end payStatus IIFE */}
                 {isExpanded && (
                     <div className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative">
                         {/* Summary Grid */}
@@ -406,23 +392,22 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             </div>
                         )}
 
-                        {/* Relocated Action Bar */}
                         <div className="pt-4 mt-2 border-t border-white/5 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                                 {user?.role === 'Client' && !isAlreadyApproved && (
-                                    <button onClick={handleApprove} className="h-8 px-4 flex items-center justify-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-green-500/5">
-                                        <CheckCircle size={14} /> Approve Item
+                                    <button onClick={handleApprove} className="text-green-500/60 hover:text-green-400 transition-all hover:scale-110 active:scale-95" title="Approve Item">
+                                        <CheckCircle size={18} strokeWidth={2.5} />
                                     </button>
                                 )}
                                 {isEditable && (
-                                    <button onClick={handleEdit} className="h-8 px-4 flex items-center justify-center gap-2 bg-(--main-color)/10 border border-(--main-color)/20 rounded-lg text-(--main-color) transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-(--main-color)/5">
-                                        <Pencil size={14} /> Edit Item
+                                    <button onClick={handleEdit} className="text-(--main-color) opacity-60 hover:opacity-100 transition-all hover:scale-110 active:scale-95" title="Edit Item">
+                                        <Pencil size={18} strokeWidth={2.5} />
                                     </button>
                                 )}
                             </div>
                             {isInternalUser && (
-                                <button onClick={handleDelete} className="h-8 px-4 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500/60 hover:text-red-500 transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-500/5">
-                                    <Trash2 size={14} /> Delete Item
+                                <button onClick={handleDelete} className="text-red-500/40 hover:text-red-500 transition-all hover:scale-110 active:scale-95" title="Delete Item">
+                                    <Trash2 size={18} strokeWidth={2.5} />
                                 </button>
                             )}
                         </div>
@@ -432,9 +417,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         );
     }
 
+    const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : 'transparent';
+
     return (
         <div
-            className="group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border border-(--border-color) hover:border-(--main-color)/30 transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/40"
+            className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black/40 ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
+            style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}
             onClick={onToggleExpand}
         >
             {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={activeIdx} onClose={() => setShowViewer(false)} />}
@@ -522,19 +510,22 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                 <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/10">
                     <div className="flex flex-col">
-                        <span className="text-[13px] font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                        <div className="flex items-center gap-2">
+                            {statusClass && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accentColor, boxShadow: `0 0 6px ${accentColor}` }} />}
+                            <span className="text-[13px] font-black text-(--main-color)">{showFinancials ? `$${Math.ceil(Number(norm?.price || 0))}` : '***'}</span>
+                        </div>
                         <span className="text-[9px] font-bold text-white/30 tracking-widest uppercase mt-0.5">COST</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-white/40 bg-white/5 px-2 py-1 rounded-md font-mono">x{norm.quantity || 1}</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black text-white/20 px-2 py-0.5 rounded font-mono">x{norm.quantity || 1}</span>
                         {isEditable && (
-                            <button onClick={(e) => handleEdit(e)} className="p-1.5 bg-white/5 hover:bg-(--main-color)/20 border border-white/10 rounded-lg text-white/40 hover:text-(--main-color) transition-all" title="Edit Item">
-                                <Edit2 className="w-3.5 h-3.5" />
+                            <button onClick={(e) => handleEdit(e)} className="text-white/40 hover:text-(--main-color) transition-all hover:scale-110 active:scale-95" title="Edit Item">
+                                <Pencil className="w-4 h-4" strokeWidth={2.5} />
                             </button>
                         )}
                         {isInternalUser && (
-                            <button onClick={(e) => handleDelete(e)} className="p-1.5 bg-white/5 hover:bg-red-500/20 border border-white/10 rounded-lg text-white/40 hover:text-red-500 transition-all" title="Delete Item">
-                                <Trash2 className="w-3.5 h-3.5" />
+                            <button onClick={(e) => handleDelete(e)} className="text-white/20 hover:text-red-500 transition-all hover:scale-110 active:scale-95" title="Delete Item">
+                                <Trash2 className="w-4 h-4" strokeWidth={2.5} />
                             </button>
                         )}
                     </div>
