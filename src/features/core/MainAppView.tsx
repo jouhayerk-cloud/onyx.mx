@@ -244,7 +244,8 @@ export function MainAppView() {
             const states: SidebarState[] = ['expanded', 'compact', 'hidden'];
             const isMobile = window.innerWidth <= 768;
             if (isMobile) {
-                return current === 'hidden' ? 'expanded' : 'hidden';
+                // On mobile, skip 'expanded' and toggle between 'hidden' and 'compact'
+                return current === 'hidden' ? 'compact' : 'hidden';
             }
             const currentIndex = states.indexOf(current);
             const nextIndex = (currentIndex + 1) % states.length;
@@ -257,11 +258,16 @@ export function MainAppView() {
             {/* Sidebar FAB — only visible when sidebar is hidden */}
             {sidebarState === 'hidden' && (
                 <div 
-                    className="sidebar-fab-logo cursor-pointer hover:scale-110 active:scale-95 transition-all outline-none fixed top-6 left-6 z-1000"
-                    onClick={() => setSidebarState('expanded')}
+                    className="fixed top-0 left-0 p-6 z-1000 group cursor-pointer"
+                    onClick={() => setSidebarState('compact')}
                     title="Open Navigation"
                 >
-                    <OnyxMiniLogo className="w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" />
+                    {/* Transparent safety area behind logo to prevent top-bar overlap */}
+                    <div className="absolute inset-0 bg-(--app-bg)/40 backdrop-blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-br-3xl pointer-events-none" />
+                    
+                    <div className="relative hover:scale-110 active:scale-95 transition-all outline-none">
+                        <OnyxMiniLogo className="w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" />
+                    </div>
                 </div>
             )}
 
@@ -272,17 +278,22 @@ export function MainAppView() {
 
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar border-none bg-transparent">
-                    <div className="sidebar-header p-0! mb-8! border-none bg-transparent">
+                    <div className={`sidebar-header mb-8! border-none bg-transparent flex flex-col items-center ${sidebarState === 'expanded' ? 'pt-10' : 'pt-10 px-4'}`}>
                         <div
-                            className="sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center gap-3 w-fit"
+                            className={`sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center w-full ${sidebarState === 'expanded' ? 'flex-col gap-4' : 'justify-center'}`}
                             onClick={handleSidebarStateToggle}
                             title="Toggle Sidebar"
                         >
-                            {sidebarState === 'expanded' && <OnyxLogo className="w-12 h-12 transition-transform duration-300" />}
-                            {sidebarState === 'compact' && <OnyxMiniLogo className="w-12 h-12 transition-transform duration-300" />}
                             {sidebarState === 'expanded' && (
-                                <span className="sidebar-logo-text text-[16px]! font-black! tracking-[0.3em]! uppercase! opacity-90! text-white">Onyx.mx</span>
+                                <>
+                                    <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
+                                    <div className="flex flex-col items-center">
+                                        <span className="sidebar-logo-text text-[11px]! font-bold! tracking-[0.2em]! opacity-90! text-white/80">Onyx.mx</span>
+                                        <span className="text-[7px] font-bold text-(--main-color) uppercase tracking-[0.5em] mt-1 opacity-40">Digital Studio</span>
+                                    </div>
+                                </>
                             )}
+                            {sidebarState === 'compact' && <OnyxMiniLogo className="w-12 h-12 transition-transform duration-300" />}
                         </div>
                     </div>
                     <ul className="sidebar-list">
