@@ -1,3 +1,7 @@
+## [1.42.3] - 2026-03-28
+### Security
+- **RBAC for Add Payment**: Restricted the "Add Payment" button visibility to Administrator and Developer roles. Clients and Vendors will no longer see this action, ensuring unauthorized users cannot initiate the payment wizard.
+
 ## [1.42.2] - 2026-03-28
 ### Added
 - **Restored Add Payment Button**: Re-integrated a large, glassmorphic "New Transaction" action button at the top of the payment list for easy access to the payment wizard UI.
