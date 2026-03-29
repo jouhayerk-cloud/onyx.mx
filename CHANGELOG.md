@@ -1,3 +1,12 @@
+## [1.43.3] - 2026-03-29
+### Added
+- **Payments Artifact Module [feat]**:
+    - **Global Financial Overlay**: Introduced a dedicated, glassmorphic artifact for inspecting filtered financial records and payment summaries from any module.
+    - **Dynamic Filtering Engine**: Support for filtering by vendor, date, payment destination, and linked inventory tag IDs.
+    - **Interactive Record View**: High-density transaction cards with dual-currency (USD/MXN) conversion and color-coded status indicators.
+    - **Portfolio Summaries**: Real-time aggregation of filtered totals in both currencies within the artifact footer.
+- **System Versioning**: Updated application to v1.43.3.
+
 ## [1.43.2] - 2026-03-29
 ### Changed
 - **Inventory UI Gallery Fix**:

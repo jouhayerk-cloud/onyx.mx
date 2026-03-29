@@ -47,6 +47,7 @@ import { ProcessView } from '../process/ProcessView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { AboutModal } from '../../components/AboutModal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
+import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 
 declare const __APP_VERSION__: string;
 
@@ -426,6 +427,7 @@ export function MainAppView() {
             <UploadWizard />
             <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
             <InventoryArtifact />
+            <PaymentsArtifact />
         </>
     );
 }
