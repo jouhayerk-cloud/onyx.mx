@@ -13,7 +13,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -1383,15 +1383,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <cat.icon size={18} style={{ color: cat.color }} className="drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-mono font-black text-white/80 tracking-tighter leading-none mb-0.5">{fmtDate(r.date)}</span>
-                                            <span className="text-[8px] font-black uppercase tracking-[0.2em] leading-none opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: cat.color }}>{cat.label}</span>
+                                             <span className="text-[9px] sm:text-[11px] font-mono font-black text-white/80 tracking-tighter leading-none mb-0.5">{fmtDate(r.date)}</span>
+                                             <span className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.2em] leading-none opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: cat.color }}>{cat.label}</span>
                                         </div>
                                     </div>
                                     
                                     {/* Column 2: Description & Tags */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="text-[12px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                             <h4 className="text-[10px] sm:text-[12px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
                                             {r.recurring && <Clock size={12} className="text-orange-500 opacity-50 shrink-0" />}
                                         </div>
                                         {(() => {
@@ -1401,7 +1401,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 return (
                                                     <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity overflow-hidden">
                                                         <LayoutGrid size={10} className="text-white/40 shrink-0" />
-                                                        <span className="text-[9px] font-mono font-black text-white/40 uppercase whitespace-nowrap">{ids.length} TAGS</span>
+                                                         <span className="text-[7px] sm:text-[9px] font-mono font-black text-white/40 uppercase whitespace-nowrap">{ids.length} TAGS</span>
                                                     </div>
                                                 );
                                             }
@@ -1409,67 +1409,64 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         })()}
                                     </div>
 
-                                    {/* Column 2.5: LARGE VENDOR TAG */}
-                                    {r.vendor_id && (
-                                        <div className="shrink-0 flex items-center justify-center">
-                                            <div className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 relative group/vendor shadow-inner transition-transform group-hover:scale-110 active:scale-95 duration-300" 
-                                                 style={{ borderColor: `${vendorColor}40` }}>
-                                                <div className="absolute inset-0 bg-white/2 rounded-xl" style={{ backgroundColor: `${vendorColor}10` }} />
-                                                <span className="relative z-10 text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: vendorColor }}>{r.vendor_id}</span>
-                                            </div>
-                                        </div>
-                                    )}
+                                     {/* Column 2.5: Minimalist Vendor Tag */}
+                                     {r.vendor_id && (
+                                         <div className="shrink-0 flex items-center gap-2">
+                                              <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: vendorColor }} />
+                                              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap" style={{ color: vendorColor }}>{r.vendor_id}</span>
+                                         </div>
+                                     )}
 
                                     {/* Clean Vertical Separator */}
                                     <div className="shrink-0 w-px h-7 bg-white/10 mx-1.5" />
                                     
-                                    {/* Column 3: Financials & Account Icon Segment */}
-                                    <div className="shrink-0 flex items-center justify-end gap-3 w-[160px]">
-                                        <div className="flex flex-col items-end gap-0.5 min-w-[100px]">
-                                            <div className="flex items-center justify-end gap-2 leading-none">
-                                                <span className="text-[18px] font-black font-mono text-white tracking-tighter">
-                                                    {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalNet / rate)}
-                                                </span>
-                                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                    {currencyMode}
-                                                </span>
-                                            </div>
-                                            {(r.commission || 0) > 0 && (
-                                                <div className="flex items-center gap-1 opacity-40 scale-[0.85] origin-right">
-                                                    <span className="text-[10px] font-mono font-black text-white/60 tracking-tight">
-                                                        + {currencyMode === 'MXN' ? fmtMXN(r.commission) : fmtUSD(r.commission / rate)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Small Card/Account Icon */}
-                                        <div className="shrink-0 w-8 h-8 flex items-center justify-center bg-white/2 rounded-lg border border-white/5 p-1 relative">
-                                            {destCfg ? (
-                                                <img src={destCfg.icon} className="max-w-full max-h-full object-contain brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.1)] group-hover:scale-110 transition-transform" title={destCfg.name} />
-                                            ) : (
-                                                <Info size={10} className="text-white/10" />
-                                            )}
-                                        </div>
-                                    </div>
+                                     {/* Column 3: Financials & Account Icon Segment */}
+                                     <div className="shrink-0 flex items-center justify-end gap-3 w-[165px]">
+                                         <div className="flex flex-col items-end gap-0 min-w-[105px]">
+                                             <div className="flex items-center justify-end gap-2 leading-none">
+                                                  <span className="text-[13px] sm:text-[15px] font-black font-mono text-white tracking-tighter">
+                                                      {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalNet / rate)}
+                                                  </span>
+                                                 <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                     {currencyMode}
+                                                 </span>
+                                             </div>
+                                             {(r.commission || 0) > 0 && (
+                                                 <div className="flex items-center gap-1 opacity-60 mt-0.5">
+                                                      <span className="text-[10px] sm:text-[12px] font-mono font-black text-white/50 tracking-tighter">
+                                                          + {currencyMode === 'MXN' ? fmtMXN(r.commission) : fmtUSD(r.commission / rate)}
+                                                      </span>
+                                                 </div>
+                                             )}
+                                         </div>
+ 
+                                         {/* Free-Floating Card/Account Icon */}
+                                         <div className="shrink-0 w-8 h-8 flex items-center justify-center relative">
+                                             {destCfg ? (
+                                                 <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" title={destCfg.name} />
+                                             ) : (
+                                                 <Info size={12} className="text-white/10" />
+                                             )}
+                                         </div>
+                                     </div>
 
                                     {/* Clean Vertical Separator */}
                                     <div className="shrink-0 w-px h-7 bg-white/10 mx-1.5" />
 
-                                    {/* Column 4: Status Action Area (Fixed Overlap Width) */}
-                                    <div className="shrink-0 w-[140px] flex items-center justify-end gap-2 relative pr-1">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
-                                            className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/30 text-[#8DC63F] shadow-[0_0_15px_rgba(141,198,63,0.1)] hover:bg-[#8DC63F]/20' : 'bg-[#FACC15]/10 border-[#FACC15]/30 text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.1)] hover:bg-[#FACC15]/20'}`}>
-                                            {r.status}
-                                        </button>
-                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                            <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
-                                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-500/5 text-red-500/40 hover:bg-red-500/20 hover:text-red-500 transition-all text-[10px] shrink-0 border border-white/5 hover:border-red-500/20" title="Delete record">
-                                                ✕
-                                            </button>
-                                        )}
-                                    </div>
+                                     {/* Column 4: Compact Status & Floating Action (Fixed Overlap Width) */}
+                                     <div className="shrink-0 w-[110px] flex items-center justify-end gap-3 relative pr-1">
+                                          <button 
+                                              onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
+                                              className={`flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${r.status === 'Paid' ? 'text-[#8DC63F]' : 'text-[#FACC15]'}`}>
+                                              {r.status === 'Requested' ? <Clock size={16} strokeWidth={3} /> : <CheckCircle size={16} strokeWidth={3} />}
+                                          </button>
+                                         {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                             <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
+                                                 className="text-red-500/40 hover:text-red-500 transition-all shrink-0 p-1" title="Delete record">
+                                                 <Trash2 size={14} />
+                                             </button>
+                                         )}
+                                     </div>
                                 </div>
 
                                 {/* Expanded Content: Deep Metadata */}
@@ -1480,16 +1477,16 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <div className="space-y-4">
                                                 <div>
                                                     <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-2">Transactional Detail</span>
-                                                    <p className="text-[11px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided for this transaction.'}"</p>
+                                                     <p className="text-[10px] sm:text-[11px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided for this transaction.'}"</p>
                                                 </div>
                                                 <div className="flex items-center gap-6">
                                                     <div>
-                                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Linked Requisition Net</span>
-                                                        <span className="text-[10px] font-black text-white/80 uppercase">{r.payment_method || 'Standard Wire'}</span>
+                                                         <span className="text-[8px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest">Linked Requisition Net</span>
+                                                         <span className="text-[8px] sm:text-[10px] font-black text-white/80 uppercase">{r.payment_method || 'Standard Wire'}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Fee %</span>
-                                                        <span className="text-[10px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
+                                                         <span className="text-[7px] sm:text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Fee %</span>
+                                                         <span className="text-[9px] sm:text-[10px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
                                                     </div>
                                                 </div>
                                             </div>
