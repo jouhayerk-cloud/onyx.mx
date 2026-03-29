@@ -240,7 +240,7 @@ const ShippingStats: React.FC = () => {
 };
 
 
-const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ onExport, isExporting }) => {
+const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
@@ -298,16 +298,6 @@ const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = (
                             icon={viewMode === 'grid' ? List : LayoutGrid}
                             label={viewMode === 'grid' ? 'LIST' : 'GRID'}
                             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                        />
-
-                        <div className="w-px h-5 bg-white/5 mx-1 hidden sm:block" />
-
-                        <StudioAction 
-                            icon={Download}
-                            label="EXPORT"
-                            onClick={onExport}
-                            disabled={isExporting || inventory.length === 0}
-                            className={isExporting ? 'animate-bounce' : ''}
                         />
                     </div>
                 )}
@@ -382,7 +372,7 @@ const StoreBar: React.FC = () => {
     );
 };
 
-const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ onExport, isExporting }) => {
+const FinanceBar: React.FC = () => {
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const [search, setSearch] = useAtom(financeSearchTermAtom);
     const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
@@ -698,9 +688,9 @@ export function MainHeader() {
 
             {/* Dynamic module bar — grows to fill available space */}
             <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">
-                {activeView === 'inventory' && <InventoryBar onExport={handleMasterExportXLSX} isExporting={isExporting} />}
+                {activeView === 'inventory' && <InventoryBar />}
                 {activeView === 'store' && <StoreBar />}
-                {activeView === 'finance' && <FinanceBar onExport={handleMasterExportXLSX} isExporting={isExporting} />}
+                {activeView === 'finance' && <FinanceBar />}
                 {activeView === 'logistics' && <LogisticsBar />}
                 {activeView === 'packing' && <PackingBar />}
                 {activeView === 'upload' && <UploadBar />}

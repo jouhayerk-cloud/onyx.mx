@@ -1161,75 +1161,75 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {/* Primary Grid: Rates & Summary Totals */}
                     <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-2.5' : 'gap-1'} mb-1`}>
                         {/* Exchange Rates Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <TrendingUp size={12} className="text-[#6BCEBB]" />
+                                <TrendingUp size={14} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">FX Rates</span>
-                            <div className="grid grid-cols-2 gap-2">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
+                            <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
-                                    <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[11px]' : 'text-[9px]'}`}>{exchangeRate.toFixed(2)}</span>
+                                    <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
+                                    <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{exchangeRate.toFixed(2)}</span>
                                 </div>
-                                <div className="flex flex-col border-l border-white/5 pl-2">
-                                    <span className="text-[7px] font-bold text-white/10 uppercase mb-0.5">Live</span>
-                                    <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[11px]' : 'text-[9px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                                <div className="flex flex-col border-l border-white/5 pl-3">
+                                    <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Live</span>
+                                    <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Paid Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <CheckCircle size={12} className="text-[#6BCEBB]" />
+                                <CheckCircle size={14} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Paid</span>
-                            <div className="flex items-center gap-1.5 leading-tight">
-                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
+                            <div className="flex items-center gap-2 leading-tight">
+                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                     {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
                                 </span>
-                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                     {currencyMode}
                                 </span>
                             </div>
                         </div>
 
                         {/* Pending Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <Clock size={12} className="text-[#FACC15]" />
+                                <Clock size={14} className="text-[#FACC15]" />
                             </div>
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mb-0.5 leading-none">Total Pending</span>
-                            <div className="flex items-center gap-1.5 leading-tight">
-                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
+                            <div className="flex items-center gap-2 leading-tight">
+                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                     {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
                                 </span>
-                                <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                     {currencyMode}
                                 </span>
                             </div>
                         </div>
 
                         {/* Active Selection Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-2.5' : 'p-1 px-2'} rounded-xl bg-(--main-color)/5 border border-(--main-color)/20`}>
-                            <span className="text-[7px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-0.5 leading-none">Active Account</span>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--main-color)/5 border border-(--main-color)/20`}>
+                            <span className="text-[8px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-1 leading-none">Active Account</span>
                             {destinationFilter !== 'All' ? (
-                                <div className="flex items-center justify-between gap-1 leading-tight relative z-10">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-4 h-4 flex items-center justify-center bg-white/10 rounded p-0.5 border border-white/10">
+                                <div className="flex items-center justify-between gap-2 leading-tight relative z-10">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-lg p-0.5 border border-white/10">
                                             <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
                                         </div>
-                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-[18px]' : 'text-xs'}`}>
+                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                             {currencyMode === 'MXN' ? fmtMXN(activeDestReqNetMXN) : fmtUSD(activeDestReqNetMXN / rate)}
                                         </span>
                                     </div>
-                                    <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                    <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                         {currencyMode}
                                     </span>
                                 </div>
                             ) : (
-                                <div className="flex-1 flex items-center relative z-10">
-                                    <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">No Selection</span>
+                                <div className="flex-1 flex items-center relative z-10 px-1">
+                                    <span className="text-[9px] font-black text-white/10 uppercase tracking-widest">No Selection</span>
                                 </div>
                             )}
                         </div>
@@ -1243,50 +1243,50 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
                                 return (
                                     <div key={group.vendorId}
-                                        className="group relative flex flex-col p-2 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
+                                        className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
                                         style={{ borderTop: `2px solid ${color}` }}>
-                                        <div className="flex justify-between items-start mb-2">
+                                        <div className="flex justify-between items-start mb-3">
                                             <div>
-                                                <span className="text-[9px] font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
-                                                <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
+                                                <span className="text-xs font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
+                                                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
                                             </div>
-                                            <div className="p-1 bg-white/5 rounded-md border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
-                                                <Archive size={11} style={{ color }} />
+                                            <div className="p-1.5 bg-white/5 rounded-lg border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
+                                                <Archive size={14} style={{ color }} />
                                             </div>
                                         </div>
                                         <div className="mt-auto">
-                                            <div className="flex items-center gap-1.5 mb-1.5 overflow-hidden">
-                                                <span className="text-[14px] font-black font-mono text-white leading-none whitespace-nowrap">
+                                            <div className="flex items-center gap-2 mb-2 overflow-hidden">
+                                                <span className="text-[17px] font-black font-mono text-white leading-none whitespace-nowrap">
                                                     {currencyMode === 'MXN' ? fmtMXN(group.total) : fmtUSD(group.total / rate)}
                                                 </span>
-                                                <span className={`text-[7px] font-black px-1 rounded shrink-0 ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
+                                                <span className={`text-[9px] font-black px-1.5 rounded shrink-0 ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
                                                     {currencyMode}
                                                 </span>
                                             </div>
-                                            <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                                 <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
                                             </div>
-                                            <div className="flex items-center justify-between mt-1 gap-2">
-                                                {paidPerc > 0 ? <span className="text-[7px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
-                                                <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-between mt-2.5 gap-2">
+                                                {paidPerc > 0 ? <span className="text-[9px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
+                                                <div className="flex items-center gap-3">
                                                     <button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
                                                             setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
                                                         }}
-                                                        className="flex items-center gap-1 text-[7px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
+                                                        className="flex items-center gap-1.5 text-[9px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
                                                     >
-                                                        <LayoutGrid size={9} /> Items
+                                                        <LayoutGrid size={11} /> Items
                                                     </button>
                                                     <button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
                                                         }}
-                                                        className="flex items-center gap-1 text-[7px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-2"
+                                                        className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-3"
                                                     >
-                                                        <Receipt size={9} /> Ledger
+                                                        <Receipt size={11} /> Ledger
                                                     </button>
                                                 </div>
                                             </div>
@@ -1415,52 +1415,52 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                             return (
                                 <div key={r.id} 
-                                    className={`group relative flex flex-col p-2 bg-white/5 border-b border-white/5 transition-all hover:bg-white/7 ${isExpanded ? 'bg-white/8 my-2 rounded-xl border-x border-white/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
+                                    className={`group relative flex flex-col p-3 bg-white/5 border-b border-white/5 transition-all hover:bg-white/7 ${isExpanded ? 'bg-white/8 my-3 rounded-xl border-x border-white/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
                                     
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
                                         {/* Column 1: Compact Icon + Date Stack */}
-                                        <div className="shrink-0 flex items-center gap-2.5 border-r border-white/5 pr-3 min-w-[85px]">
-                                            <cat.icon size={14} style={{ color: cat.color }} className="shrink-0 opacity-80" />
+                                        <div className="shrink-0 flex items-center gap-3 border-r border-white/5 pr-4 min-w-[105px]">
+                                            <cat.icon size={16} style={{ color: cat.color }} className="shrink-0 opacity-80" />
                                             <div className="flex flex-col items-start justify-center">
-                                                <span className="text-[10px] font-black tracking-tighter text-white opacity-80 leading-none mb-1">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
-                                                <span className={`text-[7px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
+                                                <span className="text-[11px] font-black tracking-tighter text-white opacity-80 leading-none mb-1.5">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                                <span className={`text-[8px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
                                             </div>
                                         </div>
 
                                         {/* Column 2: Simplified Vendor / CRATES logic */}
-                                        <div className="flex-1 min-w-0 px-2 flex items-center gap-3">
+                                        <div className="flex-1 min-w-0 px-3 flex items-center gap-4">
                                             <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                    <h4 className="text-[10px] sm:text-[11px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
-                                                    {r.recurring && <Clock size={10} className="text-orange-500 opacity-50 shrink-0" />}
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h4 className="text-[12px] sm:text-[13px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                                    {r.recurring && <Clock size={12} className="text-orange-500 opacity-50 shrink-0" />}
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2.5">
                                                      {r.vendor_id === 'CRATES' ? (
                                                          <div className="flex items-center gap-1.5 py-0.5">
-                                                             <Box size={10} className="text-white/40" />
-                                                             <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">CRATES</span>
+                                                             <Box size={12} className="text-white/40" />
+                                                             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">CRATES</span>
                                                          </div>
                                                      ) : r.vendor_id && (
-                                                         <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] whitespace-nowrap" style={{ color: vendorColor }}>{r.vendor_id}</span>
+                                                         <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] whitespace-nowrap" style={{ color: vendorColor }}>{r.vendor_id}</span>
                                                      )}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Column 3: Financials & Account Icon Segment */}
-                                        <div className="shrink-0 flex items-center justify-end gap-3 w-[150px]">
-                                            <div className="flex flex-col items-end gap-0 min-w-[90px]">
+                                        <div className="shrink-0 flex items-center justify-end gap-3 w-[170px]">
+                                            <div className="flex flex-col items-end gap-0.5 min-w-[100px]">
                                                 <div className="flex items-center justify-end gap-1.5 leading-none">
-                                                     <span className="text-[12px] sm:text-[14px] font-black font-mono text-white tracking-tighter">
+                                                     <span className="text-[14px] sm:text-[16px] font-black font-mono text-white tracking-tighter">
                                                          {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
                                                      </span>
-                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                    <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                                         {currencyMode}
                                                     </span>
                                                 </div>
                                                 {(r.commission || 0) > 0 && (
-                                                    <div className="flex items-center gap-1 opacity-60 mt-0.5">
-                                                         <span className="text-[9px] sm:text-[11px] font-mono font-black text-white/50 tracking-tighter">
+                                                    <div className="flex items-center gap-1 opacity-60">
+                                                         <span className="text-[10px] sm:text-[12px] font-mono font-black text-white/50 tracking-tighter">
                                                              + {currencyMode === 'MXN' ? fmtMXN(r.commission) : fmtUSD(r.commission / (liveExchangeRate || exchangeRate))}
                                                          </span>
                                                     </div>
@@ -1468,11 +1468,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             </div>
 
                                             {/* Free-Floating Card/Account Icon */}
-                                            <div className="shrink-0 w-8 h-8 flex items-center justify-center relative">
+                                            <div className="shrink-0 w-9 h-9 flex items-center justify-center relative">
                                                 {destCfg ? (
                                                     <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" title={destCfg.name} />
                                                 ) : (
-                                                    <Info size={12} className="text-white/10" />
+                                                    <Info size={14} className="text-white/10" />
                                                 )}
                                             </div>
                                         </div>
@@ -1485,25 +1485,25 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {/* Logic Details */}
                                                 <div className="space-y-4">
                                                     <div>
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-2">Transactional Detail</span>
-                                                         <p className="text-[10px] sm:text-[11px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided.'}"</p>
+                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-2.5">Transactional Detail</span>
+                                                         <p className="text-[12px] sm:text-[13px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided.'}"</p>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-8">
                                                         <div>
-                                                             <span className="text-[8px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest">Payment Method</span>
-                                                             <span className="text-[8px] sm:text-[10px] font-black text-white/80 uppercase block">{r.payment_method || 'Standard Wire'}</span>
+                                                             <span className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest mb-1.5 block">Payment Method</span>
+                                                             <span className="text-[10px] sm:text-[11px] font-black text-white/80 uppercase block">{r.payment_method || 'Standard Wire'}</span>
                                                         </div>
                                                         <div>
-                                                             <span className="text-[7px] sm:text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Fee %</span>
-                                                             <span className="text-[9px] sm:text-[10px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
+                                                             <span className="text-[8px] sm:text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1.5">Fee %</span>
+                                                             <span className="text-[11px] sm:text-[12px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Linked Items / Artifact Trigger */}
                                                 <div className="lg:col-span-2">
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
                                                     </div>
                                                     {(() => {
                                                         const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
@@ -1521,16 +1521,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 >
                                                                     <LayoutGrid size={14} className="text-(--main-color)" />
                                                                     <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Items ({ids.length})</span>
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setPaymentsArtifactConfig({ isOpen: true, itemIds: ids, title: `Related Payments for ${r.vendor_id || 'Transaction'}` });
-                                                                    }}
-                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/items"
-                                                                >
-                                                                    <Receipt size={14} className="text-sky-400" />
-                                                                    <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Ledger</span>
                                                                 </button>
                                                             </div>
                                                         );
