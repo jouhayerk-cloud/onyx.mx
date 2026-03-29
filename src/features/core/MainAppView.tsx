@@ -281,16 +281,16 @@ export function MainAppView() {
 
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar border-none bg-transparent">
-                    <div className={`sidebar-header mb-8! border-none bg-transparent flex flex-col items-center ${sidebarState === 'expanded' ? 'pt-10' : 'pt-10 px-4'}`}>
+                    <div className={`sidebar-header mb-12! border-none bg-transparent flex flex-col items-center ${sidebarState === 'expanded' ? 'pt-10' : 'pt-10 px-4'}`}>
                         <div
-                            className={`sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center w-full ${sidebarState === 'expanded' ? 'flex-col gap-4' : 'justify-center'}`}
+                            className={`sidebar-logo p-0! cursor-pointer! hover:scale-105 active:scale-95 transition-all flex items-center w-full ${sidebarState === 'expanded' ? 'flex-col gap-2' : 'justify-center'}`}
                             onClick={handleSidebarStateToggle}
                             title="Toggle Sidebar"
                         >
                             {sidebarState === 'expanded' && (
                                 <>
                                     <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
-                                    <div className="flex flex-col items-center mb-4">
+                                    <div className="flex flex-col items-center mb-6">
                                         <span className="sidebar-logo-text text-[11px]! font-bold! tracking-[0.2em]! opacity-90! text-white/80">Onyx.mx</span>
                                     </div>
                                 </>
