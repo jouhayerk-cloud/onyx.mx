@@ -1,3 +1,7 @@
+## [1.42.1] - 2026-03-28
+### Added
+- **Restored Payment Icons**: Re-integrated color-coded category icons (Development, Acquisition, Operations, etc.) into the transaction list rows for improved visual categorization.
+
 ## [1.42.0] - 2026-03-28
 ### Added
 - **Inventory Action Relocation**: Moved Edit and Delete buttons from the primary list row to the expanded details panel in the Inventory List View. Added a dedicated high-density action bar with labeled buttons and status indicators.

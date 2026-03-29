@@ -1375,10 +1375,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     className={`group relative flex flex-col p-2 bg-white/5 border-b border-white/5 transition-all hover:bg-white/7 ${isExpanded ? 'bg-white/8 my-2 rounded-xl border-x border-white/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
                                     
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
-                                        {/* Column 1: Compact Date */}
-                                        <div className="shrink-0 w-[60px] flex flex-col items-start justify-center border-r border-white/5 pr-2">
-                                            <span className="text-[10px] font-black tracking-tighter text-white opacity-80 leading-none mb-1">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
-                                            <span className={`text-[7px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
+                                        {/* Column 1: Compact Icon + Date Stack */}
+                                        <div className="shrink-0 flex items-center gap-2.5 border-r border-white/5 pr-3 min-w-[85px]">
+                                            <cat.icon size={14} style={{ color: cat.color }} className="shrink-0 opacity-80" />
+                                            <div className="flex flex-col items-start justify-center">
+                                                <span className="text-[10px] font-black tracking-tighter text-white opacity-80 leading-none mb-1">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                                <span className={`text-[7px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
+                                            </div>
                                         </div>
 
                                         {/* Column 2: Simplified Vendor / CRATES logic */}
