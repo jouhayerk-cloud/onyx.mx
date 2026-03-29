@@ -444,29 +444,32 @@ export const ClientOverview: React.FC = () => {
                                             }
                                         />
                                         {!isFinancialsCollapsed && (
-                                            <div className="mt-2 animate-in fade-in duration-300">
-                                                <div className="group relative flex flex-col p-2 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
-                                                    <div className="absolute top-0 right-0 w-24 h-24 bg-(--main-color)/5 blur-2xl -mr-12 -mt-12 rounded-full" />
-                                                    <div className="flex items-center gap-2 mb-1 relative z-10">
-                                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em]">Mexico Total:</span>
-                                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 border border-white/10 rounded-lg">
-                                                            <span className="text-[7px] font-black text-(--main-color) opacity-40 uppercase tracking-widest">Rate</span>
-                                                            <div className="w-px h-2 bg-white/10" />
-                                                            <span className="text-[9px] font-mono font-black text-(--main-color) opacity-60">1 USD = {currentExchangeRate.toFixed(2)} MXN</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-baseline gap-2.5 relative z-10 leading-none">
-                                                        <span className="text-[20px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
-                                                            {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
-                                                        </span>
-                                                        <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                            {currencyMode}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                                             <div className="mt-2 animate-in fade-in duration-300">
+                                                 <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
+                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
+                                                     <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
+                                                     
+                                                     <div className="flex items-end justify-between relative z-10 leading-none gap-4">
+                                                         <div className="flex items-baseline gap-2.5">
+                                                             <span className="text-[22px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
+                                                                 {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
+                                                             </span>
+                                                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                 {currencyMode}
+                                                             </span>
+                                                         </div>
+
+                                                         {/* Relocated and Larger Rate Display */}
+                                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl mb-0.5 shadow-lg">
+                                                             <span className="text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.2em]">Rate</span>
+                                                             <div className="w-px h-3 bg-white/10" />
+                                                             <span className="text-[12px] font-mono font-black text-(--main-color) opacity-80">1 USD = {currentExchangeRate.toFixed(2)} MXN</span>
+                                                         </div>
+                                                     </div>
+                                                 </div>
                                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                                                     {[
-                                                        { label: 'EXPENSES', v: { usd: globalTotals.totalOpsUsd, mxn: globalTotals.totalOpsMxn }, color: '#6BCEBB', icon: null, isTotal: true },
+                                                         { label: 'TOTAL EXPENSES', v: { usd: globalTotals.totalOpsUsd, mxn: globalTotals.totalOpsMxn }, color: '#6BCEBB', icon: null, isTotal: true, standout: true },
                                                         { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
                                                         { label: 'Supplies', v: opsBreakdown.Supplies, color: '#34d399', icon: Box },
                                                         { label: 'Labor', v: opsBreakdown.Labor, color: '#fbbf24', icon: Users },
@@ -474,14 +477,14 @@ export const ClientOverview: React.FC = () => {
                                                         { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
                                                     ].map(c => (
                                                         <div key={c.label} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (c.label !== 'EXPENSES') setPaymentCategoryFilter((c.v as any).tag); }}
-                                                            className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
-                                                        >
-                                                            {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
-                                                            <span className={`${c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
+                                                         className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
+                                                         >
+                                                             {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
+                                                             <span className={`${c.standout ? 'text-[11px]' : c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
                                                             <div className="flex flex-col leading-none">
-                                                                <span className="text-[14px] font-black font-mono text-white tracking-tighter">
-                                                                    {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
-                                                                </span>
+                                                                 <span className={`${c.standout ? 'text-[18px]' : 'text-[14px]'} font-black font-mono text-white tracking-tighter`}>
+                                                                     {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
+                                                                 </span>
                                                                 <span className={`text-[7px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                                                     {currencyMode}
                                                                 </span>
