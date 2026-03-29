@@ -1,3 +1,12 @@
+## [1.42.4] - 2026-03-28
+### Changed
+- **Sidebar Redesign**:
+    - **Header Layout**: Centered, vertical stack for logo and brand name in expanded mode with improved typography.
+    - **Responsive States**: On mobile, the sidebar now cycles between 'Hidden' and 'Compact' to maximize space.
+    - **FAB Safety Zone**: Added a backdrop 'safety area' when the sidebar is hidden to prevent overlap with the Top Bar.
+    - **Padding Refinements**: Standardized top/left padding for all sidebar header states (Extended and Compact).
+- **Layout Alignment**: Optimized desktop top-bar offset in hidden mode to align with the Onyx logo FAB.
+
 ## [1.42.3] - 2026-03-28
 ### Security
 - **RBAC for Add Payment**: Restricted the "Add Payment" button visibility to Administrator and Developer roles. Clients and Vendors will no longer see this action, ensuring unauthorized users cannot initiate the payment wizard.

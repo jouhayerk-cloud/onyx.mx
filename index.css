@@ -19,12 +19,12 @@
   max-width: 240px;
   flex-shrink: 0;
   background-color: var(--sidebar-bg);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 10;
 }
@@ -336,12 +336,11 @@
   transform: translateX(-100%);
 }
 
-.app-container.sidebar-hidden .sidebar-state-toggle .onyx-logo {
-  transform: rotate(180deg);
+.app-container.sidebar-hidden .app-content {
+  padding-left: 0;
 }
 
 @media (min-width: 769px) {
-
   /* Sidebar Hidden State (Desktop) */
   .app-container.sidebar-hidden .sidebar {
     flex-basis: 0;
@@ -350,6 +349,12 @@
     border: none;
     transform: translateX(0);
     overflow: hidden;
+  }
+
+  /* Offset header when sidebar is hidden to make room for FAB */
+  .app-container.sidebar-hidden .main-header {
+    padding-left: 80px;
+    transition: padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
