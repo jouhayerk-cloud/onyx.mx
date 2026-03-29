@@ -65,7 +65,7 @@ import userIcons from '../../components/userIcons';
 import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
-    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe,
+    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe, DollarSign,
     OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter
 } from 'lucide-react';
 
@@ -445,18 +445,16 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
 
             <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
                 
-                {/* Global Currency Toggle */}
+                {/* Global Currency Toggle - Stacked Studio Style */}
                 <button
                     onClick={toggleCurrency}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 group/curr ${
-                        currencyMode === 'USD' 
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                        : 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                    className={`flex flex-col items-center justify-center p-1 px-3 rounded-xl transition-all hover:bg-white/5 active:scale-90 group/curr ${
+                        currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'
                     }`}
+                    title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
                 >
-                    <span className="text-[12px] font-black">$</span>
-                    <div className="w-px h-3 bg-white/10 mx-0.5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{currencyMode}</span>
+                    <DollarSign size={14} strokeWidth={2.5} className="group-hover/curr:scale-110 transition-transform" />
+                    <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mt-1">{currencyMode}</span>
                 </button>
 
                 <div className="w-px h-5 bg-white/10 mx-1" />
@@ -792,18 +790,16 @@ export function MainHeader() {
                     <div className="flex items-center gap-3">
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
                         
-                        {/* Global Currency Toggle */}
+                        {/* Global Currency Toggle - Stacked Studio Style */}
                         <button
                             onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 group/curr ${
-                                currencyMode === 'USD' 
-                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-                                : 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                            className={`flex flex-col items-center justify-center p-1 px-3 rounded-xl transition-all hover:bg-white/5 active:scale-90 group/curr ${
+                                currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'
                             }`}
+                            title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
                         >
-                            <span className="text-[12px] font-black">$</span>
-                            <div className="w-px h-3 bg-white/10 mx-0.5" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{currencyMode}</span>
+                            <DollarSign size={14} strokeWidth={2.5} className="group-hover/curr:scale-110 transition-transform" />
+                            <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mt-1">{currencyMode}</span>
                         </button>
 
                         <button 

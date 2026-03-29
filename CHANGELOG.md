@@ -1,6 +1,17 @@
-# Changelog
+## [1.41.0] - 2026-03-28
+### Added
+- **High-Density Payments UI**: Replaced row status buttons with vertical, color-coded left borders (`#8DC63F` for Paid, `#FACC15` for Requested) to maximize horizontal space.
+- **Unified Traceability**: Consolidated individual item tags into a single, high-contrast "ITEMS" link that launches the `InventoryArtifact` pop-up.
+- **Stacked Currency Toggle**: Refactored the global currency switch in the main header into a free-floating, borderless, stacked icon-text layout ($ + USD/MXN) for a minimalist "Studio" aesthetic.
+- **CRATES Box Icon**: Implemented specialized `Box` iconography for `CRATES` items, replacing standard vendor text tags.
+### Changed
+- **Relocated Actions**: Moved secondary transaction controls (Status Toggle, Delete) into the expanded details panel to keep the primary list view clean and focused.
+- **Filter Bar Optimization**: Reduced padding and icon gaps in the header filter bar for increased information density.
+- **Minimalist Vendor Tags**: Transitioned vendor ID displays from bordered bubbles to color-coded, text-only labels.
+### Fixed
+- **Structural Integrity**: Resolved the unclosed map loop syntax error and missing `DollarSign` import in `MainHeader.tsx`.
+- **Tailwind Refinement**: Streamlined background opacity classes from arbitrary values (`bg-white/[0.08]`) to standard format (`bg-white/8`).
 
-## [1.40.0] - 2026-03-28
 ### Added
 - **Dynamic Inventory Artifacts**: Upgraded the item detail pop-up (Artifact Overlay) to fully support the global USD/MXN toggle. All unit prices and totals now switch dynamically with color-coded tags.
 - **Contextual Exchange Rate**: Relocated the global exchange rate indicator from the Top Bar to the `Overview` module's "Expenses & Financials" section, positioning it next to the Mexico Total label for better relevance.
