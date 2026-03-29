@@ -1,3 +1,8 @@
+## [1.42.0] - 2026-03-28
+### Added
+- **Inventory Action Relocation**: Moved Edit and Delete buttons from the primary list row to the expanded details panel in the Inventory List View. Added a dedicated high-density action bar with labeled buttons and status indicators.
+- **Improved Status Visibility**: Integrated `CheckCircle` icons for approved items in the list view header for immediate visual confirmation.
+
 ## [1.41.1] - 2026-03-28
 ### Fixed
 - **Date Parsing Logic**: Corrected an "Invalid Date" bug in the payment list by handling full ISO strings correctly before formatting.

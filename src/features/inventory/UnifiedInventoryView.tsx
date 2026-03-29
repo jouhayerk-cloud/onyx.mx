@@ -30,7 +30,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
@@ -368,18 +368,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 {isAlreadyApproved ? '✓ Aprd' : 'Approve'}
                             </button>
                         )}
-                        {isEditable && (
-                            <button onClick={(e) => handleEdit(e)} className="p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-colors">
-                                <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2" />
-                            </button>
+                        {isAlreadyApproved && (
+                            <div className="px-2 py-1 rounded-md bg-green-500/15 text-green-400 text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                                <CheckCircle size={10} strokeWidth={3} />
+                                <span>Aprd</span>
+                            </div>
                         )}
-                        {isInternalUser && (
-                            <button onClick={(e) => handleDelete(e)} className="p-1.5 hover:text-red-400 hover:bg-red-400/15 rounded-md transition-colors" title="Mark for Deletion">
-                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2" />
-                            </button>
-                        )}
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : ''}`}>
-                            <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white hover:bg-white/15 rounded-md transition-all ${isExpanded ? 'text-(--main-color) scale-110' : 'text-white/40'}`}>
+                            <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 transition-all duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
                     </div>
                 </div>
@@ -399,7 +395,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         
                         {/* Mini Gallery Strip in Expanded View */}
                         {mediaUrls.length > 1 && (
-                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                            <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
                                 {mediaUrls.map((url, i) => (
                                     <div key={i} 
                                         onClick={() => { setActiveIdx(i); setShowViewer(true); }}
@@ -409,6 +405,27 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 ))}
                             </div>
                         )}
+
+                        {/* Relocated Action Bar */}
+                        <div className="pt-4 mt-2 border-t border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                {user?.role === 'Client' && !isAlreadyApproved && (
+                                    <button onClick={handleApprove} className="h-8 px-4 flex items-center justify-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-green-500/5">
+                                        <CheckCircle size={14} /> Approve Item
+                                    </button>
+                                )}
+                                {isEditable && (
+                                    <button onClick={handleEdit} className="h-8 px-4 flex items-center justify-center gap-2 bg-(--main-color)/10 border border-(--main-color)/20 rounded-lg text-(--main-color) transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-(--main-color)/5">
+                                        <Pencil size={14} /> Edit Item
+                                    </button>
+                                )}
+                            </div>
+                            {isInternalUser && (
+                                <button onClick={handleDelete} className="h-8 px-4 flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500/60 hover:text-red-500 transition-all hover:scale-105 active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-500/5">
+                                    <Trash2 size={14} /> Delete Item
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
