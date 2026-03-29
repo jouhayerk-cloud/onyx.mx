@@ -136,12 +136,75 @@ const SubTabPills: React.FC<{
     </div>
 );
 
+const StudioAction: React.FC<{
+    icon: React.FC<any>;
+    label: string,
+    onClick: () => void,
+    active?: boolean,
+    color?: string,
+    title?: string,
+    disabled?: boolean,
+    className?: string
+}> = ({ icon: Icon, label, onClick, active, color, title, disabled, className = "" }) => (
+    <button
+        onClick={onClick}
+        disabled={disabled}
+        title={title}
+        className={`flex flex-col items-center justify-center p-1 px-2.5 min-w-[48px] rounded-xl transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
+            active ? 'text-(--main-color)' : 'text-white/40 hover:text-white'
+        }`}
+        style={active && color ? { color } : {}}
+    >
+        <Icon size={16} strokeWidth={2.25} className="group-hover/studio:scale-110 transition-transform" />
+        <span className="text-[7.5px] font-black uppercase tracking-[0.2em] leading-none mt-1.5 opacity-70 group-hover/studio:opacity-100">{label}</span>
+    </button>
+);
+
+const DeployableSearch: React.FC<{
+    value: string;
+    onChange: (v: string) => void;
+    isOpen: boolean;
+    setIsOpen: (o: boolean) => void;
+    placeholder?: string;
+    accentColor?: string;
+}> = ({ value, onChange, isOpen, setIsOpen, placeholder = "SEARCH...", accentColor = "var(--main-color)" }) => (
+    <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
+        {!isOpen ? (
+            <button onClick={() => setIsOpen(true)} className="p-2 text-white/40 hover:text-white hover:scale-110 transition-all">
+                <Search size={19} strokeWidth={2.25} />
+            </button>
+        ) : (
+            <div className="flex-1 flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                <Search size={15} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-60" />
+                <input
+                    autoFocus
+                    type="text"
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                    onBlur={() => { if (!value) setIsOpen(false); }}
+                    placeholder={placeholder}
+                    className="flex-1 bg-transparent border-none text-[12px] font-bold text-white outline-none placeholder-white/20 uppercase tracking-widest py-2"
+                />
+                {value && (
+                    <button onClick={() => onChange('')} className="p-1.5 text-white/20 hover:text-white transition-colors">
+                        <X size={14} strokeWidth={3} />
+                    </button>
+                )}
+                <button onClick={() => setIsOpen(false)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-all transform hover:rotate-90">
+                    <X size={12} strokeWidth={2.5} />
+                </button>
+            </div>
+        )}
+    </div>
+);
+
+
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
-        <div className="hidden sm:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
-            <BadgeIcon size={16} strokeWidth={1.75} style={{ color }} />
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] truncate" style={{ color }}>{label}</span>
+        <div className="hidden md:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
+            <BadgeIcon size={14} strokeWidth={2} style={{ color }} />
+            <span className="text-[9px] font-black uppercase tracking-[0.22em] truncate opacity-80" style={{ color }}>{label}</span>
         </div>
     );
 };
@@ -185,101 +248,69 @@ const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = (
     const activeVendors = useAtomValue(activeVendorsAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const inventory = useAtomValue(inventoryAtom);
-
-    // Statuses that are store/catalog items — excluded from the export
-    const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
-
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (
         <>
-            <div className="flex flex-1 items-center gap-4 ml-2">
-                <Store size={22} strokeWidth={1.75} color="var(--color-inventory)" className="shrink-0 hidden lg:block" />
+            <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+                <DeployableSearch 
+                    value={search} 
+                    onChange={setSearch} 
+                    isOpen={isSearchOpen} 
+                    setIsOpen={setIsSearchOpen} 
+                    accentColor="var(--color-inventory)"
+                    placeholder="FIND ITEMS..."
+                />
 
-                {/* Search bar — full width, centered */}
-                <div className="flex-1 relative group/search mx-auto max-w-2xl">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                        <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--main-color) transition-colors" />
-                    </div>
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search by tag ID, shape, color… (space = AND)"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-(--main-color)/40 transition-all"
-                    />
-                    {search && (
-                        <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
-                            <X size={13} strokeWidth={2.5} />
+                {!isSearchOpen && (
+                    <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                        <StudioAction 
+                            icon={Tag} 
+                            label={vendorFilter === 'All' ? 'VENDOR' : vendorFilter}
+                            active={vendorFilter !== 'All'}
+                            onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                            color="var(--color-inventory)"
+                        />
+
+                        <div className="w-px h-5 bg-white/5 mx-1" />
+
+                        <button
+                            className="flex flex-col items-center justify-center p-1 px-3 min-w-[48px] transition-all hover:scale-105"
+                            onClick={() => {
+                                const next: Record<string, 'All' | 'Partial' | 'Requested' | 'Paid'> = {
+                                    'All': 'Partial', 'Partial': 'Requested', 'Requested': 'Paid', 'Paid': 'All'
+                                };
+                                setStatusFilter(next[statusFilter] || 'All');
+                            }}
+                        >
+                            <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 ${
+                                statusFilter === 'All' ? '' :
+                                statusFilter === 'Partial' ? 'bg-red-500 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
+                                statusFilter === 'Requested' ? 'bg-yellow-500 border-yellow-500/50 shadow-[0_0_8px_rgba(245,158,11,0.4)]' :
+                                'bg-green-500 border-green-500/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]'
+                            }`} />
+                            <span className="text-[7.5px] font-black tracking-widest opacity-60 mt-1.5">{statusFilter}</span>
                         </button>
-                    )}
-                </div>
 
-                <div className="flex items-center gap-1 ml-2 relative">
-                    {/* Vendor Filter Toggle */}
-                    <button
-                        className={`p-2 transition-all hover:scale-110 flex items-center justify-center shrink-0 ${isVendorFilterOpen ? 'text-(--color-inventory)' : 'text-white/50 hover:text-white'}`}
-                        onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
-                        title="Filter by Vendor"
-                    >
-                        <Tag size={18} strokeWidth={1.75} />
-                        {vendorFilter !== 'All' && (
-                            <span className="ml-1 text-[10px] font-black" style={{ color: vendors[vendorFilter as keyof typeof vendors]?.color }}>{vendorFilter}</span>
-                        )}
-                    </button>
+                        <div className="w-px h-5 bg-white/5 mx-1 hidden sm:block" />
 
-                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
+                        <StudioAction 
+                            icon={viewMode === 'grid' ? List : LayoutGrid}
+                            label={viewMode === 'grid' ? 'LIST' : 'GRID'}
+                            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                        />
 
-                    {/* Status Filter Single Toggle */}
-                    <button
-                        className="p-2 text-white/50 hover:text-white hover:scale-110 transition-all flex items-center justify-center shrink-0"
-                        onClick={() => {
-                            const next: Record<string, 'All' | 'Partial' | 'Requested' | 'Paid'> = {
-                                'All': 'Partial',
-                                'Partial': 'Requested',
-                                'Requested': 'Paid',
-                                'Paid': 'All'
-                            };
-                            setStatusFilter(next[statusFilter] || 'All');
-                        }}
-                        title={
-                            statusFilter === 'All' ? 'Filter: All items' :
-                            statusFilter === 'Partial' ? 'Filter: Partially Paid' :
-                            statusFilter === 'Requested' ? 'Filter: Payment Requested' :
-                            'Filter: Paid'
-                        }
-                    >
-                        {statusFilter === 'All' && <div className="w-5 h-5 rounded-full border-2 border-white/50" />}
-                        {statusFilter === 'Partial' && <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]" />}
-                        {statusFilter === 'Requested' && <div className="w-5 h-5 rounded-full bg-yellow-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]" />}
-                        {statusFilter === 'Paid' && <div className="w-5 h-5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]" />}
-                    </button>
+                        <div className="w-px h-5 bg-white/5 mx-1 hidden sm:block" />
 
-                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                    {/* Single View Mode Toggle */}
-                    <button
-                        className="p-2 transition-all hover:scale-110 hidden sm:flex text-white/60 hover:text-white"
-                        onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                        title={viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}
-                    >
-                        {viewMode === 'grid'
-                            ? <List size={18} strokeWidth={1.75} />
-                            : <LayoutGrid size={18} strokeWidth={1.75} />}
-                    </button>
-
-                    <div className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
-
-                    {/* Export Master Unified XLSX */}
-                    <button
-                        onClick={onExport}
-                        disabled={isExporting || inventory.length === 0}
-                        className="p-2 transition-all hover:scale-110 flex items-center gap-1 shrink-0 text-white/40 hover:text-(--color-inventory) disabled:opacity-20 disabled:cursor-not-allowed"
-                        title={`Export MASTER XLSX — combined Finance (Ledger/Summary) & Inventory (one sheet per vendor)`}
-                    >
-                        <Download size={17} strokeWidth={1.75} className={isExporting ? 'animate-bounce' : ''} />
-                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
-                    </button>
-                </div>
+                        <StudioAction 
+                            icon={Download}
+                            label="EXPORT"
+                            onClick={onExport}
+                            disabled={isExporting || inventory.length === 0}
+                            className={isExporting ? 'animate-bounce' : ''}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Vendor Filter Bar — horizontal frame rendered below header */}
@@ -335,158 +366,79 @@ const InventoryBar: React.FC<{ onExport: () => void, isExporting: boolean }> = (
 
 const StoreBar: React.FC = () => {
     const [search, setSearch] = useAtom(storeSearchTermAtom);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (
-        <div className="flex flex-1 items-center gap-4 ml-2 relative">
-            <Store size={22} strokeWidth={1.75} color="var(--color-store)" className="shrink-0 hidden sm:block" />
-
-            <div className="flex-1 w-full relative group/search max-w-2xl mx-auto">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                    <Search size={18} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--main-color) transition-colors" />
-                </div>
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search Tag ID, Shape, Color... (space = AND)"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-11 pr-10 text-sm text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-(--main-color)/40 transition-all shadow-lg backdrop-blur-md"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/30 hover:text-white/70 transition-colors">
-                        <X size={16} strokeWidth={2.5} />
-                    </button>
-                )}
-            </div>
-            {/* <ModuleBadge icon="store" label="Storefront" color="#F36F21" /> */}
+        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+            <DeployableSearch 
+                value={search} 
+                onChange={setSearch} 
+                isOpen={isSearchOpen} 
+                setIsOpen={setIsSearchOpen} 
+                accentColor="var(--color-store)"
+                placeholder="FIND ON STORE..."
+            />
         </div>
     );
 };
 
 const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ onExport, isExporting }) => {
-    const exchangeRate = useAtomValue(exchangeRateAtom);
-    const liveExchangeRate = useAtomValue(liveExchangeRateAtom);
-    const docs = useAtomValue(financeDataAtom);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
-    const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
     const [search, setSearch] = useAtom(financeSearchTermAtom);
-    const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
-    const [isVendorOpen, setIsVendorOpen] = useAtom(isPaymentVendorFilterOpenAtom);
-    const [isDestOpen, setIsDestOpen] = useAtom(isPaymentDestinationFilterOpenAtom);
-    const [categoryFilter, setCategoryFilter] = useAtom(paymentCategoryFilterAtom);
-    const [isCategoryOpen, setIsCategoryOpen] = useAtom(isPaymentCategoryFilterOpenAtom);
-
     const [filterMode, setFilterMode] = useAtom(paymentFilterBarModeAtom);
-    const activeVendors = useMemo(() => Array.from(new Set(docs.map(d => Object.keys(vendors).find(v => d.description?.includes(v))).filter(Boolean))) as string[], [docs]);
-
-    const activeDestPendingRecords = useMemo(() => {
-        return destinationFilter !== 'All'
-            ? docs.filter(d => d.destination === destinationFilter && (d.status === 'Requested' || !d.status))
-            : [];
-    }, [docs, destinationFilter]);
-
-    const activeDestReqNetMXN = useMemo(() => {
-        return activeDestPendingRecords.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
-    }, [activeDestPendingRecords]);
-
-    const activeDestReqNetUSD = activeDestReqNetMXN / (liveExchangeRate || exchangeRate);
-
-    const cycleOverviewMode = () => {
-        const next: Record<string, 'extended' | 'minimal' | 'collapsed'> = {
-            'extended': 'minimal', 'minimal': 'collapsed', 'collapsed': 'extended',
-        };
-        setOverviewMode(next[overviewMode] || 'extended');
-    };
-    const modeLabel: Record<string, string> = { extended: 'Full', minimal: 'Min', collapsed: 'Off' };
-
-    const closeAll = () => { setIsVendorOpen(false); setIsDestOpen(false); setIsCategoryOpen(false); };
-
-    const CATEGORIES: PaymentCategory[] = ['All', 'ACQ', 'PROD', 'MONTHLY', 'SPPL', 'LABR', 'PACK', 'OPRT'];
-
-
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
     const toggleCurrency = () => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN');
 
+    const modeLabel: Record<string, string> = { extended: 'FULL', minimal: 'MIN', collapsed: 'OFF' };
+
     return (
-        <div className="flex flex-1 items-center gap-3 ml-2 relative">
-            <CreditCard size={22} strokeWidth={1.75} color="var(--color-finance)" className="shrink-0 hidden sm:block" />
+        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+            <DeployableSearch 
+                value={search} 
+                onChange={setSearch} 
+                isOpen={isSearchOpen} 
+                setIsOpen={setIsSearchOpen} 
+                accentColor="var(--color-finance)"
+                placeholder="FIND PAYMENTS..."
+            />
 
-            {/* Smart search bar */}
-            <div className="flex-1 relative group/search mx-auto max-w-2xl">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                    <Search size={15} strokeWidth={2} className="text-white/40 group-focus-within/search:text-(--color-finance) transition-colors" />
-                </div>
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search payments… (space = AND)"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-8 text-xs text-white outline-none placeholder-white/25 focus:bg-white/10 focus:border-[#A78BFA]/40 transition-all"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/30 hover:text-white/70 transition-colors">
-                        <X size={13} strokeWidth={2.5} />
-                    </button>
-                )}
-            </div>
+            {!isSearchOpen && (
+                <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                    <StudioAction 
+                        icon={DollarSign}
+                        label={currencyMode}
+                        active={true}
+                        onClick={toggleCurrency}
+                        color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
+                    />
 
-            {/* Pending net total for active destination (floats center above) */}
-            {destinationFilter !== 'All' && activeDestReqNetMXN > 0 && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex items-center gap-2 px-3 py-1 bg-[#A78BFA]/10 border border-[#A78BFA]/30 rounded-xl z-20 pointer-events-none" style={{ backgroundColor: 'color-mix(in srgb, var(--color-finance) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-finance) 30%, transparent)' }}>
-                    <span className="text-[9px] font-black text-(--color-finance) uppercase tracking-[0.2em]" style={{ color: 'var(--color-finance)' }}>PENDING</span>
-                    <span className="text-[12px] font-mono font-black text-(--color-finance)" style={{ color: 'var(--color-finance)' }}>
-                        {currencyMode === 'MXN' 
-                            ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(activeDestReqNetMXN)
-                            : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(activeDestReqNetUSD)
-                        }
-                    </span>
-                    <span className="text-[8px] font-black bg-white/10 px-1.5 py-0.5 rounded ml-1" style={{ color: currencyMode === 'USD' ? '#10b981' : '#38bdf8' }}>{currencyMode}</span>
+                    <div className="w-px h-5 bg-white/5 mx-1" />
+
+                    <StudioAction 
+                        icon={Filter}
+                        label="FILTER"
+                        active={filterMode !== 'off'}
+                        onClick={() => setFilterMode(filterMode === 'off' ? 'left' : 'off')}
+                        color="var(--color-finance)"
+                    />
+
+                    <div className="w-px h-5 bg-white/5 mx-1" />
+
+                    <StudioAction 
+                        icon={LayoutList}
+                        label={modeLabel[overviewMode]}
+                        active={overviewMode !== 'collapsed'}
+                        onClick={() => {
+                            const next: Record<string, 'extended' | 'minimal' | 'collapsed'> = {
+                                'extended': 'minimal', 'minimal': 'collapsed', 'collapsed': 'extended'
+                            };
+                            setOverviewMode((next[overviewMode] || 'extended') as any);
+                        }}
+                        color="var(--color-finance)"
+                    />
                 </div>
             )}
-
-            <div className="flex items-center gap-0.5 ml-2 relative shrink-0">
-                
-                {/* Global Currency Toggle - Stacked Studio Style */}
-                <button
-                    onClick={toggleCurrency}
-                    className={`flex flex-col items-center justify-center p-1 px-3 rounded-xl transition-all hover:bg-white/5 active:scale-90 group/curr ${
-                        currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'
-                    }`}
-                    title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
-                >
-                    <DollarSign size={14} strokeWidth={2.5} className="group-hover/curr:scale-110 transition-transform" />
-                    <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mt-1">{currencyMode}</span>
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-                <div className="relative">
-                    <button
-                        onClick={() => setFilterMode(filterMode === 'off' ? 'left' : 'off')}
-                        className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${filterMode !== 'off' ? 'text-(--color-finance)' : 'text-white/40 hover:text-white'}`}
-                        title="Toggle Filter Bar"
-                    >
-                        <Filter size={18} strokeWidth={2} />
-                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:block">Filters</span>
-                    </button>
-                </div>
-
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-                {/* 3-state Overview Density Toggle */}
-                <button
-                    onClick={cycleOverviewMode}
-                    className={`p-2 transition-all hover:scale-110 flex items-center gap-1.5 shrink-0 ${overviewMode === 'collapsed' ? 'text-white/25 hover:text-white' :
-                        overviewMode === 'minimal' ? 'text-(--color-finance)/50 hover:text-(--color-finance)' : 'text-(--color-finance)'
-                        }`}
-                    title={`Overview Layout: ${modeLabel[overviewMode]}`}
-                >
-                    <LayoutList size={18} strokeWidth={2} />
-                    <span className="text-[9px] font-black uppercase tracking-widest">{modeLabel[overviewMode]}</span>
-                </button>
-
-                <div className="w-px h-5 bg-white/10 mx-1" />
-
-            </div>
         </div>
     );
 };
@@ -495,6 +447,7 @@ const FinanceBar: React.FC<{ onExport: () => void, isExporting: boolean }> = ({ 
 const LogisticsBar: React.FC = () => {
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'truck' },
@@ -503,72 +456,43 @@ const LogisticsBar: React.FC = () => {
     ];
 
     return (
-        <>
-            <ModuleBadge icon="truck" label="Shipping" color="var(--color-logistics)" />
+        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+            <DeployableSearch 
+                value={search} 
+                onChange={setSearch} 
+                isOpen={isSearchOpen} 
+                setIsOpen={setIsSearchOpen} 
+                accentColor="var(--color-logistics)"
+                placeholder="FIND CRATES..."
+            />
 
-            <div className="flex items-center gap-2 ml-2">
-                <SubTabPills
-                    tabs={tabs}
-                    active={subTab}
-                    onSelect={(id) => { setSubTab(id as any); if (id !== 'packing') setSearch(''); }}
-                    accentColor="var(--color-logistics)"
-                />
-            </div>
-
-            {subTab === 'packing' && (
-                <div className="flex-1 max-w-xl mx-4 relative group/search">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/search:text-(--main-color) transition-all" />
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="SEARCH INVENTORY…"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-11 pr-10 text-[11px] font-bold text-white outline-none placeholder-white/20 focus:bg-white/10 focus:border-(--main-color)/30 transition-all uppercase tracking-widest"
+            {!isSearchOpen && (
+                <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                    <SubTabPills
+                        tabs={tabs}
+                        active={subTab}
+                        onSelect={(id) => { setSubTab(id as any); if (id !== 'packing') setSearch(''); }}
+                        accentColor="var(--color-logistics)"
                     />
-                    {search && (
-                        <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white cursor-pointer">
-                            <X size={14} />
-                        </button>
-                    )}
                 </div>
             )}
-
-            <div className="ml-auto">
-                <span className="text-[9px] font-black text-white/15 uppercase tracking-widest hidden lg:block">Shipping Protocol v1.29</span>
-            </div>
-        </>
+        </div>
     );
 };
 
 const PackingBar: React.FC = () => {
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     return (
-        <div className="flex flex-1 items-center gap-4 ml-2">
-            <div className="flex items-center gap-3 pr-6 border-r border-white/5">
-                <div className="flex items-center justify-center text-(--main-color) transition-all duration-500 hover:scale-110">
-                    <svg className="w-7 h-7 opacity-90"><use href="#pkg" /></svg>
-                </div>
-                <div className="flex flex-col">
-                    <h2 className="text-[14px] font-black tracking-tight leading-none text-(--text-color)">PACKING</h2>
-                    <span className="text-[8px] font-black text-(--main-color) opacity-60 uppercase tracking-[0.2em] mt-1">MODULE active</span>
-                </div>
-            </div>
-
-            <div className="flex-1 max-w-2xl mx-auto relative group/search">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/search:text-(--main-color) transition-all" />
-                <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="SEARCH INVENTORY PIPELINE..."
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-11 pr-10 text-[11px] font-bold text-white outline-none placeholder-white/20 focus:bg-white/10 focus:border-(--main-color)/30 transition-all uppercase tracking-widest"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white">
-                        <X size={14} />
-                    </button>
-                )}
-            </div>
+        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+            <DeployableSearch 
+                value={search} 
+                onChange={setSearch} 
+                isOpen={isSearchOpen} 
+                setIsOpen={setIsSearchOpen} 
+                accentColor="var(--main-color)"
+                placeholder="FIND INVENTORY..."
+            />
         </div>
     );
 };
@@ -768,7 +692,7 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="main-header h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
+        <div className="main-header h-14 sm:h-16 flex items-center px-4 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
 
 
 
@@ -785,61 +709,60 @@ export function MainHeader() {
                     <div className="flex items-center gap-3">
                         <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
                         
-                        {/* Global Currency Toggle - Stacked Studio Style */}
-                        <button
+                        <StudioAction 
+                            icon={DollarSign}
+                            label={currencyMode}
+                            active={true}
                             onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
-                            className={`flex flex-col items-center justify-center p-1 px-3 rounded-xl transition-all hover:bg-white/5 active:scale-90 group/curr ${
-                                currencyMode === 'USD' ? 'text-emerald-400' : 'text-sky-400'
-                            }`}
-                            title={`Switch to ${currencyMode === 'MXN' ? 'USD' : 'MXN'}`}
-                        >
-                            <DollarSign size={14} strokeWidth={2.5} className="group-hover/curr:scale-110 transition-transform" />
-                            <span className="text-[7px] font-black uppercase tracking-[0.2em] leading-none mt-1">{currencyMode}</span>
-                        </button>
+                            color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
+                        />
 
-                        <button 
+                        <StudioAction 
+                            icon={Download}
+                            label="EXPORT"
                             onClick={handleMasterExportXLSX}
                             disabled={isExporting}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/30 text-(--main-color) rounded-xl transition-all shadow-sm disabled:opacity-50"
-                        >
-                            <Download size={14} strokeWidth={2.5} className={isExporting ? 'animate-bounce' : ''} />
-                            <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">XLSX</span>
-                        </button>
+                            className={isExporting ? 'animate-bounce' : ''}
+                        />
                     </div>
                 )}
                 {activeView === 'dashboard' && (
                     <>
                         <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
                         <div className="ml-auto">
-                            <span className="text-[9px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Admin Control</span>
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
                         </div>
                     </>
                 )}
                 {(activeView === 'create' || !activeView) && (
-                    <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-widest">Onyx.mx</span>
+                    <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">ONYX.MX</span>
                 )}
             </div>
 
 
             {/* User Info & Actions */}
-            <div className="flex items-center gap-4 ml-4 pl-4 border-l border-(--text-color)/5 shrink-0">
-                <div className="hidden lg:flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) leading-none mb-1">Welcome back,</span>
-                    <span className="text-xl font-black text-(--text-color) tracking-tight leading-none capitalize">
-                        {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
-                            ? user.name
+            <div className="flex items-center gap-2 sm:gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
+                <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-60 leading-none mb-1">WELCOME,</span>
+                    <span className="text-sm font-black text-white/80 tracking-tight leading-none capitalize">
+                        {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
+                            ? user.name.split(' ')[0]
                             : user?.email?.split('@')[0] || 'User'}
                     </span>
                 </div>
 
-                <div className="flex items-center justify-center shrink-0 hover:scale-105 transition-transform duration-300">
-                    {UserIcon ? <UserIcon className="w-8 h-8 text-(--main-color) opacity-80" /> : <svg className="w-8 h-8 text-(--main-color) opacity-50"><use href="#user" /></svg>}
-                </div>
+                <div className="w-px h-8 bg-white/5 mx-1" />
 
-                <div className="flex items-center gap-1 relative">
-                    <Settings size={18} strokeWidth={1.75}
+                <div className="flex items-center gap-1.5 relative">
+                    <button
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`cursor-pointer text-(--text-color) opacity-40 hover:opacity-80 transition-all duration-300 ${isSettingsOpen ? 'rotate-90 text-(--main-color)' : ''}`} />
+                        className={`p-2 rounded-xl transition-all active:scale-95 flex flex-col items-center justify-center group/sett ${
+                            isSettingsOpen ? 'bg-(--main-color)/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <Settings size={17} strokeWidth={2.25} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
+                        <span className="text-[7.5px] font-black uppercase tracking-[0.2em] mt-1 opacity-60">SETT</span>
+                    </button>
                     {isSettingsOpen && createPortal(
                         <>
                             {/* Backdrop */}

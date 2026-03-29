@@ -1,3 +1,14 @@
+## [1.43.0] - 2026-03-28
+### Changed
+- **Top Bar Redesign**:
+    - **Studio Aesthetics**: Implemented a high-density "StudioAction" component for vertically stacked icon + text labels.
+    - **Deployable Search**: Search bars are now frameless and icon-triggered, maximizing space for module content.
+    - **Compact User Profile**: Removed the avatar icon and minimized the "Welcome" section.
+    - **Scalability**: Added responsive scaling to the top bar for better mobile usability.
+- **Sidebar Branding**:
+    - Moved the "Onyx.mx" brand tag closer to the icon for tighter visual alignment.
+    - Increased vertical padding between the branding section and the navigation menu items for improved balance.
+
 ## [1.42.7] - 2026-03-28
 ### Fixed
 - **Top Bar Alignment**: 
