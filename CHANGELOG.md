@@ -1,3 +1,12 @@
+## [1.43.1] - 2026-03-29
+### Changed
+- **Inventory UI Modernization**:
+    - **Grid View Refinement**: Added dynamic, color-coded payment status borders and bubble indicators for immediate financial status awareness.
+    - **Minimalist Actions**: Removed containers and borders from Edit/Delete action icons, transitioning to a clean, free-floating "Studio" style.
+    - **UX: Click-to-Expand**: Enabled full-row clickability in the List View for deploying item details.
+    - **Gallery Navigation**: Converted gallery chevrons in List View to free-floating icons for consistency with Grid View.
+    - **Mobile Optimization**: Simplified expansion toggles to a minimalist "Studio-style" icon without backgrounds.
+
 ## [1.43.0] - 2026-03-28
 ### Changed
 - **Top Bar Redesign**:
