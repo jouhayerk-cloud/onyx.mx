@@ -1,3 +1,9 @@
+## [1.42.7] - 2026-03-28
+### Fixed
+- **Top Bar Alignment**: 
+    - Resolved a collision where module bar icons (like the Overview grid) were rendering behind the Onyx logo FAB in hidden mode.
+    - Linked the 'main-header' CSS class to the MainHeader component to correctly apply the 80px safety offset.
+
 ## [1.42.6] - 2026-03-28
 ### Changed
 - **Sidebar Branding**: 

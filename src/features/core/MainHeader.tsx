@@ -768,7 +768,7 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
+        <div className="main-header h-16 flex items-center px-4 shrink-0 transition-colors delay-100 flex-nowrap w-full relative z-10 border-b border-white/5 bg-(--main-header-bg)">
 
 
 
