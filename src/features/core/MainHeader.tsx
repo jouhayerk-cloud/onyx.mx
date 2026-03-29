@@ -58,6 +58,9 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
+import ExcelJS from 'exceljs';
+import { getStatusColor, getCategoryColor, getVendorColor, EXCEL_STYLES } from '../../lib/excelStyles';
+import { saveAs } from 'file-saver';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { getStatusClass } from '../inventory/UnifiedInventoryView';
 import toast from 'react-hot-toast';
@@ -530,13 +533,13 @@ export function MainHeader() {
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
 
     const handleMasterExportXLSX = async () => {
-        if (isExporting) return;
         setIsExporting(true);
         try {
-            const XLSX = await import('xlsx');
-            const wb = XLSX.utils.book_new();
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Onyx.mx Studio';
+            workbook.lastModifiedBy = 'Onyx.mx Studio';
+            workbook.created = new Date();
 
-            // 1. DYNAMIC PARTIAL PAYMENT TRACKING (Reflecting latest app balance logic)
             const partialPayIds = new Set<string>();
             financeDocs.forEach(d => {
                 if (d.status === 'Paid' && d.description?.includes('%')) {
@@ -546,30 +549,36 @@ export function MainHeader() {
                 }
             });
 
-            // 2. FINANCE DATA (Ledger and Summary)
             const rate = liveExchangeRateValue || exchangeRate;
-            const ledgerRows = financeDocs.map(r => ({
-                'Date': r.date ? new Date(r.date).toLocaleDateString('en-US') : '',
-                'Description': r.description || '',
-                'Category': r.subcategory || r.category || '',
-                'Vendor': r.vendor_id || '',
-                'Amount (MXN)': r.amount ?? 0,
-                'Commission (MXN)': r.commission ?? 0,
-                'Total (MXN)': (r.amount ?? 0) + (r.commission ?? 0),
-                'Status': r.status || 'Requested',
-                'Destination': r.destination || '',
-                'Payment Method': r.payment_method || '',
-                'Reference': r.reference || '',
-                'Pay Date': r.pay_date ? new Date(r.pay_date).toLocaleDateString('en-US') : '',
-                'Notes': r.notes || '',
-                'Recurring': r.recurring ? 'Yes' : 'No',
-                'ID': r.id || '',
-            }));
+
+            // 1. FINANCE SUMMARY SHEET
+            const summarySheet = workbook.addWorksheet('Finance Summary');
+            summarySheet.columns = [
+                { header: 'SECTION', key: 'section', width: 20 },
+                { header: 'LABEL', key: 'label', width: 25 },
+                { header: 'TOTAL (MXN)', key: 'total_mxn', width: 18 },
+                { header: 'PAID (MXN)', key: 'paid_mxn', width: 18 },
+                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18 },
+                { header: 'TOTAL (USD)', key: 'total_usd', width: 18 }
+            ];
+
+            // Apply Header Styling
+            summarySheet.getRow(1).eachCell(cell => {
+                cell.font = EXCEL_STYLES.fonts.header;
+                cell.fill = EXCEL_STYLES.fills.header;
+                cell.alignment = { horizontal: 'center' };
+            });
 
             const totalAll = financeDocs.reduce((s, d) => s + (d.amount ?? 0), 0);
             const totalPaid = financeDocs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0), 0);
             const totalPend = totalAll - totalPaid;
             
+            summarySheet.addRow({ section: '── OVERVIEW ──' });
+            summarySheet.addRow({ section: 'Finance Database', label: 'Grand Total', total_mxn: totalAll, paid_mxn: totalPaid, pending_mxn: totalPend, total_usd: +(totalAll / rate).toFixed(2) });
+            summarySheet.addRow({ label: 'Exchange Rate', total_usd: rate });
+            summarySheet.addRow({ label: 'Total Records', total_mxn: financeDocs.length });
+            summarySheet.addRow({}); // Spacer
+
             const catMap: Record<string, { total: number; paid: number }> = {};
             financeDocs.forEach(d => {
                 const cat = d.subcategory || d.category || 'Other';
@@ -578,89 +587,137 @@ export function MainHeader() {
                 if (d.status === 'Paid') catMap[cat].paid += d.amount ?? 0;
             });
 
-            const summaryRows: any[] = [
-                { 'Section': '── OVERVIEW ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': 'Finance Database', 'Label': 'Grand Total', 'Total (MXN)': totalAll, 'Paid (MXN)': totalPaid, 'Pending (MXN)': totalPend, 'Total (USD)': +(totalAll / rate).toFixed(2) },
-                { 'Section': '', 'Label': `Exchange Rate Used`, 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': rate },
-                { 'Section': '', 'Label': `Records`, 'Total (MXN)': financeDocs.length, 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': '', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                { 'Section': '── BY CATEGORY ──', 'Label': '', 'Total (MXN)': '', 'Paid (MXN)': '', 'Pending (MXN)': '', 'Total (USD)': '' },
-                ...Object.entries(catMap).sort((a,b) => b[1].total - a[1].total).map(([cat, v]) => ({
-                    'Section': 'Category', 'Label': cat, 'Total (MXN)': v.total, 'Paid (MXN)': v.paid, 'Pending (MXN)': v.total - v.paid, 'Total (USD)': +(v.total / rate).toFixed(2)
-                }))
+            summarySheet.addRow({ section: '── BY CATEGORY ──' });
+            Object.entries(catMap).sort((a,b) => b[1].total - a[1].total).forEach(([cat, v]) => {
+                const row = summarySheet.addRow({
+                    section: 'Category', 
+                    label: cat, 
+                    total_mxn: v.total, 
+                    paid_mxn: v.paid, 
+                    pending_mxn: v.total - v.paid, 
+                    total_usd: +(v.total / rate).toFixed(2)
+                });
+                row.getCell('label').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: getCategoryColor(cat) } };
+                row.getCell('label').font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            });
+
+            // 2. FINANCE LEDGER SHEET
+            const ledgerSheet = workbook.addWorksheet('Finance Ledger');
+            const ledgerCols = [
+                { header: 'DATE', key: 'date', width: 12 },
+                { header: 'DESCRIPTION', key: 'description', width: 35 },
+                { header: 'CATEGORY', key: 'category', width: 15 },
+                { header: 'VENDOR', key: 'vendor', width: 10 },
+                { header: 'AMOUNT (MXN)', key: 'amount', width: 15 },
+                { header: 'COMMISSION (MXN)', key: 'commission', width: 15 },
+                { header: 'TOTAL (MXN)', key: 'total', width: 15 },
+                { header: 'STATUS', key: 'status', width: 12 },
+                { header: 'PAY DATE', key: 'pay_date', width: 12 },
+                { header: 'REFERENCE', key: 'reference', width: 20 }
             ];
+            ledgerSheet.columns = ledgerCols;
 
-            const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
-            XLSX.utils.book_append_sheet(wb, summarySheet, 'Finance Summary');
-            const ledgerSheet = XLSX.utils.json_to_sheet(ledgerRows);
-            XLSX.utils.book_append_sheet(wb, ledgerSheet, 'Finance Ledger');
+            ledgerSheet.getRow(1).eachCell(cell => {
+                cell.font = EXCEL_STYLES.fonts.header;
+                cell.fill = EXCEL_STYLES.fills.header;
+            });
 
-            // 3. INVENTORY DATA (Acquisition & Production)
+            financeDocs.forEach((r, idx) => {
+                const row = ledgerSheet.addRow({
+                    date: r.date ? new Date(r.date).toLocaleDateString() : '',
+                    description: r.description || '',
+                    category: r.subcategory || r.category || '',
+                    vendor: r.vendor_id || '',
+                    amount: r.amount ?? 0,
+                    commission: r.commission ?? 0,
+                    total: (r.amount ?? 0) + (r.commission ?? 0),
+                    status: r.status || 'Requested',
+                    pay_date: r.pay_date ? new Date(r.pay_date).toLocaleDateString() : '',
+                    reference: r.reference || ''
+                });
+
+                // Styling Ledger row
+                const statusColor = getStatusColor(r.status || 'Requested');
+                row.getCell('status').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: statusColor } };
+                row.getCell('status').font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                
+                const catColor = getCategoryColor(r.subcategory || r.category || '');
+                row.getCell('category').font = { color: { argb: catColor }, bold: true };
+
+                if (idx % 2 === 0) row.eachCell(c => { if (!c.fill.type) c.fill = EXCEL_STYLES.fills.zebra; });
+            });
+
+            // 3. INVENTORY SHEETS (Vendor Split)
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
                 return !EXCLUDED_STATUSES.has(status);
             });
 
-            const vendorMap: Record<string, typeof exportItems> = {};
-            for (const item of exportItems) {
+            const vendorGroups: Record<string, any[]> = {};
+            exportItems.forEach(item => {
                 const d = item.data as any;
-                const itemIdStr = String(d.item_id || d.itemId || '');
-                let vid: string = d.vendor_id || d.vendorId || '';
-                if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
-                if (!vid) vid = 'Unknown';
-                if (!vendorMap[vid]) vendorMap[vid] = [];
-                vendorMap[vid].push(item);
-            }
+                let vid = d.vendor_id || d.vendorId || 'Unknown';
+                if (!vendorGroups[vid]) vendorGroups[vid] = [];
+                vendorGroups[vid].push(item);
+            });
 
-            const vendorOrder = Object.keys(vendors);
-            const sortedVendorIds = [
-                ...vendorOrder.filter(v => vendorMap[v]),
-                ...Object.keys(vendorMap).filter(v => !vendorOrder.includes(v)),
-            ];
+            Object.entries(vendorGroups).forEach(([vid, items]) => {
+                const ws = workbook.addWorksheet(vid.slice(0, 31));
+                const vColor = getVendorColor(vid);
 
-            for (const vid of sortedVendorIds) {
-                const items = vendorMap[vid];
-                const rows = items.map(item => {
+                ws.columns = [
+                    { header: 'TAG ID', key: 'tag_id', width: 22 },
+                    { header: 'ITEM #', key: 'item_number', width: 10 },
+                    { header: 'STATUS', key: 'status', width: 12 },
+                    { header: 'PAY STATUS', key: 'pay_status', width: 12 },
+                    { header: 'DESCRIPTION', key: 'description', width: 40 },
+                    { header: 'QTY', key: 'qty', width: 8 },
+                    { header: 'PRICE (MXN)', key: 'price', width: 15 },
+                    { header: 'RETAIL (USD)', key: 'retail', width: 15 },
+                    { header: 'WORKBOOK', key: 'workbook', width: 12 }
+                ];
+
+                ws.getRow(1).eachCell(cell => {
+                    cell.font = EXCEL_STYLES.fonts.header;
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
+                });
+
+                items.forEach((item, idx) => {
                     const d = item.data as any;
                     const norm = normalizeInventoryData(d);
-                    const tagId = String(d.item_id || d.itemId || '');
-                    const price = parseFloat(String(d.price_mxn || d.price || '0')) || 0;
-                    const qty = parseFloat(String(d.quantity || '1')) || 1;
+                    const computed = calculateCodesAndPrices(norm, rate, d.workbook || '326');
                     
                     const payStatusClass = getStatusClass(norm, partialPayIds);
                     const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
 
-                    const computed = calculateCodesAndPrices(norm, rate, norm.workbook || '326');
+                    const row = ws.addRow({
+                        tag_id: computed.bookBardcode,
+                        item_number: d.item_number || d.itemNumber || '',
+                        status: d.status || '',
+                        pay_status: payStatus,
+                        description: d.description || d.short_description || '',
+                        qty: parseFloat(String(d.quantity || '1')) || 1,
+                        price: parseFloat(String(d.price_mxn || d.price || '0')) || 0,
+                        retail: computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
+                        workbook: d.workbook || ''
+                    });
 
-                    return {
-                        'TAG ID': computed.bookBardcode,
-                        'Item #': d.item_number || d.itemNumber || '',
-                        'Status': d.status || '',
-                        'Shape': d.shape || '',
-                        'Material': d.material || '',
-                        'Color': d.color || '',
-                        'Description': d.description || d.short_description || d.shortDescription || '',
-                        'Qty': qty,
-                        'Price (MXN)': price,
-                        'Subtotal (MXN)': +(price * qty).toFixed(2),
-                        'ACQ Code': computed.bookAqCode,
-                        'LND Code': computed.bookLandCode,
-                        'Retail (USD)': computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
-                        'Pay Status': payStatus,
-                        'Workbook': d.workbook || '',
-                        'Update Date': (item as any).updated_at ? new Date((item as any).updated_at).toLocaleDateString() : ''
-                    };
+                    // Styling Inventory row
+                    row.getCell('tag_id').font = { bold: true, color: { argb: vColor } };
+                    const psColor = getStatusColor(payStatus);
+                    row.getCell('pay_status').font = { color: { argb: psColor }, bold: true };
+
+                    if (idx % 2 === 0) row.eachCell(c => { if (!c.fill.type) c.fill = EXCEL_STYLES.fills.zebra; });
                 });
+            });
 
-                rows.sort((a,b) => String(a['TAG ID']).localeCompare(String(b['TAG ID'])));
-                const ws = XLSX.utils.json_to_sheet(rows);
-                XLSX.utils.book_append_sheet(wb, ws, vid.slice(0, 31));
-            }
-
+            // FINALIZING AND DOWNLOADING
+            const buffer = await workbook.xlsx.writeBuffer();
             const ts = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `Onyx_Master_Export_${ts}.xlsx`);
-            toast.success('Unified Master Export Complete');
+            saveAs(new Blob([buffer]), `Onyx_Studio_Export_${ts}.xlsx`);
+            toast.success('Styled Master Export Complete');
         } catch (err: any) {
+            console.error(err);
             toast.error(`Export failed: ${err.message}`);
         } finally {
             setIsExporting(false);

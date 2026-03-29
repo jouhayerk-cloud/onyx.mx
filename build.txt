@@ -1,0 +1,124 @@
+﻿
+> onyx-app@1.43.3 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+node.exe : Found 1 warning 
+while optimizing generated 
+CSS:
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (Fou  
+  nd 1 warning... genera   
+ ted CSS::String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+
+[2mΓöé   }[22m
+[2mΓöé }[22m
+[2mΓöé[22m @import url('h
+ttps://fonts.googleapis.com
+/css2?family=Open+Sans:wght
+@300;400;500;600;700&family
+=Poppins:wght@400;500;600;7
+00&display=swap');
+[2mΓöå[22m        
+[33m[2m^--[22m @import 
+rules must precede all 
+rules aside from @charset 
+and @layer statements[39m
+[2mΓöå[22m
+[2mΓöé :root {[22m
+[2mΓöé   --box-radius: 
+16px;[22m
+
+[32mΓ£ô[39m 3503 modules transformed.
+rendering chunks...
+[33m[plugin 
+vite:reporter] 
+(!) C:/Jouhayerk/git/app/sr
+c/lib/supabase.ts is 
+dynamically imported by C:/
+Jouhayerk/git/app/src/featu
+res/auth/Login.tsx, C:/Jouh
+ayerk/git/app/src/features/
+auth/Login.tsx, C:/Jouhayer
+k/git/app/src/features/core
+/App.tsx, C:/Jouhayerk/git/
+app/src/features/core/App.t
+sx but also statically 
+imported by C:/Jouhayerk/gi
+t/app/src/components/DataSy
+ncProvider.tsx, C:/Jouhayer
+k/git/app/src/features/cata
+log/BatchActionsModal.tsx, 
+C:/Jouhayerk/git/app/src/fe
+atures/control/DatabaseStat
+sPanel.tsx, C:/Jouhayerk/gi
+t/app/src/features/control/
+StoreSettingsPanel.tsx, C:/
+Jouhayerk/git/app/src/featu
+res/control/UserRegistryPan
+el.tsx, C:/Jouhayerk/git/ap
+p/src/features/dashboard/Cl
+ientOverview.tsx, C:/Jouhay
+erk/git/app/src/features/fi
+nance/TrackingPaymentsView.
+tsx, C:/Jouhayerk/git/app/s
+rc/features/inventory/Unifi
+edInventoryView.tsx, C:/Jou
+hayerk/git/app/src/features
+/inventory/UploadWizard.tsx
+, C:/Jouhayerk/git/app/src/
+features/logistics/CratePac
+kingManager.tsx, C:/Jouhaye
+rk/git/app/src/features/log
+istics/CratesInventoryView.
+tsx, C:/Jouhayerk/git/app/s
+rc/features/logistics/Logis
+ticsView.tsx, C:/Jouhayerk/
+git/app/src/features/logist
+ics/TagView.tsx, C:/Jouhaye
+rk/git/app/src/features/pro
+cess/ProcessView.tsx, C:/Jo
+uhayerk/git/app/src/feature
+s/store/StoreView.tsx, C:/J
+ouhayerk/git/app/src/featur
+es/upload/UploadEntryForm.t
+sx, C:/Jouhayerk/git/app/sr
+c/lib/database.ts, dynamic 
+import will not move 
+module into another chunk.
+[39m
+computing gzip size...
+[2mdist/[22m[32mindex.html                   [39m[1m[2m   21.14 kB[22m[1m[22m[2m Γöé gzip:   3.65 kB[22m
+[2mdist/[22m[35massets/index-CTlbwQAD.css    [39m[1m[2m  229.61 kB[22m[1m[22m[2m Γöé gzip:  32.87 kB[22m
+[2mdist/[22m[36massets/database-CSs0yP35.js  [39m[1m[2m  280.72 kB[22m[1m[22m[2m Γöé gzip:  89.95 kB[22m
+[2mdist/[22m[36massets/xlsx-CNerDvZX.js      [39m[1m[2m  429.19 kB[22m[1m[22m[2m Γöé gzip: 142.94 kB[22m
+[2mdist/[22m[36massets/index-D2tkvF87.js     [39m[1m[33m2,582.91 kB[39m[22m[2m Γöé gzip: 764.85 kB[22m
+[33m
+(!) Some chunks are larger 
+than 500 kB after 
+minification. Consider:
+- Using dynamic import() 
+to code-split the 
+application
+- Use build.rollupOptions.o
+utput.manualChunks to 
+improve chunking: https://r
+ollupjs.org/configuration-o
+ptions/#output-manualchunks
+- Adjust chunk size limit 
+for this warning via build.
+chunkSizeWarningLimit.[39m
+[32mΓ£ô built in 17.12s[39m
