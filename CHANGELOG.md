@@ -1,3 +1,10 @@
+## [1.43.2] - 2026-03-29
+### Changed
+- **Inventory UI Gallery Fix**:
+    - **Chevron Placement**: Scaled down and repositioned gallery navigation icons in the List view to prevent overlapping with item details.
+    - **Strict Containment**: Added overflow constraints to the list view image container to ensure all floating elements stay within their designated bounds.
+    - **Visual Clarity**: Enhanced icon contrast with deep drop shadows for better visibility across various image backgrounds.
+
 ## [1.43.1] - 2026-03-29
 ### Changed
 - **Inventory UI Modernization**:
