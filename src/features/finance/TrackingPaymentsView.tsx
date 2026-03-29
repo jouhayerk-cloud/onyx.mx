@@ -1377,7 +1377,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
                                         {/* Column 1: Compact Date */}
                                         <div className="shrink-0 w-[60px] flex flex-col items-start justify-center border-r border-white/5 pr-2">
-                                            <span className="text-[10px] font-black tracking-tighter text-white opacity-80 leading-none mb-1">{r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                            <span className="text-[10px] font-black tracking-tighter text-white opacity-80 leading-none mb-1">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
                                             <span className={`text-[7px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
                                         </div>
 

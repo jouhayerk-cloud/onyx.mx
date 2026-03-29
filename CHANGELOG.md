@@ -1,3 +1,7 @@
+## [1.41.1] - 2026-03-28
+### Fixed
+- **Date Parsing Logic**: Corrected an "Invalid Date" bug in the payment list by handling full ISO strings correctly before formatting.
+
 ## [1.41.0] - 2026-03-28
 ### Added
 - **High-Density Payments UI**: Replaced row status buttons with vertical, color-coded left borders (`#8DC63F` for Paid, `#FACC15` for Requested) to maximize horizontal space.
