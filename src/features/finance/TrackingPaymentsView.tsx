@@ -1345,6 +1345,23 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             <div className="flex-1 flex flex-col min-h-0">
                 {/* High Density Payment Card List */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                    {/* Large Primary Action: Initialize Transaction */}
+                    <button
+                        onClick={() => setShowAdd(true)}
+                        className="w-full mb-2 flex items-center justify-center gap-4 py-4 px-6 rounded-[24px] border border-white/5 bg-white/5 hover:bg-(--main-color)/10 transition-all group relative overflow-hidden active:scale-95 duration-200"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/20 group-hover:border-(--main-color)/20 transition-all duration-300">
+                            <Plus className="w-6 h-6 text-white/40 group-hover:text-(--main-color) transition-colors" />
+                        </div>
+                        <div className="text-left flex-1">
+                            <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/30 group-hover:text-white group-hover:opacity-100 transition-all">New Transaction</span>
+                            <span className="block text-[8px] font-bold text-white/10 uppercase tracking-widest mt-0.5 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Plus size={20} className="text-(--main-color) opacity-20" />
+                        </div>
+                    </button>
+
                     {filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Info size={40} className="mb-4" />

@@ -1,3 +1,7 @@
+## [1.42.2] - 2026-03-28
+### Added
+- **Restored Add Payment Button**: Re-integrated a large, glassmorphic "New Transaction" action button at the top of the payment list for easy access to the payment wizard UI.
+
 ## [1.42.1] - 2026-03-28
 ### Added
 - **Restored Payment Icons**: Re-integrated color-coded category icons (Development, Acquisition, Operations, etc.) into the transaction list rows for improved visual categorization.
