@@ -333,3 +333,18 @@ export const inventoryArtifactConfigAtom = atom<InventoryArtifactConfig>({
   itemIds: [],
   title: 'Inventory Artifact',
 });
+
+// Payments Artifact Atom
+export type PaymentsArtifactConfig = {
+  isOpen: boolean;
+  vendor?: string;
+  date?: string;
+  itemIds?: (string | number)[];
+  paymentType?: string;
+  destination?: string;
+  title?: string;
+};
+export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({
+  isOpen: false,
+  title: 'Payments Artifact',
+});

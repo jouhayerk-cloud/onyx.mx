@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, currencyModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -13,7 +13,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -739,6 +739,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const financeSearch = useAtomValue(financeSearchTermAtom);
     const [liveExchangeRate, setLiveExchangeRate] = useAtom<number | null, [number | null], void>(liveExchangeRateAtom as any);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const currencyMode = useAtomValue(currencyModeAtom);
 
@@ -1134,14 +1135,15 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
                                 return (
-                                    <div key={group.vendorId} 
-                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-help"
+                                    <button key={group.vendorId} 
+                                        onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` })}
+                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-white/20"
                                         title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
                                         style={{ 
                                             background: `conic-gradient(${color} 0% ${paidPerc}%, rgba(255,255,255,0.05) ${paidPerc}% 100%)`,
                                             padding: '1.5px'
                                         }}>
-                                        <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm"
+                                        <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.05)]"
                                             style={{ color }}>
                                             {group.vendorId[0]}
                                         </div>
@@ -1149,7 +1151,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         {paidPerc === 0 && (
                                             <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse border border-white/10" style={{ backgroundColor: color }} />
                                         )}
-                                    </div>
+                                    </button>
                                 );
                             })}
                             <div className="w-px h-3 bg-white/10 mx-1" />
@@ -1264,18 +1266,29 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             <div className="w-full h-0.5 bg-white/5 rounded-full overflow-hidden">
                                                 <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
                                             </div>
-                                            <div className="flex items-center justify-between mt-1">
+                                            <div className="flex items-center justify-between mt-1 gap-2">
                                                 {paidPerc > 0 ? <span className="text-[7px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
-                                                        setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
-                                                    }}
-                                                    className="flex items-center gap-1 text-[7px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-[0.1em]"
-                                                >
-                                                    <LayoutGrid size={9} /> View Items
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
+                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
+                                                        }}
+                                                        className="flex items-center gap-1 text-[7px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
+                                                    >
+                                                        <LayoutGrid size={9} /> Items
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
+                                                        }}
+                                                        className="flex items-center gap-1 text-[7px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-2"
+                                                    >
+                                                        <Receipt size={9} /> Ledger
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1337,6 +1350,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     </button>
                                 );
                             })}
+                        </div>
+
+                        {/* Global Ledger Action */}
+                        <div className="flex items-center gap-2 pr-2">
+                            <button 
+                                onClick={() => setPaymentsArtifactConfig({ isOpen: true, title: 'Global Financial Ledger' })}
+                                className="h-8 px-4 flex items-center gap-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:border-sky-500/40 transition-all active:scale-95 group/ledger"
+                            >
+                                <Receipt size={14} className="group-hover/ledger:rotate-12 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Global Ledger</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1487,16 +1511,28 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         if (ids.length === 0) return <span className="text-[10px] font-mono text-white/10 uppercase">No items linked</span>;
                                                         
                                                         return (
-                                                            <button 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
-                                                                }}
-                                                                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/items"
-                                                            >
-                                                                <LayoutGrid size={14} className="text-(--main-color)" />
-                                                                <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Launch Items View ({ids.length})</span>
-                                                            </button>
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/items"
+                                                                >
+                                                                    <LayoutGrid size={14} className="text-(--main-color)" />
+                                                                    <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Items ({ids.length})</span>
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setPaymentsArtifactConfig({ isOpen: true, itemIds: ids, title: `Related Payments for ${r.vendor_id || 'Transaction'}` });
+                                                                    }}
+                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/items"
+                                                                >
+                                                                    <Receipt size={14} className="text-sky-400" />
+                                                                    <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Ledger</span>
+                                                                </button>
+                                                            </div>
                                                         );
                                                     })()}
                                                 </div>
@@ -1566,7 +1602,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     </symbol>
                 </defs>
             </svg>
-            <InventoryArtifact />
         </div>
     );
 };
