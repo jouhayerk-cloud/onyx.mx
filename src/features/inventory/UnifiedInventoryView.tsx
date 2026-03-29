@@ -269,8 +269,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     {/* Payment status accent stripe */}
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
-                    <div className={`w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative group/img ${imageUrl ? 'cursor-pointer' : ''}`}
-                        onClick={() => imageUrl && setShowViewer(true)}>
+                    <div className={`w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative group/img overflow-hidden ${imageUrl ? 'cursor-pointer' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); imageUrl && setShowViewer(true); }}>
                         {imageUrl ? (
                             <>
                                 <img src={imageUrl} className="w-full h-full object-cover" />
@@ -280,12 +280,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         ) : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                         
                         {mediaUrls.length > 1 && (
-                            <div className="absolute inset-x-0 inset-y-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none">
-                                <button onClick={handlePrevMedia} className="text-white drop-shadow-lg hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
-                                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
+                            <div className="absolute inset-0 flex items-center justify-between px-1 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none z-20">
+                                <button onClick={handlePrevMedia} className="text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                                 </button>
-                                <button onClick={handleNextMedia} className="text-white drop-shadow-lg hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
-                                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
+                                <button onClick={handleNextMedia} className="text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] hover:text-(--main-color) pointer-events-auto transition-transform hover:scale-125">
+                                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                                 </button>
                             </div>
                         )}
