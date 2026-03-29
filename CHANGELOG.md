@@ -1,3 +1,9 @@
+## [1.42.6] - 2026-03-28
+### Changed
+- **Sidebar Branding**: 
+    - Simplified the expanded sidebar logo by removing the "Digital Studio" subtitle.
+    - Added additional spacing (`mb-4`) under the brand name for a more balanced layout.
+
 ## [1.42.5] - 2026-03-28
 ### Fixed
 - **Sidebar & Navigation**:
