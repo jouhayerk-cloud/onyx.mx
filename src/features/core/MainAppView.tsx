@@ -259,7 +259,10 @@ export function MainAppView() {
             {sidebarState === 'hidden' && (
                 <div 
                     className="fixed top-0 left-0 p-6 z-1000 group cursor-pointer"
-                    onClick={() => setSidebarState('compact')}
+                    onClick={() => {
+                        const isMobile = window.innerWidth <= 768;
+                        setSidebarState(isMobile ? 'compact' : 'expanded');
+                    }}
                     title="Open Navigation"
                 >
                     {/* Transparent safety area behind logo to prevent top-bar overlap */}

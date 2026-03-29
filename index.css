@@ -340,6 +340,11 @@
   padding-left: 0;
 }
 
+.app-container.sidebar-hidden .main-header {
+  padding-left: 80px;
+  transition: padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @media (min-width: 769px) {
   /* Sidebar Hidden State (Desktop) */
   .app-container.sidebar-hidden .sidebar {
@@ -349,12 +354,6 @@
     border: none;
     transform: translateX(0);
     overflow: hidden;
-  }
-
-  /* Offset header when sidebar is hidden to make room for FAB */
-  .app-container.sidebar-hidden .main-header {
-    padding-left: 80px;
-    transition: padding-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -370,35 +369,10 @@
 
   .app-container.sidebar-compact .sidebar {
     transform: translateX(0);
-    /* On mobile, compact is same as expanded */
-    flex-basis: 240px;
-    max-width: 240px;
   }
 
-  .app-container.sidebar-compact .sidebar-logo-text,
-  .app-container.sidebar-compact .sidebar-list-item-text,
-  .app-container.sidebar-compact .sidebar-list-item.open .chevron {
-    display: block;
-    /* Show text on mobile compact view */
-  }
-
-  .app-container.sidebar-compact .sidebar-list-item {
-    justify-content: space-between;
-  }
-
-  /* On mobile, submenus always slide down */
-  .app-container.sidebar-compact .sidebar-submenu {
-    position: static;
-    visibility: visible;
-    opacity: 1;
-    background: transparent;
-    backdrop-filter: none;
-    border: none;
-    box-shadow: none;
-    width: auto;
-    padding-left: calc(1rem + 20px + 0.5rem);
-    max-height: 0;
-    /* Let open class handle it */
+  .app-content {
+    padding: 0.5rem;
   }
 
   .app-container.sidebar-compact .sidebar-list-item.open+.sidebar-submenu {

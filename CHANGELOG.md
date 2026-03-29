@@ -1,3 +1,11 @@
+## [1.42.5] - 2026-03-28
+### Fixed
+- **Sidebar & Navigation**:
+    - **Toggle Logic**: Corrected the FAB behavior to take desktop users directly to Expanded mode (v1.42.4 was stuck in compact).
+    - **Mobile Compact View**: Fixed the mobile sidebar rendering, restoring the 80px icon-only mode and removing redundant text/chevrons that caused cropping issues.
+    - **Header Collision**: Implemented a universal 80px offset for the main header in hidden mode to prevent module icons from overlapping the Onyx logo FAB.
+    - **Redundant Toggle**: Removed the legacy mobile sidebar toggle button from the header, resolving the "weird empty button" visual bug in hidden mode.
+
 ## [1.42.4] - 2026-03-28
 ### Changed
 - **Sidebar Redesign**:
