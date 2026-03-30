@@ -145,6 +145,29 @@ export const PaymentsArtifact: React.FC = () => {
                             const displayAmt = parseFloat(pay.total || pay.amount || 0);
                             const isUSD = pay.currency === 'USD';
 
+                            // 1. COMPACT DATE FORMATTING
+                            const formatCompactDate = (dateStr: string) => {
+                                if (!dateStr || dateStr === '---') return '---';
+                                try {
+                                    const d = new Date(dateStr);
+                                    if (isNaN(d.getTime())) return dateStr;
+                                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                } catch { return dateStr; }
+                            };
+
+                            // 2. DISPERSAL ICON & LABEL MAPPING
+                            const getDispersalInfo = (dest: string) => {
+                                const d = (dest || '').toLowerCase();
+                                if (d.includes('martha') && d.includes('bbva')) return { icon: Landmark, label: 'Martha BBVA', color: '#4f2068' };
+                                if (d.includes('ramses') && d.includes('bbva')) return { icon: Landmark, label: 'Ramses BBVA', color: '#737104' };
+                                if (d.includes('boa') || d.includes('employee')) return { icon: Landmark, label: 'BoA Employee', color: '#0047AB' };
+                                if (d.includes('wire')) return { icon: Send, label: 'Direct Wire', color: '#0ea5e9' };
+                                if (d.includes('cash')) return { icon: DollarSign, label: 'Cash Payment', color: '#22c55e' };
+                                return { icon: Smartphone, label: dest || 'Transfer', color: '#64748b' };
+                            };
+
+                            const dispersal = getDispersalInfo(pay.destination);
+
                             return (
                                 <div 
                                     key={pay.id || idx} 
@@ -157,37 +180,49 @@ export const PaymentsArtifact: React.FC = () => {
                                     {/* Record Info */}
                                     <div className="flex-1 flex flex-wrap sm:flex-nowrap items-center px-4 py-3 gap-4 min-w-0">
                                         {/* Date & Vendor/Type Icon */}
-                                        <div className="flex flex-col min-w-[100px]">
-                                            <div className="flex items-center gap-1.5 text-[9px] text-white/30 uppercase font-black tracking-widest mb-1.5">
+                                        <div className="flex flex-col min-w-[90px]">
+                                            <div className="flex items-center gap-1.5 text-[9px] text-white/30 uppercase font-black tracking-widest mb-2">
                                                 <Calendar size={10} />
-                                                {pay.date || '---'}
+                                                {formatCompactDate(pay.date)}
                                             </div>
                                             {(() => {
-                                                const vId = pay.vendor_id || pay.vendor || '';
+                                                let vId = pay.vendor_id || pay.vendor || '';
+                                                if (vId.includes('-')) vId = vId.split('-')[0];
                                                 const sub = (pay.subcategory || '').toLowerCase();
                                                 const cat = (pay.category || '').toLowerCase();
-                                                const isAcq = cat === 'acquisition' || sub === 'acquisition' || sub.includes('merch');
+                                                const isAcq = cat.includes('acquisition') || sub.includes('acquisition') || sub.includes('merch') || cat.includes('vendor') || sub.includes('vendor');
 
-                                                if (isAcq) {
+                                                if (isAcq && vId) {
+                                                    const vColor = (vendors as any)[vId]?.color || '#ccc';
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: (vendors as any)[vId]?.color || '#ccc' }}>
-                                                            {vId || 'MISC'}
-                                                        </span>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[9px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: vColor }}>
+                                                                {vId || 'MISC'}
+                                                            </span>
+                                                            <div className="flex items-center gap-1 opacity-40">
+                                                                <Tag size={8} />
+                                                                <span className="text-[7px] font-black uppercase">Acquisition</span>
+                                                            </div>
+                                                        </div>
                                                     );
                                                 }
 
                                                 // Contextual Icon for Non-Merch (Operational)
                                                 let Icon = Cpu;
                                                 let bgColor = 'bg-sky-500/10 text-sky-400';
+                                                let label = 'Operation';
                                                 
-                                                if (sub.includes('month')) { Icon = Calendar; bgColor = 'bg-blue-500/10 text-blue-400'; }
-                                                else if (sub.includes('suppl')) { Icon = Box; bgColor = 'bg-emerald-500/10 text-emerald-400'; }
-                                                else if (sub.includes('labr') || sub.includes('labor')) { Icon = Users; bgColor = 'bg-orange-500/10 text-orange-400'; }
-                                                else if (sub.includes('pack')) { Icon = Archive; bgColor = 'bg-purple-500/10 text-purple-400'; }
+                                                if (sub.includes('month') || cat === 'monthly') { Icon = Calendar; bgColor = 'bg-blue-500/10 text-blue-400'; label = 'Monthly'; }
+                                                else if (sub.includes('suppl') || cat === 'sppl') { Icon = Box; bgColor = 'bg-emerald-500/10 text-emerald-400'; label = 'Supplies'; }
+                                                else if (sub.includes('labr') || sub.includes('labor') || cat === 'labr') { Icon = Users; bgColor = 'bg-orange-500/10 text-orange-400'; label = 'Labor'; }
+                                                else if (sub.includes('pack') || cat === 'pack') { Icon = Archive; bgColor = 'bg-purple-500/10 text-purple-400'; label = 'Packing'; }
 
                                                 return (
-                                                    <div className={`p-1.5 rounded-lg w-fit ${bgColor} border border-current opacity-70`}>
-                                                        <Icon size={12} />
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <div className={`p-1.5 rounded-lg w-fit ${bgColor} border border-current opacity-70`}>
+                                                            <Icon size={12} />
+                                                        </div>
+                                                        <span className="text-[7px] font-black uppercase tracking-widest opacity-30">{label}</span>
                                                     </div>
                                                 );
                                             })()}
@@ -195,17 +230,16 @@ export const PaymentsArtifact: React.FC = () => {
 
                                         {/* Description */}
                                         <div className="flex flex-col justify-center flex-1 min-w-0">
-                                            <h3 className="text-[11px] sm:text-[13px] font-bold text-white truncate uppercase tracking-tight">
+                                            <h3 className="text-[11px] sm:text-[13px] font-bold text-white truncate uppercase tracking-tight group-hover:text-(--main-color) transition-colors">
                                                 {pay.description || 'No Description'}
                                             </h3>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <div className="flex items-center gap-1 text-[9px] text-white/20 uppercase tracking-widest font-black">
-                                                    <Landmark size={10} />
-                                                    {pay.destination || '---'}
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-white/20">
+                                                    <dispersal.icon size={10} style={{ color: dispersal.color }} className="opacity-60" />
+                                                    <span style={{ color: dispersal.color }} className="opacity-60">{dispersal.label}</span>
                                                 </div>
                                                 {pay.category && (
-                                                  <div className="flex items-center gap-1 text-[9px] text-white/20 uppercase tracking-widest font-black">
-                                                      <Tag size={10} />
+                                                  <div className="flex items-center gap-1 text-[8px] text-white/10 uppercase tracking-widest font-black border-l border-white/5 pl-3">
                                                       {pay.category}
                                                   </div>
                                                 )}
@@ -214,26 +248,19 @@ export const PaymentsArtifact: React.FC = () => {
 
                                         {/* Financials */}
                                         <div className="flex items-center gap-6 shrink-0 ml-auto">
-                                            <div className="flex flex-col min-w-[80px] items-end justify-center">
-                                                <div className="flex items-center gap-1.5 mb-1">
-                                                    {(() => {
-                                                        const dest = (pay.destination || '').toLowerCase();
-                                                        if (dest.includes('bbva') || dest.includes('boa') || dest.includes('bank')) return <Landmark size={10} className="text-white/40" />;
-                                                        if (dest.includes('wire')) return <Send size={10} className="text-white/40" />;
-                                                        if (dest.includes('cash')) return <DollarSign size={10} className="text-white/40" />;
-                                                        return <Smartphone size={10} className="text-white/40" />;
-                                                    })()}
-                                                    <span className={`text-[8px] font-black uppercase tracking-[0.15em] leading-none ${isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
+                                            <div className="flex flex-col min-w-[85px] items-end justify-center">
+                                                <div className="flex items-center gap-1.5 mb-1.5">
+                                                    <span className={`text-[8px] font-black uppercase tracking-[0.18em] leading-none ${isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
                                                         {isUSD ? 'USD' : 'MXN'} Value
                                                     </span>
                                                 </div>
-                                                <span className={`text-[15px] font-black font-mono ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
+                                                <span className={`text-[16px] font-black font-mono tracking-tight ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
                                                     {showFinancials ? `$${displayAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
                                                 </span>
                                             </div>
 
-                                            <div className="flex flex-col min-w-[80px] items-end justify-center opacity-60">
-                                                <span className={`text-[8px] font-black uppercase tracking-[0.15em] mb-1 leading-none ${!isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
+                                            <div className="flex flex-col min-w-[80px] items-end justify-center opacity-40">
+                                                <span className={`text-[8px] font-black uppercase tracking-widest mb-1 leading-none ${!isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
                                                     {!isUSD ? 'USD' : 'MXN'} Eq.
                                                 </span>
                                                 <span className={`text-[12px] font-bold font-mono ${!isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>

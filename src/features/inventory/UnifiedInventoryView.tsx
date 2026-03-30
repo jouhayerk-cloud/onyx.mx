@@ -20,7 +20,8 @@ import {
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
     inventoryAtom,
-    financeDataAtom
+    financeDataAtom,
+    paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile } from '../../lib/utils';
@@ -163,6 +164,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 };
 
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds }: any) => {
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -328,14 +330,35 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">LD Code</span>
                             <span className="text-[11px] sm:text-[13px] text-white/80 font-mono">{calculated.bookLandCode || '—'}</span>
                         </div>
-
-                        {payStatus && (
+                        {payStatus ? (
                             <div className="flex flex-col min-w-[72px] shrink-0 pl-3 justify-center h-full gap-0.5">
                                 <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Pay Status</span>
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit"
-                                    style={{ color: accentColor, backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)` }}>
+                                <button 
+                                    onClick={(e) => {
+                                        if (payStatus === 'GREEN' || payStatus === 'YELLOW') {
+                                            e.stopPropagation();
+                                            setPaymentsArtifactConfig({
+                                                isOpen: true,
+                                                title: `PAYMENT: ${calculated.bookBardcode || norm.id}`,
+                                                itemIds: [calculated.bookBardcode || norm.id]
+                                            });
+                                        }
+                                    }}
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit transition-all ${
+                                        payStatus === 'GREEN' || payStatus === 'YELLOW' ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+                                    }`}
+                                    style={{ color: accentColor, backgroundColor: `color-mix(in srgb, ${accentColor} 12%, transparent)` }}
+                                >
                                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor, boxShadow: `0 0 4px ${accentColor}` }} />
                                     {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : 'Partial'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col min-w-[72px] shrink-0 pl-3 justify-center h-full gap-0.5">
+                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Status</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit border border-[#38bdf8]/30 text-[#38bdf8] bg-[#38bdf8]/5 shadow-[0_0_10px_rgba(56,189,248,0.1)]">
+                                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#38bdf8]" />
+                                    New
                                 </span>
                             </div>
                         )}
@@ -362,13 +385,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <span>Aprd</span>
                             </div>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className={`p-1.5 hover:text-white transition-all ${isExpanded ? 'text-(--main-color) scale-110' : 'text-white/40'}`}>
-                            <Maximize2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-2 transition-all duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                        </button>
                     </div>
                 </div>
                 {isExpanded && (
-                    <div className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative">
+                    <div 
+                        onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                        className="ml-14 mr-2 px-4 pb-4 pt-3 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300 z-0 relative cursor-pointer hover:bg-black/40 transition-all"
+                    >
                         {/* Summary Grid */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 mb-6">
                             <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">{norm.material || '—'}</p></div>
@@ -669,6 +692,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
 
 export const UnifiedInventoryView = () => {
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const t = useTranslation();
     const db = useDatabase();
     const items = useAtomValue(inventoryAtom);

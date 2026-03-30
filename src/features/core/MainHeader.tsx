@@ -832,7 +832,7 @@ export function MainHeader() {
                 {activeView === 'control' && <ControlBar />}
                 {activeView === 'overview' && (
                     <div className="flex items-center gap-3">
-                        <ModuleBadge icon="layout-dashboard" label="Overview" color="var(--main-color)" />
+                        <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
                         
                         <StudioAction 
                             icon={DollarSign}

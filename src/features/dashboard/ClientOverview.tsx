@@ -43,15 +43,21 @@ const KpiStat = ({ label, value, sub, accent = 'var(--main-color)', onClick }: {
 );
 
 // ── Section Header ───────────────────────────────────────────────
-const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', right, onToggle, isCollapsed, compactSummary }: {
+const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', right, onToggle, isCollapsed, compactSummary, preTitleContent }: {
     icon: React.FC<any>; title: string; badge?: string; color?: string; right?: React.ReactNode; 
     onToggle?: () => void; isCollapsed?: boolean; compactSummary?: React.ReactNode;
+    preTitleContent?: React.ReactNode;
 }) => (
     <div className={`flex items-center justify-between ${isCollapsed ? '' : 'mb-3'}`}>
         <div className="flex items-center gap-2 cursor-pointer group/header" onClick={onToggle}>
             <div className={`p-1.5 rounded-lg transition-colors ${isCollapsed ? 'bg-white/5' : ''}`} style={{ color: isCollapsed ? '#fff' : color }}>
                 <Icon size={14} strokeWidth={2.5} />
             </div>
+            {preTitleContent && (
+                <div className="flex items-center h-full">
+                    {preTitleContent}
+                </div>
+            )}
             <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                     <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-80 group-hover/header:opacity-100 transition-opacity">{title}</h2>
@@ -90,7 +96,7 @@ const VendorDot = ({ vendorId, color, size = 'w-5 h-5', textSize = 'text-[8px]' 
 
 // ── Compact Financials Graph ──────────────────────────────────────
 const CompactFinancialsGraph = ({ 
-    metrics, currentExchangeRate, mode 
+    metrics, currentExchangeRate, mode, hideLegend = false, fullWidth = false
 }: { 
     metrics: { 
         mexTotal: number; 
@@ -102,6 +108,8 @@ const CompactFinancialsGraph = ({
     };
     currentExchangeRate: number;
     mode: 'USD' | 'MXN';
+    hideLegend?: boolean;
+    fullWidth?: boolean;
 }) => {
     const max = metrics.mexTotal || 1;
     const getPercent = (v: number) => (v / max) * 100;
@@ -120,17 +128,17 @@ const CompactFinancialsGraph = ({
     const pendingWidth = getPercent(metrics.pending);
 
     const sections = [
-        { label: 'BLUE (PAID EXP.)', val: metrics.paidExp, color: '#3b82f6', width: paidExpWidth },
         { label: 'GREEN (PAID ACQ.)', val: metrics.paidAcq, color: '#22c55e', width: paidAcqWidth },
-        { label: 'MAGENTA (REQ EXP.)', val: metrics.reqExp, color: '#d946ef', width: reqExpWidth },
         { label: 'YELLOW (REQ MERCH.)', val: metrics.reqMerch, color: '#eab308', width: reqMerchWidth },
         { label: 'RED (PENDING)', val: metrics.pending, color: '#ef4444', width: pendingWidth },
+        { label: 'MAGENTA (REQ EXP.)', val: metrics.reqExp, color: '#d946ef', width: reqExpWidth },
+        { label: 'BLUE (PAID EXP.)', val: metrics.paidExp, color: '#3b82f6', width: paidExpWidth },
     ];
 
     return (
-        <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
+        <div className={`flex flex-col gap-2 ${hideLegend ? (fullWidth ? 'w-full' : '') : 'mt-1 min-w-[340px]'}`}>
             {/* Unified 5-Segment Stacked Bar */}
-            <div className="relative h-5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex">
+            <div className={`relative ${fullWidth ? 'h-4 w-full' : (hideLegend ? 'h-3.5 w-[140px]' : 'h-5 w-full')} bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex`}>
                 {sections.map((s, i) => (
                     s.width > 0 && (
                         <div 
@@ -145,18 +153,20 @@ const CompactFinancialsGraph = ({
             </div>
             
             {/* Legend & Amount Tags */}
-            <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
-                {sections.map(s => (
-                    <div key={s.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                        <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{s.label.split(' (')[0]}</span>
-                        <span className="text-[9px] font-mono font-black text-white/90">
-                            <span className="text-[7px] mr-1 opacity-40">{mode}</span>
-                            {fmt(s.val)}
-                        </span>
-                    </div>
-                ))}
-            </div>
+            {!hideLegend && (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
+                    {sections.map(s => (
+                        <div key={s.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                            <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{s.label.split(' (')[0]}</span>
+                            <span className="text-[9px] font-mono font-black text-white/90">
+                                <span className="text-[7px] mr-1 opacity-40">{mode}</span>
+                                {fmt(s.val)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -207,7 +217,7 @@ export const ClientOverview: React.FC = () => {
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
 
-    const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
+    const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(true);
     const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(true);
     const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
     const [isPaymentsCollapsed, setIsPaymentsCollapsed] = useState(false);
@@ -579,12 +589,13 @@ export const ClientOverview: React.FC = () => {
                                         <SectionHeader 
                                             icon={CreditCard} title="Expenses & Financials" color="#00AEEF" 
                                             onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
-                                            compactSummary={
+                                            right={!isFinancialsCollapsed && (
                                                 <div 
-                                                    onClick={(e) => { e.stopPropagation(); setIsFinancialsCollapsed(false); }}
-                                                    className="animate-in fade-in duration-500 cursor-pointer"
+                                                    onClick={(e) => { e.stopPropagation(); }}
+                                                    className="animate-in fade-in slide-in-from-right-2 duration-500"
                                                 >
                                                     <CompactFinancialsGraph 
+                                                        hideLegend={true}
                                                         mode={currencyMode}
                                                         currentExchangeRate={currentExchangeRate}
                                                         metrics={{
@@ -597,10 +608,38 @@ export const ClientOverview: React.FC = () => {
                                                         }}
                                                     />
                                                 </div>
+                                            )}
+                                            compactSummary={
+                                                <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
+                                                    {isFinancialsCollapsed && (
+                                                        <div className="w-full animate-in fade-in slide-in-from-top-1 duration-500">
+                                                            <CompactFinancialsGraph 
+                                                                hideLegend={true}
+                                                                fullWidth={true}
+                                                                mode={currencyMode}
+                                                                currentExchangeRate={currentExchangeRate}
+                                                                metrics={{
+                                                                    mexTotal: totalPortfolioMxn,
+                                                                    paidAcq: globalTotals.paidAcqMxn,
+                                                                    paidExp: globalTotals.paidExpMxn,
+                                                                    reqMerch: globalTotals.reqMerchMxn,
+                                                                    reqExp: globalTotals.reqExpMxn,
+                                                                    pending: globalTotals.totalLiabilityMxn
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-wrap gap-3 items-center opacity-60">
+                                                        <span className="text-[10px] font-black font-mono text-white/40 uppercase">MX Total</span>
+                                                        <CurrencyTag type="MXN" amount={totalPortfolioMxn} size="small" />
+                                                        <CurrencyTag type="USD" amount={totalPortfolioUsd} size="small" className="opacity-40" />
+                                                    </div>
+                                                </div>
                                             }
                                         />
                                         {!isFinancialsCollapsed && (
-                                             <div className="mt-2 animate-in fade-in duration-300">
+                                            <>
+                                              <div className="mt-2 animate-in fade-in duration-300">
                                                  <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
                                                      <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
                                                      <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
@@ -686,6 +725,7 @@ export const ClientOverview: React.FC = () => {
                                                     ))}
                                                 </div>
                                             </div>
+                                            </>
                                         )}
                                     </>
                                 );
@@ -811,8 +851,8 @@ export const ClientOverview: React.FC = () => {
                                         return (
                                             <div key={req.key} className="group rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 transition-all overflow-hidden">
                                                 <div className="flex items-center gap-4 p-3 cursor-pointer" onClick={() => toggleDest(req.key)}>
-                                                    <div className="w-12 h-8 flex items-center justify-center shrink-0 bg-white/5 rounded-lg border border-white/5 shadow-inner">
-                                                        <img src={req.cfg.icon} alt={req.cfg.name} className="max-w-[70%] max-h-[70%] object-contain opacity-100 drop-shadow-lg" />
+                                                    <div className="w-14 h-10 flex items-center justify-center shrink-0">
+                                                        <img src={req.cfg.icon} alt={req.cfg.name} className="max-w-full max-h-full object-contain opacity-100 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]" />
                                                     </div>
                                                     <div className="flex-1 min-w-0 pointer-events-auto hover:bg-white/5 transition-colors p-1 rounded-md" onClick={(e) => {
                                                         e.stopPropagation();
