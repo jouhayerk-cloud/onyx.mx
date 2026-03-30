@@ -292,14 +292,29 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                     <div className="flex-1 overflow-x-auto no-scrollbar flex items-center px-2 sm:px-3 gap-3 min-w-0">
                         <div className="flex flex-col flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
-                                <h3 className="text-xs sm:text-sm font-bold text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
-                            <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
-                                <h3 className="text-xs sm:text-sm font-bold text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                            {/* Title area: Shape + Optional Description */}
+                            <div className="flex items-center gap-2 overflow-hidden truncate">
+                                <h3 className="text-xs sm:text-sm font-bold text-white truncate">
+                                    {(norm.shape || 'OBJ')}
+                                    {(norm.shortDescription && norm.shortDescription !== norm.shape) && (
+                                        <span className="opacity-60 font-medium ml-2 text-[10px] sm:text-xs">
+                                            {norm.shortDescription}
+                                        </span>
+                                    )}
+                                </h3>
                             </div>
+                            
+                            {/* Metadata row: Color + Material */}
+                            <div className="flex items-center gap-2 mb-auto overflow-hidden">
+                                {(norm.color || norm.material) && (
+                                    <div className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black truncate">
+                                        {[norm.color, norm.material].filter(Boolean).join(' + ')}
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/50 pb-1.5 mb-auto">
-                                <span className="truncate">Dim: <span className="text-white/80">{dimensionsStr || '—'}</span></span>
+
+                            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/30 pt-1">
+                                <span className="truncate">Dim: <span className="text-white/60">{dimensionsStr || '—'}</span></span>
                             </div>
                         </div>
 
@@ -513,7 +528,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="opacity-60 font-medium truncate text-xs">{(norm.shortDescription || norm.material || '')}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 overflow-hidden">
-                            {norm.color && <div className="text-[9px] text-(--text-color-secondary) uppercase tracking-[0.2em] font-black truncate opacity-40">{norm.color}</div>}
+                            {(norm.color || norm.material) && (
+                                <div className="text-[9px] text-(--text-color-secondary) uppercase tracking-[0.2em] font-black truncate opacity-40">
+                                    {[norm.color, norm.material].filter(Boolean).join(' + ')}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
