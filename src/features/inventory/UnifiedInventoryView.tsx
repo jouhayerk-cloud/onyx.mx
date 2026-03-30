@@ -49,11 +49,9 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
     if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
     if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
-    if (statusStr === 'production' || statusStr === 'production WIP') return 'BLUE';
-    if (statusStr === 'acquired' || statusStr === 'acquisition') return 'PURPLE';
     
-    // Items without payment activity default to null (displayed as 'NEW' in Inventory)
-    return null;
+    // Default to BLUE for 'New' items instead of null
+    return 'BLUE';
 };
 
 const lbl = "text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -118,6 +116,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
     const [showViewer, setShowViewer] = useState(false);
+
 
     const mediaUrls = useMemo(() => {
         const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -316,9 +315,7 @@ export const UnifiedInventoryView = () => {
                 if (statusFilter === 'Partial' && status !== 'RED') return false;
                 if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
                 if (statusFilter === 'Paid' && status !== 'GREEN') return false;
-                if (statusFilter === 'Production' && status !== 'BLUE') return false;
-                if (statusFilter === 'Acquired' && status !== 'PURPLE') return false;
-                if (statusFilter === 'New' && status !== null) return false;
+                if (statusFilter === 'New' && status !== 'BLUE') return false;
             }
             const itemIdStr = String(item.data.itemId || item.data.item_id || '');
             let vPre = item.data.vendor_id || item.data.vendorId || '';
@@ -332,8 +329,10 @@ export const UnifiedInventoryView = () => {
             }
             if (user?.role === 'Vendor' && vPre !== user?.name) return false;
             if (vendorFilter !== 'All' && vPre !== vendorFilter) return false;
-            const cat = `${item.data.shape || ''} ${item.data.shortDescription || ''}`.trim();
+            const cat = `${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.trim();
             if (categoryFilter !== 'All' && cat !== categoryFilter) return false;
+            const mat = `${item.data.color || ''} ${item.data.material || ''}`.trim();
+            if (materialFilter !== 'All' && mat !== materialFilter) return false;
             if (searchTerm) {
                 const s = `${item.data.itemId} ${item.data.shape} ${item.data.shortDescription} ${item.data.color}`.toLowerCase();
                 if (!searchTerm.toLowerCase().split(' ').every(t => s.includes(t))) return false;
@@ -405,9 +404,9 @@ export const UnifiedInventoryView = () => {
 
             <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${(isFiltersOpen || isSortMenuOpen) ? 'h-16 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-6 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
-                    <button onClick={() => setStatusFilter(statusFilter === 'All' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : statusFilter === 'Paid' ? 'Production' : statusFilter === 'Production' ? 'Acquired' : statusFilter === 'Acquired' ? 'New' : 'All')}
+                    <button onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
                             className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all group">
-                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/10' : statusFilter === 'Partial' ? 'bg-red-500' : statusFilter === 'Requested' ? 'bg-yellow-500' : statusFilter === 'Paid' ? 'bg-green-500' : statusFilter === 'Production' ? 'bg-blue-500' : statusFilter === 'Acquired' ? 'bg-purple-500' : 'bg-white/20'}`} />
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/10' : statusFilter === 'Partial' ? 'bg-red-500' : statusFilter === 'Requested' ? 'bg-yellow-500' : statusFilter === 'Paid' ? 'bg-green-500' : statusFilter === 'New' ? 'bg-blue-500' : 'bg-white/20'}`} />
                         <span className="text-[10px] font-black tracking-widest text-white/50 uppercase group-hover:text-white">{statusFilter}</span>
                     </button>
                     <div className="w-px h-6 bg-white/10" />
@@ -448,6 +447,26 @@ export const UnifiedInventoryView = () => {
                             </button>
                         );
                     })}
+                </div>
+            </div>
+
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Type</span>
+                    <button onClick={() => setCategoryFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    {activeCategories.map(c => (
+                        <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{c}</button>
+                    ))}
+                </div>
+            </div>
+
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Material</span>
+                    <button onClick={() => setMaterialFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    {activeMaterials.map(m => (
+                        <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${materialFilter === m ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{m}</button>
+                    ))}
                 </div>
             </div>
 
