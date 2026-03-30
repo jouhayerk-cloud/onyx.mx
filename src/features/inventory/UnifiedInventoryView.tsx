@@ -46,9 +46,14 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     const statusStr = String(item.status || item.item_status || '').toLowerCase();
     const dispStatus = String(item.dispersal_status || '').toLowerCase();
     
-    if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-    if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+    // 1. Highest priority: Paid/Dispersed (Terminal state)
     if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+    
+    // 2. Middle priority: Partial Payments (WIP)
+    if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
+    
+    // 3. Low priority: Requests (Initial state)
+    if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
     
     // Default to BLUE for 'New' items instead of null
     return 'BLUE';
