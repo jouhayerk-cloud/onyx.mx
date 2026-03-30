@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.57.4 (2026-03-30)
+- **Financial Health Visualization [Segmented Bar]**: Split the spend area into distinct **Net Spend** (Red) and **Bonus Offset** (Lime) segments.
+- **Improved Legend**: Updated the legend to explicitly identify the contribution of bonuses to the budget offset.
+- **Glassmorphic UI Refinement**: Optimized the stacking logic for the segmented progress bars to ensure smooth transitions between surplus and overflow states.
+
 ## v1.57.3 (2026-03-30)
 - **Financial Health Logic Pivot [Budget]**: Redefined 100% Health as the `START` budget baseline.
 - **Bonus Offset Integration**: `BONUS` is now deducted from `USED` expenses to calculate "Net Operational Spend."
