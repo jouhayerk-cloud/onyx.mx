@@ -32,14 +32,14 @@ import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
-
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid') return 'GREEN';
     if (payReqStr === 'requested' || payReqStr === 'partial') return 'YELLOW';
+    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid') return 'GREEN';
     return null;
 };
+
 const lbl = "text-[10px] font-bold text-white/30 uppercase tracking-wider mb-1";
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
 const inpNum = inp + " font-mono text-center";

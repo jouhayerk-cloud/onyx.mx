@@ -188,7 +188,7 @@ export const InventoryArtifact: React.FC = () => {
                                                                     setPaymentsArtifactConfig({
                                                                         isOpen: true,
                                                                         title: `PAYMENT: ${calculated.bookBardcode || norm.id}`,
-                                                                        itemIds: [calculated.bookBardcode || norm.id],
+                                                                        itemIds: [String(norm.id)],
                                                                         paymentIds: norm.payment_ids ? norm.payment_ids.split(',').map(id => id.trim()) : undefined
                                                                     });
                                                                 }
