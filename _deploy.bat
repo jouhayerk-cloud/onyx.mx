@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.11.80 fix: conimport typo in UnifiedInventoryView"
+git commit -m "v1.54.0: Modern Discovery & Combinatorial Filtering"
 git push origin main
 
 echo [2/3] Building production bundle...

@@ -306,53 +306,6 @@ const InventoryBar: React.FC = () => {
                     </div>
                 )}
             </div>
-
-            {/* Vendor Filter Bar — horizontal frame rendered below header */}
-            {isVendorFilterOpen && (
-                <div
-                    className="absolute top-full left-0 right-0 z-40 flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar animate-in slide-in-from-top-2 duration-200"
-                    style={{
-                        background: 'color-mix(in srgb, var(--sidebar-bg) 95%, transparent)',
-                        backdropFilter: 'blur(24px)',
-                        borderBottom: '1px solid color-mix(in srgb, var(--text-color) 8%, transparent)',
-                    }}
-                >
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 shrink-0 mr-2">Vendor</span>
-                    <button
-                        onClick={() => setVendorFilter('All')}
-                        className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${vendorFilter === 'All'
-                            ? 'bg-white/20 border-white/30 text-white'
-                            : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'
-                            }`}
-                    >
-                        All
-                    </button>
-                    {activeVendors.map(v => {
-                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                        const isActive = vendorFilter === v;
-                        return (
-                            <button
-                                key={v}
-                                onClick={() => setVendorFilter(v)}
-                                className={`shrink-0 h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-1.5 ${isActive
-                                    ? 'text-black border-transparent shadow-lg'
-                                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
-                                    }`}
-                                style={isActive ? { backgroundColor: color, borderColor: color } : { borderColor: color + '40' }}>
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                                {v}
-                            </button>
-                        );
-                    })}
-                    <button
-                        onClick={() => setIsVendorFilterOpen(false)}
-                        className="ml-auto shrink-0 p-1.5 rounded-full text-white/20 hover:text-white transition-colors"
-                        title="Close vendor filter"
-                    >
-                        <X size={12} strokeWidth={2.5} />
-                    </button>
-                </div>
-            )}
         </>
     );
 };

@@ -21,6 +21,11 @@ import {
     isInventoryVendorFilterOpenAtom,
     inventorySortKeyAtom,
     inventorySortOrderAtom,
+    inventoryCategoryFilterAtom,
+    isInventoryCategoryFilterOpenAtom,
+    inventoryMaterialFilterAtom,
+    isInventoryMaterialFilterOpenAtom,
+    isInventorySortMenuOpenAtom,
     inventoryAtom,
     financeDataAtom,
     paymentsArtifactConfigAtom
@@ -33,7 +38,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag } from 'lucide-react';
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
@@ -289,20 +294,9 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="flex flex-col flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
                                 <h3 className="text-xs sm:text-sm font-bold text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
-                                <div className="flex gap-1 shrink-0">
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.shape || ''} ${norm.shortDescription || ''}`.trim()); }}
-                                        className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all"
-                                    >
-                                        CAT
-                                    </button>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.color || ''} ${norm.material || ''}`.trim()); }}
-                                        className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all"
-                                    >
-                                        MAT
-                                    </button>
-                                </div>
+                            <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
+                                <h3 className="text-xs sm:text-sm font-bold text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                            </div>
                             </div>
                             <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/50 pb-1.5 mb-auto">
                                 <span className="truncate">Dim: <span className="text-white/80">{dimensionsStr || '—'}</span></span>
@@ -519,18 +513,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="opacity-60 font-medium truncate text-xs">{(norm.shortDescription || norm.material || '')}</span>
                         </div>
                         <div className="flex items-center gap-2 mt-2 overflow-hidden">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.shape || ''} ${norm.shortDescription || ''}`.trim()); }}
-                                className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all shrink-0"
-                            >
-                                CAT
-                            </button>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.color || ''} ${norm.material || ''}`.trim()); }}
-                                className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all shrink-0"
-                            >
-                                MAT
-                            </button>
                             {norm.color && <div className="text-[9px] text-(--text-color-secondary) uppercase tracking-[0.2em] font-black truncate opacity-40">{norm.color}</div>}
                         </div>
                     </div>
@@ -724,7 +706,7 @@ export const UnifiedInventoryView = () => {
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
-    const isVendorFilterOpen = useAtomValue(isInventoryVendorFilterOpenAtom);
+    const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     
     const partialPayIds = useMemo(() => {
         const ids = new Set<string>();
@@ -753,11 +735,14 @@ export const UnifiedInventoryView = () => {
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
     const setGlobalSearchTerm = useSetAtom(inventorySearchTermAtom);
-    const vendorFilter = useAtomValue(inventoryVendorFilterAtom);
-    const sortKey = useAtomValue(inventorySortKeyAtom);
-    const setSortKey = useSetAtom(inventorySortKeyAtom);
-    const sortOrder = useAtomValue(inventorySortOrderAtom);
-    const setSortOrder = useSetAtom(inventorySortOrderAtom);
+    const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom);
+    const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
+    const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
+    const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom);
+    const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
+    const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom);
+    const [isSortMenuOpen, setIsSortMenuOpen] = useAtom(isInventorySortMenuOpenAtom);
 
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
@@ -838,6 +823,7 @@ export const UnifiedInventoryView = () => {
     };
 
     const filteredItems = useMemo(() => {
+        // 1. Single-pass Filter Logic
         const filtered = items.filter(item => {
             // Global Hidden Filter
             if (item.data.is_hidden) return false;
@@ -846,20 +832,26 @@ export const UnifiedInventoryView = () => {
             if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
 
             const status = getStatusClass(item.data, partialPayIds);
-
-            if (statusFilter === 'Partial') {
-                if (status !== 'RED') return false;
-            } else if (statusFilter === 'Requested') {
-                if (status !== 'YELLOW') return false;
-            } else if (statusFilter === 'Paid') {
-                if (status !== 'GREEN') return false;
+            if (statusFilter !== 'All') {
+                if (statusFilter === 'Partial' && status !== 'RED') return false;
+                if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
+                if (statusFilter === 'Paid' && status !== 'GREEN') return false;
+                if (statusFilter === 'New' && status !== null) return false;
             }
+            
             const vendorPrefix = item.data.itemId?.split('-')[0] || '';
 
             // Vendors only see their own items (data isolation)
             if (user?.role === 'Vendor' && vendorPrefix !== user?.name) return false;
 
             if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
+
+            const categoryCombo = `${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.trim();
+            if (categoryFilter !== 'All' && categoryCombo !== categoryFilter) return false;
+
+            const materialCombo = `${item.data.color || ''} ${item.data.material || ''}`.trim();
+            if (materialFilter !== 'All' && materialCombo !== materialFilter) return false;
+
             if (searchTerm) {
                 const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
                 const norm = item.data;
@@ -888,20 +880,25 @@ export const UnifiedInventoryView = () => {
             return true;
         });
 
-        // Sorting Logic
+        // 2. Sorting Logic
         return filtered.sort((a, b) => {
+            // GLOBAL PRIORITY: "New" (blue tagged) items first
+            const sA = getStatusClass(a.data, partialPayIds);
+            const sB = getStatusClass(b.data, partialPayIds);
+            
+            if (sA === null && sB !== null) return -1;
+            if (sA !== null && sB === null) return 1;
+
+            // SECONDARY PRIORITY: Selected Sort Key
             let comparison = 0;
             if (sortKey === 'Date') {
                 comparison = (new Date(b.data.updated_at || b.data.timestamp || 0).getTime()) - (new Date(a.data.updated_at || a.data.timestamp || 0).getTime());
-                return sortOrder === 'desc' ? comparison : -comparison;
             } else if (sortKey === 'Vendor') {
                 const vA = (a.data.itemId || '').split('-')[0];
                 const vB = (b.data.itemId || '').split('-')[0];
                 comparison = vA.localeCompare(vB);
             } else if (sortKey === 'Status') {
-                const sA = getStatusClass(a.data, partialPayIds);
-                const sB = getStatusClass(b.data, partialPayIds);
-                const weight = (s: any) => s === null ? 4 : s === 'RED' ? 3 : s === 'YELLOW' ? 2 : s === 'GREEN' ? 1 : 0;
+                const weight = (s: any) => s === 'RED' ? 3 : s === 'YELLOW' ? 2 : s === 'GREEN' ? 1 : 0;
                 comparison = weight(sB) - weight(sA);
             } else if (sortKey === 'Shape+Type') {
                 const comboA = `${a.data.shape || ''} ${a.data.shortDescription || ''}`.trim();
@@ -915,7 +912,7 @@ export const UnifiedInventoryView = () => {
 
             return sortOrder === 'desc' ? comparison : -comparison;
         });
-    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, exchangeRate, user?.role, user?.name]);
+    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, exchangeRate, user?.role, user?.name, categoryFilter, materialFilter]);
 
     const updateFileTag = (i: number, tag: 'Item' | 'Lot') => {
         setNewFiles(prev => prev.map((f, idx) => idx === i ? { ...f, tag } : f));
@@ -1034,6 +1031,24 @@ export const UnifiedInventoryView = () => {
         return Array.from(new Set(items.map(item => item.data.itemId?.split('-')[0]).filter(Boolean))).sort();
     }, [items]);
 
+    const activeCategories = useMemo(() => {
+        const combos = new Set<string>();
+        items.forEach(i => {
+            const combo = `${i.data.shape || ''} ${i.data.shortDescription || i.data.short_description || ''}`.trim();
+            if (combo) combos.add(combo);
+        });
+        return Array.from(combos).sort();
+    }, [items]);
+
+    const activeMaterials = useMemo(() => {
+        const combos = new Set<string>();
+        items.forEach(i => {
+            const combo = `${i.data.color || ''} ${i.data.material || ''}`.trim();
+            if (combo) combos.add(combo);
+        });
+        return Array.from(combos).sort();
+    }, [items]);
+
     useEffect(() => {
         setGlobalActiveVendors(activeVendors);
     }, [activeVendors, setGlobalActiveVendors]);
@@ -1050,11 +1065,14 @@ export const UnifiedInventoryView = () => {
         }, 0);
     }, [filteredItems]);
 
-    return (
-        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0 transition-all duration-300 ${isVendorFilterOpen ? 'pt-14' : ''}`}>
+    const filterRowsCount = [isVendorFilterOpen, isCategoryOpen, isMaterialOpen].filter(Boolean).length;
+    const paddingClass = filterRowsCount === 3 ? 'pt-[168px]' : filterRowsCount === 2 ? 'pt-[112px]' : filterRowsCount === 1 ? 'pt-14' : 'pt-0';
 
-            {/* Glass Sub-Header - Smaller & Compact */}
-            <div className={`sticky top-0 z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40 transition-all duration-300 ${isVendorFilterOpen ? 'translate-y-0' : ''}`}>
+    return (
+        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0 transition-all duration-300 ${paddingClass}`}>
+
+            {/* Glass Sub-Header - Redesigned for v1.54.0 */}
+            <div className={`sticky top-0 z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40 transition-all duration-300 ${filterRowsCount > 0 ? 'translate-y-0' : ''}`}>
                 <div className="flex flex-col">
                     <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
                         Types
@@ -1082,32 +1100,195 @@ export const UnifiedInventoryView = () => {
                     </div>
                 </div>
 
-                <div className="w-px h-6 bg-white/5 ml-auto" />
+                <div className="ml-auto flex items-center gap-3">
+                    {/* Discovery Triggers */}
+                    <button 
+                        onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                        className={`p-2 rounded-xl transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                        title="Vendor Discovery"
+                    >
+                        <Tag size={18} />
+                    </button>
+                    <button 
+                        onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                        className={`p-2 rounded-xl transition-all ${isSortMenuOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                        title="Sort Control"
+                    >
+                        <ArrowUpDown size={18} />
+                    </button>
+                    <div className="w-px h-6 bg-white/5 mx-1" />
+                    <button 
+                        onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                        className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                        title="Category Discovery"
+                    >
+                        <Layers size={18} />
+                    </button>
+                    <button 
+                        onClick={() => setIsMaterialOpen(!isMaterialOpen)}
+                        className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                        title="Material Discovery"
+                    >
+                        <Box size={18} />
+                    </button>
+                </div>
+            </div>
 
-                {/* Sort Controls */}
-                <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-end">
-                        <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">Sort By</div>
-                        <div className="flex items-center gap-1.5">
-                            <select 
-                                value={sortKey} 
-                                onChange={(e) => setSortKey(e.target.value as any)}
-                                className="bg-transparent text-[11px] font-black text-white/80 uppercase tracking-widest outline-none border-none p-0 cursor-pointer hover:text-white transition-colors"
+            {/* Discovery Panels - Stacked (Absolute below sub-header) */}
+            
+            {/* 1. Vendor Discovery Panel */}
+            <div className={`absolute top-[52px] left-0 right-0 z-30 overflow-hidden transition-all duration-300 ${isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Vendors</span>
+                    <button
+                        onClick={() => setVendorFilter('All')}
+                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                        All
+                    </button>
+                    {activeVendors.map(v => {
+                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                        const isActive = vendorFilter === v;
+                        return (
+                            <button
+                                key={v}
+                                onClick={() => setVendorFilter(v)}
+                                className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${isActive ? 'text-black border-transparent shadow-lg shadow-black/20' : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'}`}
+                                style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}
                             >
-                                <option value="Date" className="bg-[#111] text-white">Date</option>
-                                <option value="Vendor" className="bg-[#111] text-white">Vendor</option>
-                                <option value="Status" className="bg-[#111] text-white">Status</option>
-                                <option value="Shape+Type" className="bg-[#111] text-white">Category</option>
-                                <option value="Color+Material" className="bg-[#111] text-white">Material</option>
-                            </select>
-                            <button 
-                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/40 hover:text-(--main-color) transition-all"
-                            >
-                                {sortOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                {v}
                             </button>
-                        </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 2. Category Discovery Panel */}
+            <div className={`absolute left-0 right-0 z-20 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
+                 style={{ top: isVendorFilterOpen ? '108px' : '52px' }}>
+                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Categories</span>
+                    <button
+                        onClick={() => setCategoryFilter('All')}
+                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                        All
+                    </button>
+                    {activeCategories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategoryFilter(cat)}
+                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* 3. Material Discovery Panel */}
+            <div className={`absolute z-10 left-0 right-0 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
+                 style={{ top: (isVendorFilterOpen && isCategoryOpen) ? '164px' : (isVendorFilterOpen || isCategoryOpen) ? '108px' : '52px' }}>
+                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Materials</span>
+                    <button
+                        onClick={() => setMaterialFilter('All')}
+                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                        All
+                    </button>
+                    {activeMaterials.map(mat => (
+                        <button
+                            key={mat}
+                            onClick={() => setMaterialFilter(mat)}
+                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === mat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {mat}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Sort Menu Panel (Vertical Deployable) */}
+            <div className={`absolute top-[52px] right-6 z-100 w-48 overflow-hidden transition-all duration-500 ease-out ${isSortMenuOpen ? 'max-h-80 opacity-100 translate-y-0 translate-x-0' : 'max-h-0 opacity-0 -translate-y-4 translate-x-4 pointer-events-none'}`}>
+                <div className="m-2 p-2 rounded-2xl bg-[#0a0a0a]/80 backdrop-blur-2xl border border-white/10 shadow-2xl flex flex-col gap-1">
+                    {[
+                        { key: 'Date', label: 'By Date' },
+                        { key: 'Status', label: 'By Status' },
+                        { key: 'Vendor', label: 'By Vendor' },
+                        { key: 'Shape+Type', label: 'By Category' },
+                        { key: 'Color+Material', label: 'By Material' }
+                    ].map((opt) => (
+                        <button
+                            key={opt.key}
+                            onClick={() => { setSortKey(opt.key as any); setIsSortMenuOpen(false); }}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sortKey === opt.key ? 'bg-(--main-color) text-black' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                        >
+                            {opt.label}
+                            {sortKey === opt.key && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                                    className="p-1 rounded bg-black/20 text-black hover:bg-black/30"
+                                >
+                                    {sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                                </button>
+                            )}
+                        </button>
+                    ))}
+                    <div className="h-px bg-white/5 my-1 mx-2" />
+                    <div className="px-3 py-2 flex items-center justify-between">
+                         <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Order</span>
+                         <button 
+                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 text-[9px] font-black text-white/60 hover:text-white transition-all uppercase tracking-tighter"
+                         >
+                            {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Category Discovery Panel (Horizontal Row) */}
+            <div className={`absolute top-[52px] left-0 right-0 z-30 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-sm border-b border-white/5">
+                    <button
+                        onClick={() => setCategoryFilter('All')}
+                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                        All Categories
+                    </button>
+                    {activeCategories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategoryFilter(cat)}
+                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Material Discovery Panel (Horizontal Row) */}
+            <div className={`absolute z-30 left-0 right-0 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
+                 style={{ top: isCategoryOpen ? '108px' : '52px' }}>
+                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-sm border-b border-white/5">
+                    <button
+                        onClick={() => setMaterialFilter('All')}
+                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                    >
+                        All Materials
+                    </button>
+                    {activeMaterials.map(mat => (
+                        <button
+                            key={mat}
+                            onClick={() => setMaterialFilter(mat)}
+                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === mat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {mat}
+                        </button>
+                    ))}
                 </div>
             </div>
 

@@ -1,10 +1,13 @@
 # Changelog
 
+## v1.54.0 (2026-03-30)
+- **Combinatorial Discovery Engine [Major]**: Replaced legacy inline buttons with auto-generated horizontal discovery rows for Categories (Shape+Type) and Materials (Color+Material).
+- **Top-Bar Navigation Overhaul**: Integrated discovery triggers and a glassmorphic Sort Menu directly into the sub-header.
+- **Stacked Discovery Facets**: Engineered a multi-layered discovery system with dynamic padding to prevent row overlap.
+- **Global Priority Sorting**: Hardcoded "NEW" (Blue-tagged) status as the absolute top priority in all inventory sort sequences.
+- **Code Cleanliness**: Removed ad-hoc metadata buttons from inventory cards for a cleaner, data-driven UI.
+
 ## v1.53.0 (2026-03-30)
-- **Inventory Sorting Engine**: Implemented multi-dimensional sorting by Vendor, Payment Status, Category, and Material.
-- **Audit Priority Logic**: Engineered the Status sort to prioritize 'NEW' (Blue tagged) items at the top for immediate processing.
-- **Interactive Metadata Badges**: Integrated 'CAT' and 'MAT' interactive pills for instant cross-categorical discovery.
-- **UI Sort Controller**: Added a sleek Sort Dropdown to the glass sub-header for real-time interaction.
 
 
 ## v1.52.1 (2026-03-30)
