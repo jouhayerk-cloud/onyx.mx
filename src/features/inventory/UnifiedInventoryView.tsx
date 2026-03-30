@@ -47,8 +47,10 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     const dispStatus = String(item.dispersal_status || '').toLowerCase();
     
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-    if (payReqStr === 'requested' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
-    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+    if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+    if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+    if (statusStr === 'production' || statusStr === 'production WIP') return 'BLUE';
+    if (statusStr === 'acquired' || statusStr === 'acquisition') return 'PURPLE';
     
     // Items without payment activity default to null (displayed as 'NEW' in Inventory)
     return null;
@@ -300,8 +302,6 @@ export const UnifiedInventoryView = () => {
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
             if (item.data.is_hidden) return false;
-            const statusStr = String(item.data.status || '').toLowerCase();
-            if (statusStr === 'available') return false;
             
             const status = getStatusClass(item.data, partialPayIds);
             if (statusFilter !== 'All') {
@@ -463,11 +463,10 @@ export const UnifiedInventoryView = () => {
                             {/* Entry Status Section */}
                             <div className="space-y-5">
                                 <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">ENTRY STATUS</h3>
-                                <div className="grid grid-cols-3 gap-4">
-                                    {['Available', 'Production', 'Acquisition'].map(s => (
+                                <div className="grid grid-cols-2 gap-4">
+                                    {['Production', 'Acquisition'].map(s => (
                                         <button key={s} type="button" onClick={() => setEditData((p:any) => ({ ...p, status: s }))}
                                             className={`h-16 rounded-2xl border transition-all flex items-center justify-center gap-3 text-[11px] font-black uppercase tracking-widest ${editData.status === s ? 'bg-white/10 border-(--main-color) text-(--main-color) shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]' : 'bg-white/5 border-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}>
-                                            {s === 'Available' && <Box size={16} />}
                                             {s === 'Production' && <Pencil size={16} />}
                                             {s === 'Acquisition' && <Tag size={16} />}
                                             {s}

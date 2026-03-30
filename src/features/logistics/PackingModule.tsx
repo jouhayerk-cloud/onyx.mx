@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { inventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM, inventoryArtifactConfigAtom } from '../../lib/atoms';
+import { inventoryAtom, storeInventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM, inventoryArtifactConfigAtom } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
 import {
@@ -158,7 +158,9 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
 
 export const PackingModule: React.FC = () => {
     const db = useDatabase();
-    const [inventory, setInventory] = useAtom(inventoryAtom);
+    const wipInventory = useAtomValue(inventoryAtom);
+    const storeInventory = useAtomValue(storeInventoryAtom);
+    const inventory = useMemo(() => [...wipInventory, ...storeInventory], [wipInventory, storeInventory]);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
     const globalSearchTerm = useAtomValue(TOP_BAR_SEARCH_ATOM);
@@ -186,27 +188,6 @@ export const PackingModule: React.FC = () => {
             return next;
         });
     };
-
-    useEffect(() => {
-        if (!db) return;
-        const subs = [
-            db.inventory.find({ selector: { status: { $ne: 'Pending Deletion' } } }).$.subscribe(d => {
-                const mapped = d.map((x: any) => ({ ...x.toJSON(), source: 'inventory', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
-                setInventory(prev => {
-                    const filtered = prev.filter(p => (p as any).source !== 'inventory');
-                    return [...filtered, ...mapped] as any;
-                });
-            }),
-            db.production.find().$.subscribe(d => {
-                const mapped = d.map((x: any) => ({ ...x.toJSON(), source: 'production', row: x.id, data: normalizeInventoryData(x.toJSON()) }));
-                setInventory(prev => {
-                    const filtered = prev.filter(p => (p as any).source !== 'production');
-                    return [...filtered, ...mapped] as any;
-                });
-            }),
-        ];
-        return () => subs.forEach(s => s.unsubscribe());
-    }, [db, setInventory]);
 
     const processedItems = useMemo(() => {
         try {

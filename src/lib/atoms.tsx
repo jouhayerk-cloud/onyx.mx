@@ -235,8 +235,8 @@ export const inventorySearchTermAtom = atom('');
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
 export const activeVendorsAtom = atom<string[]>([]);
-export const inventoryVendorFilterAtom = atom<string>('All');
 
+export const storeInventoryAtom = atom<any[]>([]);
 export const storeShoppingBagAtom = atom<any[]>([]);
 export const storeActiveUserAtom = atom<string | null>(null); // To view someone's store
 
@@ -308,6 +308,7 @@ export const notificationsAtom = atom<Notification[]>([]);
 
 // Top-bar deployable panel states
 export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false);
+export const inventoryVendorFilterAtom = atomWithStorage<string>('inventoryVendorFilter', 'All');
 export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false);
 export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false);
 export const isPaymentsSearchOpenAtom = atom<boolean>(false);
