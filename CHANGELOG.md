@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.53.0 (2026-03-30)
+- **Inventory Sorting Engine**: Implemented multi-dimensional sorting by Vendor, Payment Status, Category, and Material.
+- **Audit Priority Logic**: Engineered the Status sort to prioritize 'NEW' (Blue tagged) items at the top for immediate processing.
+- **Interactive Metadata Badges**: Integrated 'CAT' and 'MAT' interactive pills for instant cross-categorical discovery.
+- **UI Sort Controller**: Added a sleek Sort Dropdown to the glass sub-header for real-time interaction.
+
+
 ## v1.52.1 (2026-03-30)
 - **Financial Header Graphs**: Integrated high-fidelity RGB stacked bar into the "Expenses & Financials" header for persistent visibility.
 - **Header Interactivity**: Enabled clicking the graph directly to expand/contract the financial detail view.

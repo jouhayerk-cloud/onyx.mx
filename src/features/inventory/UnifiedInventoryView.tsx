@@ -19,6 +19,8 @@ import {
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
+    inventorySortKeyAtom,
+    inventorySortOrderAtom,
     inventoryAtom,
     financeDataAtom,
     paymentsArtifactConfigAtom
@@ -31,7 +33,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
@@ -154,6 +156,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds }: any) => {
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
+    const setGlobalSearchTerm = useSetAtom(inventorySearchTermAtom);
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -283,8 +286,24 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
 
                     <div className="flex-1 overflow-x-auto no-scrollbar flex items-center px-2 sm:px-3 gap-3 min-w-0">
-                        <div className="flex flex-col justify-center min-w-[140px] max-w-[240px] shrink-0 border-r border-white/5 pr-3 h-full pb-1">
-                            <h3 className="text-xs sm:text-sm font-bold text-white truncate w-full pt-1.5 mt-auto">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                        <div className="flex flex-col flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
+                                <h3 className="text-xs sm:text-sm font-bold text-white truncate">{(norm.shape || '') + ' ' + (norm.shortDescription || '')}</h3>
+                                <div className="flex gap-1 shrink-0">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.shape || ''} ${norm.shortDescription || ''}`.trim()); }}
+                                        className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all"
+                                    >
+                                        CAT
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.color || ''} ${norm.material || ''}`.trim()); }}
+                                        className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all"
+                                    >
+                                        MAT
+                                    </button>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-white/50 pb-1.5 mb-auto">
                                 <span className="truncate">Dim: <span className="text-white/80">{dimensionsStr || '—'}</span></span>
                             </div>
@@ -495,11 +514,25 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             <div className="p-3.5 flex flex-col gap-2 flex-1 relative">
                 <div className="flex justify-between items-start">
                     <div className="truncate pr-2">
-                        <div className="font-bold text-sm text-(--text-color) leading-tight truncate w-full flex items-center gap-1.5">
+                        <div className="font-bold text-sm text-(--text-color) leading-tight truncate w-full flex items-center gap-1.5 pt-1">
                             {(norm.shape || 'OBJ')}
                             <span className="opacity-60 font-medium truncate text-xs">{(norm.shortDescription || norm.material || '')}</span>
                         </div>
-                        {norm.color && <div className="text-[10px] text-(--text-color-secondary) uppercase tracking-widest font-semibold mt-0.5 truncate">{norm.color}</div>}
+                        <div className="flex items-center gap-2 mt-2 overflow-hidden">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.shape || ''} ${norm.shortDescription || ''}`.trim()); }}
+                                className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all shrink-0"
+                            >
+                                CAT
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setGlobalSearchTerm(`${norm.color || ''} ${norm.material || ''}`.trim()); }}
+                                className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black uppercase text-white/40 hover:text-(--main-color) hover:bg-(--main-color)/10 hover:border-(--main-color)/30 transition-all shrink-0"
+                            >
+                                MAT
+                            </button>
+                            {norm.color && <div className="text-[9px] text-(--text-color-secondary) uppercase tracking-[0.2em] font-black truncate opacity-40">{norm.color}</div>}
+                        </div>
                     </div>
                 </div>
 
@@ -719,7 +752,13 @@ export const UnifiedInventoryView = () => {
 
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
     const searchTerm = useAtomValue(inventorySearchTermAtom);
+    const setGlobalSearchTerm = useSetAtom(inventorySearchTermAtom);
     const vendorFilter = useAtomValue(inventoryVendorFilterAtom);
+    const sortKey = useAtomValue(inventorySortKeyAtom);
+    const setSortKey = useSetAtom(inventorySortKeyAtom);
+    const sortOrder = useAtomValue(inventorySortOrderAtom);
+    const setSortOrder = useSetAtom(inventorySortOrderAtom);
+
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
@@ -797,6 +836,86 @@ export const UnifiedInventoryView = () => {
         }
         setNewFiles(prev => [...prev, ...uploaded]);
     };
+
+    const filteredItems = useMemo(() => {
+        const filtered = items.filter(item => {
+            // Global Hidden Filter
+            if (item.data.is_hidden) return false;
+
+            // Hide Available / Catalog items — they belong to the Store view
+            if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
+
+            const status = getStatusClass(item.data, partialPayIds);
+
+            if (statusFilter === 'Partial') {
+                if (status !== 'RED') return false;
+            } else if (statusFilter === 'Requested') {
+                if (status !== 'YELLOW') return false;
+            } else if (statusFilter === 'Paid') {
+                if (status !== 'GREEN') return false;
+            }
+            const vendorPrefix = item.data.itemId?.split('-')[0] || '';
+
+            // Vendors only see their own items (data isolation)
+            if (user?.role === 'Vendor' && vendorPrefix !== user?.name) return false;
+
+            if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
+            if (searchTerm) {
+                const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+                const norm = item.data;
+                const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                const searchableFields = [
+                    norm.itemId,
+                    norm.itemNumber,
+                    norm.color,
+                    norm.material,
+                    norm.shape,
+                    norm.shortDescription,
+                    norm.description,
+                    norm.widthCm,
+                    norm.heightCm,
+                    norm.lengthCm,
+                    norm.weightKg,
+                    calculated.bookAqCode,
+                    calculated.bookLandCode,
+                    calculated.bookBardcode,
+                    norm.status,
+                    norm.workbook,
+                ].map(v => String(v || '').toLowerCase());
+                const searchableString = searchableFields.join(' ');
+                if (!terms.every(term => searchableString.includes(term))) return false;
+            }
+            return true;
+        });
+
+        // Sorting Logic
+        return filtered.sort((a, b) => {
+            let comparison = 0;
+            if (sortKey === 'Date') {
+                comparison = (new Date(b.data.updated_at || b.data.timestamp || 0).getTime()) - (new Date(a.data.updated_at || a.data.timestamp || 0).getTime());
+                return sortOrder === 'desc' ? comparison : -comparison;
+            } else if (sortKey === 'Vendor') {
+                const vA = (a.data.itemId || '').split('-')[0];
+                const vB = (b.data.itemId || '').split('-')[0];
+                comparison = vA.localeCompare(vB);
+            } else if (sortKey === 'Status') {
+                const sA = getStatusClass(a.data, partialPayIds);
+                const sB = getStatusClass(b.data, partialPayIds);
+                const weight = (s: any) => s === null ? 4 : s === 'RED' ? 3 : s === 'YELLOW' ? 2 : s === 'GREEN' ? 1 : 0;
+                comparison = weight(sB) - weight(sA);
+            } else if (sortKey === 'Shape+Type') {
+                const comboA = `${a.data.shape || ''} ${a.data.shortDescription || ''}`.trim();
+                const comboB = `${b.data.shape || ''} ${b.data.shortDescription || ''}`.trim();
+                comparison = comboA.localeCompare(comboB);
+            } else if (sortKey === 'Color+Material') {
+                const comboA = `${a.data.color || ''} ${a.data.material || ''}`.trim();
+                const comboB = `${b.data.color || ''} ${b.data.material || ''}`.trim();
+                comparison = comboA.localeCompare(comboB);
+            }
+
+            return sortOrder === 'desc' ? comparison : -comparison;
+        });
+    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, exchangeRate, user?.role, user?.name]);
 
     const updateFileTag = (i: number, tag: 'Item' | 'Lot') => {
         setNewFiles(prev => prev.map((f, idx) => idx === i ? { ...f, tag } : f));
@@ -907,58 +1026,6 @@ export const UnifiedInventoryView = () => {
         }
     }, [items, setGlobalActiveVendors, db]);
 
-    const filteredItems = useMemo(() => {
-        return items.filter(item => {
-            // Global Hidden Filter
-            if (item.data.is_hidden) return false;
-
-            // Hide Available / Catalog items — they belong to the Store view
-            if (!item.data.status || ['Available', 'available', 'Avaiable', 'Catalog', 'catalog'].includes(item.data.status)) return false;
-
-            const status = getStatusClass(item.data, partialPayIds);
-
-            if (statusFilter === 'Partial') {
-                if (status !== 'RED') return false;
-            } else if (statusFilter === 'Requested') {
-                if (status !== 'YELLOW') return false;
-            } else if (statusFilter === 'Paid') {
-                if (status !== 'GREEN') return false;
-            }
-            const vendorPrefix = item.data.itemId?.split('-')[0] || '';
-
-            // Vendors only see their own items (data isolation)
-            if (user?.role === 'Vendor' && vendorPrefix !== user?.name) return false;
-
-            if (vendorFilter !== 'All' && vendorPrefix !== vendorFilter) return false;
-            if (searchTerm) {
-                const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
-                const norm = item.data;
-                const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-                const searchableFields = [
-                    norm.itemId,
-                    norm.itemNumber,
-                    norm.color,
-                    norm.material,
-                    norm.shape,
-                    norm.shortDescription,
-                    norm.description,
-                    norm.widthCm,
-                    norm.heightCm,
-                    norm.lengthCm,
-                    norm.weightKg,
-                    calculated.bookAqCode,
-                    calculated.bookLandCode,
-                    calculated.bookBardcode,
-                    norm.status,
-                    norm.workbook,
-                ].map(v => String(v || '').toLowerCase());
-                const searchableString = searchableFields.join(' ');
-                if (!terms.every(term => searchableString.includes(term))) return false;
-            }
-            return true;
-        }).sort((a, b) => (new Date(b.data.updated_at || b.data.timestamp || 0).getTime()) - (new Date(a.data.updated_at || a.data.timestamp || 0).getTime()));
-    }, [items, statusFilter, vendorFilter, searchTerm]);
-
     useEffect(() => {
         setFilteredCount(filteredItems.length);
     }, [filteredItems.length, setFilteredCount]);
@@ -1012,6 +1079,34 @@ export const UnifiedInventoryView = () => {
                     </div>
                     <div className="text-xl font-bold text-(--main-color) leading-none tracking-tighter">
                         {showFinancials ? `$${totalValueMXN.toLocaleString('en-US')}` : '***'}
+                    </div>
+                </div>
+
+                <div className="w-px h-6 bg-white/5 ml-auto" />
+
+                {/* Sort Controls */}
+                <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end">
+                        <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">Sort By</div>
+                        <div className="flex items-center gap-1.5">
+                            <select 
+                                value={sortKey} 
+                                onChange={(e) => setSortKey(e.target.value as any)}
+                                className="bg-transparent text-[11px] font-black text-white/80 uppercase tracking-widest outline-none border-none p-0 cursor-pointer hover:text-white transition-colors"
+                            >
+                                <option value="Date" className="bg-[#111] text-white">Date</option>
+                                <option value="Vendor" className="bg-[#111] text-white">Vendor</option>
+                                <option value="Status" className="bg-[#111] text-white">Status</option>
+                                <option value="Shape+Type" className="bg-[#111] text-white">Category</option>
+                                <option value="Color+Material" className="bg-[#111] text-white">Material</option>
+                            </select>
+                            <button 
+                                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/40 hover:text-(--main-color) transition-all"
+                            >
+                                {sortOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
