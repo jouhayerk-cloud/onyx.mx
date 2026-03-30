@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useSetAtom } from 'jotai';
 import { 
     inventoryAtom, 
+    storeInventoryAtom,
     financeDataAtom, 
     logisticsDataAtom,
     isSyncingAtom
@@ -19,6 +20,7 @@ import { supabase } from '../lib/supabase';
 export const DataSyncProvider: React.FC = () => {
     const db = useDatabase();
     const setInventory = useSetAtom(inventoryAtom);
+    const setStoreInventory = useSetAtom(storeInventoryAtom);
     const setFinance = useSetAtom(financeDataAtom);
     const setLogistics = useSetAtom(logisticsDataAtom);
     const setIsSyncing = useSetAtom(isSyncingAtom);
@@ -38,19 +40,46 @@ export const DataSyncProvider: React.FC = () => {
         let currentProductionDocs: any[] = [];
 
         const updateInventoryAtom = () => {
-            const mappedInv = currentInventoryDocs.map(x => ({
-                ...x,
-                source: 'inventory',
-                row: x.id,
-                data: normalizeInventoryData(x)
-            }));
-            const mappedProd = currentProductionDocs.map(x => ({
-                ...x,
-                source: 'production',
-                row: x.id,
-                data: normalizeInventoryData(x)
-            }));
-            setInventory([...mappedInv, ...mappedProd]);
+            const allRecords = [
+                ...currentInventoryDocs.map(x => ({
+                    ...x,
+                    source: 'inventory',
+                    row: x.id,
+                    data: normalizeInventoryData(x)
+                })),
+                ...currentProductionDocs.map(x => ({
+                    ...x,
+                    source: 'production',
+                    row: x.id,
+                    data: normalizeInventoryData(x)
+                }))
+            ];
+
+            const storeStatuses = ['Available', 'Avaiable', 'Catalog'];
+            const wipItems = allRecords.filter(r => {
+                const status = (r.data.status || '').trim();
+                const isStoreStatus = storeStatuses.includes(status);
+                const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
+                const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';
+                const isProduction = r.source === 'production';
+                
+                // Inventory (WIP) includes production items, items with payment activity, or items NOT in store statuses
+                return isProduction || hasPaymentReq || !isStoreStatus;
+            });
+
+            const storeItems = allRecords.filter(r => {
+                const status = (r.data.status || '').trim();
+                const isStoreStatus = storeStatuses.includes(status);
+                const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
+                const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';
+                const isProduction = r.source === 'production';
+
+                // Store only includes non-production items in store statuses WITHOUT payment activity
+                return isStoreStatus && !hasPaymentReq && !isProduction;
+            });
+
+            setInventory(wipItems);
+            setStoreInventory(storeItems);
         };
 
         subscriptions.push(

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
-    financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom,
+    financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, storeInventoryAtom, logisticsDataAtom,
     inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
@@ -339,6 +339,7 @@ export const ClientOverview: React.FC = () => {
     const [showFinancials] = useAtom(showFinancialsAtom);
     const financeData = useAtomValue(financeDataAtom);
     const allInventoryItems = useAtomValue(inventoryAtom);
+    const availableItems = useAtomValue(storeInventoryAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setPaymentCategoryFilter = useSetAtom(paymentCategoryFilterAtom);
@@ -374,12 +375,12 @@ export const ClientOverview: React.FC = () => {
     };
 
     const items = useMemo(() =>
-        allInventoryItems.filter(i => !['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '') && i.data.status !== 'Pending Deletion'),
+        allInventoryItems.filter(i => i.data.status !== 'Pending Deletion'),
         [allInventoryItems]
     );
     const storeItems = useMemo(() =>
-        allInventoryItems.filter(i => ['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '')),
-        [allInventoryItems]
+        availableItems,
+        [availableItems]
     );
 
     useEffect(() => { 
@@ -569,13 +570,13 @@ export const ClientOverview: React.FC = () => {
 
         // NEW: Specific Pillars for Stacked Bar (RGB Red Green Blue Yellow Magenta Mapping)
         let paidAcqMxn = 0, paidExpMxn = 0, reqMerchMxn = 0, reqExpMxn = 0;
+        
+        // 1. From Finance Records (Source of Truth for Transactions)
         financeData.forEach(d => {
             const sub = String(d.subcategory || '').toLowerCase();
             const cat = String(d.category || '').toLowerCase();
             const type = String(d.type || '').toLowerCase();
             const isMerch = sub.includes('acq') || sub.includes('prod') || cat.includes('acquisition') || cat.includes('merchandise');
-            
-            // Expenses: Everything else (Operations, Monthly, Supplies, Labor, Packing...)
             const isExp = !isMerch && (type === 'expense' || sub.includes('month') || sub.includes('suppl') || sub.includes('sppl') || sub.includes('labr') || sub.includes('labor') || sub.includes('pack') || sub.includes('oprt') || sub.includes('operation'));
 
             const amtMxn = (d.amount || 0) + (d.commission || 0);
@@ -587,6 +588,22 @@ export const ClientOverview: React.FC = () => {
             } else {
                 if (isMerch) reqMerchMxn += amtMxn;
                 else if (isExp) reqExpMxn += amtMxn;
+            }
+        });
+
+        // 2. Fallback for Inventory Items marked 'Requested' but without finance records yet
+        // We only count them if they are NOT already linked to a finance record to avoid double counting
+        const financeItemIds = new Set(financeData.flatMap(d => (d.related_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)));
+        
+        items.forEach(item => {
+            const data = item.data;
+            const payReqStr = String(data.payReq || data.pay_req || '').toLowerCase();
+            const isRequested = (payReqStr === 'true' || payReqStr === 'requested' || payReqStr === 'partial') && !financeItemIds.has(String(item.row));
+            
+            if (isRequested) {
+                const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
+                const qty = parseInt(String(data.quantity || '1')) || 1;
+                reqMerchMxn += (price * qty);
             }
         });
 

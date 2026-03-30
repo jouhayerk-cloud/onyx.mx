@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { 
     inventoryAtom, 
+    storeInventoryAtom,
     inventoryArtifactConfigAtom, 
     exchangeRateAtom, 
     showFinancialsAtom,
@@ -20,7 +21,9 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 export const InventoryArtifact: React.FC = () => {
     const [config, setConfig] = useAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
-    const allItems = useAtomValue(inventoryAtom);
+    const wipItems = useAtomValue(inventoryAtom);
+    const storeItems = useAtomValue(storeInventoryAtom);
+    const allItems = useMemo(() => [...wipItems, ...storeItems], [wipItems, storeItems]);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
     const financeDocs = useAtomValue(financeDataAtom);
@@ -100,7 +103,7 @@ export const InventoryArtifact: React.FC = () => {
                             const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
                             const imageUrl = getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0]);
                             const payStatus = getStatusClass(norm, partialPayIds);
-                            const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : 'transparent';
+                            const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
                             
                             const itemPriceMXN = Math.ceil(Number(norm.price || 0));
                             const itemQuantity = Number(norm.quantity || 1);
@@ -174,12 +177,14 @@ export const InventoryArtifact: React.FC = () => {
                                         <div className="hidden sm:flex flex-col min-w-[80px] shrink-0 items-end justify-center">
                                             {payStatus ? (
                                                 (() => {
-                                                    const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
+                                                    const cfg: Record<'GREEN'|'YELLOW'|'RED'|'BLUE'|'PURPLE', { label: string; color: string; bg: string }> = {
                                                         GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
                                                         YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
                                                         RED:    { label: 'Partial',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                                                        BLUE:   { label: 'Production', color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
+                                                        PURPLE: { label: 'Acquired',   color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
                                                     };
-                                                    const { label, color, bg } = cfg[payStatus];
+                                                    const { label, color, bg } = cfg[payStatus as keyof typeof cfg] || { label: 'New', color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' };
                                                     return (
                                                         <button 
                                                             onClick={(e) => {
