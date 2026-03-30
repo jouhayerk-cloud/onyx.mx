@@ -342,6 +342,7 @@ export type PaymentsArtifactConfig = {
   itemIds?: (string | number)[];
   paymentType?: string;
   destination?: string;
+  status?: string;
   title?: string;
 };
 export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({

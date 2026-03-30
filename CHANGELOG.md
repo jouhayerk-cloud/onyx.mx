@@ -1,3 +1,14 @@
+# Changelog
+
+## [1.52.0] - 2026-03-30
+### Added
+- **Financial Redesign**: High-fidelity 5-segment RGB stacked bar graph for the Overview dashboard.
+- **Dispersal Icons**: Integrated method-specific iconography (Bank, Wire, Cash) into the Payments Hub ledger.
+- **Contextual Categorization**: Replaced generic vendor tags with specific category icons (Calendar, Box, Users, etc.) for non-merchandise payments.
+- **Deep-Link Analysis**: Integrated `InventoryArtifact` triggers into "Units Share", "Material/Color", and "Shape/Description" panels.
+- **Acquisitions Audit**: Linked "Acquisitions Value" and liability cards directly to the pre-filtered Payments Hub.
+- **Full-Width Viewport**: Expanded critical analysis panels to full width on large screens for improved data density.
+
 ## [1.51.0] - 2026-03-30
 ### Added
 - **Unified Financial Portfolio Graph**:

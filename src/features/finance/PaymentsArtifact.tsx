@@ -9,7 +9,10 @@ import {
     showFinancialsAtom,
     currencyModeAtom
 } from '../../lib/atoms';
-import { X, Receipt, ChevronRight, DollarSign, Calendar, Landmark, Tag } from 'lucide-react';
+import { 
+    X, Receipt, ChevronRight, DollarSign, Calendar, Landmark, Tag, Send, Smartphone, 
+    Users, Box, Archive, Cpu 
+} from 'lucide-react';
 import { vendors } from '../../lib/consts';
 
 export const PaymentsArtifact: React.FC = () => {
@@ -50,6 +53,7 @@ export const PaymentsArtifact: React.FC = () => {
                     else if (type === 'LABR') typeMatch = sub.includes('labr') || sub.includes('labor');
                     else if (type === 'PACK') typeMatch = sub.includes('pack');
                     else if (type === 'OPRT') typeMatch = sub.includes('oprt') || sub.includes('operation');
+                    else if (type === 'ACQUISITION') typeMatch = sub.includes('acquisition') || cat === 'acquisition' || sub.includes('merch');
                 }
                 
                 if (!typeMatch) match = false;
@@ -58,6 +62,11 @@ export const PaymentsArtifact: React.FC = () => {
             // Filter by Destination
             if (config.destination && config.destination !== 'All') {
                 if (pay.destination !== config.destination) match = false;
+            }
+
+            // Filter by Status
+            if (config.status && config.status !== 'All') {
+                if (pay.status !== config.status) match = false;
             }
 
             // Filter by Tag IDs (Related inventory)
@@ -147,15 +156,41 @@ export const PaymentsArtifact: React.FC = () => {
                                     
                                     {/* Record Info */}
                                     <div className="flex-1 flex flex-wrap sm:flex-nowrap items-center px-4 py-3 gap-4 min-w-0">
-                                        {/* Date & Vendor */}
+                                        {/* Date & Vendor/Type Icon */}
                                         <div className="flex flex-col min-w-[100px]">
                                             <div className="flex items-center gap-1.5 text-[9px] text-white/30 uppercase font-black tracking-widest mb-1.5">
                                                 <Calendar size={10} />
                                                 {pay.date || '---'}
                                             </div>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: (vendors as any)[pay.vendor_id || pay.vendor || '']?.color || '#ccc' }}>
-                                                {pay.vendor_id || pay.vendor || 'MISC'}
-                                            </span>
+                                            {(() => {
+                                                const vId = pay.vendor_id || pay.vendor || '';
+                                                const sub = (pay.subcategory || '').toLowerCase();
+                                                const cat = (pay.category || '').toLowerCase();
+                                                const isAcq = cat === 'acquisition' || sub === 'acquisition' || sub.includes('merch');
+
+                                                if (isAcq) {
+                                                    return (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: (vendors as any)[vId]?.color || '#ccc' }}>
+                                                            {vId || 'MISC'}
+                                                        </span>
+                                                    );
+                                                }
+
+                                                // Contextual Icon for Non-Merch (Operational)
+                                                let Icon = Cpu;
+                                                let bgColor = 'bg-sky-500/10 text-sky-400';
+                                                
+                                                if (sub.includes('month')) { Icon = Calendar; bgColor = 'bg-blue-500/10 text-blue-400'; }
+                                                else if (sub.includes('suppl')) { Icon = Box; bgColor = 'bg-emerald-500/10 text-emerald-400'; }
+                                                else if (sub.includes('labr') || sub.includes('labor')) { Icon = Users; bgColor = 'bg-orange-500/10 text-orange-400'; }
+                                                else if (sub.includes('pack')) { Icon = Archive; bgColor = 'bg-purple-500/10 text-purple-400'; }
+
+                                                return (
+                                                    <div className={`p-1.5 rounded-lg w-fit ${bgColor} border border-current opacity-70`}>
+                                                        <Icon size={12} />
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
 
                                         {/* Description */}
@@ -180,9 +215,18 @@ export const PaymentsArtifact: React.FC = () => {
                                         {/* Financials */}
                                         <div className="flex items-center gap-6 shrink-0 ml-auto">
                                             <div className="flex flex-col min-w-[80px] items-end justify-center">
-                                                <span className={`text-[8px] font-black uppercase tracking-[0.15em] mb-1 leading-none ${isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
-                                                    {isUSD ? 'USD' : 'MXN'} Value
-                                                </span>
+                                                <div className="flex items-center gap-1.5 mb-1">
+                                                    {(() => {
+                                                        const dest = (pay.destination || '').toLowerCase();
+                                                        if (dest.includes('bbva') || dest.includes('boa') || dest.includes('bank')) return <Landmark size={10} className="text-white/40" />;
+                                                        if (dest.includes('wire')) return <Send size={10} className="text-white/40" />;
+                                                        if (dest.includes('cash')) return <DollarSign size={10} className="text-white/40" />;
+                                                        return <Smartphone size={10} className="text-white/40" />;
+                                                    })()}
+                                                    <span className={`text-[8px] font-black uppercase tracking-[0.15em] leading-none ${isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
+                                                        {isUSD ? 'USD' : 'MXN'} Value
+                                                    </span>
+                                                </div>
                                                 <span className={`text-[15px] font-black font-mono ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
                                                     {showFinancials ? `$${displayAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
                                                 </span>
