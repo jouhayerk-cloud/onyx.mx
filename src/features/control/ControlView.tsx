@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { UserRegistryPanel } from './UserRegistryPanel';
 import { DatabaseStatsPanel } from './DatabaseStatsPanel';
 import { StoreSettingsPanel } from './StoreSettingsPanel';
+import { DataBaseArtifact } from './DataBaseArtifact';
 
 type ControlTab = 'users' | 'database' | 'store';
 
@@ -56,7 +57,14 @@ export function ControlView() {
             {/* Panel */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {activeTab === 'users' && <UserRegistryPanel />}
-                {activeTab === 'database' && <DatabaseStatsPanel />}
+                {activeTab === 'database' && (
+                    <div className="flex flex-col gap-6 h-full">
+                        <DatabaseStatsPanel />
+                        <div className="flex-1 min-h-0">
+                            <DataBaseArtifact />
+                        </div>
+                    </div>
+                )}
                 {activeTab === 'store' && <StoreSettingsPanel />}
             </div>
         </div>
