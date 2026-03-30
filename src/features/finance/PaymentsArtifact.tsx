@@ -26,8 +26,9 @@ export const PaymentsArtifact: React.FC = () => {
             let match = true;
             
             // Filter by Vendor
+            const vId = pay.vendor_id || pay.vendor;
             if (config.vendor && config.vendor !== 'All') {
-                if (pay.vendor !== config.vendor) match = false;
+                if (vId !== config.vendor) match = false;
             }
             
             // Filter by Date
@@ -37,7 +38,21 @@ export const PaymentsArtifact: React.FC = () => {
             
             // Filter by Payment Type (Category mapping if needed, or status)
             if (config.paymentType && config.paymentType !== 'All') {
-              if (pay.category !== config.paymentType && pay.subcategory !== config.paymentType) match = false;
+                const sub = (pay.subcategory || '').toLowerCase();
+                const cat = (pay.category || '').toLowerCase();
+                const type = config.paymentType;
+                
+                let typeMatch = (sub === type.toLowerCase() || cat === type.toLowerCase());
+                
+                if (!typeMatch) {
+                    if (type === 'MONTHLY') typeMatch = sub.includes('month') || sub.includes('mo-exp');
+                    else if (type === 'SPPL') typeMatch = sub.includes('suppl') || sub.includes('sppl');
+                    else if (type === 'LABR') typeMatch = sub.includes('labr') || sub.includes('labor');
+                    else if (type === 'PACK') typeMatch = sub.includes('pack');
+                    else if (type === 'OPRT') typeMatch = sub.includes('oprt') || sub.includes('operation');
+                }
+                
+                if (!typeMatch) match = false;
             }
 
             // Filter by Destination
@@ -47,9 +62,10 @@ export const PaymentsArtifact: React.FC = () => {
 
             // Filter by Tag IDs (Related inventory)
             if (config.itemIds && config.itemIds.length > 0) {
-                const related = (pay.related_ids || pay.related_inventory_ids || '')
-                    .split(',')
-                    .map((s: string) => s.trim());
+                const rawRelated = pay.related_inventory_ids || pay.related_ids || '';
+                const related = Array.isArray(rawRelated) 
+                    ? rawRelated.map(s => String(s).trim())
+                    : String(rawRelated).split(',').map((s: string) => s.trim());
                 if (!config.itemIds.some(id => related.includes(String(id)))) match = false;
             }
             
@@ -114,7 +130,6 @@ export const PaymentsArtifact: React.FC = () => {
                         </div>
                     ) : (
                         filteredPayments.map((pay, idx) => {
-                            const vendorColor = (vendors as any)[pay.vendor]?.color || '#ccc';
                             const isPaid = pay.status === 'Paid';
                             const accentColor = isPaid ? '#22c55e' : '#eab308';
                             
@@ -138,8 +153,8 @@ export const PaymentsArtifact: React.FC = () => {
                                                 <Calendar size={10} />
                                                 {pay.date || '---'}
                                             </div>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: vendorColor }}>
-                                                {pay.vendor || 'MISC'}
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tighter shadow-sm w-fit" style={{ backgroundColor: (vendors as any)[pay.vendor_id || pay.vendor || '']?.color || '#ccc' }}>
+                                                {pay.vendor_id || pay.vendor || 'MISC'}
                                             </span>
                                         </div>
 
