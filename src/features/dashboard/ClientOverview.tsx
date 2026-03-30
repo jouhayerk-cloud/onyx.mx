@@ -210,7 +210,8 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
         return prefix + absVal.toFixed(0);
     };
 
-    const healthColor = isOverflow ? '#ef4444' : isSurplus ? '#00e5ff' : '#8DC63F';
+    const netUsedW = Math.max(0, consumedPercent);
+    const bonusW = (bonus / (start || 1)) * 100;
 
     return (
         <div className="flex flex-col gap-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -221,16 +222,12 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
                 </div>
                 <div className="flex gap-4 mb-0.5">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#00AEEF] shadow-[0_0_8px_rgba(0,174,239,0.4)]" />
-                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Start</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Net Spend</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#8DC63F] shadow-[0_0_8px_rgba(141,198,63,0.4)]" />
-                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Bonus</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Used</span>
+                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Bonus Offset</span>
                     </div>
                 </div>
             </div>
@@ -241,22 +238,32 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
                     <div style={{ width: `100%`, backgroundColor: '#00AEEF' }} className="h-full" />
                 </div>
 
-                {/* Net Health Indicator (Fills from right to represent 'Remaining') */}
-                <div 
-                    className={`absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden ${isOverflow ? 'animate-pulse ring-1 ring-red-500' : ''}`}
-                    style={{ 
-                        width: `calc(${Math.min(Math.max(0, healthPercent), 100)}% - 16px)`, 
-                        backgroundColor: healthColor,
-                        boxShadow: `0 0 20px color-mix(in srgb, ${healthColor} 30%, transparent)`
-                    }}
-                >
-                    <div className="absolute inset-0 bg-linear-to-r from-white/30 via-white/10 to-transparent" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.4),transparent)]" />
+                {/* Stacked Spend Indicator (Net Spend + Bonus) */}
+                <div className="absolute inset-1.5 flex rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+                    {/* Net Spend (Red) */}
+                    <div 
+                        className={`h-full transition-all duration-1000 ease-out relative ${isOverflow ? 'animate-pulse' : ''}`}
+                        style={{ width: `${Math.min(netUsedW, 100)}%`, backgroundColor: '#ef4444' }}
+                    >
+                        <div className="absolute inset-0 bg-linear-to-r from-white/20 via-white/10 to-transparent" />
+                    </div>
+                    {/* Bonus Offset (Lime) */}
+                    <div 
+                        className="h-full transition-all duration-1000 ease-out relative border-l border-white/10"
+                        style={{ width: `${Math.min(bonusW, 100 - Math.min(netUsedW, 100))}%`, backgroundColor: '#8DC63F' }}
+                    >
+                        <div className="absolute inset-0 bg-linear-to-r from-white/20 via-white/10 to-transparent" />
+                    </div>
                 </div>
 
-                {/* Surplus/Overflow Extension (If Health > 100% or < 0%) */}
+                {/* Surplus Indicator (Cyan) - Overrides when netUsed < 0 */}
                 {isSurplus && (
-                     <div className="absolute inset-y-2 left-[calc(100%-14px)] w-4 bg-[#00e5ff] rounded-r-lg animate-pulse shadow-[0_0_15px_#00e5ff]" />
+                     <div 
+                        className="absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden shadow-[0_0_20px_rgba(0,229,255,0.2)]"
+                        style={{ width: `calc(${Math.min(100, healthPercent)}% - 16px)`, backgroundColor: '#00e5ff' }}
+                     >
+                        <div className="absolute inset-y-2 left-[calc(100%-14px)] w-4 bg-[#00e5ff] rounded-r-lg animate-pulse" />
+                     </div>
                 )}
 
                 {/* Glassmorphic Labels overlay */}
@@ -264,7 +271,7 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
                     <div className="flex flex-col">
                         <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Net Spend</span>
                         <div className="flex items-baseline gap-1">
-                            <span className={`text-[12px] font-mono font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${isOverflow ? 'text-red-400' : isSurplus ? 'text-[#00e5ff]' : 'text-white'}`}>
+                            <span className={`text-[12px] font-mono font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${isOverflow ? 'text-red-100' : 'text-white'}`}>
                                 {fmt(netUsed)}
                              </span>
                              <span className="text-[7px] font-black text-white/40">{mode}</span>
