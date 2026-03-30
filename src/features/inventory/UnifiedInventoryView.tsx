@@ -26,6 +26,7 @@ import {
     inventoryMaterialFilterAtom,
     isInventoryMaterialFilterOpenAtom,
     isInventorySortMenuOpenAtom,
+    isInventoryFiltersPanelOpenAtom,
     inventoryAtom,
     financeDataAtom,
     paymentsArtifactConfigAtom
@@ -308,7 +309,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="flex items-center gap-2 mb-auto overflow-hidden">
                                 {(norm.color || norm.material) && (
                                     <div className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black truncate">
-                                        {[norm.color, norm.material].filter(Boolean).join(' + ')}
+                                        {[norm.color, norm.material].filter(Boolean).join(' ')}
                                     </div>
                                 )}
                             </div>
@@ -530,7 +531,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         <div className="flex items-center gap-2 mt-2 overflow-hidden">
                             {(norm.color || norm.material) && (
                                 <div className="text-[9px] text-(--text-color-secondary) uppercase tracking-[0.2em] font-black truncate opacity-40">
-                                    {[norm.color, norm.material].filter(Boolean).join(' + ')}
+                                    {[norm.color, norm.material].filter(Boolean).join(' ')}
                                 </div>
                             )}
                         </div>
@@ -723,7 +724,7 @@ export const UnifiedInventoryView = () => {
     const financeDocs = useAtomValue(financeDataAtom);
     const [isLoading, setIsLoading] = useState(true);
     const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     
@@ -814,6 +815,8 @@ export const UnifiedInventoryView = () => {
                 status: itemData.status || 'Available',
                 workbook: itemData.workbook || '326',
                 itemId: itemData.itemId || itemData.item_id || '',
+                vendorId: String(itemData.itemId || itemData.item_id || '').split('-')[0] || '',
+                payReq: itemData.payReq || itemData.pay_req || '',
                 generatedDescription: itemData.generatedDescription || '',
                 detailedDescription: itemData.detailedDescription || '',
                 generatedPngUrl: itemData.generatedPngUrl || '',
@@ -992,15 +995,18 @@ export const UnifiedInventoryView = () => {
             };
 
             const tableName = (itemData as any)?.source === 'production' ? 'production' : 'inventory';
-
+            
+            dbRow.short_description = editData.shortDescription;
+            dbRow.updated_at = new Date().toISOString();
+            
             if (tableName === 'inventory') {
-                dbRow.item_id = editData.itemId;
                 dbRow.generated_description = editData.generatedDescription;
                 dbRow.detailed_description = editData.detailedDescription;
+                dbRow.pay_req = editData.payReq || null;
+                dbRow.vendor_id = editData.vendorId || null;
+                dbRow.item_id = editData.itemId; 
             } else {
-                // Production specific fields if needed, like vendor_id vs item_id
                 dbRow.vendor_id = editData.itemId;
-                // remove fields not likely in production table
                 delete dbRow.short_description;
                 delete dbRow.shape;
                 delete dbRow.material;
@@ -1086,69 +1092,75 @@ export const UnifiedInventoryView = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
-
-
-            {/* Glass Sub-Header - Redesigned for v1.54.0 */}
+            {/* Metric Metrics Row */}
             <div className="z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
-
                 <div className="flex flex-col">
-                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
-                        Types
-                    </div>
-                    <div className="text-xl font-bold text-white leading-none tracking-tighter">
-                        {filteredItems.length.toLocaleString('en-US')}
-                    </div>
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">Types</div>
+                    <div className="text-xl font-bold text-white leading-none tracking-tighter">{filteredItems.length.toLocaleString('en-US')}</div>
                 </div>
                 <div className="w-px h-6 bg-white/5" />
                 <div className="flex flex-col">
-                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
-                        Count
-                    </div>
-                    <div className="text-xl font-bold text-[#6BCEBB] leading-none tracking-tighter">
-                        {totalCount.toLocaleString('en-US')}
-                    </div>
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">Count</div>
+                    <div className="text-xl font-bold text-[#6BCEBB] leading-none tracking-tighter">{totalCount.toLocaleString('en-US')}</div>
                 </div>
                 <div className="w-px h-6 bg-white/5" />
                 <div className="flex flex-col">
-                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
-                        Total {showFinancials ? 'MXN' : ''}
-                    </div>
-                    <div className="text-xl font-bold text-(--main-color) leading-none tracking-tighter">
-                        {showFinancials ? `$${totalValueMXN.toLocaleString('en-US')}` : '***'}
-                    </div>
+                    <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">Total {showFinancials ? 'MXN' : ''}</div>
+                    <div className="text-xl font-bold text-(--main-color) leading-none tracking-tighter">{showFinancials ? `$${totalValueMXN.toLocaleString('en-US')}` : '***'}</div>
                 </div>
+            </div>
 
-                <div className="ml-auto flex items-center gap-3">
-                    {/* Discovery Triggers */}
-                    <button 
-                        onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
-                        className={`p-2 rounded-xl transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
-                        title="Vendor Discovery"
-                    >
-                        <Tag size={18} />
-                    </button>
-                    <button 
-                        onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                        className={`p-2 rounded-xl transition-all ${isSortMenuOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
-                        title="Sort Control"
-                    >
-                        <ArrowUpDown size={18} />
-                    </button>
-                    <div className="w-px h-6 bg-white/5 mx-1" />
-                    <button 
-                        onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-                        className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
-                        title="Category Discovery"
-                    >
-                        <Layers size={18} />
-                    </button>
-                    <button 
-                        onClick={() => setIsMaterialOpen(!isMaterialOpen)}
-                        className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
-                        title="Material Discovery"
-                    >
-                        <Box size={18} />
-                    </button>
+            {/* NEW Filters Panel - Icon only discovery triggers */}
+            <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'h-16 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-6 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                            className={`p-2 rounded-xl transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                            title="Vendors"
+                        >
+                            <Tag size={18} />
+                        </button>
+                        <button 
+                            onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                            className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                            title="Categories"
+                        >
+                            <Layers size={18} />
+                        </button>
+                        <button 
+                            onClick={() => setIsMaterialOpen(!isMaterialOpen)}
+                            className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'}`}
+                            title="Materials"
+                        >
+                            <Box size={18} />
+                        </button>
+                    </div>
+
+                    <div className="w-px h-6 bg-white/10" />
+
+                    <div className="flex items-center gap-4">
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Status</span>
+                        <button
+                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all group"
+                            onClick={() => {
+                                const next: Record<string, 'All' | 'Partial' | 'Requested' | 'Paid'> = { 'All': 'Partial', 'Partial': 'Requested', 'Requested': 'Paid', 'Paid': 'All' };
+                                setStatusFilter(next[statusFilter] || 'All');
+                            }}
+                        >
+                            <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 scale-110 ${
+                                statusFilter === 'All' ? 'bg-white/10 border-white/40' :
+                                statusFilter === 'Partial' ? 'bg-red-500 border-red-500/50 shadow-[0_0_12px_rgba(239,68,68,0.5)]' :
+                                statusFilter === 'Requested' ? 'bg-yellow-500 border-yellow-500/50 shadow-[0_0_12px_rgba(245,158,11,0.5)]' :
+                                'bg-green-500 border-green-500/50 shadow-[0_0_12px_rgba(34,197,94,0.5)]'
+                            }`} />
+                            <span className="text-[10px] font-black tracking-widest text-white/50 uppercase group-hover:text-white transition-colors">{statusFilter}</span>
+                        </button>
+                    </div>
+
+                    <div className="ml-auto flex items-center gap-2">
+                         <span className="text-[9px] font-black text-white/10 uppercase tracking-widest leading-none">Filtering active view</span>
+                    </div>
                 </div>
             </div>
 
@@ -1421,52 +1433,12 @@ export const UnifiedInventoryView = () => {
                                     </div>
                                 )}
                             </div>
-                            {imageUrl && <div className="h-56 w-full rounded-[2.5rem] overflow-hidden border border-white/5 relative shrink-0 shadow-2xl"><img src={imageUrl} className="w-full h-full object-cover opacity-60" /><div className="absolute inset-0 bg-linear-to-t from-black via-transparent" /><div className="absolute bottom-6 left-8"><p className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.4em] mb-2">Live Preview</p><h3 className="text-2xl font-black text-white tracking-tight">{editData.shape}</h3></div></div>}
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Status</label><select name="status" value={editData.status} onChange={handleEditChange} className={inp}>
-                                    <option value="Available">Available</option>
-                                    <option value="Acquisition">Acquisition</option>
-                                    <option value="Production">Production</option>
-                                    <option value="Acquired">Acquired</option>
-                                    <option value="Requested">Requested</option>
-                                    <option value="Paid">Paid</option>
-                                    <option value="Packed">Packed</option>
-                                    <option value="Shipped">Shipped</option>
-                                </select></div>
-                                <div><label className={lbl}>Vendor ID</label><select name="itemId" value={editData.itemId} onChange={handleEditChange} className={inp}>
-                                    <option value="" disabled>Select Vendor...</option>
-                                    {Object.keys(vendors).map(v => <option key={v} value={v}>{v}</option>)}
-                                </select></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Tag Number</label><input type="text" name="itemNumber" value={editData.itemNumber} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>Workbook</label><input type="text" name="workbook" value={editData.workbook} onChange={handleEditChange} className={inpNum} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Quantity</label><input type="number" min="1" step="1" name="quantity" value={editData.quantity} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>Unit Cost (MXN)</label><input type="number" step="0.01" name="price" value={editData.price} onChange={handleEditChange} className={inpNum} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Color Tone</label><input type="text" name="color" value={editData.color} onChange={handleEditChange} className={inp} /></div>
-                                <div><label className={lbl}>Composition</label><input type="text" name="material" value={editData.material} onChange={handleEditChange} className={inp} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div><label className={lbl}>Geometric Shape</label><input type="text" name="shape" value={editData.shape} onChange={handleEditChange} className={inp} /></div>
-                                <div><label className={lbl}>Product Category</label><input type="text" name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp} /></div>
-                            </div>
-                            <div><label className={lbl}>Manual Description</label><textarea name="description" value={editData.description} onChange={handleEditChange} rows={3} className={inp + " resize-none leading-relaxed"} /></div>
-                            <div><label className={lbl}>Generated Description (Gemini)</label><textarea name="generatedDescription" value={editData.generatedDescription} onChange={handleEditChange} rows={4} className={inp + " resize-none text-[12px] leading-relaxed"} /></div>
-                            <div><label className={lbl}>Detailed Description (HTML)</label><textarea name="detailedDescription" value={editData.detailedDescription} onChange={handleEditChange} rows={6} className={inp + " resize-none font-mono text-[11px] leading-relaxed"} /></div>
-                            <div className="grid grid-cols-4 gap-6">
-                                <div><label className={lbl}>Mass (kg)</label><input type="number" step="0.01" name="weightKg" value={editData.weightKg} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>W (cm)</label><input type="number" step="0.1" name="widthCm" value={editData.widthCm} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>H (cm)</label><input type="number" step="0.1" name="heightCm" value={editData.heightCm} onChange={handleEditChange} className={inpNum} /></div>
-                                <div><label className={lbl}>L (cm)</label><input type="number" step="0.1" name="lengthCm" value={editData.lengthCm} onChange={handleEditChange} className={inpNum} /></div>
-                            </div>
-
-                            <div className="pt-8 border-t border-white/10 flex gap-6">
-                                <button type="button" onClick={() => setMode('view')} className="button bg-white/5! border-none! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase opacity-40 hover:opacity-100 transition-all">Abort Changes</button>
-                                <button type="submit" disabled={isSaving} className="button bg-(--main-color)! text-black! grow py-5! text-[11px] font-black tracking-[0.3em] uppercase shadow-lg hover:scale-[1.02] active:scale-98 transition-all">{isSaving ? 'UPLOADING...' : 'SAVE MODULE'}</button>
+                            {/* 6. Form Actions */}
+                            <div className="pt-12 border-t border-white/5 flex gap-6">
+                                <button type="button" onClick={() => setMode('view')} className="flex-1 py-5 rounded-[24px] bg-white/5 text-[11px] font-black tracking-[0.3em] uppercase text-white/30 hover:text-white transition-all">Abort Changes</button>
+                                <button type="submit" disabled={isSaving} className="flex-[2] py-5 rounded-[24px] bg-(--main-color) text-black text-[11px] font-black tracking-[0.4em] uppercase shadow-[0_20px_50px_rgba(var(--main-color-rgb),0.3)] hover:scale-[1.02] active:scale-98 transition-all disabled:opacity-50">
+                                    {isSaving ? 'SYNCHRONIZING...' : 'COMMIT CHANGES'}
+                                </button>
                             </div>
                         </form>
                     </div>
