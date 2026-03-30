@@ -340,6 +340,7 @@ export type PaymentsArtifactConfig = {
   vendor?: string;
   date?: string;
   itemIds?: (string | number)[];
+  paymentIds?: string[];
   paymentType?: string;
   destination?: string;
   status?: string;

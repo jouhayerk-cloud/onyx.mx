@@ -340,7 +340,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                             setPaymentsArtifactConfig({
                                                 isOpen: true,
                                                 title: `PAYMENT: ${calculated.bookBardcode || norm.id}`,
-                                                itemIds: [calculated.bookBardcode || norm.id]
+                                                itemIds: [calculated.bookBardcode || norm.id],
+                                                paymentIds: norm.payment_ids ? norm.payment_ids.split(',').map(id => id.trim()) : undefined
                                             });
                                         }
                                     }}

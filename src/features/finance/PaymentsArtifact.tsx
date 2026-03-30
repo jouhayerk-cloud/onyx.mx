@@ -69,8 +69,12 @@ export const PaymentsArtifact: React.FC = () => {
                 if (pay.status !== config.status) match = false;
             }
 
-            // Filter by Tag IDs (Related inventory)
-            if (config.itemIds && config.itemIds.length > 0) {
+            // Filter by Specific Payment IDs (High Accuracy)
+            if (config.paymentIds && config.paymentIds.length > 0) {
+                if (!config.paymentIds.includes(String(pay.id))) match = false;
+            } 
+            // Filter by Tag IDs (Legacy fallback or collection search)
+            else if (config.itemIds && config.itemIds.length > 0) {
                 const rawRelated = pay.related_inventory_ids || pay.related_ids || '';
                 const related = Array.isArray(rawRelated) 
                     ? rawRelated.map(s => String(s).trim())

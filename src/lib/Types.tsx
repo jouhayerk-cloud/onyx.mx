@@ -104,6 +104,7 @@ export interface InventoryItemData {
   rating?: number;
   book_barcode?: string;
   book_aq_code?: string;
+  payment_ids?: string;
 }
 
 export interface InventoryItem {
@@ -192,8 +193,9 @@ export interface FinanceRecord {
   status?: string;
   requested_by?: string;
   approved_by?: string;
-  sent_at?: string;
-  dispersed_at?: string;
+  itemIds?: (string | number)[];
+  paymentIds?: string[];
+  paymentType?: string;
   destination?: string;
   vendor_id?: string;
   related_ids?: string[];

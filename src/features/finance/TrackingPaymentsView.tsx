@@ -64,11 +64,25 @@ const appendExpense = async (payload: any, db: any) => {
     }).select();
     if (error) throw error;
     const finalData = data?.[0];
-    if (finalData && db) {
-        try {
-            await db.finance.insert(finalData);
-        } catch (e) {
-            console.error('Local finance insert failed', e);
+    if (finalData) {
+        // Also update related inventory items with the payment_id and internal status
+        if (idsToLink) {
+            const idList = idsToLink.split(',').map((id: string) => Number(id)).filter((id: number) => !isNaN(id));
+            if (idList.length > 0) {
+                // Bulk update inventory with new payment ID link
+                await supabase.from('inventory').update({
+                    payment_ids: finalData.id.toString(),
+                    pay_req: payload.status === 'Paid' ? 'true' : 'requested'
+                }).in('id', idList);
+            }
+        }
+
+        if (db) {
+            try {
+                await db.finance.insert(finalData);
+            } catch (e) {
+                console.error('Local finance insert failed', e);
+            }
         }
     }
     return data;
