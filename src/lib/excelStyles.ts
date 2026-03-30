@@ -8,8 +8,8 @@ export const EXCEL_STYLES = {
         tagid: { name: 'Arial', family: 2, size: 9, bold: true },
     },
     fills: {
-        header: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }, // Gray-800
-        zebra: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }, // Gray-50
+        header: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF1F2937' } }, // Gray-800
+        zebra: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFF9FAFB' } }, // Gray-50
     }
 };
 
@@ -40,4 +40,14 @@ export const getVendorColor = (vendorId: string): string => {
         return 'FF' + v.color.replace('#', '').toUpperCase();
     }
     return 'FF1F2937'; // Default header color
+};
+
+export const getContrastColor = (argb: string): string => {
+    // Expects FFRRGGBB
+    if (!argb || argb.length < 8) return 'FF000000';
+    const r = parseInt(argb.substring(2, 4), 16);
+    const g = parseInt(argb.substring(4, 6), 16);
+    const b = parseInt(argb.substring(6, 8), 16);
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luma < 128 ? 'FFFFFFFF' : 'FF000000';
 };

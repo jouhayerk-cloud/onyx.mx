@@ -3,7 +3,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom,
     financeSubTabAtom, paymentCategoryFilterAtom, liveExchangeRateAtom, inventoryAtom, logisticsDataAtom,
-    inventoryArtifactConfigAtom, currencyModeAtom
+    inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -88,6 +88,104 @@ const VendorDot = ({ vendorId, color, size = 'w-5 h-5', textSize = 'text-[8px]' 
     </span>
 );
 
+// ── Compact Financials Graph ──────────────────────────────────────
+const CompactFinancialsGraph = ({ 
+    metrics, currentExchangeRate, mode 
+}: { 
+    metrics: { 
+        mexTotal: number; 
+        expenses: number; 
+        acqValue: number; 
+        reqUnpaid: number; 
+        totalUnpaid: number; 
+    };
+    currentExchangeRate: number;
+    mode: 'USD' | 'MXN';
+}) => {
+    const max = metrics.mexTotal || 1;
+    const getPercent = (v: number) => (v / max) * 100;
+
+    const fmt = (v: number) => {
+        const value = mode === 'USD' ? v / currentExchangeRate : v;
+        if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+        if (value >= 1_000) return (value / 1_000).toFixed(0) + 'K';
+        return value.toFixed(0);
+    };
+
+    const datasets = [
+        { label: 'MEX TOTAL', val: metrics.mexTotal, color: 'var(--main-color)', glow: true },
+        { label: 'EXPENSES', val: metrics.expenses, color: '#6BCEBB' },
+        { label: 'ACQ VALUE', val: metrics.acqValue, color: '#34d399' },
+        { label: 'REQ UNPAID', val: metrics.reqUnpaid, color: '#fbbf24' },
+        { label: 'TOTAL UNPAID', val: metrics.totalUnpaid, color: '#f43f5e' },
+    ];
+
+    return (
+        <div className="flex flex-col gap-2 mt-1 min-w-[280px]">
+            {/* Multi-Bar Graph */}
+            <div className="h-6 w-full flex flex-col gap-[2px]">
+                {datasets.map((d, i) => (
+                    <div key={d.label} className="group/bar relative h-[2.5px] w-full bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full rounded-full transition-all duration-1000"
+                            style={{ 
+                                width: `${getPercent(d.val)}%`, 
+                                backgroundColor: d.color,
+                                boxShadow: d.glow ? `0 0 10px ${d.color}40` : 'none'
+                            }} 
+                        />
+                    </div>
+                ))}
+            </div>
+            
+            {/* Compact Amount Tags */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
+                {datasets.map(d => (
+                    <div key={d.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                        <div className="w-1 h-1 rounded-full" style={{ backgroundColor: d.color }} />
+                        <span className="text-[7.5px] font-black text-white/40 uppercase tracking-widest">{d.label}</span>
+                        <span className="text-[9px] font-mono font-black text-white/90">
+                            <span className="text-[7px] mr-0.5 opacity-40">{mode}</span>
+                            {fmt(d.val)}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// ── Large Crate Wireframe ──────────────────────────────────────
+const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number; color?: string }> = ({
+    w = 60, l = 60, h = 60, type = 'crate', size = 130, color = 'var(--main-color)'
+}) => {
+    const visH = type === 'pallet' ? 15 : h;
+    const maxDim = Math.max(w, l, visH, 1);
+    const scale  = (size * 0.33) / maxDim;
+    const dw = Math.round(w    * scale);
+    const dh = Math.round(visH * scale);
+    const depth = Math.round(l * scale * 0.4);
+    const svgW = dw + depth + 8, svgH = dh + depth + 8;
+    const x0 = 4, y0 = depth + 4, x1 = x0 + dw, y2 = y0 + dh;
+    const dx = depth, dy = -depth;
+    return (
+        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} style={{ filter: `drop-shadow(0 0 10px ${color})`, overflow: 'visible' }}>
+            <line x1={x0+dx} y1={y0+dy} x2={x0+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <line x1={x0+dx} y1={y0+dy} x2={x1+dx} y2={y0+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <line x1={x0+dx} y1={y2+dy} x2={x1+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
+            <polygon points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y0+dy} ${x1},${y0}`} fill="rgba(255,255,255,0.05)" stroke={color} strokeWidth="1" />
+            <polygon points={`${x1},${y0} ${x1+dx},${y0+dy} ${x1+dx},${y2+dy} ${x1},${y2}`} fill="rgba(255,255,255,0.02)" stroke={color} strokeWidth="1" />
+            <rect x={x0} y={y0} width={dw} height={dh} fill="rgba(255,255,255,0.04)" stroke={color} strokeWidth="1.2" />
+            {type !== 'pallet' && (
+                <>
+                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.3" />
+                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.3" />
+                </>
+            )}
+        </svg>
+    );
+};
+
 export const ClientOverview: React.FC = () => {
     const db = useDatabase();
     const exchangeRate = useAtomValue(exchangeRateAtom);
@@ -100,10 +198,11 @@ export const ClientOverview: React.FC = () => {
     const setFinanceSubTab = useSetAtom(financeSubTabAtom);
     const setPaymentCategoryFilter = useSetAtom(paymentCategoryFilterAtom);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
 
     const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
-    const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(false);
+    const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(true);
     const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
     const [isPaymentsCollapsed, setIsPaymentsCollapsed] = useState(false);
     const [isAnalysisCollapsed, setIsAnalysisCollapsed] = useState(false);
@@ -286,6 +385,19 @@ export const ClientOverview: React.FC = () => {
         const totalOpsMxn = Object.values(opsBreakdown).reduce((acc, c) => acc + c.mxn, 0);
         const packedItems = items.filter(i => (i.data as any).logisticsId || (i.data as any).logistics_id).reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0);
 
+        // Grouped Crates/Pallets
+        const groupedLogistics: Record<string, { type: string, w: number, h: number, l: number, count: number, packed: number }> = {};
+        logisticsData.forEach(d => {
+            const type = (d.type || 'crate').toLowerCase();
+            const w = d.width_cm || d.w || 0;
+            const h = d.height_cm || d.h || 0;
+            const l = d.length_cm || d.d || 0;
+            const key = `${type}-${w}-${h}-${l}`;
+            if (!groupedLogistics[key]) groupedLogistics[key] = { type, w, h, l, count: 0, packed: 0 };
+            groupedLogistics[key].count++;
+            if ((d.inventoryItems?.length || 0) > 0 || d.inventory_ids) groupedLogistics[key].packed++;
+        });
+
         return {
             totalItems: vendorSummaries.reduce((acc, v) => acc + v.itemCount, 0),
             totalAcqValueUsd,
@@ -300,10 +412,13 @@ export const ClientOverview: React.FC = () => {
             packedItems,
             logisticsDims: dims,
             totalCratesAndPallets: crates.length + pallets.length,
+            totalPallets: pallets.length,
+            totalCrates: crates.length,
             logisticsSpendMxn,
             logisticsSpendUsd,
             totalOpsUsd,
-            totalOpsMxn
+            totalOpsMxn,
+            groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count)
         };
     }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items]);
 
@@ -436,10 +551,21 @@ export const ClientOverview: React.FC = () => {
                                             icon={CreditCard} title="Expenses & Financials" color="#00AEEF" 
                                             onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
                                             compactSummary={
-                                                <div className="flex flex-wrap gap-1.5 items-center scale-90 origin-left">
-                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mr-1">MX Total:</span>
-                                                    <CurrencyTag type="USD" amount={totalPortfolioUsd} size="small" />
-                                                    <CurrencyTag type="MXN" amount={totalPortfolioMxn} className="opacity-40" size="small" />
+                                                <div 
+                                                    onClick={(e) => { e.stopPropagation(); setIsFinancialsCollapsed(false); }}
+                                                    className="animate-in fade-in duration-500 cursor-pointer"
+                                                >
+                                                    <CompactFinancialsGraph 
+                                                        mode={currencyMode}
+                                                        currentExchangeRate={currentExchangeRate}
+                                                        metrics={{
+                                                            mexTotal: totalPortfolioMxn,
+                                                            expenses: globalTotals.totalOpsMxn,
+                                                            acqValue: globalTotals.totalAcqValueUsd * currentExchangeRate,
+                                                            reqUnpaid: globalTotals.requestedUnpaidMxn,
+                                                            totalUnpaid: globalTotals.totalUnpaidMxn
+                                                        }}
+                                                    />
                                                 </div>
                                             }
                                         />
@@ -476,7 +602,19 @@ export const ClientOverview: React.FC = () => {
                                                         { label: 'Packing', v: opsBreakdown.Packing, color: '#fb7185', icon: Archive },
                                                         { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
                                                     ].map(c => (
-                                                        <div key={c.label} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (c.label !== 'EXPENSES') setPaymentCategoryFilter((c.v as any).tag); }}
+                                                        <div key={c.label} 
+                                                         onClick={() => { 
+                                                             if (c.label === 'TOTAL EXPENSES') {
+                                                                 setActiveView('finance'); 
+                                                                 setFinanceSubTab('payments');
+                                                             } else {
+                                                                 setPaymentsArtifactConfig({ 
+                                                                     isOpen: true, 
+                                                                     paymentType: (c.v as any).tag, 
+                                                                     title: `${c.label} Payments` 
+                                                                 }); 
+                                                             }
+                                                         }}
                                                          className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
                                                          >
                                                              {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
@@ -528,26 +666,85 @@ export const ClientOverview: React.FC = () => {
                             <SectionHeader 
                                 icon={Package} title="Storage & Logistics" color="#6BCEBB" 
                                 onToggle={() => setIsLogisticsCollapsed(!isLogisticsCollapsed)} isCollapsed={isLogisticsCollapsed}
-                                compactSummary={<div className="flex gap-3"><span className="text-[12px] font-black text-white">{globalTotals.packedItems} <span className="opacity-30 text-[8px] uppercase">Packed</span></span></div>}
-                            />
-                            {!isLogisticsCollapsed && (
-                                <div className="mt-2 animate-in fade-in duration-300">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="flex flex-col"><span className="text-[18px] font-black text-white leading-tight">{globalTotals.totalCratesAndPallets}</span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-0.5 whitespace-nowrap">Pallets & Crates</span></div>
-                                        <div className="flex flex-col"><span className="text-[18px] font-black text-white leading-tight">{globalTotals.packedCrates} <span className="text-[9px] opacity-20">/ {globalTotals.totalCratesAndPallets - globalTotals.packedCrates}</span></span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-0.5 whitespace-nowrap">Packed / Free</span></div>
-                                        <div className="flex flex-col col-span-2 pt-2">
-                                            <div className="flex items-center justify-between mb-1.5"><div className="flex flex-col leading-none"><span className="text-[18px] font-mono font-black text-white">{globalTotals.packedItems}</span><span className="text-[9px] font-black text-white/40 uppercase tracking-widest mt-1">Packed Items</span></div><div className="text-right"><span className="text-[13px] font-black text-(--main-color)">{Math.round((globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100)}%</span></div></div>
-                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} /></div>
+                                compactSummary={
+                                    <div className="flex flex-col gap-2 mt-1 min-w-[280px]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[12px] font-black text-white">{globalTotals.totalCratesAndPallets}</span>
+                                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Units</span>
+                                            </div>
+                                            <div className="h-3 w-px bg-white/10" />
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[12px] font-black text-(--main-color)">{globalTotals.packedCrates}</span>
+                                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Packed</span>
+                                            </div>
+                                            <div className="ml-auto flex gap-2">
+                                                <CurrencyTag type="USD" amount={globalTotals.logisticsSpendUsd} size="small" className="scale-90" />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-[3px] bg-white/5 rounded-full overflow-hidden flex">
+                                                <div 
+                                                    className="h-full bg-(--main-color) transition-all duration-1000 shadow-[0_0_8px_var(--main-color)]" 
+                                                    style={{ width: `${(globalTotals.packedCrates / Math.max(1, globalTotals.totalCratesAndPallets)) * 100}%` }} 
+                                                />
+                                            </div>
+                                            <span className="text-[9px] font-black font-mono text-(--main-color)">{Math.round((globalTotals.packedCrates / Math.max(1, globalTotals.totalCratesAndPallets)) * 100)}%</span>
                                         </div>
                                     </div>
-                                    <div className="mt-4 pt-3 border-t border-white/5 space-y-3">
-                                        <div>
-                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1">Active Sizes (cm)</span>
-                                            <p className="text-[11px] font-mono font-black text-white/60 truncate">{globalTotals.logisticsDims || 'Calculating...'}</p>
+                                }
+                            />
+                            {!isLogisticsCollapsed && (
+                                <div className="mt-4 animate-in fade-in duration-300 space-y-6">
+                                    {/* Crate/Pallet Types Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {globalTotals.groupedLogistics.map((g, idx) => (
+                                            <div key={idx} className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-(--main-color)/30 transition-all overflow-hidden">
+                                                <div className="absolute top-2 right-2 flex flex-col items-end">
+                                                    <span className="text-[14px] font-black text-white leading-none">{g.count}</span>
+                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5">Stock</span>
+                                                </div>
+                                                
+                                                <div className="flex justify-center py-2 mb-2 group-hover:scale-110 transition-transform duration-500">
+                                                    <LargeCrateWireframe 
+                                                        w={g.w} h={g.h} l={g.l} 
+                                                        type={g.type} 
+                                                        size={80} 
+                                                        color={g.packed === g.count ? 'var(--main-color)' : g.packed > 0 ? '#fbbf24' : '#6BCEBB'}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1 relative z-10">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{g.type}</span>
+                                                        <span className="text-[10px] font-mono font-black text-white/80">{g.w}x{g.h}x{g.l}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between pt-1">
+                                                        <span className="text-[8px] font-black text-white/20 uppercase italic">Packed: {g.packed}</span>
+                                                        <div className="flex-1 max-w-[40px] h-1 bg-white/5 rounded-full overflow-hidden ml-2">
+                                                            <div className="h-full bg-(--main-color)" style={{ width: `${(g.packed / g.count) * 100}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Detailed Logistics Stats */}
+                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+                                        <div className="flex flex-col p-3 rounded-xl bg-white/2 border border-white/5">
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Item Packing Fill</span>
+                                            <div className="flex items-end justify-between leading-none">
+                                                <span className="text-[22px] font-black font-mono text-white">{globalTotals.packedItems}</span>
+                                                <span className="text-[12px] font-black text-(--main-color)">{Math.round((globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100)}%</span>
+                                            </div>
+                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-3">
+                                                <div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} />
+                                            </div>
                                         </div>
-                                        <div className="pt-3 border-t border-white/5">
-                                            <span className="text-[9px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] block mb-2">Crates & Pallets Payments</span>
-                                            <div className="flex flex-wrap gap-2">
+                                        <div className="flex flex-col p-3 rounded-xl bg-white/2 border border-white/5">
+                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Logistics Investment</span>
+                                            <div className="space-y-2 mt-auto">
                                                 <CurrencyTag type="USD" amount={globalTotals.logisticsSpendUsd} />
                                                 <CurrencyTag type="MXN" amount={globalTotals.logisticsSpendMxn} className="opacity-40" />
                                             </div>
@@ -742,8 +939,44 @@ export const ClientOverview: React.FC = () => {
                         {!isAnalysisCollapsed && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
 
-                        {/* Units by Vendor - Horizontal Segmented Bar - FULL WIDTH */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2">
+                        {/* Acquisitions Concentration (Value) - Pie Chart - TOP */}
+                        <div className="flex flex-col col-span-1 border-b border-white/5 pb-10 mb-6">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-6">Acquisitions Concentration (Value)</span>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
+                                <div className="w-full sm:w-1/2 h-56">
+                                    <EChart option={pieChartOption} style={{ height: '100%' }} />
+                                </div>
+                                <div className="w-full sm:w-1/2 space-y-4 px-4 overflow-y-auto max-h-[220px] custom-scrollbar">
+                                    {vendorSummaries.slice(0, 8).map(v => (
+                                        <div key={v.vendorId} 
+                                            onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: v.vendorId, title: `${v.vendorId} Payments` })}
+                                            className="flex flex-col border-b border-white/2 pb-2 group cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded-md transition-all"
+                                        >
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
+                                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest group-hover:text-white/60">{v.vendorId}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[12px] font-mono font-black text-white/80">
+                                                        {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
+                                                    </span>
+                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                        {currencyMode}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Units by Vendor - Horizontal Segmented Bar - SECOND */}
+                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10 mb-6">
                             <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 ">Units Share by Vendor</span>
                             <div className="flex flex-col gap-4">
                                 <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5 border border-white/5">
@@ -770,38 +1003,8 @@ export const ClientOverview: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Value Distribution - Pie Chart */}
-                        <div className="flex flex-col col-span-1 pt-10 border-t border-white/5 mt-4">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-6">Acquisitions Concentration (Value)</span>
-                            <div className="flex items-center justify-between">
-                                <div className="w-1/2 h-56">
-                                    <EChart option={pieChartOption} style={{ height: '100%' }} />
-                                </div>
-                                <div className="w-1/2 space-y-4 px-4 overflow-y-auto max-h-[220px] custom-scrollbar">
-                                    {vendorSummaries.slice(0, 8).map(v => (
-                                        <div key={v.vendorId} className="flex flex-col border-b border-white/2 pb-2 group">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-[10px] font-black text-white/30 uppercase tracking-widest group-hover:text-white/60">{v.vendorId}</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[12px] font-mono font-black text-white/80">
-                                                        {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
-                                                    </span>
-                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                        {currencyMode}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                                <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Material & Color Analysis */}
-                        <div className="flex flex-col col-span-1 pt-10 border-t border-white/5 mt-4">
+                        <div className="flex flex-col col-span-1 mt-4">
                             <SectionHeader icon={Layers} title="Material + Color Attribution" color="#EF4444" />
                             <div className="mt-8 flex flex-col gap-6">
                                 <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/5">
@@ -835,7 +1038,7 @@ export const ClientOverview: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Shape + Description Analysis */}
+                        {/* Shape + Description Analysis Distribution */}
                         <div className="flex flex-col col-span-1 lg:col-span-2 pt-10 border-t border-white/5 mt-4">
                             <SectionHeader icon={Grid} title="Shape + Description Distribution" color="#818cf8" />
                             <div className="mt-8 flex flex-col lg:flex-row items-center gap-8">

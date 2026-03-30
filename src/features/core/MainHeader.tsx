@@ -39,6 +39,7 @@ import {
     paymentDestinationFilterAtom,
     liveExchangeRateAtom,
     currencyModeAtom,
+    logisticsDataAtom,
     storeSearchTermAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
@@ -59,7 +60,7 @@ import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
 import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import ExcelJS from 'exceljs';
-import { getStatusColor, getCategoryColor, getVendorColor, EXCEL_STYLES } from '../../lib/excelStyles';
+import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { getStatusClass } from '../inventory/UnifiedInventoryView';
@@ -525,6 +526,7 @@ export function MainHeader() {
 
     const inventory = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
+    const logisticsDocs = useAtomValue(logisticsDataAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRateValue = useAtomValue(liveExchangeRateAtom);
     const [isExporting, setIsExporting] = useState(false);
@@ -556,10 +558,10 @@ export function MainHeader() {
             summarySheet.columns = [
                 { header: 'SECTION', key: 'section', width: 20 },
                 { header: 'LABEL', key: 'label', width: 25 },
-                { header: 'TOTAL (MXN)', key: 'total_mxn', width: 18 },
-                { header: 'PAID (MXN)', key: 'paid_mxn', width: 18 },
-                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18 },
-                { header: 'TOTAL (USD)', key: 'total_usd', width: 18 }
+                { header: 'TOTAL (MXN)', key: 'total_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                { header: 'PAID (MXN)', key: 'paid_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                { header: 'TOTAL (USD)', key: 'total_usd', width: 18, style: { numFmt: '#,##0.00' } }
             ];
 
             // Apply Header Styling
@@ -608,9 +610,9 @@ export function MainHeader() {
                 { header: 'DESCRIPTION', key: 'description', width: 35 },
                 { header: 'CATEGORY', key: 'category', width: 15 },
                 { header: 'VENDOR', key: 'vendor', width: 10 },
-                { header: 'AMOUNT (MXN)', key: 'amount', width: 15 },
-                { header: 'COMMISSION (MXN)', key: 'commission', width: 15 },
-                { header: 'TOTAL (MXN)', key: 'total', width: 15 },
+                { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'COMMISSION (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0.00' } },
                 { header: 'STATUS', key: 'status', width: 12 },
                 { header: 'PAY DATE', key: 'pay_date', width: 12 },
                 { header: 'REFERENCE', key: 'reference', width: 20 }
@@ -641,13 +643,63 @@ export function MainHeader() {
                 row.getCell('status').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: statusColor } };
                 row.getCell('status').font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 
+                const vCode = r.vendor_id || '';
+                if (vCode) {
+                    const vColor = getVendorColor(vCode);
+                    const contrast = getContrastColor(vColor);
+                    row.getCell('vendor').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
+                    row.getCell('vendor').font = { bold: true, color: { argb: contrast } };
+                }
+                
                 const catColor = getCategoryColor(r.subcategory || r.category || '');
                 row.getCell('category').font = { color: { argb: catColor }, bold: true };
 
-                if (idx % 2 === 0) row.eachCell(c => { if (!c.fill.type) c.fill = EXCEL_STYLES.fills.zebra; });
+                if (idx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
             });
 
-            // 3. INVENTORY SHEETS (Vendor Split)
+            // 3. CRATES & PALLETS DATABASE SHEET
+            const cratesSheet = workbook.addWorksheet('Crates & Pallets');
+            cratesSheet.columns = [
+                { header: 'ID', key: 'id', width: 20 },
+                { header: 'TYPE', key: 'type', width: 12 },
+                { header: 'STATUS', key: 'status', width: 12 },
+                { header: 'DIMENSIONS (WxLxH)', key: 'dims', width: 25 },
+                { header: 'WEIGHT (KG)', key: 'weight', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'CONTENTS SUMMARY', key: 'contents', width: 45 },
+                { header: 'NOTES / DESC', key: 'description', width: 40 },
+                { header: 'QTY', key: 'quantity', width: 8 },
+                { header: 'COST (MXN)', key: 'cost_mxn', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'CREATED AT', key: 'date', width: 15 }
+            ];
+
+            cratesSheet.getRow(1).eachCell(cell => {
+                cell.font = EXCEL_STYLES.fonts.header;
+                cell.fill = EXCEL_STYLES.fills.header;
+                cell.alignment = { horizontal: 'center' };
+            });
+
+            const exportCrates = logisticsDocs.filter(d => 
+                ['crate', 'pallet'].includes((d.type || '').toLowerCase())
+            );
+
+            exportCrates.forEach((c, idx) => {
+                const row = cratesSheet.addRow({
+                    id: String(c.id || '').toUpperCase(),
+                    type: (c.type || 'Crate').toUpperCase(),
+                    status: (c.status || 'Empty').toUpperCase(),
+                    dims: `${c.width_cm || 0} x ${c.length_cm || 0} x ${c.height_cm || 0} CM`,
+                    weight: parseFloat(String(c.weight_kg || '0')) || 0,
+                    contents: c.contents_summary || '',
+                    description: c.description || '',
+                    quantity: parseInt(String(c.quantity || '1')) || 1,
+                    cost_mxn: parseFloat(String(c.cost_mxn || '0')) || 0,
+                    date: c.date ? new Date(c.date).toLocaleDateString() : ''
+                });
+
+                if (idx % 2 === 0) row.eachCell(cell => { if (!cell.fill?.type) cell.fill = EXCEL_STYLES.fills.zebra; });
+            });
+
+            // 4. INVENTORY SHEETS (Vendor Split)
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
                 return !EXCLUDED_STATUSES.has(status);
@@ -656,13 +708,20 @@ export function MainHeader() {
             const vendorGroups: Record<string, any[]> = {};
             exportItems.forEach(item => {
                 const d = item.data as any;
-                let vid = d.vendor_id || d.vendorId || 'Unknown';
+                // Proactively extract vendor from tag prefixes if direct field is missing
+                // Priority: explicit vendor_id > item.label > d.itemId > d.item_id > d.tag_id
+                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+                
+                let vid = prefixId || 'Unknown';
                 if (!vendorGroups[vid]) vendorGroups[vid] = [];
                 vendorGroups[vid].push(item);
             });
 
             Object.entries(vendorGroups).forEach(([vid, items]) => {
-                const ws = workbook.addWorksheet(vid.slice(0, 31));
+                const vConfig = vendors[vid as keyof typeof vendors];
+                const sheetName = vConfig?.name ? vConfig.name.slice(0, 31) : vid.slice(0, 31);
+                const ws = workbook.addWorksheet(sheetName);
                 const vColor = getVendorColor(vid);
 
                 ws.columns = [
@@ -670,11 +729,15 @@ export function MainHeader() {
                     { header: 'ITEM #', key: 'item_number', width: 10 },
                     { header: 'STATUS', key: 'status', width: 12 },
                     { header: 'PAY STATUS', key: 'pay_status', width: 12 },
-                    { header: 'DESCRIPTION', key: 'description', width: 40 },
+                    { header: 'SHAPE TYPE (DESC)', key: 'shape_type', width: 35 },
+                    { header: 'COLOR MAT.', key: 'color_mat', width: 20 },
+                    { header: 'WEIGHT', key: 'weight', width: 10 },
+                    { header: 'SIZES (L x W x H)', key: 'sizes', width: 25 },
                     { header: 'QTY', key: 'qty', width: 8 },
-                    { header: 'PRICE (MXN)', key: 'price', width: 15 },
-                    { header: 'RETAIL (USD)', key: 'retail', width: 15 },
-                    { header: 'WORKBOOK', key: 'workbook', width: 12 }
+                    { header: 'ACQ CODE', key: 'acq_code', width: 12 },
+                    { header: 'LND CODE', key: 'lnd_code', width: 12 },
+                    { header: 'LANDED (MXN)', key: 'landed', width: 15, style: { numFmt: '#,##0.00' } },
+                    { header: 'RETAIL (USD)', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } }
                 ];
 
                 ws.getRow(1).eachCell(cell => {
@@ -690,24 +753,39 @@ export function MainHeader() {
                     const payStatusClass = getStatusClass(norm, partialPayIds);
                     const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
 
+                    const sizes = [
+                        norm.lengthCm ? `L:${norm.lengthCm}` : '',
+                        norm.widthCm ? `W:${norm.widthCm}` : '',
+                        norm.heightCm ? `H:${norm.heightCm}` : '',
+                        norm.diameterCm ? `Ø:${norm.diameterCm}` : '',
+                        norm.interiorCm ? `Int:${norm.interiorCm}` : '',
+                        norm.dropCm ? `Drp:${norm.dropCm}` : ''
+                    ].filter(Boolean).join(' | ') || '-';
+
                     const row = ws.addRow({
                         tag_id: computed.bookBardcode,
                         item_number: d.item_number || d.itemNumber || '',
                         status: d.status || '',
                         pay_status: payStatus,
-                        description: d.description || d.short_description || '',
+                        shape_type: `${d.shape || ''} ${d.description || d.short_description || ''}`.trim(),
+                        color_mat: `${d.color || ''} ${d.material || ''}`.trim(),
+                        weight: d.weight_kg || d.weightKg || d.weight || '',
+                        sizes: sizes,
                         qty: parseFloat(String(d.quantity || '1')) || 1,
-                        price: parseFloat(String(d.price_mxn || d.price || '0')) || 0,
-                        retail: computed.bookRetail !== '-' ? Number(computed.bookRetail) : '',
-                        workbook: d.workbook || ''
+                        acq_code: computed.bookAqCode,
+                        lnd_code: computed.bookLandCode,
+                        landed: parseFloat(computed.bookLanded) || 0,
+                        retail: parseFloat(computed.bookRetail) || 0
                     });
 
                     // Styling Inventory row
-                    row.getCell('tag_id').font = { bold: true, color: { argb: vColor } };
+                    row.getCell('tag_id').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
+                    row.getCell('tag_id').font = { bold: true, color: { argb: getContrastColor(vColor) } };
+                    
                     const psColor = getStatusColor(payStatus);
                     row.getCell('pay_status').font = { color: { argb: psColor }, bold: true };
 
-                    if (idx % 2 === 0) row.eachCell(c => { if (!c.fill.type) c.fill = EXCEL_STYLES.fills.zebra; });
+                    if (idx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
                 });
             });
 
