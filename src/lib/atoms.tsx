@@ -214,13 +214,13 @@ export const isPaymentVendorFilterOpenAtom = atom<boolean>(false);
 export const isPaymentDestinationFilterOpenAtom = atom<boolean>(false);
 export const dispersalStatusFilterAtom = atom<'Requested' | 'Sent' | 'Dispersed' | 'All'>('All');
 export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
-export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('extended');
+export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('collapsed');
 export const liveExchangeRateAtom = atom<number | null>(null);
 export const financeSearchTermAtom = atom('');
 export type PaymentCategory = 'All' | 'ACQ' | 'PROD' | 'MONTHLY' | 'SPPL' | 'LABR' | 'PACK' | 'OPRT';
 export const paymentCategoryFilterAtom = atom<PaymentCategory>('All');
 export const isPaymentCategoryFilterOpenAtom = atom<boolean>(false);
-export const paymentFilterBarModeAtom = atom<'left' | 'right' | 'off'>('off');
+export const paymentFilterBarModeAtom = atom<'left' | 'right' | 'off'>('right');
 
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});
