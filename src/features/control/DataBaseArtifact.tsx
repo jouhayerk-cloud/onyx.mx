@@ -25,24 +25,27 @@ export function DataBaseArtifact() {
     const [inventory] = useAtom(inventoryAtom);
     const [storeInventory] = useAtom(storeInventoryAtom);
     
-    // Combine all unique records from both atoms
-    const allItems = useMemo(() => {
-        const combined = [...inventory, ...storeInventory];
-        const unique = new Map<string, any>();
-        combined.forEach(item => {
-            if (item.data && item.data.id) {
-                unique.set(item.data.id, item.data);
-            }
-        });
-        return Array.from(unique.values()) as DBItem[];
-    }, [inventory, storeInventory]);
-
     const [search, setSearch] = useState('');
     const [vendorFilter, setVendorFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<Partial<DBItem>>({});
     const [isSaving, setIsSaving] = useState<string | null>(null);
+
+    // Combine all unique records from both atoms
+    const allItems = useMemo(() => {
+        const combined = [...(inventory || []), ...(storeInventory || [])];
+        const unique = new Map<string, any>();
+        combined.forEach(item => {
+            const data = item?.data || item;
+            const id = data?.id || item?.id || item?.row;
+            if (data && id) {
+                unique.set(String(id), data);
+            }
+        });
+        return Array.from(unique.values()) as DBItem[];
+    }, [inventory, storeInventory]);
+
 
     const filteredItems = useMemo(() => {
         return allItems.filter(item => {
