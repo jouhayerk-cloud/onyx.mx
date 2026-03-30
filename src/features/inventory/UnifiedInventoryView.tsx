@@ -46,11 +46,11 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     const statusStr = String(item.status || item.item_status || '').toLowerCase();
     const dispStatus = String(item.dispersal_status || '').toLowerCase();
     
-    // 1. Highest priority: Paid/Dispersed (Terminal state)
-    if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
-    
-    // 2. Middle priority: Partial Payments (WIP)
+    // 1. Highest priority: Partial Payments (WIP) - Must check BEFORE Paid
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
+    
+    // 2. High priority: Paid/Dispersed (Terminal state)
+    if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
     
     // 3. Low priority: Requests (Initial state)
     if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
@@ -291,7 +291,11 @@ export const UnifiedInventoryView = () => {
     const partialPayIds = useMemo(() => {
         const ids = new Set<string>();
         financeDocs.forEach(d => { 
-            if (d.status === 'Paid' && d.description?.includes('%')) { 
+            const isPartial = String(d.status).toLowerCase().includes('partial') || 
+                             String(d.description).includes('%') || 
+                             String(d.status).toLowerCase().includes('requested') && String(d.description).toLowerCase().includes('partial');
+
+            if ((d.status === 'Paid' || d.status === 'Partial') && isPartial) { 
                 const rel = d.related_ids || d.related_inventory_ids || '';
                 let relArray: string[] = [];
                 if (Array.isArray(rel)) relArray = rel.map(id => String(id));
