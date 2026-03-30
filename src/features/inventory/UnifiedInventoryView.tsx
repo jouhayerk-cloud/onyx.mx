@@ -35,23 +35,12 @@ import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, 
 
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
-    
-    // Priority 1: Dynamic Partial from Finance Records
-    if (partialPayIds?.has(String(item.id))) return 'RED';
-
-    // Priority 2: Manual Partial (Legacy support)
-    if (payReqStr.includes('%')) return 'RED';
-
-    // Priority 3: Fully Paid
-    if (item.payDate || item.pay_date) return 'GREEN';
-
-    // Priority 4: Requested but not paid
-    if (payReqStr === 'true' || payReqStr === 'paid') return 'YELLOW';
-
+    if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
+    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid') return 'GREEN';
+    if (payReqStr === 'requested' || payReqStr === 'partial') return 'YELLOW';
     return null;
 };
-
-const lbl = "text-[9px] font-black uppercase tracking-widest text-white/30 block mb-1.5";
+const lbl = "text-[10px] font-bold text-white/30 uppercase tracking-wider mb-1";
 const inp = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-sm text-white placeholder-white/15 focus:outline-none focus:border-(--main-color)/50 focus:bg-white/[0.07] transition-all";
 const inpNum = inp + " font-mono text-center";
 
