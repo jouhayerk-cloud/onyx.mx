@@ -1065,14 +1065,13 @@ export const UnifiedInventoryView = () => {
         }, 0);
     }, [filteredItems]);
 
-    const filterRowsCount = [isVendorFilterOpen, isCategoryOpen, isMaterialOpen].filter(Boolean).length;
-    const paddingClass = filterRowsCount === 3 ? 'pt-[168px]' : filterRowsCount === 2 ? 'pt-[112px]' : filterRowsCount === 1 ? 'pt-14' : 'pt-0';
-
     return (
-        <div className={`flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0 transition-all duration-300 ${paddingClass}`}>
+        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
+
 
             {/* Glass Sub-Header - Redesigned for v1.54.0 */}
-            <div className={`sticky top-0 z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40 transition-all duration-300 ${filterRowsCount > 0 ? 'translate-y-0' : ''}`}>
+            <div className="z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
+
                 <div className="flex flex-col">
                     <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-0.5 leading-none">
                         Types
@@ -1134,10 +1133,10 @@ export const UnifiedInventoryView = () => {
                 </div>
             </div>
 
-            {/* Discovery Panels - Stacked (Absolute below sub-header) */}
+            {/* Discovery Panels - Flex Flow (Natural stacking) */}
             
             {/* 1. Vendor Discovery Panel */}
-            <div className={`absolute top-[52px] left-0 right-0 z-30 overflow-hidden transition-all duration-300 ${isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ease-in-out ${isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
                     <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Vendors</span>
                     <button
@@ -1165,8 +1164,7 @@ export const UnifiedInventoryView = () => {
             </div>
 
             {/* 2. Category Discovery Panel */}
-            <div className={`absolute left-0 right-0 z-20 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
-                 style={{ top: isVendorFilterOpen ? '108px' : '52px' }}>
+            <div className={`shrink-0 z-20 overflow-hidden transition-all duration-300 ease-in-out ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
                     <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Categories</span>
                     <button
@@ -1188,8 +1186,7 @@ export const UnifiedInventoryView = () => {
             </div>
 
             {/* 3. Material Discovery Panel */}
-            <div className={`absolute z-10 left-0 right-0 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
-                 style={{ top: (isVendorFilterOpen && isCategoryOpen) ? '164px' : (isVendorFilterOpen || isCategoryOpen) ? '108px' : '52px' }}>
+            <div className={`shrink-0 z-10 overflow-hidden transition-all duration-300 ease-in-out ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-md border-b border-white/5">
                     <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Materials</span>
                     <button
@@ -1209,6 +1206,7 @@ export const UnifiedInventoryView = () => {
                     ))}
                 </div>
             </div>
+
 
             {/* Sort Menu Panel (Vertical Deployable) */}
             <div className={`absolute top-[52px] right-6 z-100 w-48 overflow-hidden transition-all duration-500 ease-out ${isSortMenuOpen ? 'max-h-80 opacity-100 translate-y-0 translate-x-0' : 'max-h-0 opacity-0 -translate-y-4 translate-x-4 pointer-events-none'}`}>
@@ -1249,57 +1247,9 @@ export const UnifiedInventoryView = () => {
                 </div>
             </div>
 
-            {/* Category Discovery Panel (Horizontal Row) */}
-            <div className={`absolute top-[52px] left-0 right-0 z-30 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-sm border-b border-white/5">
-                    <button
-                        onClick={() => setCategoryFilter('All')}
-                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                    >
-                        All Categories
-                    </button>
-                    {activeCategories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setCategoryFilter(cat)}
-                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            {/* Items Area - Flex auto-fill height */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
 
-            {/* Material Discovery Panel (Horizontal Row) */}
-            <div className={`absolute z-30 left-0 right-0 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}
-                 style={{ top: isCategoryOpen ? '108px' : '52px' }}>
-                <div className="h-full flex items-center px-6 gap-2 overflow-x-auto no-scrollbar bg-black/20 backdrop-blur-sm border-b border-white/5">
-                    <button
-                        onClick={() => setMaterialFilter('All')}
-                        className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                    >
-                        All Materials
-                    </button>
-                    {activeMaterials.map(mat => (
-                        <button
-                            key={mat}
-                            onClick={() => setMaterialFilter(mat)}
-                            className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === mat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-                        >
-                            {mat}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="grow min-h-0 overflow-hidden relative z-20">
-                <div className="h-full overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth">
-                    {/* Ghost top padding for subheader overlap if needed, but sticky top-0 handles it if inside scroll div. 
-                        Wait, sticky top-0 in flex-col child only works if the flex-col itself isn't scrolling. 
-                        Moving sub-header INSIDE the scroll div below would achieve the 'show behind' effect better. 
-                        But the user said "at the right of Main and Cont", implying top bar area.
-                        Lets keep it at top, but with the glass effect.
-                    */}
                     <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
                         {isLoading ? (
                             <div className="col-span-full">
@@ -1327,7 +1277,6 @@ export const UnifiedInventoryView = () => {
                         )}
                     </div>
                 </div>
-            </div>
 
             {mode === 'edit' && editData && (
                 <div className="fixed inset-0 z-100 flex flex-col p-8 items-center justify-center animate-in fade-in zoom-in duration-300">
