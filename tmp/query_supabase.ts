@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -16,44 +15,27 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function main() {
-  console.log('--- Querying Supabase Schema & Samples ---');
+  const searchStatus = process.argv[2] || 'requested';
+  console.log(`--- Querying Inventory with status: ${searchStatus} ---`);
 
-  // 1. Check Inventory Schema/Samples
-  const { data: items, error: iErr } = await supabase
+  const { data, error } = await supabase
     .from('inventory')
-    .select('id, item_id, book_barcode, payment_ids, pay_req')
-    .limit(5);
+    .select('id, item_id, book_barcode, pay_req, pay_date, payment_ids')
+    .eq('pay_req', searchStatus)
+    .limit(10);
 
-  if (iErr) {
-    console.error('Inventory query error:', iErr.message);
+  if (error) {
+    console.error('Error:', error.message);
   } else {
-    console.log('\nInventory Sample Data:');
-    console.table(items);
-  }
-
-  // 2. Check Finance Samples
-  const { data: finance, error: fErr } = await supabase
-    .from('finance')
-    .select('id, category, subcategory, related_ids, related_inventory_ids')
-    .limit(5);
-
-  if (fErr) {
-    console.error('Finance query error:', fErr.message);
-  } else {
-    console.log('\nFinance Sample Data:');
-    console.table(finance);
-  }
-
-  // 3. Try to find the "Production" subcategory in finance
-  const { data: prodFinance, error: pErr } = await supabase
-    .from('finance')
-    .select('id, subcategory, category')
-    .ilike('subcategory', '%prod%')
-    .limit(5);
-
-  if (!pErr) {
-    console.log('\nProduction Finance Records:');
-    console.table(prodFinance);
+    if (data && data.length > 0) {
+      console.table(data);
+    } else {
+      console.log('No records found with this status.');
+      
+      console.log('\nChecking all non-null pay_req values:');
+      const { data: all } = await supabase.from('inventory').select('pay_req').not('pay_req', 'is', null).limit(10);
+      console.log(all);
+    }
   }
 }
 

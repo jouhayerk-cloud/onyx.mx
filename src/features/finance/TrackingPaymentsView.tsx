@@ -67,13 +67,20 @@ const appendExpense = async (payload: any, db: any) => {
     if (finalData) {
         // Also update related inventory items with the payment_id and internal status
         if (idsToLink) {
-            const idList = idsToLink.split(',').map((id: string) => Number(id)).filter((id: number) => !isNaN(id));
+            const idStrs = idsToLink.split(',').map(s => s.trim());
+            const idList = idStrs.map(s => Number(s)).filter(n => !isNaN(n));
+            const barcodeList = idStrs.filter(s => isNaN(Number(s)));
+
+            const updatePayload = {
+                payment_ids: finalData.id.toString(),
+                pay_req: String(payload.status).toLowerCase() === 'paid' ? 'true' : 'requested'
+            };
+
             if (idList.length > 0) {
-                // Bulk update inventory with new payment ID link
-                await supabase.from('inventory').update({
-                    payment_ids: finalData.id.toString(),
-                    pay_req: payload.status === 'Paid' ? 'true' : 'requested'
-                }).in('id', idList);
+                await supabase.from('inventory').update(updatePayload).in('id', idList);
+            }
+            if (barcodeList.length > 0) {
+                await supabase.from('inventory').update(updatePayload).in('book_barcode', barcodeList);
             }
         }
 
