@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.54.1 (2026-03-30)
+- **Flexbox Header Flow [Refactor]**: Replaced absolute-positioned discovery panels with a robust Flexbox column structure to eliminate "rendering behind" artifacts.
+- **Dynamic Viewport Height**: Updated the items list to utilize `flex-1 min-h-0` for automatic scrolling area adjustment based on active filter rows.
+- **Syntax Stabilization**: Resolved structural JSX syntax issues from the v1.54.0 rollout.
+
 ## v1.54.0 (2026-03-30)
 - **Combinatorial Discovery Engine [Major]**: Replaced legacy inline buttons with auto-generated horizontal discovery rows for Categories (Shape+Type) and Materials (Color+Material).
 - **Top-Bar Navigation Overhaul**: Integrated discovery triggers and a glassmorphic Sort Menu directly into the sub-header.

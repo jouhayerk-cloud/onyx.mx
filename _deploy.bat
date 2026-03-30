@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.54.0: Modern Discovery & Combinatorial Filtering"
+git commit -m "v1.54.1: Flexbox Header Flow & Spacing Correction"
 git push origin main
 
 echo [2/3] Building production bundle...
