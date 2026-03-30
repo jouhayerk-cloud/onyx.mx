@@ -105,7 +105,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 8,
+    version: 9,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -162,6 +162,7 @@ const inventorySchema = {
         rating: { type: ['number', 'null'] },
         is_hidden: { type: ['boolean', 'null'] },
         hidden_reason: { type: ['string', 'null'] },
+        payment_ids: { type: ['string', 'null'] },
         updated_at: { type: ['string', 'null'] }
     }
 };
@@ -203,7 +204,7 @@ const createDatabase = async () => {
             inventory: {
                 schema: inventorySchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null,
                 }
             },
             finance: {

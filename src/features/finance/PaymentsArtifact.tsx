@@ -26,6 +26,18 @@ export const PaymentsArtifact: React.FC = () => {
         if (!config.isOpen) return [];
         
         return allPayments.filter(pay => {
+            // 1. Bypass Logic: If specific IDs are provided, prioritize them
+            if (config.paymentIds && config.paymentIds.length > 0) {
+                return config.paymentIds.includes(String(pay.id));
+            }
+            if (config.itemIds && config.itemIds.length > 0) {
+                const rawRelated = pay.related_inventory_ids || pay.related_ids || '';
+                const related = Array.isArray(rawRelated) 
+                    ? rawRelated.map(s => String(s).trim())
+                    : String(rawRelated).split(',').map((s: string) => s.trim());
+                return config.itemIds.some(id => related.includes(String(id)));
+            }
+
             let match = true;
             
             // Filter by Vendor
@@ -39,7 +51,7 @@ export const PaymentsArtifact: React.FC = () => {
                 if (!String(pay.date).includes(config.date)) match = false;
             }
             
-            // Filter by Payment Type (Category mapping if needed, or status)
+            // Filter by Payment Type
             if (config.paymentType && config.paymentType !== 'All') {
                 const sub = (pay.subcategory || '').toLowerCase();
                 const cat = (pay.category || '').toLowerCase();
@@ -52,8 +64,7 @@ export const PaymentsArtifact: React.FC = () => {
                     else if (type === 'SPPL') typeMatch = sub.includes('suppl') || sub.includes('sppl');
                     else if (type === 'LABR') typeMatch = sub.includes('labr') || sub.includes('labor');
                     else if (type === 'PACK') typeMatch = sub.includes('pack');
-                    else if (type === 'OPRT') typeMatch = sub.includes('oprt') || sub.includes('operation');
-                    else if (type === 'ACQUISITION') typeMatch = sub.includes('acquisition') || cat === 'acquisition' || sub.includes('merch');
+                    else if (type === 'ACQUISITION') typeMatch = cat.includes('acquisition') || sub.includes('acquisition') || sub.includes('merch') || cat.includes('vendor') || sub.includes('vendor');
                 }
                 
                 if (!typeMatch) match = false;
@@ -67,19 +78,6 @@ export const PaymentsArtifact: React.FC = () => {
             // Filter by Status
             if (config.status && config.status !== 'All') {
                 if (pay.status !== config.status) match = false;
-            }
-
-            // Filter by Specific Payment IDs (High Accuracy)
-            if (config.paymentIds && config.paymentIds.length > 0) {
-                if (!config.paymentIds.includes(String(pay.id))) match = false;
-            } 
-            // Filter by Tag IDs (Legacy fallback or collection search)
-            else if (config.itemIds && config.itemIds.length > 0) {
-                const rawRelated = pay.related_inventory_ids || pay.related_ids || '';
-                const related = Array.isArray(rawRelated) 
-                    ? rawRelated.map(s => String(s).trim())
-                    : String(rawRelated).split(',').map((s: string) => s.trim());
-                if (!config.itemIds.some(id => related.includes(String(id)))) match = false;
             }
             
             return match;

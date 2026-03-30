@@ -134,11 +134,10 @@ const CompactFinancialsGraph = ({
         { label: 'MAGENTA (REQ EXP.)', val: metrics.reqExp, color: '#d946ef', width: reqExpWidth },
         { label: 'BLUE (PAID EXP.)', val: metrics.paidExp, color: '#3b82f6', width: paidExpWidth },
     ];
-
     return (
-        <div className={`flex flex-col gap-2 ${hideLegend ? (fullWidth ? 'w-full' : '') : 'mt-1 min-w-[340px]'}`}>
+        <div className={`flex flex-col ${hideLegend ? (fullWidth ? 'w-full' : '') : 'mt-1 min-w-[340px]'}`}>
             {/* Unified 5-Segment Stacked Bar */}
-            <div className={`relative ${fullWidth ? 'h-4 w-full' : (hideLegend ? 'h-3.5 w-[140px]' : 'h-5 w-full')} bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex`}>
+            <div className={`relative ${fullWidth ? 'h-6 w-full' : (hideLegend ? 'h-5 w-[140px]' : 'h-6 w-full')} bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex`}>
                 {sections.map((s, i) => (
                     s.width > 0 && (
                         <div 
@@ -151,10 +150,30 @@ const CompactFinancialsGraph = ({
                     )
                 ))}
             </div>
+
+            {/* Segment Tags Underneath */}
+            <div className="flex w-full mt-1.5 px-1">
+                {sections.map((s, i) => (
+                    s.width > 2 && (
+                        <div 
+                            key={`tag-${s.label}`}
+                            className="flex flex-col items-center justify-start overflow-hidden px-0.5"
+                            style={{ width: `${s.width}%` }}
+                        >
+                            <span 
+                                className="text-[7px] font-black uppercase tracking-tighter truncate w-full text-center leading-none opacity-80"
+                                style={{ color: s.color }}
+                            >
+                                {s.label.includes('(') ? s.label.match(/\((.*?)\)/)?.[1].replace('.', '') : s.label}
+                            </span>
+                        </div>
+                    )
+                ))}
+            </div>
             
             {/* Legend & Amount Tags */}
             {!hideLegend && (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 items-center mt-3 pt-2 border-t border-white/5">
                     {sections.map(s => (
                         <div key={s.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
                             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
@@ -406,9 +425,7 @@ export const ClientOverview: React.FC = () => {
             const sub = String(d.subcategory || '').toLowerCase();
             const cat = String(d.category || '').toLowerCase();
             const type = String(d.type || '').toLowerCase();
-            
-            // Merchandise: Acquisitions and Production
-            const isMerch = sub.includes('acq') || sub.includes('prod') || cat.includes('acquisition');
+            const isMerch = sub.includes('acq') || sub.includes('prod') || cat.includes('acquisition') || cat.includes('merchandise');
             
             // Expenses: Everything else (Operations, Monthly, Supplies, Labor, Packing...)
             const isExp = !isMerch && (type === 'expense' || sub.includes('month') || sub.includes('suppl') || sub.includes('sppl') || sub.includes('labr') || sub.includes('labor') || sub.includes('pack') || sub.includes('oprt') || sub.includes('operation'));
@@ -597,27 +614,7 @@ export const ClientOverview: React.FC = () => {
                                         <SectionHeader 
                                             icon={CreditCard} title="Expenses & Financials" color="#00AEEF" 
                                             onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
-                                            right={!isFinancialsCollapsed && (
-                                                <div 
-                                                    onClick={(e) => { e.stopPropagation(); }}
-                                                    className="animate-in fade-in slide-in-from-right-2 duration-500"
-                                                >
-                                                    <CompactFinancialsGraph 
-                                                        hideLegend={true}
-                                                        fullWidth={true}
-                                                        mode={currencyMode}
-                                                        currentExchangeRate={currentExchangeRate}
-                                                        metrics={{
-                                                            mexTotal: totalPortfolioMxn,
-                                                            paidAcq: globalTotals.paidAcqMxn,
-                                                            paidExp: globalTotals.paidExpMxn,
-                                                            reqMerch: globalTotals.reqMerchMxn,
-                                                            reqExp: globalTotals.reqExpMxn,
-                                                            pending: globalTotals.pendingToRequestMxn
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
+                                            right={null}
                                             compactSummary={
                                                 <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
                                                     {isFinancialsCollapsed && (
@@ -648,6 +645,22 @@ export const ClientOverview: React.FC = () => {
                                         />
                                         {!isFinancialsCollapsed && (
                                             <>
+                                              <div className="mt-4 mb-6 animate-in fade-in duration-500">
+                                                  <CompactFinancialsGraph 
+                                                      hideLegend={false}
+                                                      fullWidth={true}
+                                                      mode={currencyMode}
+                                                      currentExchangeRate={currentExchangeRate}
+                                                      metrics={{
+                                                          mexTotal: totalPortfolioMxn,
+                                                          paidAcq: globalTotals.paidAcqMxn,
+                                                          paidExp: globalTotals.paidExpMxn,
+                                                          reqMerch: globalTotals.reqMerchMxn,
+                                                          reqExp: globalTotals.reqExpMxn,
+                                                          pending: globalTotals.pendingToRequestMxn
+                                                      }}
+                                                  />
+                                              </div>
                                               <div className="mt-2 animate-in fade-in duration-300">
                                                  <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
                                                      <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
