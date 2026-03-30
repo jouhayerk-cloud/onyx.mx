@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.57.3 (2026-03-30)
+- **Financial Health Logic Pivot [Budget]**: Redefined 100% Health as the `START` budget baseline.
+- **Bonus Offset Integration**: `BONUS` is now deducted from `USED` expenses to calculate "Net Operational Spend."
+- **Dynamic Surplus States**: Introduced Cyan-coded (`#00e5ff`) indicators and labels for Surplus Health (>100%) and "Remarkable Surplus" status.
+- **Budget Overflow Warning**: Enhanced Red-coded pulsing alerts for cases where Net Spend exceeds the `START` baseline.
+
 ## v1.57.2 (2026-03-30)
 - **Financial Health Dashboard [New Section]**: Implemented a sectioned stacked bar graph in the Overview module to track budget (Start + Bonus) vs. actual operational spend.
 - **Tagging Logic Restoration**: Fixed a regression where items with "Requested" status were erroneously labeled as "NEW" after editing.

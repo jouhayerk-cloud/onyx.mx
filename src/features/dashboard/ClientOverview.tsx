@@ -194,18 +194,23 @@ const CompactFinancialsGraph = ({
 const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }: {
     start: number; bonus: number; used: number; currentExchangeRate: number; mode: 'USD' | 'MXN';
 }) => {
-    const total = start + bonus;
-    const startWidth = (start / (total || 1)) * 100;
-    const bonusWidth = (bonus / (total || 1)) * 100;
-    const usedPercent = Math.min((used / (total || 1)) * 100, 100);
-    const isOverflow = used > total;
+    const netUsed = used - bonus;
+    const consumedPercent = (netUsed / (start || 1)) * 100;
+    const healthPercent = 100 - consumedPercent;
+    
+    const isOverflow = netUsed > start;
+    const isSurplus = netUsed < 0;
 
     const fmt = (v: number) => {
         const val = mode === 'USD' ? v / currentExchangeRate : v;
-        if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
-        if (val >= 1_000) return (val / 1_000).toFixed(0) + 'K';
-        return val.toFixed(0);
+        const absVal = Math.abs(val);
+        const prefix = val < 0 ? '-' : '';
+        if (absVal >= 1_000_000) return prefix + (absVal / 1_000_000).toFixed(1) + 'M';
+        if (absVal >= 1_000) return prefix + (absVal / 1_000).toFixed(0) + 'K';
+        return prefix + absVal.toFixed(0);
     };
+
+    const healthColor = isOverflow ? '#ef4444' : isSurplus ? '#00e5ff' : '#8DC63F';
 
     return (
         <div className="flex flex-col gap-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -231,38 +236,46 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
             </div>
 
             <div className="relative h-10 w-full bg-white/5 rounded-2xl overflow-hidden border border-white/5 group/graph p-1.5 shadow-inner">
-                {/* Background segments (Start + Bonus) - Dimmed */}
-                <div className="absolute inset-1.5 flex rounded-xl overflow-hidden opacity-30 group-hover:opacity-40 transition-opacity">
-                    <div style={{ width: `${startWidth}%`, backgroundColor: '#00AEEF' }} className="h-full border-r border-white/10" />
-                    <div style={{ width: `${bonusWidth}%`, backgroundColor: '#8DC63F' }} className="h-full" />
+                {/* Baseline Bar (Start) - Dimmed */}
+                <div className="absolute inset-1.5 rounded-xl overflow-hidden opacity-10 transition-opacity">
+                    <div style={{ width: `100%`, backgroundColor: '#00AEEF' }} className="h-full" />
                 </div>
 
-                {/* Used Nested Indicator (Bright overlay) */}
+                {/* Net Health Indicator (Fills from right to represent 'Remaining') */}
                 <div 
-                    className={`absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.2)] ${isOverflow ? 'animate-pulse ring-1 ring-red-500' : ''}`}
-                    style={{ width: `calc(${usedPercent}% - 16px)`, backgroundColor: '#ef4444' }}
+                    className={`absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden ${isOverflow ? 'animate-pulse ring-1 ring-red-500' : ''}`}
+                    style={{ 
+                        width: `calc(${Math.min(Math.max(0, healthPercent), 100)}% - 16px)`, 
+                        backgroundColor: healthColor,
+                        boxShadow: `0 0 20px color-mix(in srgb, ${healthColor} 30%, transparent)`
+                    }}
                 >
                     <div className="absolute inset-0 bg-linear-to-r from-white/30 via-white/10 to-transparent" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.4),transparent)]" />
                 </div>
 
+                {/* Surplus/Overflow Extension (If Health > 100% or < 0%) */}
+                {isSurplus && (
+                     <div className="absolute inset-y-2 left-[calc(100%-14px)] w-4 bg-[#00e5ff] rounded-r-lg animate-pulse shadow-[0_0_15px_#00e5ff]" />
+                )}
+
                 {/* Glassmorphic Labels overlay */}
                 <div className="absolute inset-0 flex items-center justify-between px-6 pointer-events-none z-10">
                     <div className="flex flex-col">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Used</span>
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Net Spend</span>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-[12px] font-mono font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                                {fmt(used)}
+                            <span className={`text-[12px] font-mono font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${isOverflow ? 'text-red-400' : isSurplus ? 'text-[#00e5ff]' : 'text-white'}`}>
+                                {fmt(netUsed)}
                              </span>
                              <span className="text-[7px] font-black text-white/40">{mode}</span>
                         </div>
                     </div>
                     
                     <div className="flex flex-col items-end">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Target</span>
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Baseline (100%)</span>
                         <div className="flex items-baseline gap-1">
                              <span className="text-[12px] font-mono font-black text-white/80">
-                                {fmt(total)}
+                                {fmt(start)}
                              </span>
                              <span className="text-[7px] font-black text-white/20">{mode}</span>
                         </div>
@@ -272,8 +285,8 @@ const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }:
             
             {/* Health Status Text */}
             <div className="flex justify-center mt-1">
-                <span className={`text-[8px] font-black uppercase tracking-[0.3em] px-4 py-1 rounded-full border ${isOverflow ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-green-500/10 border-green-500/30 text-green-400'}`}>
-                    {isOverflow ? '!! BUDGET OVERFLOW !!' : 'STATUS: FINANCIAL HEALTH OPTIMAL'}
+                <span className={`text-[8px] font-black uppercase tracking-[0.3em] px-4 py-1 rounded-full border transition-colors ${isOverflow ? 'bg-red-500/10 border-red-500/30 text-red-400' : isSurplus ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-green-500/10 border-green-500/30 text-green-400'}`}>
+                    {isOverflow ? '!! BUDGET OVERFLOW !!' : isSurplus ? `!! REMARKABLE SURPLUS :: HEALTH ${Math.round(healthPercent)}% !!` : `STATUS: HEALTH OPTIMAL :: ${Math.round(healthPercent)}% ALIVE`}
                 </span>
             </div>
         </div>
