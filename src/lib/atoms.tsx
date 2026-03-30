@@ -154,9 +154,14 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process'>('activeView', 'inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid'>('inventoryStatusFilter', 'All');
+export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'New'>('inventoryStatusFilter', 'All');
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date');
 export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc');
+export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All');
+export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
+export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All');
+export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
+export const isInventorySortMenuOpenAtom = atom<boolean>(false);
 export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list'>('inventoryViewMode', 'list');
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
 export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates');
