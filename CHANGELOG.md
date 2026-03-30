@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.57.5 (2026-03-30)
+- **Inventory Filtering Refinement**: Restricted the Inventory module to display only **Acquisition** and **Production** items.
+- **Store Separation**: Automatically excluded **Available** items from the Inventory list to maintain separation between active procurement and store stock.
+- **"NEW" Status Definition**: Refined the `getStatusClass` logic to consistently label Acquisition/Production items without payment activity as **NEW**.
+- **GE Status Reversion**: Reverted 17 GE items to their original `Available` and `pay_req: null` states in Supabase.
+
 ## v1.57.4 (2026-03-30)
 - **Financial Health Visualization [Segmented Bar]**: Split the spend area into distinct **Net Spend** (Red) and **Bonus Offset** (Lime) segments.
 - **Improved Legend**: Updated the legend to explicitly identify the contribution of bonuses to the budget offset.

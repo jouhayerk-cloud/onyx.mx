@@ -49,8 +49,8 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
     if (payReqStr === 'requested' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
     if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
-    if (statusStr === 'production') return 'BLUE';
-    if (statusStr === 'acquired' || statusStr === 'acquisition' || statusStr === 'acquisitions') return 'PURPLE';
+    
+    // Items without payment activity default to null (displayed as 'NEW' in Inventory)
     return null;
 };
 
@@ -300,6 +300,9 @@ export const UnifiedInventoryView = () => {
     const filteredItems = useMemo(() => {
         const filtered = items.filter(item => {
             if (item.data.is_hidden) return false;
+            const statusStr = String(item.data.status || '').toLowerCase();
+            if (statusStr === 'available') return false;
+            
             const status = getStatusClass(item.data, partialPayIds);
             if (statusFilter !== 'All') {
                 if (statusFilter === 'Partial' && status !== 'RED') return false;
