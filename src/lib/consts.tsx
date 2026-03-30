@@ -15,29 +15,28 @@ export const colors = [
 ];
 
 export const vendors = {
-
-  R: { color: '#737104' }, // Ramses
-  M: { color: '#4f2068' }, // Martha
-
-  W: { color: '#e67e22' }, // Wayne
-  C: { color: '#d35400' }, // Chad
-
-  JM: { color: '#6BCEBB' },
-  EM: { color: '#00AEEF' },
-  CA: { color: '#85C1E9' },
-  AN: { color: '#FFED00' },
-  SU: { color: '#B19CD9' },
-  TE: { color: '#FFCB05' },
-  DH: { color: '#8DC63F' },
-  ML: { color: '#F9A17A' },
-  GE: { color: '#F7941D' },
-  FR: { color: '#F36F21' },
-  ET: { color: '#636466' },
-  AM: { color: '#800020' },
-  BT: { color: '#603913' },
-  RF: { color: '#00A591' },
-  GS: { color: '#D11C7E' },
-  CP: { color: '#A01E5D' },
+  R: { name: 'RAMSES', color: '#737104' },
+  M: { name: 'MARTHA', color: '#4f2068' },
+  W: { name: 'WAYNE', color: '#e67e22' },
+  C: { name: 'CHAD', color: '#d35400' },
+  JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
+  EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
+  CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
+  AN: { name: 'ANGEL CABRERA', color: '#FFED00' },
+  SU: { name: 'SUZANA', color: '#B19CD9' },
+  TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
+  DH: { name: 'DELFINO HERNANDEZ', color: '#8DC63F' },
+  ML: { name: 'MARIA LUISA', color: '#F9A17A' },
+  GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
+  FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
+  ET: { name: 'EDUARDO TELLEZ', color: '#636466' },
+  AM: { name: 'ALEJANDRO MEZA', color: '#800020' },
+  BT: { name: 'BERNARDO', color: '#603913' },
+  RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
+  GS: { name: 'GIFT STORE', color: '#D11C7E' },
+  CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
+  GM: { name: 'GEMA MARTIN', color: '#E6194B' },
+  MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
 };
 
 export const appUsers = {

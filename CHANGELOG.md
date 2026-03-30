@@ -1,3 +1,65 @@
+## [1.50.2] - 2026-03-30
+### Added
+- **PaymentsArtifact Overview Integration**:
+    - **Financials Contextual Auditing**: Clicking Category cards (Monthly, Supplies, Labor, Packing, Operations) now opens the global PaymentsArtifact overlay filtered by that specific category.
+    - **Vendor-Specific Drill-down**: Clicking any vendor row in the Acquisitions Concentration breakdown now launches the PaymentsArtifact filtered for that vendor.
+    - **Interactive UI**: Added hover states and cursor feedback for all new payment audit triggers.
+
+## [1.50.1] - 2026-03-30
+### Changed
+- **Storage & Logistics Visual Overhaul**:
+    - **Fleet Visualization**: Engineered a dynamic grid of crate/pallet types featuring isometric 3D wireframe icons scaled to actual dimensions.
+    - **Status Indicators**: Implemented color-coded wireframes (Green, Gold, Cyan) based on packing fill levels.
+    - **Data Density**: Upgraded the compact logistics summary to include total units, packed status, and interactive progress tracking.
+- **Global Distribution Analysis Reordering**:
+    - **Financial Prioritization**: Moved Acquisitions Concentration (Value) to the top of the analysis panel for immediate balance auditing.
+    - **Operational Secondary**: Moved Units Share by Vendor immediately below the value concentration.
+
+## [1.50.0] - 2026-03-30
+### Added
+- **Compact Financials Dashboard [major]**:
+    - **Multi-Segment Bar Graph**: Engineered a custom visualization for Mexico Total, Expenses, Acquisitions, and Unpaid amounts in a single compact bar.
+    - **Default Entry State**: Updated the Overview module to load in "Compact Mode" by default for faster auditing.
+    - **Interaction Design**: Integrated seamless click-to-expand transitions between compact and granular financial views.
+
+## [1.46.2] - 2026-03-29
+### Fixed
+- **XLSX Grouping & Ledger Cleanup**:
+    - **Inventory Sheets**: Fixed a critical bug where items were incorrectly grouped as "Unknown". Grouping now proactively extracts vendor prefixes from Tag IDs (e.g., "EM", "AN").
+    - **Ledger Cleanliness**: Removed the unrequested "TAG ID" column from the Finance Ledger to maintain report standards.
+    - **Syntax Integrity**: Resolved parsing errors in the master export loop.
+
+## [1.46.0] - 2026-03-29
+### Changed
+- **Studio Branding & Visual Clarity**:
+    - **Solid Contrast Fills**: Applied solid background fills to TAG ID and VENDOR cells using vendor-specific colors.
+    - **Contrast Logic**: Integrated automated font-color flipping (White vs. Black) based on background luminance for 100% legibility.
+    - **Descriptive Naming**: Renamed inventory worksheets from two-letter codes to full vendor names (e.g., "ESTEBAN").
+- **System Versioning**: Updated application to v1.46.2.
+
+## [1.45.0] - 2026-03-29
+### Added
+- **High-Density XLSX Export [feature]**:
+    - **Combined Attributes**: Refactored inventory sheets to merge Shape/Description and Color/Material for better spreadsheet scannability.
+    - **Physical Spec Consolidation**: Implemented a "SIZES" column that concatenates L x W x H and Diameter/Interior/Drop dimensions.
+    - **Precise Calculation Logic**: Integrated manual multipliers for financial reporting:
+        - **Landed Cost**: Cost * 1.4 (MXN).
+        - **Retail Pricing**: Cost * 12 (USD Book Rate).
+    - **Finance Precision**: Applied `# ,##0.00` number formatting to all monetary cells in Excel to prevent floating-point artifacts.
+- **Vendor Identity Branding**: Preserved per-vendor sheet segregation and color-coded TAG ID font styling.
+
+## [1.44.1] - 2026-03-29
+### Fixed
+- **XLSX Export Stability**: Resolved "Cannot read properties of undefined (reading 'type')" crash by implementing optional chaining for uninitialized cell fills during zebra-row styling.
+
+## [1.44.0] - 2026-03-29
+### Added
+- **Studio XLSX Overhaul [major]**:
+    - **ExcelJS Pipeline**: Transitioned from legacy `xlsx` to `exceljs` for high-fidelity spreadsheet generation with advanced styling.
+    - **Zebra Striping**: Implemented alternating row background colors for high-density financial ledgers.
+    - **Status Color-Coding**: Applied dynamic background fills to "Status" and "Pay Status" columns (Green, Yellow, Red).
+    - **Automatic Vendor Sheets**: Automated the split of inventory items into dedicated sheets per vendor.
+
 ## [1.43.3] - 2026-03-29
 ### Refined
 - **Finance UI Refinements [refactor]**:
@@ -743,7 +805,7 @@
 - **Background Containers:** Increased transparency across the app for a lighter, more modern feel
 
 ## v1.10.67
-- **Top Bar Refactor:** Removed Onyx logo, version count, inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
+- **Top Bar Refactor:** Removed Onyx logo, "version": "1.50.0", inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
 - **Search Bar:** Enhanced to full-width liquid glass style with responsive animations
 - **Sidebar:** Relocated Onyx logo and version tag to the bottom of the sidebar (expanded + compact modes)
 - **Dashboard:** Added "Lock Financial Info" toggle button to Admin Dashboard header
