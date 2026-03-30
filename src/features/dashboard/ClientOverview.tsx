@@ -94,10 +94,11 @@ const CompactFinancialsGraph = ({
 }: { 
     metrics: { 
         mexTotal: number; 
-        expenses: number; 
-        acqValue: number; 
-        reqUnpaid: number; 
-        totalUnpaid: number; 
+        paidAcq: number;
+        paidExp: number;
+        reqMerch: number;
+        reqExp: number;
+        pending: number;
     };
     currentExchangeRate: number;
     mode: 'USD' | 'MXN';
@@ -112,51 +113,46 @@ const CompactFinancialsGraph = ({
         return value.toFixed(0);
     };
 
-    const expWidth = getPercent(metrics.expenses);
-    const acqWidth = getPercent(metrics.acqValue);
-    const unpaidWidth = getPercent(metrics.totalUnpaid);
+    const paidExpWidth = getPercent(metrics.paidExp);
+    const paidAcqWidth = getPercent(metrics.paidAcq);
+    const reqExpWidth = getPercent(metrics.reqExp);
+    const reqMerchWidth = getPercent(metrics.reqMerch);
+    const pendingWidth = getPercent(metrics.pending);
+
+    const sections = [
+        { label: 'BLUE (PAID EXP.)', val: metrics.paidExp, color: '#3b82f6', width: paidExpWidth },
+        { label: 'GREEN (PAID ACQ.)', val: metrics.paidAcq, color: '#22c55e', width: paidAcqWidth },
+        { label: 'MAGENTA (REQ EXP.)', val: metrics.reqExp, color: '#d946ef', width: reqExpWidth },
+        { label: 'YELLOW (REQ MERCH.)', val: metrics.reqMerch, color: '#eab308', width: reqMerchWidth },
+        { label: 'RED (PENDING)', val: metrics.pending, color: '#ef4444', width: pendingWidth },
+    ];
 
     return (
-        <div className="flex flex-col gap-2 mt-1 min-w-[320px]">
-            {/* Unified Segmented Bar */}
-            <div className="relative h-5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                {/* Expenses Segment */}
-                <div 
-                    className="absolute inset-y-0 left-0 transition-all duration-1000 flex items-center justify-center overflow-hidden"
-                    style={{ width: `${expWidth}%`, backgroundColor: '#6BCEBB' }}
-                >
-                    <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
-                </div>
-
-                {/* Acquisitions Segment */}
-                <div 
-                    className="absolute inset-y-0 transition-all duration-1000 flex items-center justify-center overflow-hidden border-l border-white/20"
-                    style={{ left: `${expWidth}%`, width: `${acqWidth}%`, backgroundColor: '#34d399' }}
-                >
-                    <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
-                </div>
-
-                {/* Unpaid Overlay Indicator (Thinner nested bar) */}
-                <div 
-                    className="absolute bottom-0 left-0 h-[3px] bg-rose-500 transition-all duration-1000 shadow-[0_-2px_10px_rgba(244,63,94,0.4)] z-20"
-                    style={{ width: `${unpaidWidth}%` }}
-                />
+        <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
+            {/* Unified 5-Segment Stacked Bar */}
+            <div className="relative h-5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex">
+                {sections.map((s, i) => (
+                    s.width > 0 && (
+                        <div 
+                            key={s.label}
+                            className={`h-full transition-all duration-1000 relative overflow-hidden ${i > 0 ? 'border-l border-white/10' : ''}`}
+                            style={{ width: `${s.width}%`, backgroundColor: s.color }}
+                        >
+                            <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
+                        </div>
+                    )
+                ))}
             </div>
             
-            {/* Compact Amount Tags */}
+            {/* Legend & Amount Tags */}
             <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
-                {[
-                    { label: 'MEX TOTAL', val: metrics.mexTotal, color: 'var(--main-color)' },
-                    { label: 'EXPENSES', val: metrics.expenses, color: '#6BCEBB' },
-                    { label: 'ACQ VALUE', val: metrics.acqValue, color: '#34d399' },
-                    { label: 'TOTAL UNPAID', val: metrics.totalUnpaid, color: '#f43f5e' },
-                ].map(d => (
-                    <div key={d.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                        <div className="w-1 h-1 rounded-full" style={{ backgroundColor: d.color }} />
-                        <span className="text-[7.5px] font-black text-white/40 uppercase tracking-widest">{d.label}</span>
+                {sections.map(s => (
+                    <div key={s.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{s.label.split(' (')[0]}</span>
                         <span className="text-[9px] font-mono font-black text-white/90">
                             <span className="text-[7px] mr-1 opacity-40">{mode}</span>
-                            {fmt(d.val)}
+                            {fmt(s.val)}
                         </span>
                     </div>
                 ))}
@@ -393,6 +389,24 @@ export const ClientOverview: React.FC = () => {
 
         const totalOpsUsd = Object.values(opsBreakdown).reduce((acc, c) => acc + c.usd, 0);
         const totalOpsMxn = Object.values(opsBreakdown).reduce((acc, c) => acc + c.mxn, 0);
+
+        // NEW: Specific Pillars for Stacked Bar (RGB Red Green Blue Yellow Magenta Mapping)
+        let paidAcqMxn = 0, paidExpMxn = 0, reqMerchMxn = 0, reqExpMxn = 0;
+        financeData.forEach(d => {
+            const isAcq = (d.category === 'Vendor Payment' || d.category === 'Acquisition');
+            const isExp = (d.type === 'Expense');
+            const amtMxn = (d.amount || 0) + (d.commission || 0);
+            const isPaid = d.status === 'Paid';
+
+            if (isPaid) {
+                if (isAcq) paidAcqMxn += amtMxn;
+                else if (isExp) paidExpMxn += amtMxn;
+            } else {
+                if (isAcq) reqMerchMxn += amtMxn;
+                else if (isExp) reqExpMxn += amtMxn;
+            }
+        });
+
         const packedItems = items.filter(i => (i.data as any).logisticsId || (i.data as any).logistics_id).reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0);
 
         // Grouped Crates/Pallets
@@ -428,9 +442,14 @@ export const ClientOverview: React.FC = () => {
             logisticsSpendUsd,
             totalOpsUsd,
             totalOpsMxn,
+            paidAcqMxn,
+            paidExpMxn,
+            reqMerchMxn,
+            reqExpMxn,
+            totalLiabilityMxn: (requestedUnpaidMxn + pendingToRequestMxn),
             groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count)
         };
-    }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items]);
+    }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items, financeData]);
 
     const attributeStats = useMemo(() => {
         const colorMatMap: Record<string, number> = {};
@@ -570,10 +589,11 @@ export const ClientOverview: React.FC = () => {
                                                         currentExchangeRate={currentExchangeRate}
                                                         metrics={{
                                                             mexTotal: totalPortfolioMxn,
-                                                            expenses: globalTotals.totalOpsMxn,
-                                                            acqValue: globalTotals.totalAcqValueUsd * currentExchangeRate,
-                                                            reqUnpaid: globalTotals.requestedUnpaidMxn,
-                                                            totalUnpaid: globalTotals.totalUnpaidMxn
+                                                            paidAcq: globalTotals.paidAcqMxn,
+                                                            paidExp: globalTotals.paidExpMxn,
+                                                            reqMerch: globalTotals.reqMerchMxn,
+                                                            reqExp: globalTotals.reqExpMxn,
+                                                            pending: globalTotals.totalLiabilityMxn
                                                         }}
                                                     />
                                                 </div>
@@ -643,9 +663,9 @@ export const ClientOverview: React.FC = () => {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-3 border-t border-white/5">
                                                     {[
                                                         { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers, size: 'text-[22px]', action: () => setArtifactConfig({ isOpen: true, itemIds: items.map(i => i.data.id), title: 'All Active Units' }) },
-                                                        { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true, size: 'text-[18px]' },
-                                                        { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true, size: 'text-[18px]' },
-                                                        { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true, size: 'text-[18px]' },
+                                                        { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, paymentType: 'ACQUISITION', title: 'Merchandise Acquisitions' }) },
+                                                        { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Requested Unpaid Payments' }) },
+                                                        { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Total Outstanding Liabilities' }) },
                                                     ].map(stat => (
                                                         <div key={stat.label} onClick={stat.action} className={`group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all ${stat.action ? 'cursor-pointer active:scale-95' : ''}`}>
                                                             <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity"><stat.icon size={18} style={{ color: stat.color }} /></div>
@@ -950,7 +970,7 @@ export const ClientOverview: React.FC = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
 
                         {/* Acquisitions Concentration (Value) - Pie Chart - TOP */}
-                        <div className="flex flex-col col-span-1 border-b border-white/5 pb-10 mb-6">
+                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10 mb-6">
                             <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-6">Acquisitions Concentration (Value)</span>
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
                                 <div className="w-full sm:w-1/2 h-56">
@@ -993,7 +1013,18 @@ export const ClientOverview: React.FC = () => {
                                     {vendorSummaries.map((v, idx) => {
                                         const share = (v.itemCount / globalTotals.totalItems) * 100;
                                         return (
-                                            <div key={v.vendorId} style={{ width: `${share}%`, backgroundColor: v.color }} className="h-full hover:brightness-125 transition-all cursor-pointer group relative">
+                                            <div key={v.vendorId} 
+                                                onClick={() => setArtifactConfig({ 
+                                                    isOpen: true, 
+                                                    itemIds: items.filter(i => {
+                                                        const norm = normalizeInventoryData(i.data);
+                                                        return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
+                                                    }).map(i => i.data.id),
+                                                    title: `Items for ${v.vendorId}`
+                                                })}
+                                                style={{ width: `${share}%`, backgroundColor: v.color }} 
+                                                className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
+                                            >
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
                                                     {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
                                                 </div>
@@ -1003,10 +1034,20 @@ export const ClientOverview: React.FC = () => {
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
                                     {vendorSummaries.map(v => (
-                                        <div key={v.vendorId} className="flex items-center gap-2 group cursor-crosshair">
+                                        <div key={v.vendorId} 
+                                            onClick={() => setArtifactConfig({ 
+                                                isOpen: true, 
+                                                itemIds: items.filter(i => {
+                                                    const norm = normalizeInventoryData(i.data);
+                                                    return (norm.vendorId || norm.vendor_id || '') === v.vendorId;
+                                                }).map(i => i.data.id),
+                                                title: `Items for ${v.vendorId}`
+                                            })}
+                                            className="flex items-center gap-2 group cursor-pointer hover:bg-white/5 p-1 rounded transition-all"
+                                        >
                                             <div className="w-2 h-2 rounded-sm group-hover:scale-125 transition-all shadow-lg shadow-black/40" style={{ backgroundColor: v.color }} />
-                                            <span className="text-[10px] font-black text-(--text-color) opacity-30 group-hover:opacity-80 uppercase tracking-widest truncate">{v.vendorId}</span>
-                                            <span className="text-[10px] font-mono font-black text-(--text-color) opacity-60 ml-auto">{v.itemCount}</span>
+                                            <span className="text-[10px] font-black text-(--text-color) opacity-30 group-hover:opacity-100 uppercase tracking-widest truncate">{v.vendorId}</span>
+                                            <span className="text-[10px] font-mono font-black text-(--text-color) opacity-60 ml-auto group-hover:opacity-100">{v.itemCount}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -1014,7 +1055,7 @@ export const ClientOverview: React.FC = () => {
                         </div>
 
                         {/* Material & Color Analysis */}
-                        <div className="flex flex-col col-span-1 mt-4">
+                        <div className="flex flex-col col-span-1 lg:col-span-2 mt-4">
                             <SectionHeader icon={Layers} title="Material + Color Attribution" color="#EF4444" />
                             <div className="mt-8 flex flex-col gap-6">
                                 <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/5">
@@ -1032,13 +1073,23 @@ export const ClientOverview: React.FC = () => {
                                     {attributeStats.topCM.slice(0, 8).map(([label, count], idx) => {
                                         const hue = (idx * 45) % 360;
                                         return (
-                                            <div key={label} className="flex flex-col group p-2 rounded bg-white/2 hover:bg-white/5 transition-all">
+                                            <div key={label} 
+                                                onClick={() => setArtifactConfig({ 
+                                                    isOpen: true, 
+                                                    itemIds: items.filter(i => {
+                                                        const norm = normalizeInventoryData(i.data);
+                                                        return `${norm.color || ''} ${norm.material || ''}`.trim() === label;
+                                                    }).map(i => i.data.id),
+                                                    title: `${label} Items`
+                                                })}
+                                                className="flex flex-col group p-2 rounded bg-white/2 hover:bg-(--main-color)/10 hover:border-(--main-color)/20 border border-transparent transition-all cursor-pointer"
+                                            >
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
-                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white/60">{label}</span>
+                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white">{label}</span>
                                                 </div>
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-[14px] font-mono font-black text-white/20 group-hover:text-white/80 transition-colors">{count}</span>
+                                                    <span className="text-[14px] font-mono font-black text-white/20 group-hover:text-(--main-color) transition-colors">{count}</span>
                                                     <span className="text-[8px] font-black text-white/10 uppercase">Units</span>
                                                 </div>
                                             </div>
@@ -1064,11 +1115,22 @@ export const ClientOverview: React.FC = () => {
                                         const share = (count / globalTotals.totalItems) * 100;
                                         const hue = (idx * 37) % 360;
                                         return (
-                                            <div key={label} className="flex flex-col border-b border-white/2 pb-2 group hover:bg-white/5 transition-all p-1 rounded">
+                                            <div key={label} 
+                                                onClick={() => setArtifactConfig({ 
+                                                    isOpen: true, 
+                                                    itemIds: items.filter(i => {
+                                                        const norm = normalizeInventoryData(i.data);
+                                                        const desc = norm.description || norm.shortDescription || norm.name || '';
+                                                        return `${norm.shape || ''} - ${desc}`.trim() === label;
+                                                    }).map(i => i.data.id),
+                                                    title: `${label} Items`
+                                                })}
+                                                className="flex flex-col border-b border-white/2 pb-2 group hover:bg-(--main-color)/5 transition-all p-1 rounded cursor-pointer"
+                                            >
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
-                                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white/60 max-w-[150px]">{label}</span>
+                                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white max-w-[150px]">{label}</span>
                                                     </div>
                                                     <span className="text-[12px] font-mono font-black text-white/80">{count}</span>
                                                 </div>
@@ -1076,7 +1138,7 @@ export const ClientOverview: React.FC = () => {
                                                      <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
                                                         <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${share}%`, backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
                                                     </div>
-                                                    <span className="text-[8px] font-black text-white/20 uppercase w-8 text-right">{share.toFixed(1)}%</span>
+                                                    <span className="text-[8px] font-black text-white/20 uppercase w-8 text-right group-hover:text-(--main-color)">{share.toFixed(1)}%</span>
                                                 </div>
                                             </div>
                                         );
