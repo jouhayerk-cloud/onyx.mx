@@ -236,8 +236,8 @@ export const ClientOverview: React.FC = () => {
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
 
-    const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(true);
-    const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(true);
+    const [isLogisticsCollapsed, setIsLogisticsCollapsed] = useState(false);
+    const [isFinancialsCollapsed, setIsFinancialsCollapsed] = useState(false);
     const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
     const [isPaymentsCollapsed, setIsPaymentsCollapsed] = useState(false);
     const [isAnalysisCollapsed, setIsAnalysisCollapsed] = useState(false);
@@ -272,7 +272,24 @@ export const ClientOverview: React.FC = () => {
         [allInventoryItems]
     );
 
-    useEffect(() => { const t = setTimeout(() => setIsLoading(false), 800); return () => clearTimeout(t); }, []);
+    useEffect(() => { 
+        // Initial Panel States based on screen size
+        const isSmall = typeof window !== 'undefined' && window.innerWidth <= 1024;
+        if (isSmall) {
+            setIsLogisticsCollapsed(true);
+            setIsFinancialsCollapsed(true);
+            setIsPaymentsCollapsed(true);
+        } else {
+            setIsLogisticsCollapsed(false);
+            setIsFinancialsCollapsed(false);
+            setIsPaymentsCollapsed(false);
+            setIsQueueCollapsed(false);
+            setIsAnalysisCollapsed(false);
+        }
+        const t = setTimeout(() => setIsLoading(false), 800); 
+        return () => clearTimeout(t); 
+    }, []);
+
 
     const vendorSummaries = useMemo<ClientVendorSummary[]>(() => {
         const map: Record<string, ClientVendorSummary> = {};
