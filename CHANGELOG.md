@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.55.0 (2026-03-30)
+- **Inventory UI Redesign [Layout]**: Replaced vertical absolute-positioned Sort and Filter menus with a consolidated horizontal button group in the top panel.
+- **Icon-Only Discovery**: Implemented visual-only triggers (Tag, Layers, Box) for Vendor, Category, and Material discovery panels to maximize screen space.
+- **Horizontal Sort Control**: Integrated Date, Status, Vendor, Category, and Material sorting into a single row, appearing conditionally on `isSortMenuOpen`.
+- **System Restoration**: Successfully recovered and stabilized the `UnifiedInventoryView.tsx` component logic after a structural regression.
+- **Global Deployment**: Published the v1.55.0 update to production.
+
 ## v1.54.2 (2026-03-30)
 - **Metadata Refinement [UI]**: Consolidated Color and Material into a unified 'COLOR + MATERIAL' tag across both List and Grid views.
 - **Title De-duplication**: Fixed an issue in the List view where redundant Type/Description text was displayed. Added logic to only show description if unique from the shape.

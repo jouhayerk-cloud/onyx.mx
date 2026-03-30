@@ -294,7 +294,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <button onClick={onToggleExpand} className="h-8 px-3 rounded-lg bg-white/5 text-white/60 text-[10px] font-black uppercase">Close</button>
                         </div>
                         <div className="h-64 bg-black relative">
-                            {imageUrl ? <img src={imageUrl} className="w-full h-full object-contain" onClick={()=>setShowViewer(true)} /> : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo size={48} /></div>}
+                            {imageUrl ? <img src={imageUrl} className="w-full h-full object-contain" onClick={()=>setShowViewer(true)} /> : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={48} height={48} /></div>}
                         </div>
                         <div className="p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
                             <div><h3 className="text-xl font-black text-white">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/30 uppercase tracking-[0.2em]">{norm.color} {norm.material}</p></div>
@@ -434,8 +434,8 @@ export const UnifiedInventoryView = () => {
                             <div className="flex items-center gap-3">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mr-1">Discovery</span>
                                 <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`p-2 rounded-xl transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40'}`}><Tag size={16} /></button>
-                                <button onClick={() => setIsCategoryOpen(!setIsCategoryOpen)} className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Layers size={16} /></button>
-                                <button onClick={() => setIsMaterialOpen(!setIsMaterialOpen)} className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Box size={16} /></button>
+                                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Layers size={16} /></button>
+                                <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Box size={16} /></button>
                             </div>
                         )}
                     </div>
@@ -444,9 +444,38 @@ export const UnifiedInventoryView = () => {
 
             <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 mr-4">Vendors</span>
-                    <button onClick={() => setVendorFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black' : 'bg-white/5 text-white/40'}`}>All</button>
-                    {activeVendors.map(v => <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${vendorFilter === v ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/50'}`} style={vendorFilter === v ? { backgroundColor: vendors[v as keyof typeof vendors]?.color || '#ccc' } : {}}>{v}</button>)}
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Vendors</span>
+                    <button onClick={() => setVendorFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black shadow-lg shadow-black/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    {activeVendors.map(v => {
+                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                        const isActive = vendorFilter === v;
+                        return (
+                            <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${isActive ? 'text-black border-transparent shadow-lg shadow-black/20' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                {v}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className={`shrink-0 z-20 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Categories</span>
+                    <button onClick={() => setCategoryFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-white text-black shadow-lg shadow-black/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    {activeCategories.map(cat => (
+                        <button key={cat} onClick={() => setCategoryFilter(cat)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${categoryFilter === cat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>{cat}</button>
+                    ))}
+                </div>
+            </div>
+
+            <div className={`shrink-0 z-10 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Materials</span>
+                    <button onClick={() => setMaterialFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-white text-black shadow-lg shadow-black/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    {activeMaterials.map(mat => (
+                        <button key={mat} onClick={() => setMaterialFilter(mat)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${materialFilter === mat ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>{mat}</button>
+                    ))}
                 </div>
             </div>
 
@@ -473,7 +502,7 @@ export const UnifiedInventoryView = () => {
                             <div className="flex flex-col gap-1.5"><label className={lbl}>Short Description</label><textarea name="shortDescription" value={editData.shortDescription} onChange={handleEditChange} className={inp + " h-20 resize-none"} /></div>
                             <div className="pt-8 flex gap-6">
                                 <button type="button" onClick={() => setMode('view')} className="flex-1 py-4 rounded-2xl bg-white/5 text-[11px] font-black tracking-widest uppercase text-white/30 hover:text-white">Abort</button>
-                                <button type="submit" disabled={isSaving} className="flex-[2] py-4 rounded-2xl bg-(--main-color) text-black text-[11px] font-black tracking-widest uppercase">{isSaving ? 'Syncing...' : 'Commit Changes'}</button>
+                                <button type="submit" disabled={isSaving} className="flex-2 py-4 rounded-2xl bg-(--main-color) text-black text-[11px] font-black tracking-widest uppercase">{isSaving ? 'Syncing...' : 'Commit Changes'}</button>
                             </div>
                         </form>
                     </div>
