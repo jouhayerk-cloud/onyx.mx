@@ -1,33 +1,33 @@
 # Changelog
 
-## [1.43.3] - 2026-03-29
-### Refined
-- **Finance UI Refinements [refactor]**:
-    - **Readability Upgrade**: Scaled up font sizes and padding across payment transaction rows and overview panels for improved data legibility.
-    - **Traceability Cleanup**: Removed redundant "Ledger" action from inventory item details to streamline navigation.
-    - **Export Consolidation**: Centralized "Export XLSX" functionality exclusively in the Overview module, removing it from Inventory and Finance modules.
-- **System Versioning**: Updated application to v1.43.3.
+## v1.57.0 (2026-03-30)
+- **Inventory Edit Redesign [Studio]**: Completely overhauled the Edit Panel to match the "Manual Entry Form" aesthetic.
+- **Visual Identity**: Integrated vendor selection bubbles and status tabs (Available, Production, Acquisition) for a more intuitive experience.
+- **Logistics & Financials**: Added dedicated sections for physical dimensions (W/H/D), weight (KG), and acquisition price (MXN).
+- **Core Restoration**: Reintroduced missing financial metrics (`LD Code`, `Landed USD`, `Retail USD`) and physical metrics (`Weight`) to list/grid views.
+- **Administrative Tools**: Implemented the "Hide Artifact" (Delete) button for authorized roles to manage inventory visibility without data loss.
 
-## [1.43.2] - 2026-03-29
-### Changed
-- **Inventory UI Gallery Fix**:
-    - **Chevron Placement**: Scaled down and repositioned gallery navigation icons in the List view to prevent overlapping with item details.
-    - **Visual Clarity**: Enhanced icon contrast with deep drop shadows for better visibility across various image backgrounds.
+## v1.56.0 (2026-03-30)
+- **Dashboard Panel Optimization [Layout]**: Implemented responsive panel behaviors based on screen size on load.
+- **Large Screen Maximization**: All modules (Logistics, Financials, Queue, Payments, Analysis) now load maximized on large screens (>1024px).
+- **Small Screen Minification**: "Expenses & Financials", "Storage & Logistics", and "Upcoming Payments" now auto-minimize on mobile and tablet views to improve usability.
 
-## [1.43.1] - 2026-03-29
-### Changed
-- **Inventory UI Modernization**:
-    - **Grid View Refinement**: Added dynamic, color-coded payment status borders and bubble indicators for immediate financial status awareness.
-    - **Minimalist Actions**: Removed containers and borders from Edit/Delete action icons, transitioning to a clean, free-floating "Studio" style.
-    - **UX: Click-to-Expand**: Enabled full-row clickability in the List View for deploying item details.
+## v1.55.1 (2026-03-30)
+- **Filter Bar Stabilization [Bug Fix]**: Resolved a critical issue where Category and Material discovery bars were failing to deploy.
+- **Toggle Logic Calibration**: Fixed boolean toggle errors in the `onClick` handlers for filter icons.
+- **UI Restoration**: Fully restored missing JSX components for multi-layered filter bars in the Inventory module.
 
-## [1.43.0] - 2026-03-28
-### Changed
-- **Top Bar Redesign**:
-    - **Studio Aesthetics**: Implemented a high-density "StudioAction" component for vertically stacked icon + text labels.
-    - **Deployable Search**: Search bars are now frameless and icon-triggered, maximizing space for module content.
-    - **Scalability**: Added responsive scaling to the top bar for better mobile usability.
-- **Sidebar Branding**:
-    - Moved the "Onyx.mx" brand tag closer to the icon and increased vertical padding for improved balance.
+## v1.55.0 (2026-03-30)
+- **Inventory UI Redesign [Layout]**: Replaced vertical absolute-positioned Sort and Filter menus with a consolidated horizontal button group in the top panel.
+- **Icon-Only Discovery**: Implemented visual-only triggers (Tag, Layers, Box) for Vendor, Category, and Material discovery panels to maximize screen space.
+- **Horizontal Sort Control**: Integrated Date, Status, Vendor, Category, and Material sorting into a single row, appearing conditionally on `isSortMenuOpen`.
+- **System Restoration**: Successfully recovered and stabilized the `UnifiedInventoryView.tsx` component logic after a structural regression.
+- **Global Deployment**: Published the v1.55.0 update to production.
+
+## v1.50.0 (2026-03-30)
+- **Compact Financials Dashboard [major]**:
+    - **Multi-Segment Bar Graph**: Engineered a custom visualization for Mexico Total, Expenses, Acquisitions, and Unpaid amounts in a single compact bar.
+    - **Default Entry State**: Updated the Overview module to load in "Compact Mode" by default for faster auditing.
+    - **Interaction Design**: Integrated seamless click-to-expand transitions between compact and granular financial views.
 
 ---
