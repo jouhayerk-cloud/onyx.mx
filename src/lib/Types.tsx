@@ -97,13 +97,14 @@ export interface InventoryItemData {
   bookAqCode?: string;
   box_land_code?: string;
   crate_id?: string;
-  dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   bank_account?: string;
   acquired_by?: string;
   id?: string;
   rating?: number;
   book_barcode?: string;
   book_aq_code?: string;
+  pay_req?: boolean | string;
+  dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   payment_ids?: string;
 }
 

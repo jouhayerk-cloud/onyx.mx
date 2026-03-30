@@ -105,7 +105,7 @@ const productionSchema = {
 
 const inventorySchema = {
     title: 'inventory schema',
-    version: 9,
+    version: 10,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -141,7 +141,7 @@ const inventorySchema = {
         spatial_boxes_3d: { type: ['array', 'null'], items: { type: 'object' } },
         invoice_id: { type: ['string', 'null'] },
         print_date: { type: ['string', 'null'] },
-        pay_req: { type: ['boolean', 'null'] },
+        pay_req: { type: ['string', 'boolean', 'null'] },
         pay_date: { type: ['string', 'null'] },
         sent_notes: { type: ['string', 'null'] },
         sent_pack: { type: ['string', 'null'] },
@@ -204,7 +204,7 @@ const createDatabase = async () => {
             inventory: {
                 schema: inventorySchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null, 5: () => null, 6: () => null, 7: () => null, 8: () => null, 9: () => null, 10: () => null,
                 }
             },
             finance: {
