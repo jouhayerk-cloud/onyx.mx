@@ -33,12 +33,14 @@ export const InventoryArtifact: React.FC = () => {
         const ids = new Set<string>();
         financeDocs.forEach(d => {
             if (d.status === 'Paid' && d.description?.includes('%')) {
-                const rel = d.related_ids || (d.related_inventory_ids ? d.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                const rel = d.related_ids || d.related_inventory_ids || '';
+                let relArray: string[] = [];
                 if (Array.isArray(rel)) {
-                    rel.forEach((id: string) => ids.add(String(id)));
-                } else if (typeof rel === 'string' && rel.includes(',')) {
-                    rel.split(',').forEach((id: string) => ids.add(id.trim()));
+                    relArray = rel.map(id => String(id));
+                } else if (typeof rel === 'string') {
+                    relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
                 }
+                relArray.forEach(id => ids.add(id));
             }
         });
         return ids;

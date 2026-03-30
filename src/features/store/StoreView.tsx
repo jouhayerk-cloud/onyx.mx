@@ -1014,7 +1014,7 @@ const ShoppingBagDrawer = ({ isOpen, onClose, items, onRemoveItem, onAcquireAll 
                         items.map((item, idx) => {
                             const n = normalizeInventoryData(item.data);
                             return (
-                                <div key={item.row || idx} className="flex gap-6 p-6 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-white/10 transition-all animate-in slide-in-from-right-4" style={{ animationDelay: `${idx * 50}ms` }}>
+                                <div key={item.row} className="p-3 bg-white/2 border border-white/5 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group flex flex-col gap-2" style={{ animationDelay: `${idx * 50}ms` }}>
                                     <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-black/40 border border-white/5">
                                         <img src={getCleanImageUrl(n.generatedPngUrl || (n.mediaUrls ? String(n.mediaUrls).split(',')[0] : ''))} className="w-full h-full object-cover" />
                                     </div>

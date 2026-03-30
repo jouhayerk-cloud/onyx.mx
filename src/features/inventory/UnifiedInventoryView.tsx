@@ -286,7 +286,15 @@ export const UnifiedInventoryView = () => {
 
     const partialPayIds = useMemo(() => {
         const ids = new Set<string>();
-        financeDocs.forEach(d => { if (d.status === 'Paid' && d.description?.includes('%')) { (d.related_ids || (d.related_inventory_ids ? d.related_inventory_ids.split(',') : [])).forEach((id:any)=>ids.add(String(id).trim())); } });
+        financeDocs.forEach(d => { 
+            if (d.status === 'Paid' && d.description?.includes('%')) { 
+                const rel = d.related_ids || d.related_inventory_ids || '';
+                let relArray: string[] = [];
+                if (Array.isArray(rel)) relArray = rel.map(id => String(id));
+                else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
+                relArray.forEach(id => ids.add(id));
+            } 
+        });
         return ids;
     }, [financeDocs]);
 
@@ -312,7 +320,16 @@ export const UnifiedInventoryView = () => {
                 if (statusFilter === 'Acquired' && status !== 'PURPLE') return false;
                 if (statusFilter === 'New' && status !== null) return false;
             }
-            const vPre = item.data.itemId?.split('-')[0] || '';
+            const itemIdStr = String(item.data.itemId || item.data.item_id || '');
+            let vPre = item.data.vendor_id || item.data.vendorId || '';
+            if (!vPre) {
+                if (itemIdStr.includes('-')) vPre = itemIdStr.split('-')[0];
+                else {
+                    const vKeys = Object.keys(vendors).sort((a,b) => b.length - a.length);
+                    const prefix = vKeys.find(v => itemIdStr.startsWith(v));
+                    if (prefix) vPre = prefix;
+                }
+            }
             if (user?.role === 'Vendor' && vPre !== user?.name) return false;
             if (vendorFilter !== 'All' && vPre !== vendorFilter) return false;
             const cat = `${item.data.shape || ''} ${item.data.shortDescription || ''}`.trim();

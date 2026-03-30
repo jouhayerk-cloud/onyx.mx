@@ -974,7 +974,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             toast.error(error.message);
         } else {
             try {
-                const idsStr = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
+                const rel = r.related_ids || r.related_inventory_ids || '';
+                const idsArray = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
+                const idsStr = idsArray; // Now it's an array, let's keep consistency in names below if needed
                 if (idsStr && idsStr.length > 0) {
                     const isCrate = r.subcategory === 'Packing';
                     if (isCrate) {
@@ -1522,8 +1524,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
                                                     </div>
                                                     {(() => {
-                                                        const rawIds = r.related_ids || (r.related_inventory_ids ? r.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                                                        const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                                        const rel = r.related_ids || r.related_inventory_ids || '';
+                                                        const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
+
                                                         if (ids.length === 0) return <span className="text-[10px] font-mono text-white/10 uppercase">No items linked</span>;
                                                         
                                                         return (

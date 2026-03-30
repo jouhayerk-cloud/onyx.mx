@@ -488,9 +488,12 @@ export function MainHeader() {
             const partialPayIds = new Set<string>();
             financeDocs.forEach(d => {
                 if (d.status === 'Paid' && d.description?.includes('%')) {
-                    const rel = d.related_ids || (d.related_inventory_ids ? d.related_inventory_ids.split(',').map((s: string) => s.trim()) : []);
-                    if (Array.isArray(rel)) rel.forEach((id: string) => partialPayIds.add(String(id)));
-                    else if (typeof rel === 'string' && rel.includes(',')) rel.split(',').forEach((id: string) => partialPayIds.add(id.trim()));
+                    const rel = d.related_ids || d.related_inventory_ids || '';
+                    if (Array.isArray(rel)) {
+                        rel.forEach((id: any) => partialPayIds.add(String(id)));
+                    } else if (typeof rel === 'string') {
+                        rel.split(',').map(s => s.trim()).filter(Boolean).forEach(id => partialPayIds.add(id));
+                    }
                 }
             });
 

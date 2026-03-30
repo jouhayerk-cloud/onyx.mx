@@ -366,8 +366,9 @@ export const ClientOverview: React.FC = () => {
             if (itemIdStr.includes('-')) {
                 vid = itemIdStr.split('-')[0];
             } else {
-                // Try to match against known prefixes (GE, EM, AN, etc.)
-                const prefix = Object.keys(vendors).find(v => itemIdStr.startsWith(v));
+                // Try to match against known prefixes (sorted by length descending to match longest)
+                const vKeys = Object.keys(vendors).sort((a,b) => b.length - a.length);
+                const prefix = vKeys.find(v => itemIdStr.startsWith(v));
                 if (prefix) vid = prefix;
             }
         }
@@ -593,7 +594,12 @@ export const ClientOverview: React.FC = () => {
 
         // 2. Fallback for Inventory Items marked 'Requested' but without finance records yet
         // We only count them if they are NOT already linked to a finance record to avoid double counting
-        const financeItemIds = new Set(financeData.flatMap(d => (d.related_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)));
+        const financeItemIds = new Set(financeData.flatMap(d => {
+            const rel = d.related_ids || d.related_inventory_ids || '';
+            if (Array.isArray(rel)) return rel.map(id => String(id));
+            if (typeof rel === 'string') return rel.split(',').map(s => s.trim()).filter(Boolean);
+            return [];
+        }));
         
         items.forEach(item => {
             const data = item.data;
@@ -726,7 +732,8 @@ export const ClientOverview: React.FC = () => {
                 if (localDoc) await localDoc.patch({ status: 'Paid' });
             }
             for (const req of destDocs) {
-                const ids = req.related_ids || req.related_inventory_ids?.split(',') || [];
+                const rel = req.related_ids || req.related_inventory_ids || '';
+                const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
                 if (ids.length > 0) {
                     const perc = req.description?.match(/(\d+)%/)?.[1];
                     await supabase.from('inventory').update({ pay_req: perc ? `paid ${perc}%` : true }).in('id', ids);
