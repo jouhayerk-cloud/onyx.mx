@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.54.1: Flexbox Header Flow & Spacing Correction"
+git commit -m "v1.54.2: Inventory Metadata Re-assignment & De-duplication"
 git push origin main
 
 echo [2/3] Building production bundle...

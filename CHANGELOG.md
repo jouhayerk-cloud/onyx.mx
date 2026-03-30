@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.54.2 (2026-03-30)
+- **Metadata Refinement [UI]**: Consolidated Color and Material into a unified 'COLOR + MATERIAL' tag across both List and Grid views.
+- **Title De-duplication**: Fixed an issue in the List view where redundant Type/Description text was displayed. Added logic to only show description if unique from the shape.
+
 ## v1.54.1 (2026-03-30)
 - **Flexbox Header Flow [Refactor]**: Replaced absolute-positioned discovery panels with a robust Flexbox column structure to eliminate "rendering behind" artifacts.
 - **Dynamic Viewport Height**: Updated the items list to utilize `flex-1 min-h-0` for automatic scrolling area adjustment based on active filter rows.
