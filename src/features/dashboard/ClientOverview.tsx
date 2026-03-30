@@ -403,16 +403,24 @@ export const ClientOverview: React.FC = () => {
         // NEW: Specific Pillars for Stacked Bar (RGB Red Green Blue Yellow Magenta Mapping)
         let paidAcqMxn = 0, paidExpMxn = 0, reqMerchMxn = 0, reqExpMxn = 0;
         financeData.forEach(d => {
-            const isAcq = (d.category === 'Vendor Payment' || d.category === 'Acquisition');
-            const isExp = (d.type === 'Expense');
+            const sub = String(d.subcategory || '').toLowerCase();
+            const cat = String(d.category || '').toLowerCase();
+            const type = String(d.type || '').toLowerCase();
+            
+            // Merchandise: Acquisitions and Production
+            const isMerch = sub.includes('acq') || sub.includes('prod') || cat.includes('acquisition');
+            
+            // Expenses: Everything else (Operations, Monthly, Supplies, Labor, Packing...)
+            const isExp = !isMerch && (type === 'expense' || sub.includes('month') || sub.includes('suppl') || sub.includes('sppl') || sub.includes('labr') || sub.includes('labor') || sub.includes('pack') || sub.includes('oprt') || sub.includes('operation'));
+
             const amtMxn = (d.amount || 0) + (d.commission || 0);
             const isPaid = d.status === 'Paid';
 
             if (isPaid) {
-                if (isAcq) paidAcqMxn += amtMxn;
+                if (isMerch) paidAcqMxn += amtMxn;
                 else if (isExp) paidExpMxn += amtMxn;
             } else {
-                if (isAcq) reqMerchMxn += amtMxn;
+                if (isMerch) reqMerchMxn += amtMxn;
                 else if (isExp) reqExpMxn += amtMxn;
             }
         });
@@ -596,6 +604,7 @@ export const ClientOverview: React.FC = () => {
                                                 >
                                                     <CompactFinancialsGraph 
                                                         hideLegend={true}
+                                                        fullWidth={true}
                                                         mode={currencyMode}
                                                         currentExchangeRate={currentExchangeRate}
                                                         metrics={{
@@ -604,7 +613,7 @@ export const ClientOverview: React.FC = () => {
                                                             paidExp: globalTotals.paidExpMxn,
                                                             reqMerch: globalTotals.reqMerchMxn,
                                                             reqExp: globalTotals.reqExpMxn,
-                                                            pending: globalTotals.totalLiabilityMxn
+                                                            pending: globalTotals.pendingToRequestMxn
                                                         }}
                                                     />
                                                 </div>
@@ -624,7 +633,7 @@ export const ClientOverview: React.FC = () => {
                                                                     paidExp: globalTotals.paidExpMxn,
                                                                     reqMerch: globalTotals.reqMerchMxn,
                                                                     reqExp: globalTotals.reqExpMxn,
-                                                                    pending: globalTotals.totalLiabilityMxn
+                                                                    pending: globalTotals.pendingToRequestMxn
                                                                 }}
                                                             />
                                                         </div>
