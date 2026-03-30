@@ -1351,17 +1351,6 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 );
                             })}
                         </div>
-
-                        {/* Global Ledger Action */}
-                        <div className="flex items-center gap-2 pr-2">
-                            <button 
-                                onClick={() => setPaymentsArtifactConfig({ isOpen: true, title: 'Global Financial Ledger' })}
-                                className="h-8 px-4 flex items-center gap-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 hover:border-sky-500/40 transition-all active:scale-95 group/ledger"
-                            >
-                                <Receipt size={14} className="group-hover/ledger:rotate-12 transition-transform" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Global Ledger</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -1373,17 +1362,17 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {(user?.role === 'Admin' || user?.role === 'Developer') && (
                         <button
                             onClick={() => setShowAdd(true)}
-                            className="w-full mb-2 flex items-center justify-center gap-4 py-4 px-6 rounded-[24px] border border-white/5 bg-white/5 hover:bg-(--main-color)/10 transition-all group relative overflow-hidden active:scale-95 duration-200"
+                            className="w-full mb-3 flex items-center justify-center gap-4 py-5 px-8 rounded-[32px] border border-(--main-color)/20 bg-(--main-color)/10 hover:bg-(--main-color)/20 transition-all group relative overflow-hidden active:scale-95 duration-200 shadow-lg shadow-(--main-color)/5"
                         >
-                            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/20 group-hover:border-(--main-color)/20 transition-all duration-300">
-                                <Plus className="w-6 h-6 text-white/40 group-hover:text-(--main-color) transition-colors" />
+                            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/30 group-hover:border-(--main-color)/30 transition-all duration-300">
+                                <Plus className="w-7 h-7 text-white/40 group-hover:text-(--main-color) transition-colors" />
                             </div>
                             <div className="text-left flex-1">
-                                <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/30 group-hover:text-white group-hover:opacity-100 transition-all">New Transaction</span>
-                                <span className="block text-[8px] font-bold text-white/10 uppercase tracking-widest mt-0.5 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
+                                <span className="block text-[11px] font-black uppercase tracking-[0.4em] text-white/30 group-hover:text-white transition-all">New Transaction</span>
+                                <span className="block text-[9px] font-bold text-white/10 uppercase tracking-widest mt-1 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
                             </div>
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Plus size={20} className="text-(--main-color) opacity-20" />
+                            <div className="opacity-0 group-hover:opacity-30 transition-opacity">
+                                <Plus size={24} className="text-(--main-color)" />
                             </div>
                         </button>
                     )}

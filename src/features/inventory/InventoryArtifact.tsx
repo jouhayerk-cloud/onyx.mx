@@ -1,16 +1,17 @@
 
 import React, { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useAtom, useAtomValue } from 'jotai/react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { 
     inventoryAtom, 
     inventoryArtifactConfigAtom, 
     exchangeRateAtom, 
     showFinancialsAtom,
     financeDataAtom,
-    currencyModeAtom
+    currencyModeAtom,
+    paymentsArtifactConfigAtom
 } from '../../lib/atoms';
-import { X, Package, ChevronRight } from 'lucide-react';
+import { X, Package, ChevronRight, Tag, ExternalLink } from 'lucide-react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { getStatusClass } from './UnifiedInventoryView';
@@ -18,6 +19,7 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const InventoryArtifact: React.FC = () => {
     const [config, setConfig] = useAtom(inventoryArtifactConfigAtom);
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const allItems = useAtomValue(inventoryAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
@@ -169,9 +171,9 @@ export const InventoryArtifact: React.FC = () => {
                                         </div>
 
                                         {/* Pay Status */}
-                                        {payStatus && (
-                                            <div className="hidden sm:flex flex-col min-w-[80px] shrink-0 items-end justify-center">
-                                                {(() => {
+                                        <div className="hidden sm:flex flex-col min-w-[80px] shrink-0 items-end justify-center">
+                                            {payStatus ? (
+                                                (() => {
                                                     const cfg: Record<'GREEN'|'YELLOW'|'RED', { label: string; color: string; bg: string }> = {
                                                         GREEN:  { label: 'Paid',      color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
                                                         YELLOW: { label: 'Requested', color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
@@ -179,15 +181,33 @@ export const InventoryArtifact: React.FC = () => {
                                                     };
                                                     const { label, color, bg } = cfg[payStatus];
                                                     return (
-                                                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest"
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                if (payStatus === 'GREEN' || payStatus === 'YELLOW') {
+                                                                    e.stopPropagation();
+                                                                    setPaymentsArtifactConfig({
+                                                                        isOpen: true,
+                                                                        title: `PAYMENT: ${calculated.bookBardcode || norm.id}`,
+                                                                        itemIds: [calculated.bookBardcode || norm.id]
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest transition-all ${
+                                                                payStatus === 'GREEN' || payStatus === 'YELLOW' ? 'cursor-pointer hover:scale-105 active:scale-95' : ''
+                                                            }`}
                                                             style={{ color, backgroundColor: bg }}>
                                                             <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
                                                             {label}
-                                                        </span>
+                                                        </button>
                                                     );
-                                                })()}
-                                            </div>
-                                        )}
+                                                })()
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit border border-[#38bdf8]/30 text-[#38bdf8] bg-[#38bdf8]/5 shadow-[0_0_10px_rgba(56,189,248,0.1)]">
+                                                    <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#38bdf8]" />
+                                                    New
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             );

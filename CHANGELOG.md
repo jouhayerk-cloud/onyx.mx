@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.52.1 (2026-03-30)
+- **Financial Header Graphs**: Integrated high-fidelity RGB stacked bar into the "Expenses & Financials" header for persistent visibility.
+- **Header Interactivity**: Enabled clicking the graph directly to expand/contract the financial detail view.
+- **Logistics Defaults**: Configured "Storage & Logistics" panel to load minimized (collapsed) by default.
+
 ## [1.52.0] - 2026-03-30
 ### Added
 - **Financial Redesign**: High-fidelity 5-segment RGB stacked bar graph for the Overview dashboard.
