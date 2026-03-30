@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.56.0 (2026-03-30)
+- **Dashboard Panel Optimization [Layout]**: Implemented responsive panel behaviors based on screen size on load.
+- **Large Screen Maximization**: All modules (Logistics, Financials, Queue, Payments, Analysis) now load maximized on large screens (>1024px).
+- **Small Screen Minification**: "Expenses & Financials", "Storage & Logistics", and "Upcoming Payments" now auto-minimize on mobile and tablet views to improve usability.
+
+## v1.55.1 (2026-03-30)
+
+- **Filter Bar Stabilization [Bug Fix]**: Resolved a critical issue where Category and Material discovery bars were failing to deploy.
+- **Toggle Logic Calibration**: Fixed boolean toggle errors in the `onClick` handlers for filter icons.
+- **UI Restoration**: Fully restored missing JSX components for multi-layered filter bars in the Inventory module.
+
 ## v1.55.0 (2026-03-30)
 - **Inventory UI Redesign [Layout]**: Replaced vertical absolute-positioned Sort and Filter menus with a consolidated horizontal button group in the top panel.
 - **Icon-Only Discovery**: Implemented visual-only triggers (Tag, Layers, Box) for Vendor, Category, and Material discovery panels to maximize screen space.
