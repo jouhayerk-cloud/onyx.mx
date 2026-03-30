@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.57.1 (2026-03-30)
+- **Tagging Precision [Engine]**: Enhanced `getStatusClass` logic to check both `pay_req` and `status` columns.
+- **Requested Status Fix**: Resolved regression where items were mislabeled as "New" after edits.
+- **Production Tagging**: Introduced dedicated Blue `Production` tag for items in progress.
+- **Workflow Sorting**: Updated "Status" sort sequence to prioritize financial urgency.
+
 ## v1.57.0 (2026-03-30)
 - **Inventory Edit Redesign [Studio]**: Completely overhauled the Edit Panel to match the "Manual Entry Form" aesthetic.
 - **Visual Identity**: Integrated vendor selection bubbles and status tabs (Available, Production, Acquisition) for a more intuitive experience.

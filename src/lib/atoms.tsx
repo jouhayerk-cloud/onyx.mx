@@ -154,7 +154,7 @@ export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
 export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process'>('activeView', 'inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'New'>('inventoryStatusFilter', 'All');
+export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'New'>('inventoryStatusFilter', 'All');
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date');
 export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc');
 export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All');
