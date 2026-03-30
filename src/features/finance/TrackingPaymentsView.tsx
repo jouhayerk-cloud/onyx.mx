@@ -821,8 +821,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
 
-            if (!vid && itemIdStr.includes('-')) {
-                vid = itemIdStr.split('-')[0];
+            if (!vid) {
+                if (itemIdStr.includes('-')) {
+                    vid = itemIdStr.split('-')[0];
+                } else {
+                    // Try to match against known prefixes (GE, EM, AN, etc.)
+                    const prefix = Object.keys(vendors).find(v => itemIdStr.startsWith(v));
+                    if (prefix) vid = prefix;
+                }
             }
 
             if (!vid) vid = 'Unknown';

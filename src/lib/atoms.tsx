@@ -308,6 +308,7 @@ export const notificationsAtom = atom<Notification[]>([]);
 
 // Top-bar deployable panel states
 export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false);
+export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false);
 export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false);
 export const isPaymentsSearchOpenAtom = atom<boolean>(false);
 export const isPaymentsDestFilterOpenAtom = atom<boolean>(false);

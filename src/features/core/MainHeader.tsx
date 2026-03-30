@@ -44,6 +44,8 @@ import {
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
+    isInventoryFiltersPanelOpenAtom,
+    isInventorySortMenuOpenAtom,
     financeSearchTermAtom,
     paymentVendorFilterAtom,
     isPaymentVendorFilterOpenAtom,
@@ -70,7 +72,8 @@ import {
     Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe, DollarSign,
-    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter
+    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter,
+    ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 declare const __APP_VERSION__: string;
@@ -246,12 +249,9 @@ const ShippingStats: React.FC = () => {
 
 const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
-    const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom);
-    const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom);
-    const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
-    const activeVendors = useAtomValue(activeVendorsAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
+    const [isSortOpen, setIsSortOpen] = useAtom(isInventorySortMenuOpenAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
-    const inventory = useAtomValue(inventoryAtom);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (
@@ -269,32 +269,22 @@ const InventoryBar: React.FC = () => {
                 {!isSearchOpen && (
                     <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
                         <StudioAction 
-                            icon={Tag} 
-                            label={vendorFilter === 'All' ? 'VENDOR' : vendorFilter}
-                            active={vendorFilter !== 'All'}
-                            onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)}
+                            icon={Filter} 
+                            label="FILTERS"
+                            active={isFiltersOpen}
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                             color="var(--color-inventory)"
                         />
 
                         <div className="w-px h-5 bg-white/5 mx-1" />
 
-                        <button
-                            className="flex flex-col items-center justify-center p-1 px-3 min-w-[48px] transition-all hover:scale-105"
-                            onClick={() => {
-                                const next: Record<string, 'All' | 'Partial' | 'Requested' | 'Paid'> = {
-                                    'All': 'Partial', 'Partial': 'Requested', 'Requested': 'Paid', 'Paid': 'All'
-                                };
-                                setStatusFilter(next[statusFilter] || 'All');
-                            }}
-                        >
-                            <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 ${
-                                statusFilter === 'All' ? '' :
-                                statusFilter === 'Partial' ? 'bg-red-500 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.4)]' :
-                                statusFilter === 'Requested' ? 'bg-yellow-500 border-yellow-500/50 shadow-[0_0_8px_rgba(245,158,11,0.4)]' :
-                                'bg-green-500 border-green-500/50 shadow-[0_0_8px_rgba(34,197,94,0.4)]'
-                            }`} />
-                            <span className="text-[7.5px] font-black tracking-widest opacity-60 mt-1.5">{statusFilter}</span>
-                        </button>
+                        <StudioAction 
+                            icon={ArrowUpDown} 
+                            label="SORT"
+                            active={isSortOpen}
+                            onClick={() => setIsSortOpen(!isSortOpen)}
+                            color="var(--color-inventory)"
+                        />
 
                         <div className="w-px h-5 bg-white/5 mx-1 hidden sm:block" />
 
