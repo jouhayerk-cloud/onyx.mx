@@ -112,40 +112,50 @@ const CompactFinancialsGraph = ({
         return value.toFixed(0);
     };
 
-    const datasets = [
-        { label: 'MEX TOTAL', val: metrics.mexTotal, color: 'var(--main-color)', glow: true },
-        { label: 'EXPENSES', val: metrics.expenses, color: '#6BCEBB' },
-        { label: 'ACQ VALUE', val: metrics.acqValue, color: '#34d399' },
-        { label: 'REQ UNPAID', val: metrics.reqUnpaid, color: '#fbbf24' },
-        { label: 'TOTAL UNPAID', val: metrics.totalUnpaid, color: '#f43f5e' },
-    ];
+    const expWidth = getPercent(metrics.expenses);
+    const acqWidth = getPercent(metrics.acqValue);
+    const unpaidWidth = getPercent(metrics.totalUnpaid);
 
     return (
-        <div className="flex flex-col gap-2 mt-1 min-w-[280px]">
-            {/* Multi-Bar Graph */}
-            <div className="h-6 w-full flex flex-col gap-[2px]">
-                {datasets.map((d, i) => (
-                    <div key={d.label} className="group/bar relative h-[2.5px] w-full bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                            className="h-full rounded-full transition-all duration-1000"
-                            style={{ 
-                                width: `${getPercent(d.val)}%`, 
-                                backgroundColor: d.color,
-                                boxShadow: d.glow ? `0 0 10px ${d.color}40` : 'none'
-                            }} 
-                        />
-                    </div>
-                ))}
+        <div className="flex flex-col gap-2 mt-1 min-w-[320px]">
+            {/* Unified Segmented Bar */}
+            <div className="relative h-5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                {/* Expenses Segment */}
+                <div 
+                    className="absolute inset-y-0 left-0 transition-all duration-1000 flex items-center justify-center overflow-hidden"
+                    style={{ width: `${expWidth}%`, backgroundColor: '#6BCEBB' }}
+                >
+                    <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
+                </div>
+
+                {/* Acquisitions Segment */}
+                <div 
+                    className="absolute inset-y-0 transition-all duration-1000 flex items-center justify-center overflow-hidden border-l border-white/20"
+                    style={{ left: `${expWidth}%`, width: `${acqWidth}%`, backgroundColor: '#34d399' }}
+                >
+                    <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
+                </div>
+
+                {/* Unpaid Overlay Indicator (Thinner nested bar) */}
+                <div 
+                    className="absolute bottom-0 left-0 h-[3px] bg-rose-500 transition-all duration-1000 shadow-[0_-2px_10px_rgba(244,63,94,0.4)] z-20"
+                    style={{ width: `${unpaidWidth}%` }}
+                />
             </div>
             
             {/* Compact Amount Tags */}
             <div className="flex flex-wrap gap-x-3 gap-y-1 items-center">
-                {datasets.map(d => (
+                {[
+                    { label: 'MEX TOTAL', val: metrics.mexTotal, color: 'var(--main-color)' },
+                    { label: 'EXPENSES', val: metrics.expenses, color: '#6BCEBB' },
+                    { label: 'ACQ VALUE', val: metrics.acqValue, color: '#34d399' },
+                    { label: 'TOTAL UNPAID', val: metrics.totalUnpaid, color: '#f43f5e' },
+                ].map(d => (
                     <div key={d.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
                         <div className="w-1 h-1 rounded-full" style={{ backgroundColor: d.color }} />
                         <span className="text-[7.5px] font-black text-white/40 uppercase tracking-widest">{d.label}</span>
                         <span className="text-[9px] font-mono font-black text-white/90">
-                            <span className="text-[7px] mr-0.5 opacity-40">{mode}</span>
+                            <span className="text-[7px] mr-1 opacity-40">{mode}</span>
                             {fmt(d.val)}
                         </span>
                     </div>

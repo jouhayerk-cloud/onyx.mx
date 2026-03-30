@@ -1,3 +1,13 @@
+## [1.51.0] - 2026-03-30
+### Added
+- **Unified Financial Portfolio Graph**:
+    - **Segmented Visualization**: Replaced the stack of individual horizontal bars in the Expenses & Financials panel with a single, high-fidelity segmented bar.
+    - **Liability Layer**: Integrated a nested red indicator at the bottom of the bar for Total Unpaid amounts, accurately scaled relative to the portfolio total.
+- **PaymentsArtifact Deep-Link Optimization**:
+    - **Categorical Hub Integration**: Clicking Overview category panels (Monthly, Labor, Supplies, etc.) now triggers the global PaymentsArtifact overlay with pre-filtered records.
+    - **Fuzzy Category Matching**: Implemented substring matching on lowercase subcategories (e.g., "Monthly" matches "mo-exp" or "Monthly Rent") to align dashboard analytics with actual payment data.
+    - **Vendor Calibration**: Fixed data mapping from shorthand tags to database `vendor_id` fields, ensuring vendor-specific audit overlays correctly display associated records.
+
 ## [1.50.2] - 2026-03-30
 ### Added
 - **PaymentsArtifact Overview Integration**:
