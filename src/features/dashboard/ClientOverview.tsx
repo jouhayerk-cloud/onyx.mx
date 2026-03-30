@@ -247,6 +247,22 @@ export const ClientOverview: React.FC = () => {
 
     const toggleDest = (k: string) => setExpandedDests(prev => ({ ...prev, [k]: !prev[k] }));
 
+    const getVendorIdFromItem = (data: any) => {
+        const itemIdStr = String(data.item_id || data.itemId || '');
+        let vid = data.vendor_id || data.vendorId;
+
+        if (!vid) {
+            if (itemIdStr.includes('-')) {
+                vid = itemIdStr.split('-')[0];
+            } else {
+                // Try to match against known prefixes (GE, EM, AN, etc.)
+                const prefix = Object.keys(vendors).find(v => itemIdStr.startsWith(v));
+                if (prefix) vid = prefix;
+            }
+        }
+        return vid || 'Unknown';
+    };
+
     const items = useMemo(() =>
         allInventoryItems.filter(i => !['Available', 'Avaiable', 'Catalog'].includes(i.data.status ?? '') && i.data.status !== 'Pending Deletion'),
         [allInventoryItems]
@@ -261,11 +277,11 @@ export const ClientOverview: React.FC = () => {
     const vendorSummaries = useMemo<ClientVendorSummary[]>(() => {
         const map: Record<string, ClientVendorSummary> = {};
         for (const item of items) {
-            const norm = item.data;
-            const vid = String(norm?.itemId || norm?.item_id || '').split('-')[0] || '?';
+            const data = item.data;
+            const vid = getVendorIdFromItem(data);
             if (!map[vid]) map[vid] = { vendorId: vid, color: (vendors as any)[vid]?.color || '#888', itemCount: 0, totalAcqMxn: 0, totalAcqUsd: 0 };
-            const price = parseFloat(String(norm?.price_mxn || norm?.price || 0));
-            const qty = parseInt(String(norm?.quantity || 1)) || 1;
+            const price = parseFloat(String(data?.price_mxn || data?.price || 0));
+            const qty = parseInt(String(data?.quantity || 1)) || 1;
             const totalPrice = price * qty;
             map[vid].itemCount += qty;
             map[vid].totalAcqMxn += totalPrice;
@@ -348,10 +364,14 @@ export const ClientOverview: React.FC = () => {
     }, [activeDestPendingRecords]);
 
     const pendingItems = useMemo(() => items.filter(i => {
-        const status = (i.data?.status || '').toLowerCase();
-        const payReqStr = String(i.data?.payReq || (i.data as any)?.pay_req || '').toLowerCase();
-        return ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status)
-            && payReqStr !== 'true' && payReqStr !== 'paid';
+        const data = i.data as any;
+        const status = (data?.status || data?.item_status || '').toLowerCase();
+        const payReqStr = String(data?.payReq || data?.pay_req || '').toLowerCase();
+        
+        // Exclude items already Requested or Paid
+        const isExcluded = payReqStr === 'true' || payReqStr === 'paid' || payReqStr === 'requested';
+        
+        return ['acquired', 'acquisition', 'acquisitions', 'production'].includes(status) && !isExcluded;
     }), [items]);
 
     const comingPaymentsByVendor = useMemo(() => {
@@ -359,14 +379,15 @@ export const ClientOverview: React.FC = () => {
         for (const item of pendingItems) {
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
-            let vid = data.vendor_id || data.vendorId;
-            if (!vid && itemIdStr.includes('-')) vid = itemIdStr.split('-')[0];
-            if (!vid) vid = 'Unknown';
+            const vid = getVendorIdFromItem(data);
+
             if (!groups[vid]) groups[vid] = { total: 0, totalPaid: 0, totalPossible:0, partials: [] };
+            
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseInt(String(data.quantity || '1')) || 1;
             const itemTotal = price * qty;
             const payReqStr = String(data.payReq || (data as any).pay_req || '').toLowerCase();
+
             if (payReqStr.includes('%')) {
                 const match = payReqStr.match(/(\d+)%/);
                 if (match) { 
