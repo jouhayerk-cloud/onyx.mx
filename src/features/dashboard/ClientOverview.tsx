@@ -190,6 +190,96 @@ const CompactFinancialsGraph = ({
     );
 };
 
+// ── Financial Health Graph (Sectioned Stacked Bar) ────────────────
+const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }: {
+    start: number; bonus: number; used: number; currentExchangeRate: number; mode: 'USD' | 'MXN';
+}) => {
+    const total = start + bonus;
+    const startWidth = (start / (total || 1)) * 100;
+    const bonusWidth = (bonus / (total || 1)) * 100;
+    const usedPercent = Math.min((used / (total || 1)) * 100, 100);
+    const isOverflow = used > total;
+
+    const fmt = (v: number) => {
+        const val = mode === 'USD' ? v / currentExchangeRate : v;
+        if (val >= 1_000_000) return (val / 1_000_000).toFixed(1) + 'M';
+        if (val >= 1_000) return (val / 1_000).toFixed(0) + 'K';
+        return val.toFixed(0);
+    };
+
+    return (
+        <div className="flex flex-col gap-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="flex justify-between items-end px-1.5">
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) opacity-80">Financial Health</span>
+                    <span className="text-[8px] font-mono font-black text-white/20 uppercase tracking-widest mt-0.5">Budgeted vs Operational Spend</span>
+                </div>
+                <div className="flex gap-4 mb-0.5">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#00AEEF] shadow-[0_0_8px_rgba(0,174,239,0.4)]" />
+                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Start</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#8DC63F] shadow-[0_0_8px_rgba(141,198,63,0.4)]" />
+                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Bonus</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Used</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="relative h-10 w-full bg-white/5 rounded-2xl overflow-hidden border border-white/5 group/graph p-1.5 shadow-inner">
+                {/* Background segments (Start + Bonus) - Dimmed */}
+                <div className="absolute inset-1.5 flex rounded-xl overflow-hidden opacity-30 group-hover:opacity-40 transition-opacity">
+                    <div style={{ width: `${startWidth}%`, backgroundColor: '#00AEEF' }} className="h-full border-r border-white/10" />
+                    <div style={{ width: `${bonusWidth}%`, backgroundColor: '#8DC63F' }} className="h-full" />
+                </div>
+
+                {/* Used Nested Indicator (Bright overlay) */}
+                <div 
+                    className={`absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden shadow-[0_0_20px_rgba(239,68,68,0.2)] ${isOverflow ? 'animate-pulse ring-1 ring-red-500' : ''}`}
+                    style={{ width: `calc(${usedPercent}% - 16px)`, backgroundColor: '#ef4444' }}
+                >
+                    <div className="absolute inset-0 bg-linear-to-r from-white/30 via-white/10 to-transparent" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.4),transparent)]" />
+                </div>
+
+                {/* Glassmorphic Labels overlay */}
+                <div className="absolute inset-0 flex items-center justify-between px-6 pointer-events-none z-10">
+                    <div className="flex flex-col">
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Used</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-[12px] font-mono font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                                {fmt(used)}
+                             </span>
+                             <span className="text-[7px] font-black text-white/40">{mode}</span>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end">
+                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Target</span>
+                        <div className="flex items-baseline gap-1">
+                             <span className="text-[12px] font-mono font-black text-white/80">
+                                {fmt(total)}
+                             </span>
+                             <span className="text-[7px] font-black text-white/20">{mode}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Health Status Text */}
+            <div className="flex justify-center mt-1">
+                <span className={`text-[8px] font-black uppercase tracking-[0.3em] px-4 py-1 rounded-full border ${isOverflow ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-green-500/10 border-green-500/30 text-green-400'}`}>
+                    {isOverflow ? '!! BUDGET OVERFLOW !!' : 'STATUS: FINANCIAL HEALTH OPTIMAL'}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 // ── Large Crate Wireframe ──────────────────────────────────────
 const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number; color?: string }> = ({
     w = 60, l = 60, h = 60, type = 'crate', size = 130, color = 'var(--main-color)'
@@ -520,7 +610,16 @@ export const ClientOverview: React.FC = () => {
             reqMerchMxn,
             reqExpMxn,
             totalLiabilityMxn: (requestedUnpaidMxn + pendingToRequestMxn),
-            groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count)
+            groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count),
+            // HEALTH Calculations
+            healthMetric: {
+                start: (totalAcqValueUsd * currentExchangeRate) * 0.25,
+                bonus: (() => {
+                    const vSum = (vid: string) => vendorSummaries.find(v => v.vendorId === vid)?.totalAcqMxn || 0;
+                    return (vSum('EM') * 0.1) + (vSum('JM') * 0.1) + (vSum('TE') * 0.05) + (vSum('GE') * 0.1) + (vSum('ML') * 0.1);
+                })(),
+                used: ((totalAcqValueUsd * currentExchangeRate) * 0.05) + totalOpsMxn
+            }
         };
     }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items, financeData]);
 
@@ -652,7 +751,6 @@ export const ClientOverview: React.FC = () => {
                                         <SectionHeader 
                                             icon={CreditCard} title="Expenses & Financials" color="#00AEEF" 
                                             onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
-                                            right={null}
                                             compactSummary={
                                                 <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
                                                     {isFinancialsCollapsed && (
@@ -683,108 +781,116 @@ export const ClientOverview: React.FC = () => {
                                         />
                                         {!isFinancialsCollapsed && (
                                             <>
-                                              <div className="mt-4 mb-6 animate-in fade-in duration-500">
-                                                  <CompactFinancialsGraph 
-                                                      hideLegend={false}
-                                                      fullWidth={true}
-                                                      mode={currencyMode}
-                                                      currentExchangeRate={currentExchangeRate}
-                                                      metrics={{
-                                                          mexTotal: totalPortfolioMxn,
-                                                          paidAcq: globalTotals.paidAcqMxn,
-                                                          paidExp: globalTotals.paidExpMxn,
-                                                          reqMerch: globalTotals.reqMerchMxn,
-                                                          reqExp: globalTotals.reqExpMxn,
-                                                          pending: globalTotals.pendingToRequestMxn
-                                                      }}
-                                                  />
-                                              </div>
-                                              <div className="mt-2 animate-in fade-in duration-300">
-                                                 <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
-                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
-                                                     <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
-                                                     
-                                                     <div className="flex items-end justify-between relative z-10 leading-none gap-4">
-                                                         <div className="flex items-baseline gap-2.5">
-                                                             <span className="text-[22px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
-                                                                 {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
-                                                             </span>
-                                                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                                 {currencyMode}
-                                                             </span>
-                                                         </div>
-
-                                                         {/* Relocated and Larger Rate Display */}
-                                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl mb-0.5 shadow-lg">
-                                                             <span className="text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.2em]">Rate</span>
-                                                             <div className="w-px h-3 bg-white/10" />
-                                                             <span className="text-[12px] font-mono font-black text-(--main-color) opacity-80">1 USD = {currentExchangeRate.toFixed(2)} MXN</span>
-                                                         </div>
-                                                     </div>
-                                                 </div>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                                                    {[
-                                                         { label: 'TOTAL EXPENSES', v: { usd: globalTotals.totalOpsUsd, mxn: globalTotals.totalOpsMxn }, color: '#6BCEBB', icon: null, isTotal: true, standout: true },
-                                                        { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
-                                                        { label: 'Supplies', v: opsBreakdown.Supplies, color: '#34d399', icon: Box },
-                                                        { label: 'Labor', v: opsBreakdown.Labor, color: '#fbbf24', icon: Users },
-                                                        { label: 'Packing', v: opsBreakdown.Packing, color: '#fb7185', icon: Archive },
-                                                        { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
-                                                    ].map(c => (
-                                                        <div key={c.label} 
-                                                         onClick={() => { 
-                                                             if (c.label === 'TOTAL EXPENSES') {
-                                                                 setActiveView('finance'); 
-                                                                 setFinanceSubTab('payments');
-                                                             } else {
-                                                                 setPaymentsArtifactConfig({ 
-                                                                     isOpen: true, 
-                                                                     paymentType: (c.v as any).tag, 
-                                                                     title: `${c.label} Payments` 
-                                                                 }); 
-                                                             }
-                                                         }}
-                                                         className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
-                                                         >
-                                                             {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
-                                                             <span className={`${c.standout ? 'text-[11px]' : c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
-                                                            <div className="flex flex-col leading-none">
-                                                                 <span className={`${c.standout ? 'text-[18px]' : 'text-[14px]'} font-black font-mono text-white tracking-tighter`}>
-                                                                     {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
-                                                                 </span>
-                                                                <span className={`text-[7px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                <div className="mt-4 px-2 animate-in fade-in duration-700">
+                                                    <FinancialHealthGraph 
+                                                        start={globalTotals.healthMetric.start}
+                                                        bonus={globalTotals.healthMetric.bonus}
+                                                        used={globalTotals.healthMetric.used}
+                                                        mode={currencyMode}
+                                                        currentExchangeRate={currentExchangeRate}
+                                                    />
+                                                </div>
+                                                <div className="mt-4 mb-6 animate-in fade-in duration-500">
+                                                    <CompactFinancialsGraph 
+                                                        hideLegend={false}
+                                                        fullWidth={true}
+                                                        mode={currencyMode}
+                                                        currentExchangeRate={currentExchangeRate}
+                                                        metrics={{
+                                                            mexTotal: totalPortfolioMxn,
+                                                            paidAcq: globalTotals.paidAcqMxn,
+                                                            paidExp: globalTotals.paidExpMxn,
+                                                            reqMerch: globalTotals.reqMerchMxn,
+                                                            reqExp: globalTotals.reqExpMxn,
+                                                            pending: globalTotals.pendingToRequestMxn
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="mt-2 animate-in fade-in duration-300">
+                                                    <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
+                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
+                                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
+                                                        
+                                                        <div className="flex items-end justify-between relative z-10 leading-none gap-4">
+                                                            <div className="flex items-baseline gap-2.5">
+                                                                <span className="text-[22px] font-black font-mono text-(--main-color) tracking-tighter drop-shadow-lg">
+                                                                    {currencyMode === 'MXN' ? fmtMXN(totalPortfolioMxn) : fmtUSD(totalPortfolioUsd)}
+                                                                </span>
+                                                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                                                     {currencyMode}
                                                                 </span>
                                                             </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-3 border-t border-white/5">
-                                                    {[
-                                                        { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers, size: 'text-[22px]', action: () => setArtifactConfig({ isOpen: true, itemIds: items.map(i => i.data.id), title: 'All Active Units' }) },
-                                                        { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, paymentType: 'ACQUISITION', title: 'Merchandise Acquisitions' }) },
-                                                        { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Requested Unpaid Payments' }) },
-                                                        { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Total Outstanding Liabilities' }) },
-                                                    ].map(stat => (
-                                                        <div key={stat.label} onClick={stat.action} className={`group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all ${stat.action ? 'cursor-pointer active:scale-95' : ''}`}>
-                                                            <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity"><stat.icon size={18} style={{ color: stat.color }} /></div>
-                                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
-                                                            <div className="flex flex-col leading-none">
-                                                                <span className={`font-black font-mono tracking-tighter ${stat.size || 'text-[18px]'}`} style={{ color: stat.color }}>
-                                                                    {stat.isCurrency 
-                                                                        ? (currencyMode === 'MXN' ? fmtMXN(stat.v as number * currentExchangeRate) : fmtUSD(stat.v as number))
-                                                                        : (stat.v as number).toLocaleString()}
-                                                                </span>
-                                                                {stat.isCurrency && (
-                                                                    <span className={`text-[8px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                                        {currencyMode}
-                                                                    </span>
-                                                                )}
+
+                                                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl mb-0.5 shadow-lg">
+                                                                <span className="text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.2em]">Rate</span>
+                                                                <div className="w-px h-3 bg-white/10" />
+                                                                <span className="text-[12px] font-mono font-black text-(--main-color) opacity-80">1 USD = {currentExchangeRate.toFixed(2)} MXN</span>
                                                             </div>
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+                                                        {[
+                                                            { label: 'TOTAL EXPENSES', v: { usd: globalTotals.totalOpsUsd, mxn: globalTotals.totalOpsMxn }, color: '#6BCEBB', icon: null, isTotal: true, standout: true },
+                                                            { label: 'Monthly', v: opsBreakdown.Monthly, color: '#38bdf8', icon: Calendar },
+                                                            { label: 'Supplies', v: opsBreakdown.Supplies, color: '#34d399', icon: Box },
+                                                            { label: 'Labor', v: opsBreakdown.Labor, color: '#fbbf24', icon: Users },
+                                                            { label: 'Packing', v: opsBreakdown.Packing, color: '#fb7185', icon: Archive },
+                                                            { label: 'Operations', v: opsBreakdown.Operations, color: '#818cf8', icon: Cpu },
+                                                        ].map(c => (
+                                                            <div key={c.label} 
+                                                                onClick={() => { 
+                                                                    if (c.label === 'TOTAL EXPENSES') {
+                                                                        setActiveView('finance'); 
+                                                                        setFinanceSubTab('payments');
+                                                                    } else {
+                                                                        setPaymentsArtifactConfig({ 
+                                                                            isOpen: true, 
+                                                                            paymentType: (c.v as any).tag, 
+                                                                            title: `${c.label} Payments` 
+                                                                        }); 
+                                                                    }
+                                                                }}
+                                                                className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
+                                                            >
+                                                                {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
+                                                                <span className={`${c.standout ? 'text-[11px]' : c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
+                                                                <div className="flex flex-col leading-none">
+                                                                    <span className={`${c.standout ? 'text-[18px]' : 'text-[14px]'} font-black font-mono text-white tracking-tighter`}>
+                                                                        {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
+                                                                    </span>
+                                                                    <span className={`text-[7px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                        {currencyMode}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-3 border-t border-white/5">
+                                                        {[
+                                                            { label: 'Units', v: globalTotals.totalItems, sub: '', color: '#6BCEBB', icon: Layers, size: 'text-[22px]', action: () => setArtifactConfig({ isOpen: true, itemIds: items.map(i => i.data.id), title: 'All Active Units' }) },
+                                                            { label: 'Acquisitions Value', v: globalTotals.totalAcqValueUsd, sub: fmtMXN(globalTotals.totalAcqValueUsd * currentExchangeRate).replace(' MXN',''), color: '#34d399', icon: DollarSign, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, paymentType: 'ACQUISITION', title: 'Merchandise Acquisitions' }) },
+                                                            { label: 'Req Unpaid', v: globalTotals.requestedUnpaidUsd, sub: fmtMXN(globalTotals.requestedUnpaidMxn).replace(' MXN',''), color: '#fbbf24', icon: Activity, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Requested Unpaid Payments' }) },
+                                                            { label: 'Total Unpaid', v: globalTotals.totalUnpaidUsd, sub: fmtMXN(globalTotals.totalUnpaidMxn).replace(' MXN',''), color: '#f43f5e', icon: Wallet, isCurrency: true, size: 'text-[18px]', action: () => setPaymentsArtifactConfig({ isOpen: true, status: 'Requested', title: 'Total Outstanding Liabilities' }) },
+                                                        ].map(stat => (
+                                                            <div key={stat.label} onClick={stat.action} className={`group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all ${stat.action ? 'cursor-pointer active:scale-95' : ''}`}>
+                                                                <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity"><stat.icon size={18} style={{ color: stat.color }} /></div>
+                                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
+                                                                <div className="flex flex-col leading-none">
+                                                                    <span className={`font-black font-mono tracking-tighter ${stat.size || 'text-[18px]'}`} style={{ color: stat.color }}>
+                                                                        {stat.isCurrency 
+                                                                            ? (currencyMode === 'MXN' ? fmtMXN(stat.v as number * currentExchangeRate) : fmtUSD(stat.v as number))
+                                                                            : (stat.v as number).toLocaleString()}
+                                                                    </span>
+                                                                    {stat.isCurrency && (
+                                                                        <span className={`text-[8px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                            {currencyMode}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
                                             </>
                                         )}
                                     </>

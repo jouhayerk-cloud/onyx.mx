@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.57.2 (2026-03-30)
+- **Financial Health Dashboard [New Section]**: Implemented a sectioned stacked bar graph in the Overview module to track budget (Start + Bonus) vs. actual operational spend.
+- **Tagging Logic Restoration**: Fixed a regression where items with "Requested" status were erroneously labeled as "NEW" after editing.
+- **Acquired Status**: Introduced a dedicated Purple `Acquired` tag for items in the acquisition phase, improving the differentiation between "New" and "In-Progress" inventory.
+- **Unified Dispersal Check**: Enhanced `getStatusClass` to handle `dispersal_status` from the Acquisitions module.
+
 ## v1.57.1 (2026-03-30)
 - **Tagging Precision [Engine]**: Enhanced `getStatusClass` logic to check both `pay_req` and `status` columns.
 - **Requested Status Fix**: Resolved a regression where items with "Requested" status in either column were being mislabeled as "New".

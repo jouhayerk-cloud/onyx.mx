@@ -41,14 +41,16 @@ import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleto
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText } from 'lucide-react';
 
-export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | null => {
+export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
-    const statusStr = String(item.status || '').toLowerCase();
+    const statusStr = String(item.status || item.item_status || '').toLowerCase();
+    const dispStatus = String(item.dispersal_status || '').toLowerCase();
     
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-    if (payReqStr === 'requested' || payReqStr === 'partial' || statusStr === 'requested') return 'YELLOW';
-    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid') return 'GREEN';
+    if (payReqStr === 'requested' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+    if (item.payDate || item.pay_date || payReqStr === 'true' || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
     if (statusStr === 'production') return 'BLUE';
+    if (statusStr === 'acquired' || statusStr === 'acquisition' || statusStr === 'acquisitions') return 'PURPLE';
     return null;
 };
 
@@ -160,7 +162,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         const itemPriceMXN = Math.ceil(Number(norm.price || 0));
         const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
         const payStatus = getStatusClass(norm, partialPayIds);
-        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : 'transparent';
+        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
 
         return (
             <div className="flex flex-col gap-0.5">
@@ -186,7 +188,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'Production' : 'New'}
+                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'Production' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
                             </span>
                         </div>
                     </div>
@@ -210,7 +212,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         );
     }
 
-    const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : 'transparent';
+    const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
     return (
         <div className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
              style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
@@ -226,7 +228,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">
                         {statusClass && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'Production' : 'New'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'Production' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
                     </div>
                     <span className="text-[10px] font-black text-white/20 font-mono">x{norm.quantity || 1}</span>
                 </div>
@@ -304,6 +306,7 @@ export const UnifiedInventoryView = () => {
                 if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
                 if (statusFilter === 'Paid' && status !== 'GREEN') return false;
                 if (statusFilter === 'Production' && status !== 'BLUE') return false;
+                if (statusFilter === 'Acquired' && status !== 'PURPLE') return false;
                 if (statusFilter === 'New' && status !== null) return false;
             }
             const vPre = item.data.itemId?.split('-')[0] || '';
@@ -323,7 +326,7 @@ export const UnifiedInventoryView = () => {
             let comp = 0;
             if (sortKey === 'Date') comp = (new Date(b.data.updated_at || 0).getTime()) - (new Date(a.data.updated_at || 0).getTime());
             else if (sortKey === 'Vendor') comp = (a.data.itemId||'').localeCompare(b.data.itemId||'');
-            else if (sortKey === 'Status') comp = ((sB==='RED'?5:sB==='YELLOW'?4:sB==='GREEN'?3:sB==='BLUE'?2:1)-(sA==='RED'?5:sA==='YELLOW'?4:sA==='GREEN'?3:sA==='BLUE'?2:1));
+            else if (sortKey === 'Status') comp = ((sB==='RED'?6:sB==='YELLOW'?5:sB==='GREEN'?4:sB==='BLUE'?3:sB==='PURPLE'?2:1)-(sA==='RED'?6:sA==='YELLOW'?5:sA==='GREEN'?4:sA==='BLUE'?3:sA==='PURPLE'?2:1));
             return sortOrder === 'desc' ? comp : -comp;
         });
     }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter]);
@@ -382,9 +385,9 @@ export const UnifiedInventoryView = () => {
 
             <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${(isFiltersOpen || isSortMenuOpen) ? 'h-16 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-6 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
-                    <button onClick={() => setStatusFilter(statusFilter === 'All' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : statusFilter === 'Paid' ? 'Production' : statusFilter === 'Production' ? 'New' : 'All')}
+                    <button onClick={() => setStatusFilter(statusFilter === 'All' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : statusFilter === 'Paid' ? 'Production' : statusFilter === 'Production' ? 'Acquired' : statusFilter === 'Acquired' ? 'New' : 'All')}
                             className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all group">
-                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/10' : statusFilter === 'Partial' ? 'bg-red-500' : statusFilter === 'Requested' ? 'bg-yellow-500' : statusFilter === 'Paid' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/10' : statusFilter === 'Partial' ? 'bg-red-500' : statusFilter === 'Requested' ? 'bg-yellow-500' : statusFilter === 'Paid' ? 'bg-green-500' : statusFilter === 'Production' ? 'bg-blue-500' : statusFilter === 'Acquired' ? 'bg-purple-500' : 'bg-white/20'}`} />
                         <span className="text-[10px] font-black tracking-widest text-white/50 uppercase group-hover:text-white">{statusFilter}</span>
                     </button>
                     <div className="w-px h-6 bg-white/10" />
