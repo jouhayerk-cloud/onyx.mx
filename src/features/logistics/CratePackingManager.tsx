@@ -3,7 +3,7 @@ import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, inventoryArtifactConfigAtom, isDummyModeAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import {
     Package, ChevronRight, Check, Loader2, X,
@@ -255,7 +255,7 @@ const ActiveCrateSidebar: React.FC<{
             const vendorPrefix = String(norm.itemId || inv.data?.vendor_id || '').split('-')[0] || '';
             const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
             const netVol     = itemNetCm3(norm) * qty;
-            const paddedVol  = itemPaddedCm3(norm) * qty;
+            const paddedVol  = getItemPaddedVolume(inv.data, qty);
             const paddingVol = paddedVol - netVol;
             const weight     = (Number(norm.weightKg) || 0) * qty;
             return [{ id, norm, calc, qty, netVol, paddedVol, paddingVol, weight, tagColor, vendorPrefix }];
@@ -263,7 +263,7 @@ const ActiveCrateSidebar: React.FC<{
     , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
 
     // Internal crate volume: subtract 7.5cm walls per side (−15cm per axis)
-    const internalCrateCm3 = crateCm3(crate);
+    const internalCrateCm3 = getCrateInternalVolume(crate);
 
     // Already-packed padded volume (items saved to this crate)
     const alreadyPackedMap = useMemo(() => parseInventoryIds(crate.inventory_ids), [crate.inventory_ids]);
@@ -272,7 +272,7 @@ const ActiveCrateSidebar: React.FC<{
         alreadyPackedMap.forEach((qty, id) => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
             if (!inv) return;
-            v += itemPaddedCm3(normalizeInventoryData(inv.data)) * (qty === -1 ? 1 : qty);
+            v += getItemPaddedVolume(inv.data, qty === -1 ? 1 : qty);
         });
         return v;
     }, [alreadyPackedMap, allInventory]);
@@ -827,6 +827,8 @@ export const CratePackingManager: React.FC = () => {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1500));
                 toast.success(isUpdate ? "Crate contents updated (Demo Mode)" : "Packing confirmed (Demo Mode)", { id: tid, icon: '🧪' });
+                setSelectedItemIds(new Set());
+                setSelectedQtys({});
                 setCratesVersion(v => v + 1);
                 setIsSaving(false);
                 return;
@@ -893,9 +895,12 @@ export const CratePackingManager: React.FC = () => {
             }
 
             toast.success(isUpdate ? "Crate contents updated" : "Packing confirmed", { id: tid });
-            // Keep the selection active but we need to re-sync if version changes
-            // Actually, usually users want to continue editing or move to next crate.
-            // Let's keep it selected so they can see the result.
+            
+            // FIX: Clear selection after successful pack to avoid double-counting volume 
+            // and ensure the fill bar correctly reflects the saved state.
+            setSelectedItemIds(new Set());
+            setSelectedQtys({});
+            
             setCratesVersion(v => v + 1);
         } catch (err: any) {
             toast.error(err.message || 'Update failed.', { id: tid });
@@ -962,6 +967,11 @@ export const CratePackingManager: React.FC = () => {
             setIsSaving(false);
         }
     };
+
+    const crateCm3 = useMemo(() => {
+        if (!selectedCrate) return 0;
+        return getCrateInternalVolume(selectedCrate);
+    }, [selectedCrate]);
 
     return (
         <div className="flex h-full w-full overflow-hidden bg-transparent">

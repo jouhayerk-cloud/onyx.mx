@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.58.2 (2026-03-31)
+- **Logistics Volume Optimization**: Refactored volume calculation logic into shared utilities (`getCrateInternalVolume`, `getItemPaddedVolume`) for absolute cross-module consistency.
+- **Volume Fill Correction**: Resolved a critical bug where volume usage jumped to 100% on save; implemented explicit state resets for staged inventory to ensure accurate real-time reporting.
+- **Enhanced Crate Visualizations**: Integrated dynamic, color-coded volume fill indicators into the Packed Crates wireframe icons with pulsating capacity alerts.
+- **Unpack All Functionality**: Added a one-click "Unpack All" feature in the Packing Manager to safely reset crate contents and restore item availability.
+- **Logistics Tag Upgrades**: Implemented vendor-specific color-coding for TAG IDs and integrated secondary Code 39 barcode displays for physical logistics scanning.
+- **Client Dummy Modules**: Launched a suite of simulated modules (`dummyAddEntry`, `dummyCrates`, `dummyLabels`, `dummyProcess`) enabling client interaction without database persistence.
+
+
 ## v1.57.5 (2026-03-30)
 - **Inventory Filtering Refinement**: Restricted the Inventory module to display only **Acquisition** and **Production** items.
 - **Store Separation**: Automatically excluded **Available** items from the Inventory list to maintain separation between active procurement and store stock.
