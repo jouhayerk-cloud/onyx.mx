@@ -38,7 +38,7 @@ const normalizeSubcat = (s: string | null | undefined): string => {
 const SUBCATEGORIES = ['All', 'Acq', 'Prod', 'Monthly', 'Sppl', 'Labr', 'Packing', 'Oprt'] as const;
 type Subcategory = typeof SUBCATEGORIES[number];
 
-type VendorGroup = { vendorId: string; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
+type VendorGroup = { vendorId: string; type: 'Acquisition' | 'Production' | 'Packing'; items: InventoryItem[]; total: number; totalQty: number; paidTotal: number };
 
 const appendExpense = async (payload: any, db: any) => {
     const idsToLink = payload.inventoryItemRows || payload.linkedRows;
@@ -161,7 +161,9 @@ const AddPaymentModal: React.FC<{
 
             const isProd = form.subcategory === 'Prod';
             const isPacking = form.subcategory === 'Packing';
-            const group = (form.subcategory === 'Acq' || isProd || isPacking) ? pendingGroups.find(g => g.vendorId === form.vendor_id) : null;
+            const group = (form.subcategory === 'Acq' || isProd || isPacking) 
+                ? pendingGroups.find(g => g.vendorId === form.vendor_id && (isPacking ? g.type === 'Packing' : (isProd ? g.type === 'Production' : g.type === 'Acquisition'))) 
+                : null;
             const inventoryItemRows = group ? group.items.map(i => i.row).join(',') : null;
             const ids = inventoryItemRows ? inventoryItemRows.split(',') : [];
 
@@ -304,52 +306,50 @@ const AddPaymentModal: React.FC<{
                                 <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK
                             </button>
 
-                            <div className="flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="flex flex-wrap gap-4 justify-center">
                                 {pendingGroups.length === 0 ? (
-                                    <div className="text-center py-20 border-2 border-dashed border-(--border-color) rounded-[40px]">
+                                    <div className="text-center py-20 border-2 border-dashed border-(--border-color) rounded-[40px] w-full">
                                         <p className="text-(--text-color-secondary) opacity-40 text-[10px] font-black tracking-[0.3em] uppercase">No pending items found</p>
                                     </div>
                                 ) : (
                                     pendingGroups
                                         .filter(g => {
-                                            if (form.subcategory === 'Packing') return g.vendorId === 'Crates';
-                                            if (g.vendorId === 'Crates') return false; // Hide from Acq/Prod
-                                            const isProdGroup = g.items.some(i => i.data?.status?.toLowerCase() === 'production');
-                                            return form.subcategory === 'Prod' ? isProdGroup : !isProdGroup;
+                                            if (form.subcategory === 'Packing') return g.type === 'Packing' || g.vendorId === 'Crates';
+                                            if (g.vendorId === 'Crates') return false;
+                                            return form.subcategory === 'Prod' ? g.type === 'Production' : g.type === 'Acquisition';
                                         })
                                         .map(group => {
-                                            const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#2a2a3e';
                                             const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                            const vendor = vendors[group.vendorId as keyof typeof vendors];
+                                            const color = vendor?.color || '#333';
+                                            const fullName = vendor?.name || group.vendorId;
+
                                             return (
-                                                <button key={group.vendorId}
+                                                <button key={`${group.vendorId}-${group.type}`} 
                                                     onClick={() => {
                                                         set('vendor_id', group.vendorId);
                                                         set('amount', (group.total - group.paidTotal).toString());
-                                                        if (form.subcategory === 'Packing') {
+                                                        if (form.subcategory === 'Packing' || group.vendorId === 'Crates') {
                                                             const sizesSet = new Set(group.items.map(i => {
                                                                 const d = i.data as any;
                                                                 return `${d.l_cm || 0}x${d.w_cm || 0}x${d.d_cm || 0}`;
                                                             }));
                                                             set('description', `Payment for ${group.items.length} Crates. Sizes: ${Array.from(sizesSet).join(', ')}`);
                                                         } else {
-                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${group.vendorId}`);
+                                                            set('description', `${paidPerc > 0 ? 'Liquidation' : 'Payment'} for ${group.items.length} items from ${fullName}`);
                                                         }
                                                         setStep(4);
                                                     }}
-                                                    className="flex justify-between items-center p-5 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:bg-(--glass-bg) hover:border-(--text-color-secondary)/20 transition-all text-left group"
-                                                >
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="w-12 h-12 rounded-[20px] flex items-center justify-center font-black text-base" style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
-                                                            {group.vendorId[0]}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-black text-(--text-color) leading-none mb-1">{group.vendorId}</p>
-                                                            <p className="text-[10px] text-(--text-color-secondary) uppercase tracking-widest leading-none">{group.items.length} items · {paidPerc > 0 ? `${paidPerc}% Paid` : 'Unpaid'}</p>
-                                                        </div>
+                                                    className="group relative flex flex-col items-center gap-2 p-4 rounded-3xl transition-all hover:bg-white/5 border border-transparent hover:border-white/10">
+                                                    <div className="w-16 h-16 rounded-[24px] flex flex-col items-center justify-center font-black text-sm shadow-xl border-2 border-white/5 relative overflow-hidden group-hover:scale-110 transition-transform"
+                                                        style={{ backgroundColor: color, color: getTextColorForBg(color) }}>
+                                                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <span>{group.vendorId}</span>
+                                                        <span className="text-[6px] opacity-60 mt-1">{group.type === 'Production' ? 'PROD' : 'ACQ'}</span>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-mono font-black text-(--text-color) leading-none mb-1">{fmtMXN(group.total - group.paidTotal)}</p>
-                                                        <span className="text-[9px] font-black text-(--main-color) opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest block">Select Vendor</span>
+                                                    <div className="text-center">
+                                                        <p className="text-[9px] font-black text-white/60 uppercase tracking-widest truncate max-w-[100px]">{fullName}</p>
+                                                        <p className="text-[10px] font-mono font-black text-(--main-color) mt-1">{fmtMXN(group.total - group.paidTotal)}</p>
                                                     </div>
                                                 </button>
                                             );
@@ -784,17 +784,19 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const pendingGroups = useMemo<VendorGroup[]>(() => {
 
 
-        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production'];
+        const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production', 'new', 'scheduled', 'ready'];
 
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
             const payReqStr = String(i.data.payReq || (i.data as any).pay_req || '').toLowerCase();
-            return targetStatuses.includes(status) && payReqStr !== 'true' && payReqStr !== 'paid';
+            const isUnpaid = !['true', 'paid', 'requested', 'partial'].includes(payReqStr) && !payReqStr.includes('%');
+            return targetStatuses.includes(status) && isUnpaid;
         });
 
         const pendingCrates = logisticsData.filter(c => {
             const payReqStr = String(c.pay_req || '').toLowerCase();
-            return c.type === 'crate' && payReqStr !== 'true' && payReqStr !== 'paid' && (c.cost_mxn || 0) > 0;
+            const isUnpaid = !['true', 'paid', 'requested', 'partial'].includes(payReqStr) && !payReqStr.includes('%');
+            return c.type === 'crate' && isUnpaid && (c.cost_mxn || 0) > 0;
         }).map(c => ({
             row: c.id,
             label: c.description || `Crate ${c.id}`,
@@ -811,35 +813,35 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
         const itemsToProcess = [...pendingItems, ...pendingCrates];
 
-        const groups: Record<string, VendorGroup> = {};
+        // Group by BOTH Vendor and Type (Production vs Acquisition)
+        const groups: Record<string, VendorGroup & { type: 'Production' | 'Acquisition' }> = {};
         for (const item of itemsToProcess) {
-
-
-
-
             const data = item.data;
             const itemIdStr = String(data.item_id || data.itemId || '');
             let vid = data.vendor_id || data.vendorId;
+            const status = (data.status || '').toLowerCase();
+            const type = (status === 'production' || status === 'packing') ? 'Production' : 'Acquisition';
 
             if (!vid) {
                 if (itemIdStr.includes('-')) {
                     vid = itemIdStr.split('-')[0];
                 } else {
-                    // Try to match against known prefixes (GE, EM, AN, etc.)
                     const prefix = Object.keys(vendors).find(v => itemIdStr.startsWith(v));
                     if (prefix) vid = prefix;
                 }
             }
-
             if (!vid) vid = 'Unknown';
 
-            if (!groups[vid]) groups[vid] = { vendorId: vid, items: [], total: 0, totalQty: 0, paidTotal: 0 };
+            const gKey = `${vid}-${type}`;
+            if (!groups[gKey]) {
+                groups[gKey] = { vendorId: vid, type, items: [], total: 0, totalQty: 0, paidTotal: 0 };
+            }
 
             const price = parseFloat(String(data.price_mxn || data.price || '0')) || 0;
             const qty = parseFloat(data.quantity || '1') || 1;
-            groups[vid].items.push(item);
-            groups[vid].total += (price * qty);
-            groups[vid].totalQty += qty;
+            groups[gKey].items.push(item);
+            groups[gKey].total += (price * qty);
+            groups[gKey].totalQty += qty;
         }
 
         const groupList = Object.values(groups);
