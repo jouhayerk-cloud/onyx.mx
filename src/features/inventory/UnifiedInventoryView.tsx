@@ -115,7 +115,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, onEdit }: any) => {
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -151,7 +151,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const setInventoryVersion = useSetAtom(InventoryVersionAtom);
 
     const handleEdit = (e: React.MouseEvent) => {
-        e.stopPropagation(); setSelectedItemRow(item.row); setSelectedItemData(item.data); setImageSrc(imageUrl); setDetailsPanelMode('edit');
+        e.stopPropagation(); if (onEdit) onEdit(item.row, item.data);
     };
 
     const handleDelete = async (e: React.MouseEvent) => {
@@ -278,7 +278,7 @@ export const UnifiedInventoryView = () => {
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); const [viewMode] = useAtom(inventoryViewModeAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
-    const [itemData] = useAtom(SelectedItemDataAtom); const [itemRow] = useAtom(SelectedItemRowAtom);
+    const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
     const [mode, setMode] = useAtom(detailsPanelModeAtom); const [isSaving, setIsSaving] = useState(false); const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [statusFilter, setStatusFilter] = useAtom(inventoryStatusFilterAtom); const searchTerm = useAtomValue(inventorySearchTermAtom);
     const [sortOrder, setSortOrder] = useAtom(inventorySortOrderAtom); const [sortKey, setSortKey] = useAtom(inventorySortKeyAtom);
@@ -313,6 +313,32 @@ export const UnifiedInventoryView = () => {
         const files = Array.from(e.target.files || []); const uploaded: UploadedFile[] = [];
         for (const file of files) { const type = file.type.startsWith('video/') ? 'video' : 'image'; const localUrl = await readFileAsDataURL(file, type); uploaded.push({ type, localUrl, originalFile: file, tag: 'Item' }); }
         setNewFiles(prev => [...prev, ...uploaded]);
+    };
+
+    const handleEditItem = async (rowId: string, currentData: any) => {
+        setSelectedItemRow(rowId);
+        setSelectedItemData(currentData); // Fallback immediately
+        setMode('edit');
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase.from('inventory').select('*').eq('id', rowId).single();
+            if (data && !error) {
+                const norm = normalizeInventoryData(data);
+                setSelectedItemData(norm);
+                // Also update editData immediately to sync with the now-open form
+                setEditData({ ...norm, vendorId: String(norm.itemId || '').split('-')[0] });
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteExistingMedia = (url: string) => {
+        const urls = (editData.mediaUrls || '').split(',').map((u:string) => u.trim()).filter(Boolean);
+        const filtered = urls.filter((u:string) => u !== url).join(',');
+        setEditData((p: any) => ({ ...p, mediaUrls: filtered }));
     };
 
     const filteredItems = useMemo(() => {
@@ -355,6 +381,11 @@ export const UnifiedInventoryView = () => {
             if (sortKey === 'Date') comp = (new Date(b.data.updated_at || 0).getTime()) - (new Date(a.data.updated_at || 0).getTime());
             else if (sortKey === 'Vendor') comp = (a.data.itemId||'').localeCompare(b.data.itemId||'');
             else if (sortKey === 'Status') comp = ((sB==='RED'?6:sB==='YELLOW'?5:sB==='GREEN'?4:sB==='BLUE'?3:sB==='PURPLE'?2:1)-(sA==='RED'?6:sA==='YELLOW'?5:sA==='GREEN'?4:sA==='BLUE'?3:sA==='PURPLE'?2:1));
+            else if (sortKey === 'Number') {
+                const nA = parseInt(a.data.itemNumber || a.data.item_number || '0', 10);
+                const nB = parseInt(b.data.itemNumber || b.data.item_number || '0', 10);
+                comp = nA - nB;
+            }
             return sortOrder === 'desc' ? comp : -comp;
         });
     }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter]);
@@ -366,11 +397,10 @@ export const UnifiedInventoryView = () => {
             const news = [editData.mediaUrls || '', ...uploaded].filter(Boolean).join(',');
             const payload = {
                 status: editData.status,
-                vendor_id: editData.vendorId,
                 shape: editData.shape,
                 material: editData.material,
                 color: editData.color,
-                short_description: editData.shortDescription,
+                short_description: editData.shortDescription || editData.short_description || '',
                 quantity: parseInt(editData.quantity) || 1,
                 price_mxn: parseFloat(editData.price) || 0,
                 weight_kg: parseFloat(editData.weightKg) || null,
@@ -423,7 +453,7 @@ export const UnifiedInventoryView = () => {
                         {isSortMenuOpen && (
                             <div className="flex items-center gap-2">
                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mr-2">Sort By</span>
-                                {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }].map((o) => (
+                                {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: 'Number' }].map((o) => (
                                     <button key={o.key} onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
                                             className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortKey === o.key ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40'}`}>{o.label}</button>
                                 ))}
@@ -481,7 +511,7 @@ export const UnifiedInventoryView = () => {
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar">
                 <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
-                    {isLoading ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} />)}
+                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} onEdit={handleEditItem} />)}
                 </div>
             </div>
 
@@ -542,28 +572,48 @@ export const UnifiedInventoryView = () => {
                             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
                                 <div className="flex flex-col gap-2.5"><label className={lbl}>NUM</label><input disabled className={inpNum + " opacity-50 cursor-not-allowed"} value={editData.itemNumber || '--'} /></div>
                                 <div className="flex flex-col gap-2.5"><label className={lbl}>ITEM QUANTITY</label><input type="number" name="quantity" value={editData.quantity} onChange={handleEditChange} className={inp + " text-2xl font-black"} /></div>
-                            </div>
+                                
+                                {/* Media Section */}
+                                <div className="space-y-5 col-span-2">
+                                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">MEDIA ATTACHMENTS</h3>
+                                    
+                                    {/* Saved Gallery */}
+                                    {editData.mediaUrls && (
+                                        <div className="flex flex-wrap gap-4 mb-6">
+                                            {editData.mediaUrls.split(',').filter(Boolean).map((url: string, i: number) => (
+                                                <div key={`existing-${i}`} className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 relative group bg-white/5">
+                                                    {isVideoFile(url) ? (
+                                                        <div className="w-full h-full flex items-center justify-center bg-black/40"><Video size={20} className="text-white/40" /></div>
+                                                    ) : (
+                                                        <img src={getCleanImageUrl(url)} className="w-full h-full object-cover" />
+                                                    )}
+                                                    <button type="button" onClick={() => handleDeleteExistingMedia(url)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-xs shadow-lg hover:bg-red-600">
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
-                            {/* Media Section */}
-                            <div className="space-y-5">
-                                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-1">MEDIA ATTACHMENTS</h3>
-                                <div className="relative group">
-                                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                    <div className="h-48 rounded-[32px] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-4 group-hover:bg-white/[0.05] group-hover:border-white/20 transition-all">
-                                        <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10"><Upload size={24} className="text-white/20 group-hover:text-white transition-all" /></div>
-                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white transition-all">ATTACH MEDIA (IMAGES / VIDEO)</p>
+                                    <div className="relative group">
+                                        <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                        <div className="h-48 rounded-[32px] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-4 group-hover:bg-white/[0.05] group-hover:border-white/20 transition-all">
+                                            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10"><Upload size={24} className="text-white/20 group-hover:text-white transition-all" /></div>
+                                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white transition-all">ATTACH NEW MEDIA (IMAGES / VIDEO)</p>
+                                        </div>
                                     </div>
+                                    {newFiles.length > 0 && (
+                                        <div className="flex flex-wrap gap-4 pt-4 border-t border-white/5">
+                                            {newFiles.map((f, i) => (
+                                                <div key={`new-${i}`} className="w-24 h-24 rounded-2xl overflow-hidden border border-(--main-color)/30 relative group shadow-lg shadow-(--main-color)/5">
+                                                    <img src={f.localUrl} className="w-full h-full object-cover" />
+                                                    <button type="button" onClick={() => setNewFiles(p => p.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-xs">&times;</button>
+                                                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color)/50" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                {newFiles.length > 0 && (
-                                    <div className="flex flex-wrap gap-4 pt-4">
-                                        {newFiles.map((f, i) => (
-                                            <div key={i} className="w-24 h-24 rounded-2xl overflow-hidden border border-white/10 relative group">
-                                                <img src={f.localUrl} className="w-full h-full object-cover" />
-                                                <button type="button" onClick={() => setNewFiles(p => p.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-xs">&times;</button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
 
                             {/* Detail Fields Section (DESC) */}
