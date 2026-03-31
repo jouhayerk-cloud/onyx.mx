@@ -190,116 +190,6 @@ const CompactFinancialsGraph = ({
     );
 };
 
-// ── Financial Health Graph (Sectioned Stacked Bar) ────────────────
-const FinancialHealthGraph = ({ start, bonus, used, currentExchangeRate, mode }: {
-    start: number; bonus: number; used: number; currentExchangeRate: number; mode: 'USD' | 'MXN';
-}) => {
-    const netUsed = used - bonus;
-    const consumedPercent = (netUsed / (start || 1)) * 100;
-    const healthPercent = 100 - consumedPercent;
-    
-    const isOverflow = netUsed > start;
-    const isSurplus = netUsed < 0;
-
-    const fmt = (v: number) => {
-        const val = mode === 'USD' ? v / currentExchangeRate : v;
-        const absVal = Math.abs(val);
-        const prefix = val < 0 ? '-' : '';
-        if (absVal >= 1_000_000) return prefix + (absVal / 1_000_000).toFixed(1) + 'M';
-        if (absVal >= 1_000) return prefix + (absVal / 1_000).toFixed(0) + 'K';
-        return prefix + absVal.toFixed(0);
-    };
-
-    const netUsedW = Math.max(0, consumedPercent);
-    const bonusW = (bonus / (start || 1)) * 100;
-
-    return (
-        <div className="flex flex-col gap-2 mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
-            <div className="flex justify-between items-end px-1.5">
-                <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) opacity-80">Financial Health</span>
-                    <span className="text-[8px] font-mono font-black text-white/20 uppercase tracking-widest mt-0.5">Budgeted vs Operational Spend</span>
-                </div>
-                <div className="flex gap-4 mb-0.5">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Net Spend</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#8DC63F] shadow-[0_0_8px_rgba(141,198,63,0.4)]" />
-                        <span className="text-[7.5px] font-black text-white/30 uppercase tracking-wider">Bonus Offset</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="relative h-10 w-full bg-white/5 rounded-2xl overflow-hidden border border-white/5 group/graph p-1.5 shadow-inner">
-                {/* Baseline Bar (Start) - Dimmed */}
-                <div className="absolute inset-1.5 rounded-xl overflow-hidden opacity-10 transition-opacity">
-                    <div style={{ width: `100%`, backgroundColor: '#00AEEF' }} className="h-full" />
-                </div>
-
-                {/* Stacked Spend Indicator (Net Spend + Bonus) */}
-                <div className="absolute inset-1.5 flex rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)]">
-                    {/* Net Spend (Red) */}
-                    <div 
-                        className={`h-full transition-all duration-1000 ease-out relative ${isOverflow ? 'animate-pulse' : ''}`}
-                        style={{ width: `${Math.min(netUsedW, 100)}%`, backgroundColor: '#ef4444' }}
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-white/20 via-white/10 to-transparent" />
-                    </div>
-                    {/* Bonus Offset (Lime) */}
-                    <div 
-                        className="h-full transition-all duration-1000 ease-out relative border-l border-white/10"
-                        style={{ width: `${Math.min(bonusW, 100 - Math.min(netUsedW, 100))}%`, backgroundColor: '#8DC63F' }}
-                    >
-                        <div className="absolute inset-0 bg-linear-to-r from-white/20 via-white/10 to-transparent" />
-                    </div>
-                </div>
-
-                {/* Surplus Indicator (Cyan) - Overrides when netUsed < 0 */}
-                {isSurplus && (
-                     <div 
-                        className="absolute bottom-2 left-2 top-2 rounded-lg transition-all duration-1000 ease-out overflow-hidden shadow-[0_0_20px_rgba(0,229,255,0.2)]"
-                        style={{ width: `calc(${Math.min(100, healthPercent)}% - 16px)`, backgroundColor: '#00e5ff' }}
-                     >
-                        <div className="absolute inset-y-2 left-[calc(100%-14px)] w-4 bg-[#00e5ff] rounded-r-lg animate-pulse" />
-                     </div>
-                )}
-
-                {/* Glassmorphic Labels overlay */}
-                <div className="absolute inset-0 flex items-center justify-between px-6 pointer-events-none z-10">
-                    <div className="flex flex-col">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Net Spend</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className={`text-[12px] font-mono font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] ${isOverflow ? 'text-red-100' : 'text-white'}`}>
-                                {fmt(netUsed)}
-                             </span>
-                             <span className="text-[7px] font-black text-white/40">{mode}</span>
-                        </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end">
-                        <span className="text-[7px] font-black text-white/30 uppercase tracking-tighter leading-none mb-0.5">Baseline (100%)</span>
-                        <div className="flex items-baseline gap-1">
-                             <span className="text-[12px] font-mono font-black text-white/80">
-                                {fmt(start)}
-                             </span>
-                             <span className="text-[7px] font-black text-white/20">{mode}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {/* Health Status Text */}
-            <div className="flex justify-center mt-1">
-                <span className={`text-[8px] font-black uppercase tracking-[0.3em] px-4 py-1 rounded-full border transition-colors ${isOverflow ? 'bg-red-500/10 border-red-500/30 text-red-400' : isSurplus ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-green-500/10 border-green-500/30 text-green-400'}`}>
-                    {isOverflow ? '!! BUDGET OVERFLOW !!' : isSurplus ? `!! REMARKABLE SURPLUS :: HEALTH ${Math.round(healthPercent)}% !!` : `STATUS: HEALTH OPTIMAL :: ${Math.round(healthPercent)}% ALIVE`}
-                </span>
-            </div>
-        </div>
-    );
-};
-
 // ── Large Crate Wireframe ──────────────────────────────────────
 const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?: string; size?: number; color?: string }> = ({
     w = 60, l = 60, h = 60, type = 'crate', size = 130, color = 'var(--main-color)'
@@ -653,16 +543,7 @@ export const ClientOverview: React.FC = () => {
             reqMerchMxn,
             reqExpMxn,
             totalLiabilityMxn: (requestedUnpaidMxn + pendingToRequestMxn),
-            groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count),
-            // HEALTH Calculations
-            healthMetric: {
-                start: (totalAcqValueUsd * currentExchangeRate) * 0.25,
-                bonus: (() => {
-                    const vSum = (vid: string) => vendorSummaries.find(v => v.vendorId === vid)?.totalAcqMxn || 0;
-                    return (vSum('EM') * 0.1) + (vSum('JM') * 0.1) + (vSum('TE') * 0.05) + (vSum('GE') * 0.1) + (vSum('ML') * 0.1);
-                })(),
-                used: ((totalAcqValueUsd * currentExchangeRate) * 0.05) + totalOpsMxn
-            }
+            groupedLogistics: Object.values(groupedLogistics).sort((a,b) => b.count - a.count)
         };
     }, [vendorSummaries, activeDestReqNetMXN, currentExchangeRate, comingPaymentsByVendor, logisticsData, opsBreakdown, items, financeData]);
 
@@ -825,15 +706,6 @@ export const ClientOverview: React.FC = () => {
                                         />
                                         {!isFinancialsCollapsed && (
                                             <>
-                                                <div className="mt-4 px-2 animate-in fade-in duration-700">
-                                                    <FinancialHealthGraph 
-                                                        start={globalTotals.healthMetric.start}
-                                                        bonus={globalTotals.healthMetric.bonus}
-                                                        used={globalTotals.healthMetric.used}
-                                                        mode={currencyMode}
-                                                        currentExchangeRate={currentExchangeRate}
-                                                    />
-                                                </div>
                                                 <div className="mt-4 mb-6 animate-in fade-in duration-500">
                                                     <CompactFinancialsGraph 
                                                         hideLegend={false}
