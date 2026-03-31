@@ -215,7 +215,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'Production' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
+                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
                             </span>
                         </div>
                     </div>
