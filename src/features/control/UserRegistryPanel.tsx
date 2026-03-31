@@ -40,6 +40,8 @@ export function UserRegistryPanel() {
     const [showAddForm, setShowAddForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
+    const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
 
     const toggleUser = (id: string) => setExpandedUsers(prev => ({ ...prev, [id]: !prev[id] }));
     const [newEmail, setNewEmail] = useState('');
@@ -81,6 +83,23 @@ export function UserRegistryPanel() {
             fetchUsers();
         }
         setSubmitting(false);
+    };
+
+    const handleUpdateName = async (id: string) => {
+        const user = users.find(u => u.id === id);
+        if (!user) return;
+        
+        // Optimistic update
+        setUsers(prev => prev.map(u => u.id === id ? { ...u, display_name: editName.trim() || null } : u));
+        const { error } = await supabase.from('app_users').update({ display_name: editName.trim() || null }).eq('id', id);
+        if (error) {
+            // Revert
+            setUsers(prev => prev.map(u => u.id === id ? { ...u, display_name: user.display_name } : u));
+            toast.error('Failed to update name');
+        } else {
+            toast.success('Name updated');
+            setEditingUserId(null);
+        }
     };
 
     const handleToggleActive = async (user: AppUser) => {
@@ -216,9 +235,40 @@ ${appUrl}`
                                         <div className="w-9 h-9 rounded-full bg-(--glass-bg) border border-white/10 flex items-center justify-center text-base font-bold text-white shrink-0">
                                             {(user.display_name || user.email).charAt(0).toUpperCase()}
                                         </div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="font-semibold text-base text-white truncate">{user.display_name || user.email}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                {editingUserId === user.id ? (
+                                                    <div className="flex items-center gap-2 grow max-w-sm" onClick={(e) => e.stopPropagation()}>
+                                                        <input 
+                                                            type="text" 
+                                                            value={editName}
+                                                            onChange={(e) => setEditName(e.target.value)}
+                                                            className="bg-white/5 border border-(--main-color)/50 rounded-lg px-3 py-1 text-sm text-white focus:outline-none w-full"
+                                                            placeholder="User Name"
+                                                            autoFocus
+                                                        />
+                                                        <button onClick={() => handleUpdateName(user.id)} className="p-1.5 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/40 transition-all">
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                                        </button>
+                                                        <button onClick={() => setEditingUserId(null)} className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-all">
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <span className="font-semibold text-base text-white truncate">{user.display_name || user.email}</span>
+                                                        <button 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                setEditingUserId(user.id); 
+                                                                setEditName(user.display_name || ''); 
+                                                            }}
+                                                            className="p-1 rounded-md hover:bg-white/5 text-white/20 hover:text-(--main-color) transition-all"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                        </button>
+                                                    </>
+                                                )}
                                                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${ROLE_COLORS[user.role]}`}>{user.role}</span>
                                                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${user.is_active ? 'bg-transparent text-green-400 border-green-500/30' : 'bg-transparent text-red-400 border-red-500/30'}`}>
                                                     {user.is_active ? 'Active' : 'Inactive'}
