@@ -835,6 +835,31 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   };
 };
 
+/**
+ * Logistics Volume Calculators
+ */
+
+/**
+ * Calculates the internal volume of a crate or pallet in cm3.
+ * For now, we assume net internal is 100% of external dimensions for calculation.
+ */
+export const getCrateInternalVolume = (crate: { width_cm?: number; length_cm?: number; height_cm?: number }) => {
+  return (crate.width_cm || 0) * (crate.length_cm || 0) * (crate.height_cm || 0);
+};
+
+/**
+ * Calculates the padded volume of an item (including packing material) in cm3.
+ * factor = 1.15 (15% padding)
+ */
+export const getItemPaddedVolume = (itemData: any, qty: number = 1) => {
+  const norm = normalizeInventoryData(itemData);
+  const w = parseFloat(norm.width_cm || norm.widthCm || 0);
+  const l = parseFloat(norm.length_cm || norm.lengthCm || 0);
+  const h = parseFloat(norm.height_cm || norm.heightCm || 0);
+  const itemVol = w * l * h;
+  return itemVol * qty * 1.15; // 15% packing material padding
+};
+
 export async function generatePngAndSvgFromMasks(
   imageSrc: string | null,
   imageDimensions: { width: number; height: number },
@@ -899,10 +924,10 @@ export async function generatePngAndSvgFromMasks(
     minY, // source y
     cropWidth, // source width
     cropHeight, // source height
-    0, // destination x
-    0, // destination y
-    cropWidth, // destination width
-    cropHeight, // destination height
+    0, // target x
+    0, // target y
+    cropWidth, // target width
+    cropHeight, // target height
   );
 
   const pngData = exportCanvas.toDataURL('image/png');

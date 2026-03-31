@@ -4,11 +4,12 @@ import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2 } from
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom } from '../../lib/atoms';
+import { getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
-const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number }> = ({
-    w = 60, l = 60, h = 60, status = 'Empty', type = 'crate', count = 1
+const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
+    w = 60, l = 60, h = 60, status = 'Empty', type = 'crate', count = 1, fillPct = 0
 }) => {
     const visH = type === 'pallet' ? 15 : h;
     const maxDim = Math.max(w, l, visH, 1);
@@ -69,12 +70,40 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: st
                             fill={`${accentColor}07`}
                             stroke={accentColor} strokeWidth="1.2"
                         />
+                        
+                        {/* Fill Visualization (Front face overlay) */}
+                        {fillPct > 0 && (
+                            <rect 
+                                x={x0 + 1.5} 
+                                y={y0 + dh - (dh * (fillPct / 100)) + 1.5} 
+                                width={dw - 3} 
+                                height={(dh * (fillPct / 100)) - 3}
+                                fill={accentColor}
+                                fillOpacity="0.25"
+                                rx="1"
+                                className="animate-pulse"
+                            />
+                        )}
+
                         {/* Cross braces */}
                         {type !== 'pallet' && (
                             <>
                                 <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
                                 <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={accentColor} strokeWidth="0.5" opacity="0.25" />
                             </>
+                        )}
+                        
+                        {/* Fill % Text overlay */}
+                        {fillPct > 0 && (
+                            <text 
+                                x={x0 + dw/2} 
+                                y={y0 + dh/2 + 2} 
+                                textAnchor="middle" 
+                                className="text-[10px] font-black fill-white pointer-events-none drop-shadow-md"
+                                style={{ fontSize: '7px' }}
+                            >
+                                {Math.round(fillPct)}%
+                            </text>
                         )}
                     </g>
                 );
@@ -118,10 +147,33 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRecord) => void }) => {
+const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInventory: any[]; onPack: (c: CrateRecord) => void }) => {
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
     const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
+
+    // Volume Fill Calculation
+    const fillPct = useMemo(() => {
+        if (!crate.inventory_ids) return 0;
+        const internalVol = getCrateInternalVolume(crate);
+        if (internalVol <= 0) return 0;
+
+        let usedVol = 0;
+        const map = new Map<string, number>();
+        crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+            const [id, qty] = entry.split(':');
+            map.set(id, qty ? parseInt(qty) : -1);
+        });
+
+        map.forEach((qty, id) => {
+            const inv = allInventory.find(i => String(i.row) === id);
+            if (!inv) return;
+            usedVol += getItemPaddedVolume(inv.data, qty === -1 ? 1 : qty);
+        });
+
+        return Math.min(100, (usedVol / internalVol) * 100);
+    }, [crate.inventory_ids, allInventory, crate.width_cm, crate.length_cm, crate.height_cm]);
+
     return (
         <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30 w-full">
             {/* Top accent line */}
@@ -141,6 +193,7 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                         status={crate.status}
                         type={crate.type}
                         count={crate.groupedCount || 1}
+                        fillPct={fillPct}
                     />
                     <div className="absolute top-2 left-2.5">
                         <StatusBadge status={crate.status} />
@@ -173,6 +226,12 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
                             <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Weight</p>
                             <p className="text-sm font-mono font-black text-(--main-color)">
                                 {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
+                            </p>
+                        </div>
+                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
+                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Fill</p>
+                            <p className={`text-sm font-mono font-black ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                {fillPct.toFixed(1)}%
                             </p>
                         </div>
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5 text-center">
@@ -407,6 +466,7 @@ export const CratesInventoryView: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
+    const allInventory = useAtomValue(inventoryAtom);
 
     // Subscribe to RxDB logistics collection
     useEffect(() => {
@@ -534,7 +594,7 @@ export const CratesInventoryView: React.FC = () => {
                 {displayCrates.length > 0 ? (
                     <div className="flex flex-col gap-4 content-start pb-8">
                         {displayCrates.map(crate => (
-                            <CrateCard key={crate.id} crate={crate} onPack={handlePack} />
+                            <CrateCard key={crate.id} crate={crate} allInventory={allInventory} onPack={handlePack} />
                         ))}
                     </div>
                 ) : (
