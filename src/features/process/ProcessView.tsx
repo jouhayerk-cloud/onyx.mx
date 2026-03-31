@@ -1031,7 +1031,7 @@ export const ProcessView: React.FC = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-[9px] font-black text-white/80 uppercase italic truncate tracking-widest">{l.id.split('-').pop()}</p>
-                                            <p className="text-[7px] text-white/20 uppercase font-bold">{l.type}</p>
+                                            <div className="text-[10px] text-white/40 line-clamp-2 wrap-break-word px-1 mt-auto">{l.type}</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1">
@@ -1098,7 +1098,7 @@ export const ProcessView: React.FC = () => {
                                 </div>
                                 <div className="flex-1 overflow-y-auto pr-1 flex flex-col-reverse gap-2 text-[11px] font-mono leading-relaxed scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                                     {logs.map(log => (
-                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0 break-words">
+                                        <div key={log.id} className="group border-b border-white/5 pb-1 last:border-0 wrap-break-word">
                                             <span className="text-white/10 group-hover:text-white/30 mr-2 text-[9px]">[{log.time}]</span>
                                             <span className={
                                                 log.type === 'error' ? 'text-rose-400 font-bold' : 
