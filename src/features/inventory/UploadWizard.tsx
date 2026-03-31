@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom } from '../../lib/atoms';
+import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -60,6 +60,7 @@ export const UploadWizard: React.FC = () => {
     const db = useDatabase();
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
+    const isDummyMode = useAtomValue(isDummyModeAtom);
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
 
@@ -139,6 +140,11 @@ export const UploadWizard: React.FC = () => {
         setSaving(true);
         const tid = toast.loading('Uploading Entry...');
         try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1500)); // Simulate work
+                toast.success('✓ Item saved! (Demo Mode)', { id: tid, icon: '🧪' });
+                return true;
+            }
             let uploadedUrl = '';
             if (state.media) {
                 const res = await handleFileUpload(state.media, user);

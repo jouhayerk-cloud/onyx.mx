@@ -17,7 +17,8 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
     sidebarStateAtom,
     SidebarState,
     processIsProcessingAtom,
-    processActiveStepLabelAtom
+    processActiveStepLabelAtom,
+    isDummyModeAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
@@ -144,6 +145,7 @@ export function MainAppView() {
     const setWorkflowStep = useSetAtom(workflowStepAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
+    const [isDummyMode, setIsDummyMode] = useAtom(isDummyModeAtom);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
@@ -165,6 +167,16 @@ export function MainAppView() {
 
         return () => window.removeEventListener('resize', handleResize);
     }, [setSidebarState]);
+
+    // Dummy mode logic: if Client is in restricted modules, enable dummy mode
+    useEffect(() => {
+        if (user?.role === 'Client') {
+            const dummyViews = ['upload', 'logistics', 'packing', 'process'];
+            setIsDummyMode(dummyViews.includes(activeView as string));
+        } else {
+            setIsDummyMode(false);
+        }
+    }, [user, activeView, setIsDummyMode]);
 
     const pageContent = (() => {
         if (isEditingMask || workflowStep === 'fullscreenEdit' || workflowStep === 'fullscreenView') {
@@ -327,7 +339,7 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Overview</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Upload size={20} strokeWidth={1.75} />
@@ -363,7 +375,7 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Store</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Truck size={20} strokeWidth={1.75} />
@@ -372,7 +384,7 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Crates</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <>
                                 <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                     <div className="sidebar-list-item-main">

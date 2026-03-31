@@ -239,6 +239,7 @@ export const activeVendorsAtom = atom<string[]>([]);
 export const storeInventoryAtom = atom<any[]>([]);
 export const storeShoppingBagAtom = atom<any[]>([]);
 export const storeActiveUserAtom = atom<string | null>(null); // To view someone's store
+export const isDummyModeAtom = atom<boolean>(false);
 
 export const workbookVersionAtom = atom<'825' | '326'>('825');
 export const workbookSearchTermAtom = atom('');

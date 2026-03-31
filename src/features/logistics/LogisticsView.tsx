@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { logisticsSubTabAtom, userAtom } from '../../lib/atoms';
+import { logisticsSubTabAtom, userAtom, isDummyModeAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -81,7 +81,13 @@ const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const filtered = useMemo(() => filter === 'All' ? docs : docs.filter(d => d.status === filter), [docs, filter]);
 
+    const isDummyMode = useAtomValue(isDummyModeAtom);
     const handleStatusChange = async (id: string, newStatus: string) => {
+        if (isDummyMode) {
+            toast.success(`Status updated to ${newStatus} (Demo Mode)`, { icon: '🧪' });
+            onRefresh();
+            return;
+        }
         const { error } = await supabase.from('logistics').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) toast.error(error.message); else onRefresh();
     };

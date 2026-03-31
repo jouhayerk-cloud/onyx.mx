@@ -16,7 +16,8 @@ import {
     processActiveStepLabelAtom,
     processIsProcessingAtom,
     processLogsAtom,
-    SelectedItemDataAtom
+    SelectedItemDataAtom,
+    isDummyModeAtom
 } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
 import {
@@ -141,6 +142,7 @@ export const ProcessView: React.FC = () => {
     const [batchQueue, setBatchQueue] = useState<BatchOperation[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const isDummyMode = useAtomValue(isDummyModeAtom);
     // Global Atoms
     const [tool, setTool] = useAtom(processToolAtom);
     const [showTerminal, setShowTerminal] = useAtom(processShowTerminalAtom);
@@ -273,6 +275,11 @@ export const ProcessView: React.FC = () => {
         e.stopPropagation();
         if (!confirm(`Clear all AI-generated masks and PNG assets for ${item.itemId}?`)) return;
         try {
+            if (isDummyMode) {
+                addLog(`Asset purge simulated for ${item.itemId} (Demo Mode)`, 'warn');
+                toast.success('Assets cleared (Demo Mode)', { icon: '🧪' });
+                return;
+            }
             const { error } = await supabase
                 .from('inventory')
                 .update({ 
@@ -294,6 +301,14 @@ export const ProcessView: React.FC = () => {
         setEngineStatus('committing');
         addLog(`Synchronizing selected layers to database...`, 'info');
         try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1200));
+                addLog(`Commit simulated for workspace (Demo Mode)`, 'success');
+                setInventoryVersion(v => v + 1);
+                setEngineStatus('completed');
+                toast.success("Design Saved (Demo Mode)", { icon: '🧪' });
+                return;
+            }
             const selectedMasks = layers.filter(l => l.type === 'mask' && l.includeInOutput).map(l => l.data.mask);
             const baseImg = layers.find(l => l.type === 'image');
             if (selectedMasks.length === 0 || !baseImg) throw new Error("Nothing selected for build.");
@@ -510,17 +525,22 @@ export const ProcessView: React.FC = () => {
             
             // Push to Supabase Persistence
             try {
-                const { error } = await supabase
-                    .from('inventory')
-                    .update({
-                        spatial_masks: masks, 
-                        generated_png_url: pngData,
-                        description: `Auto-segmented via Gemini: ${masks.length} layers found.`
-                    })
-                    .eq('id', item.id); // Use the UUID 'id' column for Supabase matching
-                
-                if (error) throw error;
-                addLog(`Item ${item.itemId} persisted to Inventory DB.`, 'success');
+                if (isDummyMode) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    addLog(`Item ${item.itemId} persistence simulated (Demo Mode).`, 'success');
+                } else {
+                    const { error } = await supabase
+                        .from('inventory')
+                        .update({
+                            spatial_masks: masks, 
+                            generated_png_url: pngData,
+                            description: `Auto-segmented via Gemini: ${masks.length} layers found.`
+                        })
+                        .eq('id', item.id); // Use the UUID 'id' column for Supabase matching
+                    
+                    if (error) throw error;
+                    addLog(`Item ${item.itemId} persisted to Inventory DB.`, 'success');
+                }
             } catch (dbErr: any) {
                 addLog(`Database Sync Error: ${dbErr.message}`, 'warn');
             }

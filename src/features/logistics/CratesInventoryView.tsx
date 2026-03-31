@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAtom } from 'jotai/react';
+import { useAtom, useAtomValue } from 'jotai/react';
 import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom } from '../../lib/atoms';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom } from '../../lib/atoms';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
 const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number }> = ({
@@ -209,6 +209,7 @@ const CrateCard = ({ crate, onPack }: { crate: CrateRecord; onPack: (c: CrateRec
 // --- Crate Creation Modal ---
 const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; onClose: () => void; onRefresh: () => void }) => {
     const db = useDatabase();
+    const isDummyMode = useAtomValue(isDummyModeAtom);
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
     const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -229,6 +230,13 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
         setLoading(true);
         const tid = toast.loading(`Initializing ${qty} crate(s)…`);
         try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1000));
+                toast.success(`${qty} crate(s) initialized. (Demo Mode)`, { id: tid, icon: '🧪' });
+                onRefresh();
+                onClose();
+                return;
+            }
             const now = new Date().toISOString();
             // Build crate rows
             const crateRows = Array.from({ length: qty }, (_, i) => ({
