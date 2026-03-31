@@ -32,7 +32,7 @@ import {
     paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -133,26 +133,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
     }, [norm.mediaUrls, norm.generatedPngUrl]);
 
-    // Autoplay logic for card preview
-    useEffect(() => {
-        if (!isHoveringCard || mediaUrls.length <= 1) {
-            const interval = setInterval(() => {
-                if (!isHoveringCard) {
-                    setCardIdx(prev => (prev + 1) % mediaUrls.length);
-                }
-            }, 15000);
-            return () => clearInterval(interval);
-        }
-    }, [isHoveringCard, mediaUrls.length]);
 
     const activeIdx = 0;
     const rawImageUrl = mediaUrls[activeIdx] || null;
     const imageUrl = getCleanImageUrl(rawImageUrl);
     const isVideo = rawImageUrl ? isVideoFile(rawImageUrl) : false;
 
-    const dimensionsStr = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x') 
-        ? `${[norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('x')}cm` : '';
-    const weightStr = norm.weightKg ? `${norm.weightKg}kg` : '';
+    const dimensionsStr = formatDimensionsImperial(norm.widthCm, norm.heightCm, norm.lengthCm);
+    const weightStr = formatWeightImperial(norm.weightKg);
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm, partialPayIds);
@@ -202,12 +190,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {mediaUrls.length > 1 && (
                             <>
                                 <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                                    className="absolute left-0 top-0 bottom-0 w-4 bg-black/20 flex items-center justify-center text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white hover:bg-black/40 transition-all">
-                                    <ChevronLeft size={12} />
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
+                                    <ChevronLeft size={16} />
                                 </button>
                                 <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
-                                    className="absolute right-0 top-0 bottom-0 w-4 bg-black/20 flex items-center justify-center text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white hover:bg-black/40 transition-all">
-                                    <ChevronRight size={12} />
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white transition-all drop-shadow-md">
+                                    <ChevronRight size={16} />
                                 </button>
                             </>
                         )}
@@ -284,12 +272,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 {mediaUrls.length > 1 && (
                     <>
                         <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all">
-                            <ChevronLeft size={20} />
+                            className="absolute left-2 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all drop-shadow-lg">
+                            <ChevronLeft size={28} />
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all">
-                            <ChevronRight size={20} />
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all drop-shadow-lg">
+                            <ChevronRight size={28} />
                         </button>
 
                         {/* Progress Dots */}
@@ -365,6 +353,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
                                 <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
                                 <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
+                                <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
                                 <div><p className={lbl}>Acq. MXN</p><p className="text-xl font-black text-green-400">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</p></div>
                                 <div><p className={lbl}>Landed USD</p><p className="text-xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
                                 <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
