@@ -904,6 +904,65 @@ export const CratePackingManager: React.FC = () => {
         }
     };
 
+    const handleUnpackAll = async () => {
+        if (!selectedCrate) return;
+        const currentIds = parseInventoryIds(selectedCrate.inventory_ids);
+        if (currentIds.size === 0) return;
+
+        setIsSaving(true);
+        const tid = toast.loading(`Unpacking ${selectedCrate.type}...`);
+
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1500));
+                toast.success("Crate unpacked (Demo Mode)", { id: tid, icon: '🧪' });
+                setSelectedItemIds(new Set());
+                setSelectedQtys({});
+                setCratesVersion(v => v + 1);
+                setIsSaving(false);
+                return;
+            }
+
+            const updatePayload = {
+                inventory_ids: "",
+                contents_summary: "0 SKU(s) · 0 unit(s) packed",
+                status: 'Empty' as any,
+                updated_at: new Date().toISOString()
+            };
+
+            // 1. Update the crate in Supabase
+            const { error: crateErr } = await supabase.from('logistics').update(updatePayload).eq('id', selectedCrate.id);
+            if (crateErr) throw crateErr;
+
+            // 2. Local RxDB update
+            if (db) {
+                const localCrate = await db.logistics.findOne({ selector: { id: selectedCrate.id } }).exec();
+                if (localCrate) await localCrate.patch(updatePayload);
+            }
+
+            // 3. Sync Inventory (remove crate_id)
+            const itemIds = Array.from(currentIds.keys());
+            await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
+            if (db) {
+                for (const id of itemIds) {
+                    try {
+                        const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
+                        if (lDoc) await lDoc.patch({ crate_id: null });
+                    } catch (_) {}
+                }
+            }
+
+            toast.success("Crate unpacked", { id: tid });
+            setSelectedItemIds(new Set());
+            setSelectedQtys({});
+            setCratesVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(err.message || 'Unpack failed.', { id: tid });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <div className="flex h-full w-full overflow-hidden bg-transparent">
 
@@ -1048,6 +1107,18 @@ export const CratePackingManager: React.FC = () => {
                         </div>
 
                         <div className="w-px h-4 bg-white/10 mx-1" />
+
+                        {/* Unpack all button */}
+                        {selectedCrate && (
+                            <button
+                                onClick={handleUnpackAll}
+                                disabled={!selectedCrate || !selectedCrate.inventory_ids || selectedCrate.inventory_ids.length === 0 || isSaving}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${(!selectedCrate || !selectedCrate.inventory_ids || selectedCrate.inventory_ids.length === 0 || isSaving) ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed' : 'bg-white/5 border-white/10 text-white/60 hover:text-rose-400 hover:border-rose-400/30 cursor-pointer'}`}
+                            >
+                                <X size={12} />
+                                Unpack all
+                            </button>
+                        )}
 
                         {/* Pack Action */}
                         <button
