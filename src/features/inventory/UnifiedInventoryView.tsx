@@ -39,7 +39,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check } from 'lucide-react';
 
 export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
@@ -121,6 +121,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
     const [showViewer, setShowViewer] = useState(false);
+    const [viewerIdx, setViewerIdx] = useState(0);
+    const [modalIdx, setModalIdx] = useState(0);
 
 
     const mediaUrls = useMemo(() => {
@@ -172,11 +174,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
         return (
             <div className="flex flex-col gap-0.5">
-                {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={0} onClose={() => setShowViewer(false)} />}
+                {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
                 <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={onToggleExpand} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden" onClick={(e) => { e.stopPropagation(); imageUrl && setShowViewer(true); }}>
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden" onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 0) { setViewerIdx(0); setShowViewer(true); } }}>
                         {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                         {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
                     </div>
@@ -201,6 +203,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 </div>
                 {isExpanded && (
                     <div className="ml-14 mr-2 px-4 pb-4 pt-4 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300">
+                        {/* List View Thumbnail Gallery */}
+                        {mediaUrls.length > 0 && (
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 border-b border-white/5 mb-6">
+                                {mediaUrls.map((u, i) => (
+                                    <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
+                                        className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
+                                        <img src={getCleanImageUrl(u)} className="w-full h-full object-cover opacity-60 group-hover/thumb:opacity-100 transition-all" />
+                                        {isVideoFile(u) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/40 group-hover/thumb:text-white transition-all"><Video size={14} /></div>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-6 mb-4">
                             <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-white/70 uppercase">{norm.material || '—'}</p></div>
                             <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono text-white/70">{dimensionsStr || '—'}</p></div>
@@ -222,7 +236,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     return (
         <div className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
              style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
-            {showViewer && imageUrl && <FullscreenImageViewer src={rawImageUrl} mediaUrls={mediaUrls} initialIdx={0} onClose={() => setShowViewer(false)} />}
+            {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             <div className="aspect-4/3 relative overflow-hidden bg-black/20">
                 {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
                 {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
@@ -246,9 +260,44 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
                             <button onClick={onToggleExpand} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
                         </div>
-                        <div className="h-72 bg-black relative shrink-0">
-                            {imageUrl ? <img src={imageUrl} className="w-full h-full object-contain" onClick={()=>setShowViewer(true)} /> : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={64} height={64} /></div>}
+                        <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero">
+                            {mediaUrls[modalIdx] ? (
+                                <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
+                                    {isVideoFile(mediaUrls[modalIdx]) ? (
+                                        <video src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
+                                    ) : (
+                                        <img src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
+                                    )}
+                                    
+                                    {/* Modal Hero Navigation Chevrons */}
+                                    {mediaUrls.length > 1 && (
+                                        <>
+                                            <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
+                                                <ChevronLeft size={24} />
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p + 1) % mediaUrls.length); }}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
+                                                <ChevronRight size={24} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            ) : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={64} height={64} /></div>}
                         </div>
+
+                        {/* Modal Thumbnail Gallery Bar */}
+                        {mediaUrls.length > 1 && (
+                            <div className="px-8 py-3 bg-black/40 border-b border-white/5 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+                                {mediaUrls.map((u, i) => (
+                                    <div key={i} onClick={() => setModalIdx(i)}
+                                        className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
+                                        <img src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
                             <div><h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/[0.02] border border-white/5">
@@ -287,6 +336,7 @@ export const UnifiedInventoryView = () => {
     const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom); const [isSortMenuOpen, setIsSortMenuOpen] = useAtom(isInventorySortMenuOpenAtom);
     const user = useAtomValue(userAtom); const setFilteredCount = useSetAtom(filteredInventoryCountAtom);
     const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
+    const [savingProgress, setSavingProgress] = useState(0);
 
     const partialPayIds = useMemo(() => {
         const ids = new Set<string>();
@@ -391,9 +441,24 @@ export const UnifiedInventoryView = () => {
     }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter]);
 
     const handleSaveEdit = async (e: React.FormEvent) => {
-        e.preventDefault(); if (!itemRow || !editData) return; setIsSaving(true); const tid = toast.loading('Syncing Artifact...');
+        e.preventDefault(); if (!itemRow || !editData) return; 
+        setIsSaving(true); setSavingProgress(10);
+        const tid = toast.loading('Syncing Artifact...');
         try {
-            let uploaded: string[] = []; if (newFiles.length > 0) { for (const f of newFiles) { if (f.originalFile) { const r = await handleFileUpload(f.originalFile, user); if (r) uploaded.push(r.thumbnailUrl); } } }
+            let uploaded: string[] = []; 
+            if (newFiles.length > 0) { 
+                for (let i = 0; i < newFiles.length; i++) { 
+                    const f = newFiles[i];
+                    if (f.originalFile) { 
+                        const r = await handleFileUpload(f.originalFile, user); 
+                        if (r) uploaded.push(r.thumbnailUrl); 
+                    } 
+                    setSavingProgress(Math.round(10 + ((i + 1) / newFiles.length) * 70));
+                } 
+            } else {
+                setSavingProgress(80);
+            }
+            
             const news = [editData.mediaUrls || '', ...uploaded].filter(Boolean).join(',');
             const payload = {
                 status: editData.status,
@@ -410,9 +475,24 @@ export const UnifiedInventoryView = () => {
                 media_urls: news,
                 updated_at: new Date().toISOString()
             };
+            
+            setSavingProgress(90);
             const { error } = await supabase.from((itemData as any)?.source==='production'?'production':'inventory').update(payload).eq('id', itemRow);
-            if (error) throw error; toast.success('Sync Complete', { id: tid }); setInventoryVersion(v => v + 1); setMode('view');
-        } catch (err: any) { toast.error(err.message, { id: tid }); } finally { setIsSaving(false); }
+            if (error) throw error; 
+            
+            setSavingProgress(100);
+            toast.success('Sync Complete', { id: tid }); 
+            setInventoryVersion(v => v + 1); 
+            setMode('view');
+        } catch (err: any) { 
+            toast.error(err.message, { id: tid }); 
+            setIsSaving(false);
+        } finally { 
+            setTimeout(() => {
+                setIsSaving(false);
+                setSavingProgress(0);
+            }, 800);
+        }
     };
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
@@ -655,6 +735,40 @@ export const UnifiedInventoryView = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {isSaving && (
+                <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="w-[320px] p-10 rounded-[40px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
+                        
+                        <div className="relative">
+                            <div className="w-20 h-20 rounded-3xl bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20 animate-pulse">
+                                <CloudUpload size={40} className="text-(--main-color)" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#0a0a0a] transition-all duration-500" style={{ transform: savingProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                <Check size={14} className="text-white font-bold" />
+                            </div>
+                        </div>
+
+                        <div className="w-full space-y-4 relative">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
+                                <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                <div 
+                                    className="h-full bg-linear-to-r from-(--main-color)/50 to-(--main-color) transition-all duration-500 ease-out"
+                                    style={{ width: `${savingProgress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                            {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
+                        </p>
                     </div>
                 </div>
             )}
