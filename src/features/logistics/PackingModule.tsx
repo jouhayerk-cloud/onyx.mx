@@ -20,9 +20,11 @@ import {
     X,
     Edit,
     Printer,
-    Video
+    Video,
+    Hash
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Barcode from 'react-barcode';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -820,6 +822,22 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         </span>
                     </div>
 
+                    {/* Barcode Field (Secondary) */}
+                    <div className="flex flex-col min-w-[120px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5 overflow-hidden">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Barcode (Code 39)</span>
+                        <div className="bg-white p-1 rounded-md scale-75 origin-left -ml-2">
+                             <Barcode 
+                                value={item.codes.bookBardcode || 'N/A'} 
+                                format="CODE39" 
+                                width={1} 
+                                height={24} 
+                                displayValue={false} 
+                                background="transparent"
+                                margin={0}
+                            />
+                        </div>
+                    </div>
+
                     {/* Price / Qty */}
                     <div className="flex flex-col min-w-[72px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
                         <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Price / Qty</span>
@@ -876,6 +894,23 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Quantity</p><p className="text-[11px] font-mono font-bold text-white/70">{d.quantity || 1}</p></div>
                         <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Status</p><p className="text-[11px] font-bold text-white/70 uppercase">{d.status || '—'}</p></div>
                         <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Book Retail</p><p className="text-[11px] font-mono font-black text-green-400">${item.codes.bookRetail || '—'}</p></div>
+                    </div>
+                    {/* Barcode in expanded view */}
+                    <div className="mt-4 flex flex-col gap-2 p-3 bg-white rounded-2xl border border-white/10 w-fit mx-auto">
+                        <div className="flex items-center justify-between gap-8 mb-1">
+                            <span className="text-[8px] font-black text-black/40 uppercase tracking-widest">Master Tag Barcode</span>
+                            <span className="text-[10px] font-mono font-bold text-black">{item.codes.bookBardcode}</span>
+                        </div>
+                        <div className="bg-white flex justify-center">
+                            <Barcode 
+                                value={item.codes.bookBardcode || 'N/A'} 
+                                format="CODE39" 
+                                width={1.8} 
+                                height={60} 
+                                displayValue={false}
+                                margin={10}
+                            />
+                        </div>
                     </div>
                     {d.description && (
                         <p className="text-[10px] text-white/40 mt-2 italic leading-relaxed border-t border-white/5 pt-2">{d.description}</p>
