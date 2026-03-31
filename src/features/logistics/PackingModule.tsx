@@ -1,5 +1,5 @@
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { inventoryAtom, storeInventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM, inventoryArtifactConfigAtom } from '../../lib/atoms';
+import { inventoryAtom, storeInventoryAtom, exchangeRateAtom, workbookVersionAtom, TOP_BAR_SEARCH_ATOM, inventoryArtifactConfigAtom, isDummyModeAtom } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
 import {
@@ -164,6 +164,7 @@ export const PackingModule: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
     const globalSearchTerm = useAtomValue(TOP_BAR_SEARCH_ATOM);
+    const isDummyMode = useAtomValue(isDummyModeAtom);
     const deferredSearch = React.useDeferredValue(globalSearchTerm);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -365,6 +366,11 @@ export const PackingModule: React.FC = () => {
             if (type === 'ONYX_PRINT_JOB_STARTED' && lastPrintedIds.length > 0 && db) {
                 const toastId = toast.loading('Recording Print Event...');
                 try {
+                    if (isDummyMode) {
+                        await new Promise(r => setTimeout(r, 1000));
+                        toast.success('Print job simulated (Demo Mode)', { id: toastId, icon: '🧪' });
+                        return;
+                    }
                     const updatePromises = lastPrintedIds.map(async (id) => {
                         const doc = await db.inventory.findOne(id).exec();
                         if (doc) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
-import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, inventoryArtifactConfigAtom } from '../../lib/atoms';
+import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, inventoryArtifactConfigAtom, isDummyModeAtom } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
@@ -685,6 +685,7 @@ export const CratePackingManager: React.FC = () => {
     const [cratesVersion, setCratesVersion] = useAtom(cratesVersionAtom);
     const search = useAtomValue(TOP_BAR_SEARCH_ATOM);
     const exchangeRate = useAtomValue(exchangeRateAtom);
+    const isDummyMode = useAtomValue(isDummyModeAtom);
 
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
@@ -823,6 +824,13 @@ export const CratePackingManager: React.FC = () => {
         const tid = toast.loading(isUpdate ? `Updating ${selectedCrate.type}...` : `Packing ${selectedItemIds.size} item(s)...`);
         
         try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1500));
+                toast.success(isUpdate ? "Crate contents updated (Demo Mode)" : "Packing confirmed (Demo Mode)", { id: tid, icon: '🧪' });
+                setCratesVersion(v => v + 1);
+                setIsSaving(false);
+                return;
+            }
             // THE NEW MAP: fully defined by the staged selection (overwrite mode)
             const newMap = new Map<string, number>();
             selectedItemIds.forEach(id => {
