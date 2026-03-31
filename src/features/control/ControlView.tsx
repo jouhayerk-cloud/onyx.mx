@@ -58,9 +58,9 @@ export function ControlView() {
             <div className="flex-1 min-h-0 flex flex-col">
                 {activeTab === 'users' && <div className="flex-1 overflow-y-auto"><UserRegistryPanel /></div>}
                 {activeTab === 'database' && (
-                    <div className="flex flex-col gap-6 h-full min-h-0">
-                        <div className="shrink-0"><DatabaseStatsPanel /></div>
-                        <div className="flex-1 min-h-0">
+                    <div className="flex-1 overflow-y-auto min-h-0">
+                        <div className="flex flex-col gap-6 p-1 pb-20">
+                            <DatabaseStatsPanel />
                             <DataBaseArtifact />
                         </div>
                     </div>

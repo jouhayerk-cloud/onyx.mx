@@ -37,10 +37,11 @@ export function DataBaseArtifact() {
         const combined = [...(inventory || []), ...(storeInventory || [])];
         const unique = new Map<string, any>();
         combined.forEach(item => {
-            const data = item?.data || item;
+            const data = { ...(item?.data || item) };
             const id = data?.id || item?.id || item?.row;
-            if (data && id) {
-                unique.set(String(id), data);
+            if (data && id !== undefined && id !== null) {
+                data.id = String(id); // Ensure id is in the data object
+                unique.set(data.id, data);
             }
         });
         return Array.from(unique.values()) as DBItem[];
