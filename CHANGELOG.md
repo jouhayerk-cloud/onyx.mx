@@ -1,4 +1,13 @@
 # Changelog
+3: 
+4: ## v1.58.6 (2026-03-31)
+5: - **Immediate Database Synchronization**: Implemented a reactive sync trigger in `DataSyncProvider.tsx` that performs an explicit manual poll from Supabase immediately after any save or deletion completes, ensuring the UI reflects changes instantly.
+6: - **Card-Level Autoplay Slideshows**: Every item preview in List and Grid views now cycles through its gallery automatically every 3 seconds, with intelligent pause-on-hover logic.
+7: - **Manual Preview Navigation**: Added free-floating, hover-triggered navigation chevrons to the left and right borders of item previews, enabling rapid gallery browsing without card expansion.
+8: - **Minimalist Action UI**: Refactored the List View details panel to replace boxed buttons with clean, icon-only actions for **Edit** and **REMOVE**.
+9: - **Branding & Intent**: Standardized all deletion-related actions across the module (buttons, hover titles, and confirmation dialogs) to use the label **"REMOVE"** instead of "Hide".
+10: - **Grid View UX**: Added subtle progress indicators (dots) to Grid View cards to provide visual feedback on gallery position.
+11: 
 
 ## v1.58.2 (2026-03-31)
 - **Logistics Volume Optimization**: Refactored volume calculation logic into shared utilities (`getCrateInternalVolume`, `getItemPaddedVolume`) for absolute cross-module consistency.

@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { useSetAtom } from 'jotai';
+import { useSetAtom, useAtomValue } from 'jotai';
 import { 
     inventoryAtom, 
     storeInventoryAtom,
     financeDataAtom, 
     logisticsDataAtom,
-    isSyncingAtom
+    isSyncingAtom,
+    InventoryVersionAtom
 } from '../lib/atoms';
 import { useDatabase } from '../lib/hooks';
 import { normalizeInventoryData } from '../lib/utils';
@@ -24,6 +25,7 @@ export const DataSyncProvider: React.FC = () => {
     const setFinance = useSetAtom(financeDataAtom);
     const setLogistics = useSetAtom(logisticsDataAtom);
     const setIsSyncing = useSetAtom(isSyncingAtom);
+    const inventoryVersion = useAtomValue(InventoryVersionAtom);
 
     const [isInitialSyncComplete, setIsInitialSyncComplete] = useState(false);
 
@@ -177,6 +179,36 @@ export const DataSyncProvider: React.FC = () => {
             supabase.removeChannel(realtimeChannel);
         };
     }, [db, setInventory, setFinance, setLogistics]);
+
+    // 5. Manual Sync Trigger (Version-based)
+    // When inventoryVersion increments (e.g. after a save or delete),
+    // we perform an explicit poll to ensure the UI is perfectly in sync.
+    useEffect(() => {
+        if (!db || inventoryVersion === 0) return;
+        
+        const forceSync = async () => {
+            console.log(`📡 [DataSync] Explicit sync triggered (v${inventoryVersion})`);
+            try {
+                // Fetch latest from BOTH tables
+                const [invRes, prodRes] = await Promise.all([
+                    supabase.from('inventory').select('*').eq('is_hidden', false),
+                    supabase.from('production').select('*').eq('is_hidden', false)
+                ]);
+
+                if (invRes.data) {
+                    await Promise.all(invRes.data.map(d => db.inventory.upsert({ ...d, id: String(d.id) })));
+                }
+                if (prodRes.data) {
+                    await Promise.all(prodRes.data.map(d => db.production.upsert({ ...d, id: String(d.id) })));
+                }
+                console.log('✅ [DataSync] Explicit manual poll complete.');
+            } catch (err) {
+                console.error('[DataSync] Manual sync failed:', err);
+            }
+        };
+
+        forceSync();
+    }, [db, inventoryVersion]);
 
     // This component renders nothing, it just manages side-effects
     return null;

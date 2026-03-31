@@ -123,6 +123,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const [showViewer, setShowViewer] = useState(false);
     const [viewerIdx, setViewerIdx] = useState(0);
     const [modalIdx, setModalIdx] = useState(0);
+    const [cardIdx, setCardIdx] = useState(0);
+    const [isHoveringCard, setIsHoveringCard] = useState(false);
 
 
     const mediaUrls = useMemo(() => {
@@ -130,6 +132,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
         return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
     }, [norm.mediaUrls, norm.generatedPngUrl]);
+
+    // Autoplay logic for card preview
+    useEffect(() => {
+        if (!isHoveringCard || mediaUrls.length <= 1) {
+            const interval = setInterval(() => {
+                if (!isHoveringCard) {
+                    setCardIdx(prev => (prev + 1) % mediaUrls.length);
+                }
+            }, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [isHoveringCard, mediaUrls.length]);
 
     const activeIdx = 0;
     const rawImageUrl = mediaUrls[activeIdx] || null;
@@ -157,12 +171,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     };
 
     const handleDelete = async (e: React.MouseEvent) => {
-        e.stopPropagation(); if (!window.confirm('Hide this item?')) return;
-        const tid = toast.loading('Hiding...');
+        e.stopPropagation(); if (!window.confirm('PERMANENTLY REMOVE this item from registry?')) return;
+        const tid = toast.loading('Removing Artifact...');
         try {
             const tbl = item.source === 'production' ? 'production' : 'inventory';
             const { error } = await supabase.from(tbl).update({ is_hidden: true }).eq('id', item.row);
-            if (error) throw error; toast.success('Hidden', { id: tid }); setInventoryVersion(v => v + 1);
+            if (error) throw error; toast.success('Removed', { id: tid }); setInventoryVersion(v => v + 1);
         } catch (err: any) { toast.error(err.message, { id: tid }); }
     };
 
@@ -178,9 +192,25 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={onToggleExpand} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden" onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 0) { setViewerIdx(0); setShowViewer(true); } }}>
-                        {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
-                        {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg" 
+                        onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
+                        onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}>
+                        {mediaUrls[cardIdx] ? <img src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-500" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
+                        
+                        {/* List View Card Navigation Chevrons */}
+                        {mediaUrls.length > 1 && (
+                            <>
+                                <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                    className="absolute left-0 top-0 bottom-0 w-4 bg-black/20 flex items-center justify-center text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white hover:bg-black/40 transition-all">
+                                    <ChevronLeft size={12} />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
+                                    className="absolute right-0 top-0 bottom-0 w-4 bg-black/20 flex items-center justify-center text-white/40 opacity-0 group-hover/listimg:opacity-100 hover:text-white hover:bg-black/40 transition-all">
+                                    <ChevronRight size={12} />
+                                </button>
+                            </>
+                        )}
                     </div>
                     <div className="flex-1 flex items-center px-3 gap-3 min-w-0 overflow-x-auto no-scrollbar">
                         <div className="flex flex-col flex-1 min-w-0">
@@ -221,9 +251,17 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono text-white/70">{weightStr || '—'}</p></div>
                             <div><p className={lbl}>Landed USD</p><p className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
                             <div><p className={lbl}>Retail USD</p><p className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                            <div className="flex items-center gap-4 col-span-full pt-4 border-t border-white/5 mt-2">
-                                {isEditable && <button onClick={handleEdit} className="flex items-center gap-2 h-9 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase"><Pencil size={14} /> Edit</button>}
-                                {isInternalUser && <button onClick={handleDelete} className="flex items-center gap-2 h-9 px-4 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase"><Trash2 size={14} /> Hide</button>}
+                            <div className="flex items-center gap-6 col-span-full pt-4 border-t border-white/5 mt-2">
+                                {isEditable && (
+                                    <button onClick={handleEdit} className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all" title="Edit Item">
+                                        <Pencil size={18} />
+                                    </button>
+                                )}
+                                {isInternalUser && (
+                                    <button onClick={handleDelete} className="p-2 -m-2 text-red-500/60 hover:text-red-500 transition-all" title="Remove Artifact">
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -235,11 +273,34 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
     return (
         <div className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
-             style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
+             style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
+             onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-            <div className="aspect-4/3 relative overflow-hidden bg-black/20">
-                {imageUrl ? <img src={imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
-                {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
+            <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}>
+                {mediaUrls[cardIdx] ? <img src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-500" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
+                {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
+                
+                {/* Grid View Card Navigation Chevrons */}
+                {mediaUrls.length > 1 && (
+                    <>
+                        <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all">
+                            <ChevronLeft size={20} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setCardIdx(p => (p + 1) % mediaUrls.length); }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/gridimg:opacity-100 hover:text-white transition-all">
+                            <ChevronRight size={20} />
+                        </button>
+
+                        {/* Progress Dots */}
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 opacity-0 group-hover/gridimg:opacity-100 transition-opacity">
+                            {mediaUrls.map((_, i) => (
+                                <div key={i} className={`w-1 h-1 rounded-full ${cardIdx === i ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
+                            ))}
+                        </div>
+                    </>
+                )}
+                
                 <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1">
@@ -300,7 +361,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                         <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
                             <div><h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/[0.02] border border-white/5">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
                                 <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
                                 <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
                                 <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
@@ -309,7 +370,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
                                 {isInternalUser && (
                                     <div className="col-span-full border-t border-white/5 pt-6 flex justify-end">
-                                        <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> Hide Artifact</button>
+                                        <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> REMOVE ARTIFACT</button>
                                     </div>
                                 )}
                             </div>
