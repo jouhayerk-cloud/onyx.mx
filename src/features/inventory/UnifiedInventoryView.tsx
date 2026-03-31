@@ -206,6 +206,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="text-[9px] text-white/40 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
+                        <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-white/60 truncate max-w-[100px]">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-white/40 truncate max-w-[100px]">{weightStr || '—'}</span></div></div>
                         <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-1"><span className="text-xs font-bold text-white">{showFinancials ? `$${itemPriceMXN}` : '***'}</span><span className="text-[10px] text-white/50 font-mono">x{norm.quantity || 1}</span></div></div>
                         <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
                         <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-white/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
@@ -294,10 +295,14 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
             <div className="p-3 flex flex-col gap-2 flex-1">
                 <div className="font-bold text-[13px] text-white truncate">{norm.shape || 'OBJ'} <span className="opacity-60 text-[11px]">{norm.shortDescription}</span></div>
                 <div className="text-[9px] text-white/30 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
+                <div className="flex flex-col gap-0.5 my-1">
+                    <span className="text-[9px] font-mono text-white/40 truncate">{dimensionsStr || '—'}</span>
+                    <span className="text-[9px] font-mono text-white/20 truncate">{weightStr || '—'}</span>
+                </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">
                         {statusClass && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'Production' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
                     </div>
                     <span className="text-[10px] font-black text-white/20 font-mono">x{norm.quantity || 1}</span>
                 </div>
@@ -701,7 +706,7 @@ export const UnifiedInventoryView = () => {
                             {/* Identity Fields Section */}
                             <div className="grid grid-cols-2 gap-x-8 gap-y-10">
                                 <div className="flex flex-col gap-2.5"><label className={lbl}>NUM</label><input disabled className={inpNum + " opacity-50 cursor-not-allowed"} value={editData.itemNumber || '--'} /></div>
-                                <div className="flex flex-col gap-2.5"><label className={lbl}>ITEM QUANTITY</label><input type="number" name="quantity" value={editData.quantity} onChange={handleEditChange} className={inp + " text-2xl font-black"} /></div>
+                                <div className="flex flex-col gap-2.5"><label className={lbl}>ITEM QUANTITY</label><input type="text" name="quantity" value={editData.quantity} placeholder="1" onChange={(e) => setEditData((p:any) => ({ ...p, quantity: e.target.value.replace(/[^0-9]/g, '') }))} className={inp + " text-2xl font-black"} /></div>
                                 
                                 {/* Media Section */}
                                 <div className="space-y-5 col-span-2">

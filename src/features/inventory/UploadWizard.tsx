@@ -6,18 +6,25 @@ import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDu
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL } from '../../lib/utils';
+import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL, isVideoFile } from '../../lib/utils';
+import { CloudUpload, Check, Trash2, Video, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UploadedFile } from '../../lib/Types';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
+
+interface WizardMedia {
+    file: File | null;
+    preview: string | null;
+    type: 'image' | 'video';
+}
 
 interface WizardState {
     status: EntryStatus;
     vendorId: string;
     itemNumber: string;
     quantity: string;
-    media: File | null;
-    mediaPreview: string | null;
+    mediaList: WizardMedia[];
     mediaType: MediaType;
     shape: string;
     material: string;
@@ -37,8 +44,7 @@ const INITIAL_STATE: WizardState = {
     vendorId: '',
     itemNumber: '',
     quantity: '1',
-    media: null,
-    mediaPreview: null,
+    mediaList: [],
     mediaType: 'Product',
     shape: '',
     material: '',
@@ -60,6 +66,7 @@ export const UploadWizard: React.FC = () => {
     const db = useDatabase();
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
+    const [savingProgress, setSavingProgress] = useState(0);
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
@@ -126,34 +133,66 @@ export const UploadWizard: React.FC = () => {
     const set = (k: keyof WizardState, v: any) => setState(prev => ({ ...prev, [k]: v }));
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            set('media', file);
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        
+        const newMedia: WizardMedia[] = [];
+        for (const file of files) {
             const type = file.type.startsWith('video/') ? 'video' : 'image';
             const preview = await readFileAsDataURL(file, type);
-            set('mediaPreview', preview);
+            newMedia.push({ file, preview, type });
         }
+        setState(prev => ({ 
+            ...prev, 
+            mediaList: [...prev.mediaList, ...newMedia] 
+        }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeMedia = (idx: number) => {
+        setState(prev => ({
+            ...prev,
+            mediaList: prev.mediaList.filter((_, i) => i !== idx)
+        }));
     };
 
     const doSave = async (): Promise<boolean> => {
         if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Item Number'); return false; }
         setSaving(true);
-        const tid = toast.loading('Uploading Entry...');
+        setSavingProgress(10);
+        
         try {
             if (isDummyMode) {
-                await new Promise(r => setTimeout(r, 1500)); // Simulate work
-                toast.success('✓ Item saved! (Demo Mode)', { id: tid, icon: '🧪' });
+                for (let i = 20; i <= 100; i += 20) {
+                    await new Promise(r => setTimeout(r, 300));
+                    setSavingProgress(i);
+                }
+                toast.success('✓ Item saved! (Demo Mode)', { icon: '🧪' });
                 return true;
             }
-            let uploadedUrl = '';
-            if (state.media) {
-                const res = await handleFileUpload(state.media, user);
-                if (res) uploadedUrl = `${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`;
+
+            let uploadedUrls: string[] = [];
+            if (state.mediaList.length > 0) {
+                for (let i = 0; i < state.mediaList.length; i++) {
+                    const m = state.mediaList[i];
+                    if (m.file) {
+                        const res = await handleFileUpload(m.file, user);
+                        if (res) {
+                            const taggedUrl = `${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`;
+                            uploadedUrls.push(taggedUrl);
+                        }
+                    }
+                    setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
+                }
+            } else {
+                setSavingProgress(80);
             }
+
             const finalItemId = `${state.vendorId}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
             const payload = {
                 id: crypto.randomUUID(),
                 item_id: finalItemId,
+                vendor_id: state.vendorId, // CRITICAL: Explicitly add vendor_id
                 item_number: state.itemNumber,
                 status: state.status,
                 quantity: parseInt(state.quantity) || 1,
@@ -167,22 +206,28 @@ export const UploadWizard: React.FC = () => {
                 length_cm: parseFloat(state.lengthCm) || null,
                 price_mxn: parseFloat(state.price) || null,
                 description: state.notes,
-                media_urls: uploadedUrl,
+                media_urls: uploadedUrls.join(','),
                 created_by: user?.name || user?.email,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 workbook: 'v326',
             };
+
+            setSavingProgress(90);
             await supabase.from('inventory').insert(payload);
             if (db) await db.inventory.insert(payload);
-            toast.success('✓ Item saved!', { id: tid });
+            setSavingProgress(100);
+            toast.success('✓ Item saved!');
             return true;
         } catch (err: any) {
             console.error('Wizard save error:', err);
-            toast.error(err.message || 'Upload Failed', { id: tid });
+            toast.error(err.message || 'Upload Failed');
             return false;
         } finally {
-            setSaving(false);
+            setTimeout(() => {
+                setSaving(false);
+                setSavingProgress(0);
+            }, 800);
         }
     };
 
@@ -341,7 +386,9 @@ export const UploadWizard: React.FC = () => {
 
                                 <div className="space-y-4">
                                     <label className="text-[10px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-[0.3em] block ml-1">UNITS TO ADD</label>
-                                    <input type="number" value={state.quantity} onChange={e => set('quantity', e.target.value)}
+                                    <input type="text" value={state.quantity} 
+                                        placeholder="1"
+                                        onChange={e => set('quantity', e.target.value.replace(/[^0-9]/g, ''))}
                                         className="w-full h-14 px-8 text-3xl font-black bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) focus:border-(--main-color)/50 transition-all outline-none" />
                                 </div>
 
@@ -358,20 +405,29 @@ export const UploadWizard: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="relative group/media cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" />
-                                        {state.mediaPreview ? (
-                                            <div className="w-full h-40 rounded-[32px] overflow-hidden border border-(--border-color) group-hover:border-(--main-color)/50 transition-all shadow-2xl">
-                                                <img src={state.mediaPreview} alt="Preview" className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/media:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-sm">
-                                                    <span className="text-xs font-black text-white uppercase tracking-widest">Change Image</span>
+                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
+                                        <div className="w-full min-h-[160px] p-6 rounded-[32px] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-4 hover:bg-white/[0.05] hover:border-(--main-color)/30 transition-all group">
+                                            <div className="flex flex-wrap justify-center gap-4 w-full">
+                                                {state.mediaList.map((m, i) => (
+                                                    <div key={i} className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 relative group/thumb shadow-xl bg-black/40">
+                                                        {m.type === 'video' ? (
+                                                            <div className="w-full h-full flex items-center justify-center bg-black/60"><Video size={20} className="text-white/40" /></div>
+                                                        ) : (
+                                                            <img src={m.preview || ''} className="w-full h-full object-cover" />
+                                                        )}
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); removeMedia(i); }} 
+                                                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white opacity-0 group-hover/thumb:opacity-100 transition-all flex items-center justify-center text-xs shadow-lg hover:bg-red-600">
+                                                            &times;
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-(--main-color)/50 transition-all bg-white/[0.02]">
+                                                    <Plus size={20} className="text-white/20" />
+                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em]">Add More</span>
                                                 </div>
                                             </div>
-                                        ) : (
-                                            <div className="w-full h-40 rounded-[32px] border-2 border-dashed border-(--border-color) flex flex-col items-center justify-center gap-4 bg-(--glass-bg) hover:bg-(--border-color) hover:border-(--main-color)/30 transition-all group">
-                                                <svg className="w-8 h-8 text-(--text-color-secondary) group-hover:text-(--main-color) transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">Click to upload photo</span>
-                                            </div>
-                                        )}
+                                            {state.mediaList.length === 0 && <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">Click to upload photos</span>}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -499,6 +555,40 @@ export const UploadWizard: React.FC = () => {
                     )}
 
                 </div>
+                {/* Save Progress Overlay */}
+                {saving && (
+                    <div className="absolute inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300 rounded-[40px]">
+                        <div className="w-[320px] p-10 rounded-[40px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
+                            
+                            <div className="relative">
+                                <div className="w-20 h-20 rounded-3xl bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20 animate-pulse">
+                                    <CloudUpload size={40} className="text-(--main-color)" />
+                                </div>
+                                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#0a0a0a] transition-all duration-500" style={{ transform: savingProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                    <Check size={14} className="text-white font-bold" />
+                                </div>
+                            </div>
+
+                            <div className="w-full space-y-4 relative">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
+                                    <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                    <div 
+                                        className="h-full bg-(--main-color) transition-all duration-500 ease-out"
+                                        style={{ width: `${savingProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                                {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

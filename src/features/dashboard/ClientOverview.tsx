@@ -678,24 +678,6 @@ export const ClientOverview: React.FC = () => {
                                             onToggle={() => setIsFinancialsCollapsed(!isFinancialsCollapsed)} isCollapsed={isFinancialsCollapsed}
                                             compactSummary={
                                                 <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
-                                                    {isFinancialsCollapsed && (
-                                                        <div className="w-full animate-in fade-in slide-in-from-top-1 duration-500">
-                                                            <CompactFinancialsGraph 
-                                                                hideLegend={true}
-                                                                fullWidth={true}
-                                                                mode={currencyMode}
-                                                                currentExchangeRate={currentExchangeRate}
-                                                                metrics={{
-                                                                    mexTotal: totalPortfolioMxn,
-                                                                    paidAcq: globalTotals.paidAcqMxn,
-                                                                    paidExp: globalTotals.paidExpMxn,
-                                                                    reqMerch: globalTotals.reqMerchMxn,
-                                                                    reqExp: globalTotals.reqExpMxn,
-                                                                    pending: globalTotals.pendingToRequestMxn
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    )}
                                                     <div className="flex flex-wrap gap-3 items-center opacity-60">
                                                         <span className="text-[10px] font-black font-mono text-white/40 uppercase">MX Total</span>
                                                         <CurrencyTag type="MXN" amount={totalPortfolioMxn} size="small" />
@@ -706,22 +688,6 @@ export const ClientOverview: React.FC = () => {
                                         />
                                         {!isFinancialsCollapsed && (
                                             <>
-                                                <div className="mt-4 mb-6 animate-in fade-in duration-500">
-                                                    <CompactFinancialsGraph 
-                                                        hideLegend={false}
-                                                        fullWidth={true}
-                                                        mode={currencyMode}
-                                                        currentExchangeRate={currentExchangeRate}
-                                                        metrics={{
-                                                            mexTotal: totalPortfolioMxn,
-                                                            paidAcq: globalTotals.paidAcqMxn,
-                                                            paidExp: globalTotals.paidExpMxn,
-                                                            reqMerch: globalTotals.reqMerchMxn,
-                                                            reqExp: globalTotals.reqExpMxn,
-                                                            pending: globalTotals.pendingToRequestMxn
-                                                        }}
-                                                    />
-                                                </div>
                                                 <div className="mt-2 animate-in fade-in duration-300">
                                                     <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
                                                         <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
