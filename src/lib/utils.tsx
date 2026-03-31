@@ -836,8 +836,34 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
 };
 
 /**
- * Logistics Volume Calculators
+ * Logistics Volume & Unit Calculators
  */
+
+export const formatWeightImperial = (kg: any): string => {
+  const val = parseFloat(kg);
+  if (!val || isNaN(val)) return '';
+  const lbs = (val * 2.20462).toFixed(1);
+  return `${val}kg (${lbs} lbs)`;
+};
+
+export const formatCmToFeetIn = (cm: any): string => {
+  const val = parseFloat(cm);
+  if (!val || isNaN(val)) return '';
+  const totalInches = val * 0.393701;
+  const feet = Math.floor(totalInches / 12);
+  const inches = Math.round(totalInches % 12);
+  // If it's something like 0' 11", just return 11"
+  if (feet === 0) return `${inches}"`;
+  return `${feet}' ${inches}"`;
+};
+
+export const formatDimensionsImperial = (w: any, h: any, l: any): string => {
+  const parts = [w, h, l].filter(p => p !== undefined && p !== null && p !== '');
+  if (parts.length === 0) return '';
+  const metric = parts.join('x') + 'cm';
+  const imperial = parts.map(p => formatCmToFeetIn(p)).join(' x ');
+  return `${metric} (${imperial})`;
+};
 
 /**
  * Calculates the internal volume of a crate or pallet in cm3.
