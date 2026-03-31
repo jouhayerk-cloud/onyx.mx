@@ -140,7 +140,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 if (!isHoveringCard) {
                     setCardIdx(prev => (prev + 1) % mediaUrls.length);
                 }
-            }, 3000);
+            }, 15000);
             return () => clearInterval(interval);
         }
     }, [isHoveringCard, mediaUrls.length]);
@@ -195,7 +195,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg" 
                         onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
                         onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}>
-                        {mediaUrls[cardIdx] ? <img src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-500" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
+                        {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover animate-in fade-in duration-700" /> : <div className="w-full h-full p-2 opacity-30 flex items-center justify-center"><OnyxMiniLogo className="w-full h-full object-contain" /></div>}
                         {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video size={16} /></div>}
                         
                         {/* List View Card Navigation Chevrons */}
@@ -277,7 +277,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}>
-                {mediaUrls[cardIdx] ? <img src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-500" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
+                {mediaUrls[cardIdx] ? <img key={cardIdx} src={getCleanImageUrl(mediaUrls[cardIdx])} className="w-full h-full object-cover group-hover:scale-105 transition-transform animate-in fade-in duration-700" /> : <div className="w-full h-full flex items-center justify-center"><OnyxMiniLogo className="w-16 h-16 opacity-10" /></div>}
                 {isVideoFile(mediaUrls[cardIdx]) && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Upload size={24} className="text-white/40" /></div>}
                 
                 {/* Grid View Card Navigation Chevrons */}
