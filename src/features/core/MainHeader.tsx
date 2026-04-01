@@ -780,7 +780,7 @@ export function MainHeader() {
                     ].filter(Boolean).join(' | ') || '-';
 
                     const qty = parseFloat(String(d.quantity || '1')) || 1;
-                    const total_mxn = parseFloat(String(d.cost_mxn || '0')) || 0;
+                    const total_mxn = parseFloat(String(norm.price || '0')) || 0;
                     const unit_mxn = qty > 0 ? (total_mxn / qty) : 0;
                     const acq_usd = total_mxn / bookRate;
 
@@ -817,8 +817,8 @@ export function MainHeader() {
 
             // FINALIZING AND DOWNLOADING
             const buffer = await workbook.xlsx.writeBuffer();
-            const ts = new Date().toISOString().slice(0, 10);
-            saveAs(new Blob([buffer]), `Onyx_Studio_Export_${ts}.xlsx`);
+            const ts = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${ts}.xlsx`);
             toast.success('Styled Master Export Complete');
         } catch (err: any) {
             console.error(err);
