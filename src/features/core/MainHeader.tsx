@@ -526,8 +526,7 @@ export function MainHeader() {
                 { header: 'TOTAL SPEND (MXN)', key: 'total_mxn', width: 22, style: { numFmt: '#,##0.00' } },
                 { header: 'SPEND (USD - Inet Rate)', key: 'total_usd', width: 25, style: { numFmt: '#,##0.00' } },
                 { header: 'PAID (MXN)', key: 'paid_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                { header: 'LINK TO SHEET', key: 'link', width: 20 },
+                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0.00' } }
             ];
 
             // Apply Header Styling
@@ -592,13 +591,10 @@ export function MainHeader() {
                     total_mxn: v.total,
                     total_usd: v.total / internetRate,
                     paid_mxn: v.paid,
-                    pending_mxn: v.total - v.paid,
-                    link: { text: `Go to ${vid}`, hyperlink: `#\\'${sheetName}\\'!A1` }
+                    pending_mxn: v.total - v.paid
                 });
                 row.getCell('vendor').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
                 row.getCell('vendor').font = { bold: true, color: { argb: contrastColor } };
-                // Using try catch as sometimes excelsjs might complain if link is improperly formatted but this format is ok.
-                row.getCell('link').font = { color: { argb: 'FF0000FF' }, underline: true };
             });
             summarySheet.addRow({});
 
