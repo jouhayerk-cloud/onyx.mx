@@ -486,13 +486,20 @@ export function MainHeader() {
             workbook.created = new Date();
 
             const partialPayIds = new Set<string>();
+            const fullPayIds = new Set<string>();
             financeDocs.forEach(d => {
-                if (d.status === 'Paid' && d.description?.includes('%')) {
+                if (d.status === 'Paid') {
                     const rel = d.related_ids || d.related_inventory_ids || '';
+                    let ids: string[] = [];
                     if (Array.isArray(rel)) {
-                        rel.forEach((id: any) => partialPayIds.add(String(id)));
+                        ids = rel.map((id: any) => String(id));
                     } else if (typeof rel === 'string') {
-                        rel.split(',').map(s => s.trim()).filter(Boolean).forEach(id => partialPayIds.add(id));
+                        ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+                    }
+                    if (d.description?.includes('%')) {
+                        ids.forEach(id => partialPayIds.add(id));
+                    } else {
+                        ids.forEach(id => fullPayIds.add(id));
                     }
                 }
             });
@@ -759,7 +766,7 @@ export function MainHeader() {
                     const norm = normalizeInventoryData(d);
                     const computed = calculateCodesAndPrices(norm, bookRate, d.workbook || '326');
                     
-                    const payStatusClass = getStatusClass(norm, partialPayIds);
+                    const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds);
                     const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
 
                     const sizes = [

@@ -41,7 +41,7 @@ import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleto
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check } from 'lucide-react';
 
-export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
+export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
     const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
     const statusStr = String(item.status || item.item_status || '').toLowerCase();
     const dispStatus = String(item.dispersal_status || '').toLowerCase();
@@ -50,7 +50,7 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>): 'RED' | 
     if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
     
     // 2. High priority: Paid/Dispersed (Terminal state)
-    if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+    if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
     
     // 3. Low priority: Requests (Initial state)
     if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
@@ -115,7 +115,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, onEdit, financeDocs }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -143,7 +143,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const weightStr = formatWeightImperial(norm.weightKg);
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-    const statusClass = getStatusClass(norm, partialPayIds);
+    const statusClass = getStatusClass(norm, partialPayIds, fullPayIds);
 
     const itemPayments = useMemo(() => {
         if (!isExpanded || !financeDocs) return [];
@@ -222,7 +222,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     if (viewMode === 'list') {
         const itemPriceMXN = Math.ceil(Number(norm.price || 0));
         const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
-        const payStatus = getStatusClass(norm, partialPayIds);
+        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
 
         return (
@@ -446,22 +446,26 @@ export const UnifiedInventoryView = () => {
     const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
     const [savingProgress, setSavingProgress] = useState(0);
 
-    const partialPayIds = useMemo(() => {
-        const ids = new Set<string>();
+    const { partialPayIds, fullPayIds } = useMemo(() => {
+        const pIds = new Set<string>();
+        const fIds = new Set<string>();
         financeDocs.forEach(d => { 
             const isPartial = String(d.status).toLowerCase().includes('partial') || 
                              String(d.description).includes('%') || 
                              String(d.status).toLowerCase().includes('requested') && String(d.description).toLowerCase().includes('partial');
 
+            const rel = d.related_ids || d.related_inventory_ids || '';
+            let relArray: string[] = [];
+            if (Array.isArray(rel)) relArray = rel.map(id => String(id));
+            else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
+
             if ((d.status === 'Paid' || d.status === 'Partial') && isPartial) { 
-                const rel = d.related_ids || d.related_inventory_ids || '';
-                let relArray: string[] = [];
-                if (Array.isArray(rel)) relArray = rel.map(id => String(id));
-                else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
-                relArray.forEach(id => ids.add(id));
-            } 
+                relArray.forEach(id => pIds.add(id));
+            } else if (d.status === 'Paid') {
+                relArray.forEach(id => fIds.add(id));
+            }
         });
-        return ids;
+        return { partialPayIds: pIds, fullPayIds: fIds };
     }, [financeDocs]);
 
     useEffect(() => { if (mode === 'edit' && itemData) { setEditData({ ...normalizeInventoryData(itemData), vendorId: String(itemData.itemId || '').split('-')[0] }); setNewFiles([]); } }, [mode, itemData]);
@@ -699,7 +703,7 @@ export const UnifiedInventoryView = () => {
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar">
                 <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
-                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} onEdit={handleEditItem} financeDocs={financeDocs} />)}
+                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} fullPayIds={fullPayIds} onEdit={handleEditItem} financeDocs={financeDocs} />)}
                 </div>
             </div>
 
