@@ -1546,7 +1546,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 <button 
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        const url = `${window.location.origin}/?inventoryArtifactIds=${ids.join(',')}`;
+                                                                        const baseUrl = window.location.origin + window.location.pathname;
+                                                                        const url = `${baseUrl}?inventoryArtifactIds=${ids.join(',')}`;
                                                                         navigator.clipboard.writeText(url);
                                                                         toast.success('Inventory Link copied!');
                                                                     }}
@@ -1558,7 +1559,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 <button 
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        const url = `${window.location.origin}/?paymentsArtifactPaymentId=${r.id}&paymentsArtifactVendor=${encodeURIComponent(r.vendor_id || '')}`;
+                                                                        const baseUrl = window.location.origin + window.location.pathname;
+                                                                        const url = `${baseUrl}?paymentsArtifactPaymentId=${r.id}&paymentsArtifactVendor=${encodeURIComponent(r.vendor_id || '')}`;
                                                                         navigator.clipboard.writeText(url);
                                                                         toast.success('Payment Link copied!');
                                                                     }}
