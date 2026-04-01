@@ -1468,23 +1468,32 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         </div>
 
                                         {/* Column 3: Financials & Account Icon Segment */}
-                                        <div className="shrink-0 flex items-center justify-end gap-3 w-[170px]">
-                                            <div className="flex flex-col items-end gap-0.5 min-w-[100px]">
-                                                <div className="flex items-center justify-end gap-1.5 leading-none">
-                                                     <span className="text-[14px] sm:text-[16px] font-black font-mono text-white tracking-tighter">
-                                                         {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
-                                                     </span>
-                                                    <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                        {currencyMode}
-                                                    </span>
-                                                </div>
+                                        <div className="shrink-0 flex items-center justify-end gap-4 w-auto min-w-[170px]">
+                                            <div className="flex items-center gap-4">
                                                 {(r.commission || 0) > 0 && (
-                                                    <div className="flex items-center gap-1 opacity-60">
-                                                         <span className="text-[10px] sm:text-[12px] font-mono font-black text-white/50 tracking-tighter">
-                                                             + {currencyMode === 'MXN' ? fmtMXN(r.commission) : fmtUSD(r.commission / (liveExchangeRate || exchangeRate))}
-                                                         </span>
-                                                    </div>
+                                                    <>
+                                                        <div className="hidden sm:flex flex-col items-end gap-0.5">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Net Paid</span>
+                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-white/70">
+                                                                {currencyMode === 'MXN' ? fmtMXN(r.amount || 0) : fmtUSD((r.amount || 0) / (liveExchangeRate || exchangeRate))}
+                                                            </span>
+                                                        </div>
+                                                        <div className="hidden sm:flex flex-col items-end gap-0.5">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes/Fees</span>
+                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-red-400/80">
+                                                                {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
+                                                            </span>
+                                                        </div>
+                                                    </>
                                                 )}
+                                                <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'sm:border-l sm:border-white/10 sm:pl-4' : ''}`}>
+                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-white/30'}`}>Total {currencyMode}</span>
+                                                    <div className="flex items-center justify-end gap-1.5 leading-none">
+                                                        <span className="text-[14px] sm:text-[16px] font-black font-mono text-white tracking-tighter">
+                                                            {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             {/* Free-Floating Card/Account Icon */}
