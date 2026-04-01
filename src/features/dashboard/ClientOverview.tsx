@@ -979,23 +979,39 @@ export const ClientOverview: React.FC = () => {
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex flex-col items-end gap-1 shrink-0">
-                                                                        <div className="flex flex-col items-end leading-none">
-                                                                            <div className="flex items-center gap-1.5 mb-1">
-                                                                                <span className="text-[13px] font-black font-mono text-white tracking-tighter">
-                                                                                    {currencyMode === 'MXN' ? fmtMXN(rowMxn) : fmtUSD(rowUsd)}
-                                                                                </span>
-                                                                                <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                                                                    {currencyMode}
+                                                                    <div className="flex items-center justify-end gap-3 shrink-0 ml-auto">
+                                                                        {(d.commission || 0) > 0 && (
+                                                                            <div className="hidden sm:flex items-center gap-3 mr-2">
+                                                                                <div className="flex flex-col items-end gap-0.5">
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Net Paid</span>
+                                                                                    <span className="text-[9px] font-mono font-bold text-white/70">
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.amount || 0) : fmtUSD((d.amount || 0) / (d.exchange_rate || currentExchangeRate || 20))}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="flex flex-col items-end gap-0.5">
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes/Fees</span>
+                                                                                    <span className="text-[9px] font-mono font-bold text-red-400/80">
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(d.commission || 0) : fmtUSD((d.commission || 0) / (d.exchange_rate || currentExchangeRate || 20))}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className={`flex flex-col items-end shrink-0 ${(d.commission || 0) > 0 ? 'sm:border-l sm:border-white/10 sm:pl-3' : ''}`}>
+                                                                            <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${(d.commission || 0) > 0 ? 'text-sky-400/50' : 'text-white/30'}`}>Total {currencyMode}</span>
+                                                                            <div className="flex flex-col items-end leading-none">
+                                                                                <div className="flex items-center gap-1.5 mb-1">
+                                                                                    <span className="text-[13px] font-black font-mono text-white tracking-tighter">
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(rowMxn) : fmtUSD(rowUsd)}
+                                                                                    </span>
+                                                                                    <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                                        {currencyMode}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <span className="text-[8px] font-mono font-black text-white/30 opacity-70">
+                                                                                    Eq: {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
                                                                                 </span>
                                                                             </div>
-                                                                            <span className="text-[9px] font-mono text-white/30 uppercase">
-                                                                                {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
-                                                                            </span>
                                                                         </div>
-                                                                        {(d.commission || 0) > 0 && (
-                                                                           <span className="text-[9px] font-mono text-red-400/60 mt-1">+ {currencyMode === 'MXN' ? fmtMXN(d.commission) : fmtUSD(d.commission / (d.exchange_rate || currentExchangeRate || 20))} fees</span>
-                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
