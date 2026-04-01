@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.58.12 (2026-04-01)
+- **Financial Details Expose**: Injected granular financial breakdowns (Net Paid vs. Taxes/Fees vs. Total) into the Inventory Artifact and Unified Inventory modules, allowing precise itemized auditing.
+- **Payments Module Traceability**: Redesigned TrackingPaymentsView and PaymentsArtifact to explicitly separate baseline transaction amounts from supplemental commissions and fees to prevent financial obfuscation.
+- **Overview Request Queue Redesign**: Overhauled the expanded Active Request Queue view. Added dynamic contextual module icons (Logistics/Acquisitions/Operations), color-coded robust vendor tagging, and single-click direct access to Inventory Artifact overlays for linked items.
+
 ## v1.58.2 (2026-03-31)
 - **Logistics Volume Optimization**: Refactored volume calculation logic into shared utilities (`getCrateInternalVolume`, `getItemPaddedVolume`) for absolute cross-module consistency.
 - **Volume Fill Correction**: Resolved a critical bug where volume usage jumped to 100% on save; implemented explicit state resets for staged inventory to ensure accurate real-time reporting.
