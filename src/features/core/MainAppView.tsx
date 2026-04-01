@@ -18,7 +18,9 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
     SidebarState,
     processIsProcessingAtom,
     processActiveStepLabelAtom,
-    isDummyModeAtom
+    isDummyModeAtom,
+    inventoryArtifactConfigAtom,
+    paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
@@ -147,9 +149,46 @@ export function MainAppView() {
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
     const [isDummyMode, setIsDummyMode] = useAtom(isDummyModeAtom);
     const [isAboutOpen, setIsAboutOpen] = useState(false);
+    
+    const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        let updated = false;
+
+        const inventoryIds = params.get('inventoryArtifactIds');
+        if (inventoryIds) {
+            setInventoryArtifactConfig({
+                isOpen: true,
+                itemIds: inventoryIds.split(',').filter(Boolean),
+                title: 'Linked Items'
+            });
+            params.delete('inventoryArtifactIds');
+            updated = true;
+        }
+
+        const paymentId = params.get('paymentsArtifactPaymentId');
+        if (paymentId) {
+            const vendor = params.get('paymentsArtifactVendor') || 'Vendor Details';
+            setPaymentsArtifactConfig({
+                isOpen: true,
+                vendor,
+                paymentIds: [paymentId],
+                title: `Payment History: ${vendor}`
+            });
+            params.delete('paymentsArtifactPaymentId');
+            params.delete('paymentsArtifactVendor');
+            updated = true;
+        }
+
+        if (updated) {
+            const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+            window.history.replaceState(null, '', newUrl);
+        }
+    }, [setInventoryArtifactConfig, setPaymentsArtifactConfig]);
 
     useEffect(() => {
         const handleResize = () => {

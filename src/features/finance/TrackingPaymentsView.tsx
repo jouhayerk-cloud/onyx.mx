@@ -13,7 +13,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -1542,6 +1542,30 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                 >
                                                                     <LayoutGrid size={14} className="text-(--main-color)" />
                                                                     <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Items ({ids.length})</span>
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const url = `${window.location.origin}/?inventoryArtifactIds=${ids.join(',')}`;
+                                                                        navigator.clipboard.writeText(url);
+                                                                        toast.success('Inventory Link copied!');
+                                                                    }}
+                                                                    title="Copy Direct Link to Items"
+                                                                    className="flex items-center justify-center p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:text-(--main-color) transition-all text-white/40"
+                                                                >
+                                                                    <Link size={14} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const url = `${window.location.origin}/?paymentsArtifactPaymentId=${r.id}&paymentsArtifactVendor=${encodeURIComponent(r.vendor_id || '')}`;
+                                                                        navigator.clipboard.writeText(url);
+                                                                        toast.success('Payment Link copied!');
+                                                                    }}
+                                                                    title="Copy Direct Link to Ledger"
+                                                                    className="flex items-center justify-center p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:text-sky-400 transition-all text-white/40 ml-2"
+                                                                >
+                                                                    <Receipt size={14} />
                                                                 </button>
                                                             </div>
                                                         );
