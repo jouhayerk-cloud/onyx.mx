@@ -931,46 +931,71 @@ export const ClientOverview: React.FC = () => {
                                                     <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-3 py-1.5 h-full rounded-lg bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest ml-1 self-stretch shadow-lg">Paid</button>
                                                 </div>
                                                 {isExpanded && (
-                                                    <div className="px-3 pb-3 pt-1 space-y-1 border-t border-white/5">
+                                                    <div className="px-3 pb-3 pt-2 space-y-2 border-t border-white/5">
                                                         {req.docs.map(d => {
                                                             const rowMxn = (d.amount || 0) + (d.commission || 0);
                                                             const rowUsd = rowMxn / (d.exchange_rate || currentExchangeRate || 20);
+                                                            
+                                                            const rawIds = d.related_ids || d.related_inventory_ids;
+                                                            const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
+                                                            
+                                                            const rowVendorId = d.vendor_id || req.vendorId;
+                                                            const vColor = (vendors as any)[rowVendorId]?.color || '#888';
+                                                            
+                                                            const catStr = String(d.category || '').toLowerCase();
+                                                            const subStr = String(d.subcategory || '').toLowerCase();
+                                                            const isAcq = catStr.includes('acq') || subStr.includes('acq');
+                                                            const isLogis = catStr.includes('logis') || subStr.includes('logis') || catStr.includes('pack') || catStr.includes('ship');
+                                                            const CatIcon = isAcq ? ShoppingCart : isLogis ? Package : DollarSign;
+
                                                             return (
-                                                                <div key={d.id} className="flex justify-between items-center py-2 text-[9px] font-mono border-b border-white/2 last:border-0">
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className="text-white/40 truncate max-w-[400px] mb-1">{d.description || 'Payment'}</span>
-                                                                        {(() => {
-                                                                            const rawIds = d.related_ids || d.related_inventory_ids;
-                                                                            const ids = Array.isArray(rawIds) ? rawIds : (typeof rawIds === 'string' ? rawIds.split(',').filter(Boolean) : []);
-                                                                            const tagIds = ids.map((id: any) => {
-                                                                                const item = allInventoryItems.find(i => String(i.data?.id) === String(id));
-                                                                                if (!item) return null;
-                                                                                const norm = { ...item.data };
-                                                                                const calculated = calculateCodesAndPrices(norm, exchangeRate, norm.workbook || '326');
-                                                                                return calculated.bookBardcode || item?.data?.book_aq_code || item?.data?.book_barcode || item?.data?.itemId;
-                                                                            }).filter(Boolean);
-                                                                            if (!tagIds.length) return null;
-                                                                            return (
-                                                                                <div className="flex flex-wrap gap-1 mt-1 mb-1">
-                                                                                    {tagIds.map((tid: string, idx: number) => (
-                                                                                        <span 
-                                                                                            key={`${tid}-${idx}`} 
-                                                                                            onClick={(e) => {
-                                                                                                e.stopPropagation();
-                                                                                                setArtifactConfig({ isOpen: true, itemIds: [ids[idx]], title: `Item ${tid}` });
-                                                                                            }}
-                                                                                            className="text-[7.5px] font-mono font-black border border-white/10 bg-white/5 hover:bg-(--main-color)/20 hover:border-(--main-color)/30 cursor-pointer transition-all px-1 py-0.5 rounded-sm text-(--main-color) uppercase tracking-tighter shadow-sm"
-                                                                                        >
-                                                                                            {tid}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            );
-                                                                        })()}
+                                                                <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-white/2 hover:bg-white/5 border border-white/5 transition-all">
+                                                                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                                                                        <div className="mt-0.5 p-1.5 rounded-lg bg-black/20 text-white/40 border border-white/5 shrink-0 shadow-inner">
+                                                                            <CatIcon size={12} />
+                                                                        </div>
+                                                                        <div className="flex flex-col min-w-0">
+                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vColor }}>
+                                                                                    {rowVendorId || 'UNK'}
+                                                                                </span>
+                                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{d.category || 'General'} {d.subcategory && `• ${d.subcategory}`}</span>
+                                                                            </div>
+                                                                            <span className="text-[11px] font-medium text-white/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
+                                                                            
+                                                                            {ids.length > 0 && (
+                                                                                <button 
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${rowVendorId || 'Transaction'}` });
+                                                                                    }}
+                                                                                    className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded bg-(--main-color)/10 hover:bg-(--main-color)/20 border border-(--main-color)/20 transition-all group/btn"
+                                                                                >
+                                                                                    <Layers size={10} className="text-(--main-color) group-hover/btn:scale-110 transition-transform" />
+                                                                                    <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">
+                                                                                        View {ids.length} Item{ids.length !== 1 ? 's' : ''}
+                                                                                    </span>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex gap-4">
-                                                                        <CurrencyTag type="MXN" amount={rowMxn} />
-                                                                        <CurrencyTag type="USD" amount={rowUsd} className="opacity-40" />
+                                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                                        <div className="flex flex-col items-end leading-none">
+                                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                                <span className="text-[13px] font-black font-mono text-white tracking-tighter">
+                                                                                    {currencyMode === 'MXN' ? fmtMXN(rowMxn) : fmtUSD(rowUsd)}
+                                                                                </span>
+                                                                                <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
+                                                                                    {currencyMode}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className="text-[9px] font-mono text-white/30 uppercase">
+                                                                                {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
+                                                                            </span>
+                                                                        </div>
+                                                                        {(d.commission || 0) > 0 && (
+                                                                           <span className="text-[9px] font-mono text-red-400/60 mt-1">+ {currencyMode === 'MXN' ? fmtMXN(d.commission) : fmtUSD(d.commission / (d.exchange_rate || currentExchangeRate || 20))} fees</span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             );
