@@ -144,7 +144,9 @@ export const PaymentsArtifact: React.FC = () => {
                             const isPaid = pay.status === 'Paid';
                             const accentColor = isPaid ? '#22c55e' : '#eab308';
                             
-                            const displayAmt = parseFloat(pay.total || pay.amount || 0);
+                            const netAmt = parseFloat(pay.amount || 0);
+                            const feesAmt = parseFloat(pay.commission || 0);
+                            const totalAmt = netAmt + feesAmt;
                             const isUSD = pay.currency === 'USD';
 
                             // 1. COMPACT DATE FORMATTING
@@ -249,26 +251,31 @@ export const PaymentsArtifact: React.FC = () => {
                                         </div>
 
                                         {/* Financials */}
-                                        <div className="flex items-center gap-6 shrink-0 ml-auto">
-                                            <div className="flex flex-col min-w-[85px] items-end justify-center">
-                                                <div className="flex items-center gap-1.5 mb-1.5">
-                                                    <span className={`text-[8px] font-black uppercase tracking-[0.18em] leading-none ${isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
-                                                        {isUSD ? 'USD' : 'MXN'} Value
-                                                    </span>
-                                                </div>
-                                                <span className={`text-[16px] font-black font-mono tracking-tight ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
-                                                    {showFinancials ? `$${displayAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
+                                        <div className="flex items-center gap-4 sm:gap-6 shrink-0 ml-auto justify-end">
+                                            <div className="flex flex-col items-end justify-center opacity-60">
+                                                <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
+                                                    Net {isUSD ? 'USD' : 'MXN'}
+                                                </span>
+                                                <span className="text-[11px] font-bold font-mono text-white">
+                                                    {showFinancials ? `$${netAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
                                                 </span>
                                             </div>
 
-                                            <div className="flex flex-col min-w-[80px] items-end justify-center opacity-40">
-                                                <span className={`text-[8px] font-black uppercase tracking-widest mb-1 leading-none ${!isUSD ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
-                                                    {!isUSD ? 'USD' : 'MXN'} Eq.
+                                            <div className="flex flex-col items-end justify-center opacity-60">
+                                                <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${isUSD ? 'text-emerald-400/60' : 'text-sky-400/60'}`}>
+                                                    Fees {isUSD ? 'USD' : 'MXN'}
                                                 </span>
-                                                <span className={`text-[12px] font-bold font-mono ${!isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
-                                                    {showFinancials 
-                                                        ? (isUSD ? `$${(displayAmt * exchangeRate).toLocaleString()}` : `$${(displayAmt / exchangeRate).toFixed(2)}`) 
-                                                        : '***'}
+                                                <span className="text-[11px] font-bold font-mono text-red-400">
+                                                    {showFinancials ? `$${feesAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex flex-col items-end justify-center border-l border-white/10 pl-4 sm:pl-6 min-w-[70px]">
+                                                <span className={`text-[8px] font-black uppercase tracking-[0.18em] mb-1 leading-none ${isUSD ? 'text-emerald-400/80' : 'text-sky-400/80'}`}>
+                                                    Total {isUSD ? 'USD' : 'MXN'}
+                                                </span>
+                                                <span className={`text-[15px] font-black font-mono tracking-tight ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>
+                                                    {showFinancials ? `$${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '***'}
                                                 </span>
                                             </div>
                                         </div>
