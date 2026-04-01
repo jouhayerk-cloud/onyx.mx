@@ -115,7 +115,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, onEdit }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, onEdit, financeDocs }: any) => {
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -144,6 +144,57 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm, partialPayIds);
+
+    const itemPayments = useMemo(() => {
+        if (!isExpanded || !financeDocs) return [];
+        return financeDocs.filter((d: any) => {
+            const rel = d.related_ids || d.related_inventory_ids || '';
+            let relArray: string[] = [];
+            if (Array.isArray(rel)) relArray = rel.map(id => String(id));
+            else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
+            return relArray.includes(String(item.data.id));
+        }).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+    }, [isExpanded, financeDocs, item.data.id]);
+
+    const renderPaymentHistory = () => {
+        if (!itemPayments || itemPayments.length === 0) return null;
+        return (
+            <div className="col-span-full pt-6 mt-2 border-t border-white/5 space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 ml-1">Payment History (MXN)</h4>
+                <div className="flex flex-col gap-2">
+                    {itemPayments.map((p: any) => {
+                        const net = p.amount || 0;
+                        const fees = p.commission || 0;
+                        const total = net + fees;
+                        const format = (val: number) => showFinancials ? `$${val.toLocaleString('en-US')}` : '***';
+
+                        return (
+                            <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/10">
+                                <div className="flex flex-col min-w-[120px]">
+                                    <span className="text-[11px] text-white font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
+                                </div>
+                                <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-0.5">Net Paid</span>
+                                        <span className="text-[11px] font-mono font-bold text-white/80">{format(net)}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-0.5">Taxes/Fees</span>
+                                        <span className="text-[11px] font-mono font-bold text-red-400/80">{format(fees)}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end border-l border-white/10 pl-6 sm:pl-12 min-w-[100px]">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color)/50 mb-0.5">Total</span>
+                                        <span className="text-[13px] font-mono font-black text-(--main-color)">{format(total)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     const setDetailsPanelMode = useSetAtom(detailsPanelModeAtom);
     const setSelectedItemData = useSetAtom(SelectedItemDataAtom);
@@ -252,6 +303,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </button>
                                 )}
                             </div>
+                            {renderPaymentHistory()}
                         </div>
                     </div>
                 )}
@@ -368,6 +420,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
                                 )}
                             </div>
+                            {renderPaymentHistory()}
                         </div>
                     </div>
                 </div>, document.body
@@ -646,7 +699,7 @@ export const UnifiedInventoryView = () => {
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar">
                 <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
-                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} onEdit={handleEditItem} />)}
+                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} onEdit={handleEditItem} financeDocs={financeDocs} />)}
                 </div>
             </div>
 

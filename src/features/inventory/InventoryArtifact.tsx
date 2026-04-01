@@ -111,9 +111,17 @@ export const InventoryArtifact: React.FC = () => {
                             const itemQuantity = Number(norm.quantity || 1);
                             const itemTotalMXN = itemPriceMXN * itemQuantity;
 
+                            const itemPayments = financeDocs.filter(d => {
+                                const rel = d.related_ids || d.related_inventory_ids || '';
+                                let relArray: string[] = [];
+                                if (Array.isArray(rel)) relArray = rel.map(id => String(id));
+                                else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
+                                return relArray.includes(String(norm.id));
+                            }).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
                             return (
+                                <div key={item.row} className="flex flex-col gap-2">
                                 <div 
-                                    key={item.row} 
                                     className="flex items-stretch overflow-hidden bg-black/20 border border-white/5 rounded-2xl hover:border-white/20 transition-all group"
                                     style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 20%, rgba(255,255,255,0.05))` : undefined }}
                                 >
@@ -217,6 +225,45 @@ export const InventoryArtifact: React.FC = () => {
                                             )}
                                         </div>
                                     </div>
+                                </div>
+
+                                {itemPayments.length > 0 && (
+                                    <div className="ml-4 sm:ml-[88px] pr-4 border-l-2 py-1 space-y-2 mb-2" style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 30%, transparent)` : 'var(--main-color)' }}>
+                                        {itemPayments.map((p, pIdx) => {
+                                            const net = p.amount || 0;
+                                            const fees = p.commission || 0;
+                                            const total = net + fees;
+                                            const format = (val: number) => {
+                                                if (!showFinancials) return '***';
+                                                if (currencyMode === 'USD') return `$${(val / exchangeRate).toFixed(2)}`;
+                                                return `$${val.toLocaleString()}`;
+                                            };
+
+                                            return (
+                                                <div key={p.id || pIdx} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-2 rounded-xl bg-white/5 border border-white/5">
+                                                    <div className="flex flex-col min-w-[100px] pl-2">
+                                                        <span className="text-[10px] text-white/80 font-bold">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
+                                                        <span className={`text-[8px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 sm:gap-8 w-full sm:w-auto overflow-x-auto no-scrollbar justify-between sm:justify-end pr-2">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-white/30 mb-0.5">Net Paid</span>
+                                                            <span className="text-[10px] font-mono font-bold text-white/80">{format(net)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-white/30 mb-0.5">Taxes/Fees</span>
+                                                            <span className="text-[10px] font-mono font-bold text-red-400/80">{format(fees)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-end border-l border-white/10 pl-4 sm:pl-8">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-(--main-color)/50 mb-0.5">Total {currencyMode}</span>
+                                                            <span className="text-[11px] font-mono font-black text-(--main-color)">{format(total)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                                 </div>
                             );
                         })
