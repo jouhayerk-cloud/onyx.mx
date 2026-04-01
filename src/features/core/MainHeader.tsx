@@ -789,9 +789,9 @@ export function MainHeader() {
                     ].filter(Boolean).join(' | ') || '-';
 
                     const qty = parseFloat(String(d.quantity || '1')) || 1;
-                    const total_mxn = parseFloat(String(norm.price || '0')) || 0;
-                    const unit_mxn = qty > 0 ? (total_mxn / qty) : 0;
-                    const acq_usd = total_mxn / bookRate;
+                    const unit_mxn = parseFloat(String(norm.price || '0')) || 0;
+                    const total_mxn = unit_mxn * qty;
+                    const acq_usd = unit_mxn / bookRate;
 
                     const row = ws.addRow({
                         tag_id: computed.bookBardcode,
