@@ -497,17 +497,37 @@ export function MainHeader() {
                 }
             });
 
-            const rate = liveExchangeRateValue || exchangeRate;
+            const internetRate = liveExchangeRateValue || exchangeRate;
+            const bookRate = exchangeRate || 20;
 
-            // 1. FINANCE SUMMARY SHEET
-            const summarySheet = workbook.addWorksheet('Finance Summary');
+            const exportItems = inventory.filter(item => {
+                const status = (item.data.status || '').toLowerCase().trim();
+                return !EXCLUDED_STATUSES.has(status);
+            });
+
+            const vendorGroups: Record<string, any[]> = {};
+            exportItems.forEach(item => {
+                const d = item.data as any;
+                // Proactively extract vendor from tag prefixes if direct field is missing
+                // Priority: explicit vendor_id > item.label > d.itemId > d.item_id > d.tag_id
+                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+                
+                let vid = prefixId || 'Unknown';
+                if (!vendorGroups[vid]) vendorGroups[vid] = [];
+                vendorGroups[vid].push(item);
+            });
+
+            // 1. SUMMARY SHEET DASHBOARD
+            const summarySheet = workbook.addWorksheet('Summary');
             summarySheet.columns = [
-                { header: 'SECTION', key: 'section', width: 20 },
-                { header: 'LABEL', key: 'label', width: 25 },
-                { header: 'TOTAL (MXN)', key: 'total_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                { header: 'VENDOR / SECTION', key: 'vendor', width: 30 },
+                { header: 'INV ITEMS (ACQ/PROD)', key: 'items', width: 22 },
+                { header: 'TOTAL SPEND (MXN)', key: 'total_mxn', width: 22, style: { numFmt: '#,##0.00' } },
+                { header: 'SPEND (USD - Inet Rate)', key: 'total_usd', width: 25, style: { numFmt: '#,##0.00' } },
                 { header: 'PAID (MXN)', key: 'paid_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                 { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                { header: 'TOTAL (USD)', key: 'total_usd', width: 18, style: { numFmt: '#,##0.00' } }
+                { header: 'LINK TO SHEET', key: 'link', width: 20 },
             ];
 
             // Apply Header Styling
@@ -517,36 +537,91 @@ export function MainHeader() {
                 cell.alignment = { horizontal: 'center' };
             });
 
-            const totalAll = financeDocs.reduce((s, d) => s + (d.amount ?? 0), 0);
-            const totalPaid = financeDocs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0), 0);
+            const totalAll = financeDocs.reduce((s, d) => s + (d.amount ?? 0) + (d.commission ?? 0), 0);
+            const totalPaid = financeDocs.filter(d => d.status === 'Paid').reduce((s, d) => s + (d.amount ?? 0) + (d.commission ?? 0), 0);
             const totalPend = totalAll - totalPaid;
             
-            summarySheet.addRow({ section: '── OVERVIEW ──' });
-            summarySheet.addRow({ section: 'Finance Database', label: 'Grand Total', total_mxn: totalAll, paid_mxn: totalPaid, pending_mxn: totalPend, total_usd: +(totalAll / rate).toFixed(2) });
-            summarySheet.addRow({ label: 'Exchange Rate', total_usd: rate });
-            summarySheet.addRow({ label: 'Total Records', total_mxn: financeDocs.length });
+            summarySheet.addRow({ vendor: '── OVERVIEW ──' });
+            summarySheet.addRow({ 
+                vendor: 'Grand Total', 
+                items: exportItems.filter(i => ['acquisition', 'production'].includes((i.data.status || '').toLowerCase())).length,
+                total_mxn: totalAll, 
+                total_usd: totalAll / internetRate,
+                paid_mxn: totalPaid, 
+                pending_mxn: totalPend
+            });
+            summarySheet.addRow({ vendor: 'Internet Exchange Rate', total_usd: internetRate });
+            summarySheet.addRow({ vendor: 'Book Exchange Rate', total_usd: bookRate });
             summarySheet.addRow({}); // Spacer
+
+            // Aggregate by Vendor
+            const vendorRollup: Record<string, { total: number, paid: number, items: number }> = {};
+            
+            // From Finance
+            financeDocs.forEach(d => {
+                const v = d.vendor_id || 'Other';
+                if (!vendorRollup[v]) vendorRollup[v] = { total: 0, paid: 0, items: 0 };
+                const amt = (d.amount || 0) + (d.commission || 0);
+                vendorRollup[v].total += amt;
+                if (d.status === 'Paid') vendorRollup[v].paid += amt;
+            });
+            
+            // From Inventory (only acquisition/production)
+            exportItems.forEach(item => {
+                const status = (item.data.status || '').toLowerCase();
+                if (status === 'acquisition' || status === 'production') {
+                    const d = item.data as any;
+                    const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+                    const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+                    let vid = prefixId || 'Unknown';
+                    if (!vendorRollup[vid]) vendorRollup[vid] = { total: 0, paid: 0, items: 0 };
+                    vendorRollup[vid].items += 1;
+                }
+            });
+
+            summarySheet.addRow({ vendor: '── BY VENDOR ──' });
+            Object.entries(vendorRollup).sort((a,b) => b[1].total - a[1].total).forEach(([vid, v]) => {
+                const vColor = getVendorColor(vid);
+                const contrastColor = getContrastColor(vColor);
+                const vConfig = vendors[vid as keyof typeof vendors];
+                const sheetName = vConfig?.name ? vConfig.name.slice(0, 31) : vid.slice(0, 31);
+
+                const row = summarySheet.addRow({
+                    vendor: vid,
+                    items: v.items,
+                    total_mxn: v.total,
+                    total_usd: v.total / internetRate,
+                    paid_mxn: v.paid,
+                    pending_mxn: v.total - v.paid,
+                    link: { text: `Go to ${vid}`, hyperlink: `#\\'${sheetName}\\'!A1` }
+                });
+                row.getCell('vendor').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
+                row.getCell('vendor').font = { bold: true, color: { argb: contrastColor } };
+                // Using try catch as sometimes excelsjs might complain if link is improperly formatted but this format is ok.
+                row.getCell('link').font = { color: { argb: 'FF0000FF' }, underline: true };
+            });
+            summarySheet.addRow({});
 
             const catMap: Record<string, { total: number; paid: number }> = {};
             financeDocs.forEach(d => {
                 const cat = d.subcategory || d.category || 'Other';
                 if (!catMap[cat]) catMap[cat] = { total: 0, paid: 0 };
-                catMap[cat].total += d.amount ?? 0;
-                if (d.status === 'Paid') catMap[cat].paid += d.amount ?? 0;
+                const amt = (d.amount || 0) + (d.commission || 0);
+                catMap[cat].total += amt;
+                if (d.status === 'Paid') catMap[cat].paid += amt;
             });
 
-            summarySheet.addRow({ section: '── BY CATEGORY ──' });
+            summarySheet.addRow({ vendor: '── BY CATEGORY ──' });
             Object.entries(catMap).sort((a,b) => b[1].total - a[1].total).forEach(([cat, v]) => {
                 const row = summarySheet.addRow({
-                    section: 'Category', 
-                    label: cat, 
+                    vendor: cat, 
                     total_mxn: v.total, 
+                    total_usd: v.total / internetRate,
                     paid_mxn: v.paid, 
-                    pending_mxn: v.total - v.paid, 
-                    total_usd: +(v.total / rate).toFixed(2)
+                    pending_mxn: v.total - v.paid
                 });
-                row.getCell('label').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: getCategoryColor(cat) } };
-                row.getCell('label').font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                row.getCell('vendor').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: getCategoryColor(cat) } };
+                row.getCell('vendor').font = { bold: true, color: { argb: 'FFFFFFFF' } };
             });
 
             // 2. FINANCE LEDGER SHEET
@@ -646,24 +721,6 @@ export function MainHeader() {
             });
 
             // 4. INVENTORY SHEETS (Vendor Split)
-            const exportItems = inventory.filter(item => {
-                const status = (item.data.status || '').toLowerCase().trim();
-                return !EXCLUDED_STATUSES.has(status);
-            });
-
-            const vendorGroups: Record<string, any[]> = {};
-            exportItems.forEach(item => {
-                const d = item.data as any;
-                // Proactively extract vendor from tag prefixes if direct field is missing
-                // Priority: explicit vendor_id > item.label > d.itemId > d.item_id > d.tag_id
-                const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
-                const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
-                
-                let vid = prefixId || 'Unknown';
-                if (!vendorGroups[vid]) vendorGroups[vid] = [];
-                vendorGroups[vid].push(item);
-            });
-
             Object.entries(vendorGroups).forEach(([vid, items]) => {
                 const vConfig = vendors[vid as keyof typeof vendors];
                 const sheetName = vConfig?.name ? vConfig.name.slice(0, 31) : vid.slice(0, 31);
@@ -678,11 +735,15 @@ export function MainHeader() {
                     { header: 'SHAPE TYPE (DESC)', key: 'shape_type', width: 35 },
                     { header: 'COLOR MAT.', key: 'color_mat', width: 20 },
                     { header: 'WEIGHT', key: 'weight', width: 10 },
-                    { header: 'SIZES (L x W x H)', key: 'sizes', width: 25 },
+                    { header: 'SIZES (L x W x H) CM', key: 'sizes', width: 25 },
+                    { header: 'SIZES (L x W x H) IN', key: 'sizes_in', width: 25 },
                     { header: 'QTY', key: 'qty', width: 8 },
+                    { header: 'UNIT CST (MXN)', key: 'unit_mxn', width: 15, style: { numFmt: '#,##0.00' } },
+                    { header: 'TOTAL CST (MXN)', key: 'total_mxn', width: 15, style: { numFmt: '#,##0.00' } },
                     { header: 'ACQ CODE', key: 'acq_code', width: 12 },
                     { header: 'LND CODE', key: 'lnd_code', width: 12 },
-                    { header: 'LANDED (MXN)', key: 'landed', width: 15, style: { numFmt: '#,##0.00' } },
+                    { header: 'ACQUISITION (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'LANDED (USD)', key: 'landed', width: 15, style: { numFmt: '#,##0.00' } },
                     { header: 'RETAIL (USD)', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } }
                 ];
 
@@ -694,7 +755,7 @@ export function MainHeader() {
                 items.forEach((item, idx) => {
                     const d = item.data as any;
                     const norm = normalizeInventoryData(d);
-                    const computed = calculateCodesAndPrices(norm, rate, d.workbook || '326');
+                    const computed = calculateCodesAndPrices(norm, bookRate, d.workbook || '326');
                     
                     const payStatusClass = getStatusClass(norm, partialPayIds);
                     const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
@@ -708,6 +769,21 @@ export function MainHeader() {
                         norm.dropCm ? `Drp:${norm.dropCm}` : ''
                     ].filter(Boolean).join(' | ') || '-';
 
+                    const fmtIn = (cm: number|null|undefined) => cm ? (cm / 2.54).toFixed(1) : '';
+                    const sizes_in = [
+                        norm.lengthCm ? `L:${fmtIn(norm.lengthCm)}"` : '',
+                        norm.widthCm ? `W:${fmtIn(norm.widthCm)}"` : '',
+                        norm.heightCm ? `H:${fmtIn(norm.heightCm)}"` : '',
+                        norm.diameterCm ? `Ø:${fmtIn(norm.diameterCm)}"` : '',
+                        norm.interiorCm ? `Int:${fmtIn(norm.interiorCm)}"` : '',
+                        norm.dropCm ? `Drp:${fmtIn(norm.dropCm)}"` : ''
+                    ].filter(Boolean).join(' | ') || '-';
+
+                    const qty = parseFloat(String(d.quantity || '1')) || 1;
+                    const total_mxn = parseFloat(String(d.cost_mxn || '0')) || 0;
+                    const unit_mxn = qty > 0 ? (total_mxn / qty) : 0;
+                    const acq_usd = total_mxn / bookRate;
+
                     const row = ws.addRow({
                         tag_id: computed.bookBardcode,
                         item_number: d.item_number || d.itemNumber || '',
@@ -717,9 +793,13 @@ export function MainHeader() {
                         color_mat: `${d.color || ''} ${d.material || ''}`.trim(),
                         weight: d.weight_kg || d.weightKg || d.weight || '',
                         sizes: sizes,
-                        qty: parseFloat(String(d.quantity || '1')) || 1,
+                        sizes_in: sizes_in,
+                        qty: qty,
+                        unit_mxn: unit_mxn,
+                        total_mxn: total_mxn,
                         acq_code: computed.bookAqCode,
                         lnd_code: computed.bookLandCode,
+                        acq_usd: acq_usd,
                         landed: parseFloat(computed.bookLanded) || 0,
                         retail: parseFloat(computed.bookRetail) || 0
                     });
