@@ -579,7 +579,13 @@ export function MainHeader() {
             });
 
             summarySheet.addRow({ vendor: '── BY VENDOR ──' });
-            Object.entries(vendorRollup).sort((a,b) => b[1].total - a[1].total).forEach(([vid, v]) => {
+            Object.entries(vendorRollup)
+                .filter(([vid]) => {
+                    const vUpper = vid.toUpperCase();
+                    return vUpper !== 'OTHER' && vUpper !== 'CRATE' && vUpper !== 'CRATES';
+                })
+                .sort((a, b) => b[1].total - a[1].total)
+                .forEach(([vid, v]) => {
                 const vColor = getVendorColor(vid);
                 const contrastColor = getContrastColor(vColor);
                 const vConfig = vendors[vid as keyof typeof vendors];
