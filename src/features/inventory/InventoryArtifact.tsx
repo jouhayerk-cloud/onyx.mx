@@ -29,10 +29,11 @@ export const InventoryArtifact: React.FC = () => {
     const financeDocs = useAtomValue(financeDataAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
 
-    const partialPayIds = useMemo(() => {
-        const ids = new Set<string>();
+    const { partialPayIds, fullPayIds } = useMemo(() => {
+        const pIds = new Set<string>();
+        const fIds = new Set<string>();
         financeDocs.forEach(d => {
-            if (d.status === 'Paid' && d.description?.includes('%')) {
+            if (d.status === 'Paid') {
                 const rel = d.related_ids || d.related_inventory_ids || '';
                 let relArray: string[] = [];
                 if (Array.isArray(rel)) {
@@ -40,10 +41,14 @@ export const InventoryArtifact: React.FC = () => {
                 } else if (typeof rel === 'string') {
                     relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
                 }
-                relArray.forEach(id => ids.add(id));
+                if (d.description?.includes('%')) {
+                    relArray.forEach(id => pIds.add(id));
+                } else {
+                    relArray.forEach(id => fIds.add(id));
+                }
             }
         });
-        return ids;
+        return { partialPayIds: pIds, fullPayIds: fIds };
     }, [financeDocs]);
 
     const filteredItems = useMemo(() => {
@@ -104,7 +109,7 @@ export const InventoryArtifact: React.FC = () => {
                             const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
                             const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
                             const imageUrl = getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0]);
-                            const payStatus = getStatusClass(norm, partialPayIds);
+                            const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                             const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
                             
                             const itemPriceMXN = Math.ceil(Number(norm.price || 0));
