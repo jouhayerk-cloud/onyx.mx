@@ -16,6 +16,7 @@ import {
     userAtom,
     inventoryViewModeAtom,
     filteredInventoryCountAtom,
+    filteredInventoryIdsAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
@@ -442,7 +443,7 @@ export const UnifiedInventoryView = () => {
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom); const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom); const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
     const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom); const [isSortMenuOpen, setIsSortMenuOpen] = useAtom(isInventorySortMenuOpenAtom);
-    const user = useAtomValue(userAtom); const setFilteredCount = useSetAtom(filteredInventoryCountAtom);
+    const user = useAtomValue(userAtom); const setFilteredCount = useSetAtom(filteredInventoryCountAtom); const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
     const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
     const [savingProgress, setSavingProgress] = useState(0);
 
@@ -611,7 +612,12 @@ export const UnifiedInventoryView = () => {
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
     const activeMaterials = useMemo(() => Array.from(new Set(items.map(i => `${i.data.color || ''} ${i.data.material || ''}`.trim()).filter(Boolean))).sort(), [items]);
     
-    useEffect(() => { setGlobalActiveVendors(activeVendors); setFilteredCount(filteredItems.length); setIsLoading(items.length === 0); }, [activeVendors, filteredItems.length, items.length]);
+    useEffect(() => {
+        setGlobalActiveVendors(activeVendors);
+        setFilteredCount(filteredItems.length);
+        setFilteredIds(filteredItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean));
+        setIsLoading(items.length === 0);
+    }, [activeVendors, filteredItems, items.length]);
 
     const totalCount = useMemo(() => filteredItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [filteredItems]);
     const totalValueMXN = useMemo(() => filteredItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [filteredItems]);

@@ -234,6 +234,7 @@ export const inventoryAtom = atom<InventoryItem[]>([]);
 export const inventorySearchTermAtom = atom('');
 export const inventoryActiveFilterAtom = atom('All');
 export const filteredInventoryCountAtom = atom(0);
+export const filteredInventoryIdsAtom = atom<(string | number)[]>([]);
 export const activeVendorsAtom = atom<string[]>([]);
 
 export const storeInventoryAtom = atom<any[]>([]);
