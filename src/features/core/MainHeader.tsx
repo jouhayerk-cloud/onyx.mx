@@ -67,7 +67,7 @@ import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo } from '../../components/OnyxLogo';
-import { getStatusClass } from '../inventory/UnifiedInventoryView';
+import { getStatusClass } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
@@ -255,31 +255,6 @@ const InventoryBar: React.FC = () => {
     const [isSortOpen, setIsSortOpen] = useAtom(isInventorySortMenuOpenAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [isShareOpen, setIsShareOpen] = useState(false);
-    const filteredIds = useAtomValue(filteredInventoryIdsAtom);
-    const filteredCount = useAtomValue(filteredInventoryCountAtom);
-    const statusFilter = useAtomValue(inventoryStatusFilterAtom);
-    const vendorFilter = useAtomValue(inventoryVendorFilterAtom);
-    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
-
-    const activeFilterLabels = [
-        search ? `"${search}"` : null,
-        vendorFilter !== 'All' ? vendorFilter : null,
-        statusFilter !== 'All' ? statusFilter : null,
-    ].filter(Boolean);
-
-    const handleOpenArtifact = () => {
-        if (filteredIds.length === 0) return toast.error('No items in current view.');
-        setArtifactConfig({ isOpen: true, itemIds: filteredIds, title: `Filtered View (${filteredCount} items)` });
-        setIsShareOpen(false);
-    };
-
-    const handleCopyLink = () => {
-        const idsParam = encodeURIComponent(filteredIds.join(','));
-        const url = `${window.location.origin}${window.location.pathname}?artifact=inventory&ids=${idsParam}`;
-        navigator.clipboard.writeText(url).then(() => toast.success('Link copied!'));
-    };
-
     return (
         <>
             <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
@@ -319,80 +294,6 @@ const InventoryBar: React.FC = () => {
                             label={viewMode === 'grid' ? 'LIST' : 'GRID'}
                             onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
                         />
-
-                        <div className="w-px h-5 bg-white/5 mx-1" />
-
-                        <div className="relative">
-                            <StudioAction 
-                                icon={Share2}
-                                label="SHARE"
-                                active={isShareOpen}
-                                onClick={() => setIsShareOpen(o => !o)}
-                                color="var(--color-inventory)"
-                            />
-                            {isShareOpen && createPortal(
-                                <>
-                                    <div className="fixed inset-0 z-[9998]" onClick={() => setIsShareOpen(false)} />
-                                    <div className="fixed top-16 left-1/2 -translate-x-1/2 w-[360px] bg-(--background-color)/95 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_24px_72px_rgba(0,0,0,0.7)] p-5 flex flex-col gap-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200">
-                                        
-                                        {/* Header */}
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 rounded-lg" style={{ color: 'var(--color-inventory)' }}>
-                                                    <Share2 size={14} strokeWidth={2.5} />
-                                                </div>
-                                                <span className="text-[11px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--color-inventory)' }}>Share Inventory View</span>
-                                            </div>
-                                            <button onClick={() => setIsShareOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full bg-(--text-color)/5 hover:bg-(--text-color)/10 text-(--text-color) opacity-30 hover:opacity-100 transition-all">
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-
-                                        {/* Count + Active Filters */}
-                                        <div className="flex flex-col gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Currently Showing</span>
-                                                <span className="text-[13px] font-black font-mono" style={{ color: 'var(--color-inventory)' }}>{filteredCount} <span className="text-[9px] text-white/30 uppercase">items</span></span>
-                                            </div>
-                                            {activeFilterLabels.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 mt-1">
-                                                    {activeFilterLabels.map(label => (
-                                                        <span key={label} className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ backgroundColor: 'var(--color-inventory)20', color: 'var(--color-inventory)', border: '1px solid var(--color-inventory)30' }}>
-                                                            {label}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {activeFilterLabels.length === 0 && (
-                                                <span className="text-[9px] text-white/20 italic">No active filters — showing all items</span>
-                                            )}
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                onClick={handleOpenArtifact}
-                                                disabled={filteredIds.length === 0}
-                                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-black font-black text-[11px] uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:pointer-events-none shadow-lg"
-                                                style={{ backgroundColor: 'var(--color-inventory)' }}
-                                            >
-                                                <ExternalLink size={14} />
-                                                <span>Open as Inventory Artifact</span>
-                                            </button>
-                                            <button
-                                                onClick={handleCopyLink}
-                                                disabled={filteredIds.length === 0}
-                                                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
-                                            >
-                                                <Copy size={14} />
-                                                <span>Copy Shareable Link</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>,
-                                document.body
-                            )}
-                        </div>
                     </div>
                 )}
             </div>
