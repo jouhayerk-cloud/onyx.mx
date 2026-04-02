@@ -13,7 +13,7 @@ import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -359,22 +359,14 @@ const AddPaymentModal: React.FC<{
                         </div>
                     )}
 
-                    {/* Stage 2.2: Expenses Stage 1 (Monthly vs Specific) */}
+                    {/* Stage 2.2: Expenses Stage 1 (Crates vs Specific) */}
                     {step === 2.2 && (
                         <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                             <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight text-center">OPERATING COSTS</h2>
                             <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold text-center">Classify the administrative cost</p>
                             <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
 
-                            <div className="grid grid-cols-3 gap-5 w-full">
-                                <button onClick={() => { set('subcategory', 'Monthly'); setStep(4); }}
-                                    className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
-                                    <div className="w-14 h-14 mb-4 rounded-full border border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <svg className="w-7 h-7 opacity-50 text-(--text-color-secondary)"><use href="#calendar" /></svg>
-                                    </div>
-                                    <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">MONTHLY FIXED</span>
-                                    <span className="text-[8px] text-(--text-color-secondary) font-bold mt-2 uppercase leading-tight text-center">Recurring bills<br />& subscriptions</span>
-                                </button>
+                            <div className="grid grid-cols-2 gap-5 w-full">
                                 <button onClick={() => { 
                                     set('subcategory', 'Packing');
                                     setStep(3.1);
@@ -445,23 +437,46 @@ const AddPaymentModal: React.FC<{
                                         className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none" placeholder="Brief summary of payment" />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
-                                        <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
-                                            className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
-                                    </div>
-                                    {normalizeSubcat(form.subcategory) === 'Monthly' ? (
+                                <div className="flex flex-col gap-5">
+                                    <div className="grid grid-cols-2 gap-5">
                                         <div className="space-y-3">
-                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">RECURRING DAY</label>
-                                            <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => { set('recurring_day', parseInt(e.target.value)); set('recurring', true); }}
-                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" />
+                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
+                                            <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
                                         </div>
-                                    ) : (
                                         <div className="space-y-3">
                                             <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">REFERENCE</label>
                                             <input value={form.reference} onChange={e => set('reference', e.target.value)}
                                                 className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 outline-none focus:border-(--main-color)/50 transition-all" placeholder="Optional #" />
+                                        </div>
+                                    </div>
+
+                                    {/* Recurring Toggle */}
+                                    <div className={`flex items-center justify-between p-5 rounded-[28px] border transition-all ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-(--glass-bg) border-(--border-color)'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${form.recurring ? 'bg-(--main-color)/20' : 'bg-white/5'}`}>
+                                                <svg className={`w-5 h-5 transition-all ${form.recurring ? 'text-(--main-color) opacity-100' : 'text-white opacity-30'}`}><use href="#repeat" /></svg>
+                                            </div>
+                                            <div>
+                                                <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest block">RECURRING</span>
+                                                <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase">Repeats monthly on a fixed day</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
+                                            className={`w-14 h-8 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-md ${form.recurring ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    {/* Recurring Day — only when toggled on */}
+                                    {form.recurring && (
+                                        <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
+                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DAY OF MONTH</label>
+                                            <div className="flex items-center gap-4">
+                                                <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
+                                                    className="w-32 h-14 font-mono text-xl font-bold bg-(--glass-bg) border border-(--main-color)/30 rounded-[20px] text-(--text-color) outline-none focus:border-(--main-color)/60 transition-all text-center" />
+                                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">of each month</span>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -741,6 +756,363 @@ const RequestPaymentModal: React.FC<{
     );
 };
 
+
+// ─── Edit Payment Modal ────────────────────────────────────────────────────
+const EditPaymentModal: React.FC<{
+    record: any | null;
+    onClose: () => void;
+    onSaved: () => void;
+}> = ({ record, onClose, onSaved }) => {
+    const db = useDatabase();
+    const [step, setStep] = useState(4);
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState({
+        description: '',
+        amount: '',
+        subcategory: 'Acq' as string,
+        vendor_id: '',
+        destination: null as PaymentDestination | null,
+        reference: '',
+        payment_method: 'Wire Transfer',
+        notes: '',
+        recurring: false,
+        recurring_day: 1,
+        manualFee: '',
+        includeIva: false,
+        includeComm: false,
+    });
+
+    const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+
+    // Pre-populate form when record changes
+    useEffect(() => {
+        if (record) {
+            const amt = record.amount ?? 0;
+            const comm = record.commission ?? 0;
+            // Try to detect if commission is IVA (16%) or bank (10%) or manual
+            const ivaAmt = amt * 0.16;
+            const commAmt = amt * 0.10;
+            const isIva = Math.abs(comm - ivaAmt) < 1;
+            const isComm = Math.abs(comm - commAmt) < 1;
+            const manualFeeAmt = (!isIva && !isComm && comm > 0) ? comm : 0;
+
+            setForm({
+                description: record.description || '',
+                amount: String(amt),
+                subcategory: record.subcategory || record.category || 'Acq',
+                vendor_id: record.vendor_id || '',
+                destination: record.destination || null,
+                reference: record.reference || '',
+                payment_method: record.payment_method || 'Wire Transfer',
+                notes: record.notes || '',
+                recurring: record.recurring ?? false,
+                recurring_day: record.recurring_day ?? new Date().getDate(),
+                manualFee: manualFeeAmt > 0 ? String(manualFeeAmt) : '',
+                includeIva: isIva,
+                includeComm: isComm,
+            });
+            setStep(4);
+        }
+    }, [record]);
+
+    const calculateIVA = (amt: number) => amt * 0.16;
+    const calculateComm = (amt: number) => amt * 0.10;
+
+    const handleUpdate = async () => {
+        const amt = parseFloat(form.amount);
+        if (!form.description || isNaN(amt) || amt <= 0 || !form.destination) {
+            return toast.error('Fill in description, amount, and select an account.');
+        }
+        setSaving(true);
+        const toastId = toast.loading('Updating payment…');
+        try {
+            const manualFeeAmt = parseFloat(form.manualFee) || 0;
+            const ivaAmt = form.includeIva ? calculateIVA(amt) : 0;
+            const commAmt = form.includeComm ? calculateComm(amt) : 0;
+            const commission = manualFeeAmt + ivaAmt + commAmt;
+
+            const updatePayload: any = {
+                description: form.description,
+                amount: amt,
+                commission,
+                destination: form.destination,
+                subcategory: form.subcategory,
+                vendor_id: form.vendor_id || null,
+                reference: form.reference || null,
+                payment_method: form.payment_method || null,
+                notes: form.notes || null,
+                recurring: form.recurring,
+                recurring_day: form.recurring ? (form.recurring_day ?? null) : null,
+                updated_at: new Date().toISOString(),
+            };
+
+            const { error } = await supabase.from('finance').update(updatePayload).eq('id', record.id);
+            if (error) throw error;
+
+            // Sync to local DB if available
+            if (db) {
+                try {
+                    const localDoc = await db.finance.findOne({ selector: { id: record.id } }).exec();
+                    if (localDoc) await localDoc.patch(updatePayload);
+                } catch (e) { console.error('Local sync failed', e); }
+            }
+
+            toast.success('Payment updated!', { id: toastId });
+            onSaved();
+            onClose();
+        } catch (err: any) {
+            toast.error(err.message, { id: toastId });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!record) return null;
+
+    const isOpen = !!record;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>
+            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[600px] max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+
+                {/* Header */}
+                <div className="px-6 md:px-10 pt-8 pb-4 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-(--main-color)/15 border border-(--main-color)/30 flex items-center justify-center">
+                            <Edit3 size={14} className="text-(--main-color)" />
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.3em]">Editing Payment Record</p>
+                            <p className="text-[10px] font-bold text-white/30 truncate max-w-[280px]">{record.description || 'Unnamed Transaction'}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-(--glass-bg) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all text-sm shrink-0">✕</button>
+                </div>
+
+                <div className="px-6 md:px-10 pb-10 flex flex-col flex-1 overflow-y-auto custom-scrollbar min-h-[460px]">
+                    {/* Step 1: Classification (re-classify if needed) */}
+                    {step === 1 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 leading-tight tracking-tight uppercase">TRANSACTION<br />CLASSIFICATION</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-[0.3em] font-bold">Re-classify this transaction type</p>
+                            <div className="grid grid-cols-2 gap-5">
+                                <button onClick={() => setStep(2.1)}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#F7941D]/50 hover:bg-[#F7941D]/5 transition-all group">
+                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#F7941D]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 text-[#F7941D] opacity-70"><use href="#pkg" /></svg>
+                                    </div>
+                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">MERCHANDISE</span>
+                                </button>
+                                <button onClick={() => setStep(2.2)}
+                                    className="flex flex-col items-center p-10 rounded-[48px] bg-(--glass-bg) border border-(--border-color) hover:border-[#00AEEF]/50 hover:bg-[#00AEEF]/5 transition-all group">
+                                    <div className="w-16 h-16 mb-6 rounded-full border-2 border-[#00AEEF]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <svg className="w-8 h-8 text-[#00AEEF] opacity-70"><use href="#dollar" /></svg>
+                                    </div>
+                                    <span className="text-[12px] font-black text-(--text-color) uppercase tracking-[0.2em]">OPERATIONS</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2.1: Merch Type */}
+                    {step === 2.1 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">MERCHANDISE</h2>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all"><span className="group-hover:-translate-x-1 transition-transform">←</span> BACK</button>
+                            <div className="grid grid-cols-2 gap-5">
+                                <button onClick={() => { set('subcategory', 'Acq'); setStep(4); }} className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
+                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">ACQUISITIONS</span>
+                                </button>
+                                <button onClick={() => { set('subcategory', 'Prod'); setStep(4); }} className="flex flex-col items-center p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color) hover:border-(--text-color-secondary)/30 transition-all group">
+                                    <span className="text-[11px] font-black text-(--text-color) uppercase tracking-[0.15em]">PRODUCTION</span>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2.2: Op Type */}
+                    {step === 2.2 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">OPERATING COSTS</h2>
+                            <button onClick={() => setStep(1)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">← BACK</button>
+                            <div className="grid grid-cols-2 gap-4">
+                                {['Packing', 'Sppl', 'Labr', 'Oprt'].map(cat => (
+                                    <button key={cat} onClick={() => { set('subcategory', cat); setStep(4); }}
+                                        className="flex flex-col items-center p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color)/40 transition-all">
+                                        <span className="text-[10px] font-black text-(--text-color) uppercase tracking-widest text-center">{cat.toUpperCase()}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 4: Core Details */}
+                    {step === 4 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-2 uppercase tracking-tight">DETAILS</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">
+                                Editing: <span className="text-(--main-color)">{normalizeSubcat(form.subcategory)}</span>
+                                {form.vendor_id && <span className="ml-2 opacity-50">· {form.vendor_id}</span>}
+                            </p>
+                            <button onClick={() => setStep(1)} className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-6 flex items-center gap-2 hover:text-white/50 transition-colors">
+                                <span>←</span> Re-classify Transaction
+                            </button>
+
+                            <div className="flex flex-col gap-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DESCRIPTION</label>
+                                    <input value={form.description} onChange={e => set('description', e.target.value)}
+                                        className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none" placeholder="Brief summary of payment" />
+                                </div>
+
+                                <div className="flex flex-col gap-5">
+                                    <div className="grid grid-cols-2 gap-5">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">AMOUNT (MXN)</label>
+                                            <input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)}
+                                                className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">REFERENCE</label>
+                                            <input value={form.reference} onChange={e => set('reference', e.target.value)}
+                                                className="w-full h-16 px-6 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 outline-none focus:border-(--main-color)/50 transition-all" placeholder="Optional #" />
+                                        </div>
+                                    </div>
+
+                                    {/* Recurring Toggle */}
+                                    <div className={`flex items-center justify-between p-5 rounded-[28px] border transition-all ${form.recurring ? 'bg-(--main-color)/5 border-(--main-color)/30' : 'bg-(--glass-bg) border-(--border-color)'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${form.recurring ? 'bg-(--main-color)/20' : 'bg-white/5'}`}>
+                                                <svg className={`w-5 h-5 transition-all ${form.recurring ? 'text-(--main-color) opacity-100' : 'text-white opacity-30'}`}><use href="#repeat" /></svg>
+                                            </div>
+                                            <div>
+                                                <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest block">RECURRING</span>
+                                                <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase">Repeats monthly on a fixed day</span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => { set('recurring', !form.recurring); if (form.recurring) set('recurring_day', 1); }}
+                                            className={`w-14 h-8 rounded-full transition-all relative shrink-0 ${form.recurring ? 'bg-(--main-color)' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all shadow-md ${form.recurring ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    {form.recurring && (
+                                        <div className="animate-in slide-in-from-top-2 duration-200 space-y-3">
+                                            <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">DAY OF MONTH</label>
+                                            <div className="flex items-center gap-4">
+                                                <input type="number" min="1" max="31" value={form.recurring_day} onChange={e => set('recurring_day', parseInt(e.target.value) || 1)}
+                                                    className="w-32 h-14 font-mono text-xl font-bold bg-(--glass-bg) border border-(--main-color)/30 rounded-[20px] text-(--text-color) outline-none focus:border-(--main-color)/60 transition-all text-center" />
+                                                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">of each month</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">NOTES</label>
+                                    <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+                                        className="w-full h-20 px-6 py-4 rounded-[24px] bg-(--glass-bg) border border-(--border-color) text-(--text-color) placeholder:text-(--text-color-secondary)/30 focus:border-(--main-color)/50 transition-all outline-none resize-none text-sm" placeholder="Additional context…" />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-5 mt-10">
+                                <button onClick={() => setStep(5)} className="flex-1 py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all">CONTINUE →</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 5: Account Selection */}
+                    {step === 5 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">SOURCE</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) mb-8 uppercase tracking-widest font-bold">Select payment disbursement account</p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {Object.entries(destinationsConfig).map(([key, cfg]) => (
+                                    <button key={key} type="button"
+                                        onClick={() => set('destination', key as PaymentDestination)}
+                                        className={`flex flex-col items-center gap-3 p-6 rounded-[32px] border-2 transition-all ${form.destination === key ? 'border-(--main-color) bg-(--main-color)/10' : 'border-(--border-color) bg-(--glass-bg) hover:border-(--text-color-secondary)/30'}`}>
+                                        <img src={cfg.icon} alt={cfg.name} className="h-10 w-auto object-contain mb-1" />
+                                        <div className="text-[11px] font-black text-(--text-color) uppercase tracking-widest opacity-80">{cfg.name}</div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-5 mt-16">
+                                <button onClick={() => setStep(4)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                                <button onClick={() => setStep(6)} disabled={!form.destination}
+                                    className="flex-[1.5] py-5 bg-(--main-color)/15 text-(--text-color) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--main-color)/25 transition-all disabled:opacity-40">CONTINUE TO TAXES</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 6: Taxes & Fees + Confirm */}
+                    {step === 6 && (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                            <h2 className="text-4xl font-black text-(--text-color) mb-3 uppercase tracking-tight">ADJUSTMENTS</h2>
+                            <p className="text-[11px] text-(--text-color-secondary) mb-10 uppercase tracking-widest font-bold">Optional taxes and transaction fees</p>
+
+                            <div className="flex flex-col gap-10">
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">ADD 16% IVA</span>
+                                            <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Value added tax calculation</span>
+                                        </div>
+                                        <button onClick={() => { set('includeIva', !form.includeIva); if (!form.includeIva) set('includeComm', false); }}
+                                            className={`w-14 h-8 rounded-full transition-all relative ${form.includeIva ? 'bg-green-500' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeIva ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center justify-between p-6 rounded-[32px] bg-(--glass-bg) border border-(--border-color)">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-black text-(--text-color) uppercase tracking-widest">BANK COMISION (10%)</span>
+                                            <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase mt-1">Platform & transfer fees</span>
+                                        </div>
+                                        <button onClick={() => { set('includeComm', !form.includeComm); if (!form.includeComm) set('includeIva', false); }}
+                                            className={`w-14 h-8 rounded-full transition-all relative ${form.includeComm ? 'bg-[#00AEEF]' : 'bg-white/10'}`}>
+                                            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${form.includeComm ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 pt-2">
+                                    <label className="text-[10px] text-(--text-color-secondary) opacity-60 font-black uppercase tracking-[0.3em] block ml-1">MANUAL COMMISSION / FEE (MXN)</label>
+                                    <input type="number" step="0.01" value={form.manualFee} onChange={e => set('manualFee', e.target.value)}
+                                        className="w-full h-16 px-6 font-mono text-xl font-bold bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) outline-none focus:border-(--main-color)/50 transition-all" placeholder="0.00" />
+                                </div>
+
+                                <div className="p-8 rounded-[40px] bg-(--glass-bg) border border-(--border-color)">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">UPDATED TOTAL</span>
+                                        <span className="text-xs font-mono text-(--text-color-secondary)">{fmtMXN(parseFloat(form.amount) || 0)} BASE</span>
+                                    </div>
+                                    <div className="text-4xl font-mono font-black text-(--text-color) tracking-tighter">
+                                        {fmtMXN((parseFloat(form.amount) || 0) + (parseFloat(form.manualFee) || 0) + (form.includeIva ? calculateIVA(parseFloat(form.amount) || 0) : 0) + (form.includeComm ? calculateComm(parseFloat(form.amount) || 0) : 0))}
+                                    </div>
+                                    <div className="flex gap-4 mt-3 opacity-60">
+                                        {form.includeIva && <span className="text-[9px] font-black uppercase tracking-widest text-[#8DC63F]">+ IVA {fmtMXN(calculateIVA(parseFloat(form.amount) || 0))}</span>}
+                                        {form.includeComm && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ BNK {fmtMXN(calculateComm(parseFloat(form.amount) || 0))}</span>}
+                                        {(parseFloat(form.manualFee) || 0) > 0 && <span className="text-[9px] font-black uppercase tracking-widest text-[#00AEEF]">+ FEE {fmtMXN(parseFloat(form.manualFee) || 0)}</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-5 mt-12">
+                                <button onClick={() => setStep(5)} className="flex-1 py-5 border border-(--border-color) text-(--text-color-secondary) rounded-[28px] text-[11px] font-black tracking-[0.2em] hover:bg-(--glass-bg) transition-all">BACK</button>
+                                <button onClick={handleUpdate} disabled={saving}
+                                    className="flex-[1.5] py-5 bg-(--main-color) text-black rounded-[28px] text-[11px] font-black tracking-[0.2em] disabled:opacity-40 transition-all shadow-xl hover:scale-[1.02] active:scale-95">
+                                    {saving ? 'UPDATING…' : 'CONFIRM CHANGES'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number; onRefresh: () => void }> = ({ docs, exchangeRate, onRefresh }) => {
     const db = useDatabase();
     const user = useAtomValue(userAtom);
@@ -754,6 +1126,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [subcatFilter, setSubcatFilter] = useState<Subcategory>('All');
     const [vendorFilter, setVendorFilter] = useState<string>('All');
     const [showAdd, setShowAdd] = useState(false);
+    const [editRecord, setEditRecord] = useState<any | null>(null);
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
     const [overviewMode, setOverviewMode] = useAtom(paymentsOverviewModeAtom);
     const showFilters = useAtomValue(paymentFilterBarModeAtom) !== 'off';
@@ -1149,6 +1522,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onSaved={() => { setPaymentsVersion(v => v + 1); setInventoryVersion(v => v + 1); onRefresh(); }}
                 pendingGroups={pendingGroups}
             />
+            <EditPaymentModal
+                record={editRecord}
+                onClose={() => setEditRecord(null)}
+                onSaved={() => { setPaymentsVersion(v => v + 1); onRefresh(); }}
+            />
             <RequestPaymentModal
                 group={requestGroup}
                 onClose={() => setRequestGroup(null)}
@@ -1439,11 +1817,35 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                     
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
                                         {/* Column 1: Compact Icon + Date Stack */}
-                                        <div className="shrink-0 flex items-center gap-3 border-r border-white/5 pr-4 min-w-[105px]">
+                                        <div className="shrink-0 flex items-center gap-3 border-r border-white/5 pr-4 min-w-[120px]">
                                             <cat.icon size={16} style={{ color: cat.color }} className="shrink-0 opacity-80" />
-                                            <div className="flex flex-col items-start justify-center">
-                                                <span className="text-[11px] font-black tracking-tighter text-white opacity-80 leading-none mb-1.5">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
-                                                <span className={`text-[8px] font-black uppercase tracking-widest opacity-40 leading-none truncate`} style={{ color: cat.color }}>{cat.label}</span>
+                                            <div className="flex flex-col items-start justify-center gap-1.5">
+                                                <span className="text-[11px] font-black tracking-tighter text-white opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                                {/* Payment Status Indicator Pill */}
+                                                {(() => {
+                                                    const isPartial = String(r.description || '').includes('%');
+                                                    const isPaid = r.status === 'Paid';
+                                                    if (isPartial && isPaid) return (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                                                            <span className="w-1 h-1 rounded-full bg-orange-400 animate-pulse" />PARTIAL
+                                                        </span>
+                                                    );
+                                                    if (isPaid) return (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-[#8DC63F]/15 text-[#8DC63F] border border-[#8DC63F]/20">
+                                                            <span className="w-1 h-1 rounded-full bg-[#8DC63F]" />PAID
+                                                        </span>
+                                                    );
+                                                    if (isPartial) return (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/20">
+                                                            <span className="w-1 h-1 rounded-full bg-red-400 animate-pulse" />PARTIAL
+                                                        </span>
+                                                    );
+                                                    return (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/20">
+                                                            <span className="w-1 h-1 rounded-full bg-[#FACC15] animate-pulse" />PENDING
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
 
@@ -1593,6 +1995,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         {r.status === 'Requested' ? <Clock size={14} /> : <CheckCircle size={14} />}
                                                         <span className="text-[9px] font-black uppercase tracking-widest">Mark as {r.status === 'Requested' ? 'Paid' : 'Requested'}</span>
                                                     </button>
+                                                    {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setEditRecord(r); }}
+                                                            className="flex items-center gap-2 h-8 px-4 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all hover:scale-105 active:scale-95">
+                                                            <Pencil size={14} />
+                                                            <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                                     <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
