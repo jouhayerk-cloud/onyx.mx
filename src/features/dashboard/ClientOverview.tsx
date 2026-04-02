@@ -944,9 +944,19 @@ export const ClientOverview: React.FC = () => {
                                                             
                                                             const catStr = String(d.category || '').toLowerCase();
                                                             const subStr = String(d.subcategory || '').toLowerCase();
-                                                            const isAcq = catStr.includes('acq') || subStr.includes('acq');
+                                                            const isMerch = catStr.includes('acq') || subStr.includes('acq') || catStr.includes('prod') || subStr.includes('prod');
                                                             const isLogis = catStr.includes('logis') || subStr.includes('logis') || catStr.includes('pack') || catStr.includes('ship');
-                                                            const CatIcon = isAcq ? ShoppingCart : isLogis ? Package : DollarSign;
+                                                            
+                                                            const CatIcon = (() => {
+                                                                if (isMerch) return ShoppingCart;
+                                                                if (isLogis) return Package;
+                                                                if (subStr.includes('labr')) return Users;
+                                                                if (subStr.includes('oprt') || subStr.includes('month')) return Activity;
+                                                                if (subStr.includes('sppl')) return Box;
+                                                                return DollarSign;
+                                                            })();
+
+                                                            const isVendorPayment = catStr === 'vendor payment';
 
                                                             return (
                                                                 <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-white/2 hover:bg-white/5 border border-white/5 transition-all">
@@ -959,7 +969,10 @@ export const ClientOverview: React.FC = () => {
                                                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vColor }}>
                                                                                     {rowVendorId || 'UNK'}
                                                                                 </span>
-                                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{d.category || 'General'} {d.subcategory && `• ${d.subcategory}`}</span>
+                                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                                                                                    {(!isMerch && isVendorPayment) ? null : (d.category || 'General')}
+                                                                                    {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{d.subcategory}</>}
+                                                                                </span>
                                                                             </div>
                                                                             <span className="text-[11px] font-medium text-white/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
                                                                             
