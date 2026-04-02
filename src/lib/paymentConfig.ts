@@ -8,7 +8,7 @@ export const destinationsConfig: Record<PaymentDestination, {
 }> = {
     [PaymentDestination.BoA_Employee]: {
         icon: boaCardIcon,
-        name: 'Bank of America',
+        name: 'BOA Employee',
         calculateCommission: (amount: number) => amount * 0.10 // 10% Bank Fee
     },
     [PaymentDestination.BBVA_Martha]: {
