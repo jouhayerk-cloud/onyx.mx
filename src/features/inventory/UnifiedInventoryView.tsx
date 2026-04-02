@@ -30,35 +30,21 @@ import {
     isInventoryFiltersPanelOpenAtom,
     inventoryAtom,
     financeDataAtom,
-    paymentsArtifactConfigAtom
+    paymentsArtifactConfigAtom,
+    isInventorySelectionModeAtom,
+    selectedInventoryIdsAtom,
+    inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
 import { InventoryItemData, UploadedFile } from '../../lib/Types';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy } from 'lucide-react';
 
-export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
-    const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
-    const statusStr = String(item.status || item.item_status || '').toLowerCase();
-    const dispStatus = String(item.dispersal_status || '').toLowerCase();
-    
-    // 1. Highest priority: Partial Payments (WIP) - Must check BEFORE Paid
-    if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-    
-    // 2. High priority: Paid/Dispersed (Terminal state)
-    if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
-    
-    // 3. Low priority: Requests (Initial state)
-    if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
-    
-    // Default to BLUE for 'New' items instead of null
-    return 'BLUE';
-};
 
 const lbl = "text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
 const inp = "h-12 w-full px-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl text-xs text-white placeholder-white/20 outline-none focus:border-(--main-color)/50 focus:bg-white/[0.08] transition-all";
@@ -117,6 +103,12 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 };
 
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
+    const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    
+    const handleToggleSelection = (id: string | number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
     const db = useDatabase();
     const norm = normalizeInventoryData(item.data);
     const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
@@ -231,6 +223,19 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
                 <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={onToggleExpand} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
+                    
+                    {/* Selection Checkbox */}
+                    {isSelectionMode && (
+                        <div 
+                            className="w-10 shrink-0 flex items-center justify-center border-r border-white/5 bg-white/[0.02] hover:bg-white/5 transition-all"
+                            onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}
+                        >
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20'}`}>
+                                {selectedIds.includes(item.row ?? item.data?.id) && <Check size={14} className="text-black" strokeWidth={4} />}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="w-0.5 shrink-0 self-stretch" style={{ backgroundColor: payStatus ? accentColor : 'transparent', opacity: payStatus ? 0.7 : 0 }} />
                     <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-black/40 relative overflow-hidden group/listimg" 
                         onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}
@@ -446,6 +451,21 @@ export const UnifiedInventoryView = () => {
     const user = useAtomValue(userAtom); const setFilteredCount = useSetAtom(filteredInventoryCountAtom); const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
     const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
     const [savingProgress, setSavingProgress] = useState(0);
+    const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+
+    const handleCopyShareLink = () => {
+        const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
+        if (idsToShare.length === 0) return toast.error('No items to share.');
+        const idsParam = encodeURIComponent(idsToShare.join(','));
+        const url = `${window.location.origin}${window.location.pathname}?artifact=inventory&ids=${idsParam}`;
+        navigator.clipboard.writeText(url).then(() => toast.success('Share link copied!'));
+    };
+
+    const handleToggleSelection = (id: string | number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
 
     const { partialPayIds, fullPayIds } = useMemo(() => {
         const pIds = new Set<string>();
@@ -532,8 +552,19 @@ export const UnifiedInventoryView = () => {
             const mat = `${item.data.color || ''} ${item.data.material || ''}`.trim();
             if (materialFilter !== 'All' && mat !== materialFilter) return false;
             if (searchTerm) {
-                const s = `${item.data.itemId} ${item.data.shape} ${item.data.shortDescription} ${item.data.color}`.toLowerCase();
-                if (!searchTerm.toLowerCase().split(' ').every(t => s.includes(t))) return false;
+                const terms = searchTerm.toLowerCase().split(' ').filter(Boolean);
+                const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
+                const standardSearchStr = `${itemId} ${item.data.shape || ''} ${item.data.shortDescription || ''} ${item.data.color || ''}`.toLowerCase();
+                
+                // If any term matches the Tag ID exactly, or matches as a prefix, we consider it a specific ID search
+                // and allow OR logic for these ID-like terms.
+                const isIdSearch = terms.every(t => t.length >= 4 && (t.startsWith('su') || t.startsWith('mw') || /^[a-z]{2}\d+/.test(t)));
+                
+                if (isIdSearch) {
+                    if (!terms.some(t => itemId.includes(t))) return false;
+                } else {
+                    if (!terms.every(t => standardSearchStr.includes(t))) return false;
+                }
             }
             return true;
         });
@@ -631,12 +662,40 @@ export const UnifiedInventoryView = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
-            <div className="z-40 flex items-center gap-6 px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
-                <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
-                <div className="w-px h-6 bg-white/5" />
-                <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
-                <div className="w-px h-6 bg-white/5" />
-                <div className="flex flex-col"><div className={lbl + " mb-0"}>Total {showFinancials ? 'MXN' : ''}</div><div className="text-xl font-bold text-(--main-color) leading-none">{showFinancials ? `$${totalValueMXN.toLocaleString()}` : '***'}</div></div>
+            <div className="z-40 flex items-center justify-between px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
+                <div className="flex items-center gap-6">
+                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
+                    <div className="w-px h-6 bg-white/5" />
+                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
+                    <div className="w-px h-6 bg-white/5" />
+                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Total {showFinancials ? 'MXN' : ''}</div><div className="text-xl font-bold text-(--main-color) leading-none">{showFinancials ? `$${totalValueMXN.toLocaleString()}` : '***'}</div></div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {isSelectionMode && (
+                        <div className="flex items-center gap-2 mr-4 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 animate-in fade-in slide-in-from-right-2">
+                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
+                            <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:underline ml-2">Clear</button>
+                        </div>
+                    )}
+                    <button 
+                        onClick={handleCopyShareLink}
+                        className={`flex items-center gap-2 px-4 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 border border-white/10'}`}
+                    >
+                        <Share2 size={14} strokeWidth={2.5} />
+                        <span>{isSelectionMode ? 'Copy Selection Link' : 'Share View'}</span>
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setIsSelectionMode(!isSelectionMode);
+                            if (!isSelectionMode) setSelectedIds([]);
+                        }}
+                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${isSelectionMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/5 text-white/40 hover:text-white'}`}
+                        title={isSelectionMode ? "Exit Selection Mode" : "Select Items to Share"}
+                    >
+                        {isSelectionMode ? <X size={18} /> : <Check size={18} />}
+                    </button>
+                </div>
             </div>
 
             <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${(isFiltersOpen || isSortMenuOpen) ? 'h-16 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>

@@ -13,9 +13,8 @@ import {
     paymentsArtifactConfigAtom
 } from '../../lib/atoms';
 import { X, Package, LayoutList, LayoutGrid } from 'lucide-react';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getStatusClass } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { getStatusClass } from './UnifiedInventoryView';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 export const InventoryArtifact: React.FC = () => {
@@ -55,9 +54,13 @@ export const InventoryArtifact: React.FC = () => {
     const filteredItems = useMemo(() => {
         if (!config.isOpen || !config.itemIds.length) return [];
         return allItems.filter(item => {
-            const itemId = String(item.data.id);
-            const itemCode = String(item.data.itemId || item.data.item_id);
-            return config.itemIds.some(id => String(id) === itemId || String(id) === itemCode);
+            if (!item || !item.data) return false;
+            const itemId = String(item.data.id || '');
+            const itemCode = String(item.data.itemId || item.data.item_id || '');
+            return config.itemIds.some(id => {
+                const sId = String(id);
+                return sId === itemId || sId === itemCode;
+            });
         });
     }, [allItems, config]);
 
@@ -108,7 +111,11 @@ export const InventoryArtifact: React.FC = () => {
                 paymentMap.set(d.id, d);
             }
         });
-        return Array.from(paymentMap.values()).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return Array.from(paymentMap.values()).sort((a,b) => {
+            const dateA = a.date ? new Date(a.date).getTime() : 0;
+            const dateB = b.date ? new Date(b.date).getTime() : 0;
+            return dateB - dateA;
+        });
     }, [financeDocs, config.itemIds]);
 
     return createPortal(

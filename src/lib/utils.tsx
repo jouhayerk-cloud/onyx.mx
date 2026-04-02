@@ -988,3 +988,26 @@ export async function generatePngAndSvgFromMasks(
 
   return { pngData, svgData };
 }
+
+export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
+  if (!item) return null;
+  const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
+  const statusStr = String(item.status || item.item_status || '').toLowerCase();
+  const dispStatus = String(item.dispersal_status || '').toLowerCase();
+  
+  // 1. Highest priority: Partial Payments (WIP) - Must check BEFORE Paid
+  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
+  
+  // 2. High priority: Paid/Dispersed (Terminal state)
+  if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+  
+  // 3. Low priority: Requests (Initial state)
+  if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+  
+  // 4. Default: check for price/qty
+  const qty = parseInt(String(item.quantity || 1));
+  const price = parseFloat(String(item.price || 0));
+  if (price > 0 && qty > 0 && statusStr === 'acquired') return 'PURPLE';
+  if (price > 0 && qty > 0) return 'BLUE';
+  return 'BLUE';
+};
