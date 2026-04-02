@@ -665,7 +665,7 @@ export function MainHeader() {
                 { header: 'VENDOR', key: 'vendor', width: 10 },
                 { header: 'DESTINATION', key: 'destination', width: 18 },
                 { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0.00' } },
-                { header: 'COMMISSION (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'FEES (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0.00' } },
                 { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0.00' } },
                 { header: 'STATUS', key: 'status', width: 12 },
                 { header: 'PAY DATE', key: 'pay_date', width: 12 },
