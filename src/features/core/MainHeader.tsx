@@ -632,6 +632,29 @@ export function MainHeader() {
                 row.getCell('vendor').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: getCategoryColor(cat) } };
                 row.getCell('vendor').font = { bold: true, color: { argb: 'FFFFFFFF' } };
             });
+            summarySheet.addRow({});
+
+            const destMap: Record<string, { total: number; paid: number }> = {};
+            financeDocs.forEach(d => {
+                const destId = d.destination;
+                const destName = destinationsConfig[destId as keyof typeof destinationsConfig]?.name || destId || 'Other';
+                if (!destMap[destName]) destMap[destName] = { total: 0, paid: 0 };
+                const amt = (d.amount || 0) + (d.commission || 0);
+                destMap[destName].total += amt;
+                if (d.status === 'Paid') destMap[destName].paid += amt;
+            });
+
+            summarySheet.addRow({ vendor: '── BY DESTINATION ──' });
+            Object.entries(destMap).sort((a,b) => b[1].total - a[1].total).forEach(([dest, v]) => {
+                summarySheet.addRow({
+                    vendor: dest,
+                    total_mxn: v.total,
+                    total_usd: v.total / internetRate,
+                    paid_mxn: v.paid,
+                    pending_mxn: v.total - v.paid
+                });
+            });
+            summarySheet.addRow({});
 
             // 2. FINANCE LEDGER SHEET
             const ledgerSheet = workbook.addWorksheet('Finance Ledger');
@@ -640,6 +663,7 @@ export function MainHeader() {
                 { header: 'DESCRIPTION', key: 'description', width: 35 },
                 { header: 'CATEGORY', key: 'category', width: 15 },
                 { header: 'VENDOR', key: 'vendor', width: 10 },
+                { header: 'DESTINATION', key: 'destination', width: 18 },
                 { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0.00' } },
                 { header: 'COMMISSION (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0.00' } },
                 { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0.00' } },
@@ -660,6 +684,7 @@ export function MainHeader() {
                     description: r.description || '',
                     category: r.subcategory || r.category || '',
                     vendor: r.vendor_id || '',
+                    destination: destinationsConfig[r.destination as keyof typeof destinationsConfig]?.name || r.destination || '',
                     amount: r.amount ?? 0,
                     commission: r.commission ?? 0,
                     total: (r.amount ?? 0) + (r.commission ?? 0),
