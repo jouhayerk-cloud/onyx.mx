@@ -221,7 +221,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-lg hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={onToggleExpand} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     
                     {/* Selection Checkbox */}
@@ -258,13 +258,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         )}
                     </div>
                     <div className="flex-1 flex items-center px-3 gap-3 min-w-0 overflow-x-auto no-scrollbar">
-                        <div className="flex flex-col flex-1 min-w-0">
-                            <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
+                        <div className="flex flex-col flex-1 min-w-0 py-1">
+                            <div className="flex items-baseline gap-3">
+                                <h3 className="text-sm font-black text-white uppercase tracking-tight truncate">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
+                                <span className="text-sm font-black text-(--main-color) font-mono">x{norm.quantity || 1}</span>
+                            </div>
                             <div className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
                         <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-white/60 truncate max-w-[100px]">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-white/40 truncate max-w-[100px]">{weightStr || '—'}</span></div></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-white">{showFinancials ? `$${itemPriceMXN}` : '***'}</span><span className="text-[11px] text-white font-black font-mono">x{norm.quantity || 1}</span></div></div>
+                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-white">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
                         <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
                         <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-white/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
                         <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-white/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[11px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
@@ -278,7 +281,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                 </div>
                 {isExpanded && (
-                    <div className="ml-14 mr-2 px-4 pb-4 pt-4 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="ml-14 mr-2 px-4 pb-4 pt-4 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-lg animate-in slide-in-from-top-2 duration-300">
                         {/* List View Thumbnail Gallery */}
                         {mediaUrls.length > 0 && (
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 border-b border-white/5 mb-6">
@@ -321,7 +324,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     
     if (viewMode === 'gallery') {
         return (
-            <div className={`group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
+            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
                  style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
                 
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
@@ -395,7 +398,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                  <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] ml-2">{norm.shortDescription}</span>
                              </h3>
                         </div>
-                        <span className="text-2xl font-mono font-black text-(--main-color) ml-4 whitespace-nowrap">${Math.ceil(Number(norm.price || 0)).toLocaleString()}</span>
+                        <div className="flex flex-col items-end ml-4 shrink-0">
+                            <span className="text-2xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">${Math.ceil(Number(norm.price || 0)).toLocaleString()}</span>
+                            <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mt-2">QTY {norm.quantity || 1}</span>
+                        </div>
                     </div>
                     
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
@@ -415,10 +421,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
                             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-base font-black text-white">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
-                            <span className="text-xs font-mono font-black text-white/70">QTY {norm.quantity || 1}</span>
-                        </div>
                     </div>
                 </div>
                 
@@ -435,7 +437,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
     return (
-        <div className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
+        <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
              style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
@@ -467,9 +469,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1">
-                <div className="flex flex-col">
-                    <div className="font-black text-[13px] text-white uppercase tracking-tight truncate">{norm.shape || 'OBJ'}</div>
-                    <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{norm.shortDescription}</div>
+                <div className="flex items-start justify-between">
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <div className="font-black text-[13px] text-white uppercase tracking-tight truncate">{norm.shape || 'OBJ'}</div>
+                        <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{norm.shortDescription}</div>
+                    </div>
+                    <span className="text-[11px] font-black text-(--main-color) font-mono ml-2 shrink-0">x{norm.quantity || 1}</span>
                 </div>
                 <div className="text-[9px] text-white/20 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                 <div className="flex flex-col gap-0.5 my-1">
@@ -481,7 +486,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         {statusClass && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}
                         <span className="text-[10px] font-black uppercase tracking-widest text-white/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
                     </div>
-                    <span className="text-[11px] font-black text-white/60 font-mono">x{norm.quantity || 1}</span>
                 </div>
             </div>
             {isExpanded && createPortal(
