@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.64.2 (2026-04-03)
+- **Identity Hub Refinement**: Removed "Identity Hub" text labels for a more purely minimalistic aesthetic.
+- **Tag ID Standard**: Enforced a project-wide standard for Tag IDs, showing only alphanumeric barcode IDs (e.g., `AN3261XODD`) and removing legacy dashed formats (e.g., `AN-1LVDFT9U`).
+- **Global Deployment**: Updated Workbook, Logistics, and Inventory modules to ensure data-display consistency.
+
+## v1.64.1 (2026-04-03)
+## v1.64.0 (2026-04-03)
+- **Logistics Module Redesign [Major]**: Modernized the Labels (Packing) system with high-fidelity QR/Barcode integration.
+- **Artifact Traceability**: Added side-by-side Code 39 Barcodes and QR Codes to all expanded item detail views.
+- **Vendor-Specific Branding**: Implemented dynamic brand color-coding for Tag ID badges across Logistics and Inventory modules.
+- **QR Cloud Linking**: QR codes now point directly to `onyx.mx` artifact cloud endpoints.
+- **Layout Optimization**: Removed redundant barcodes from compact Logistics rows to improve visual clarity and data density.
+
+
 ## v1.63.0 (2026-04-03)
 - **Contrast Modernization [Major]**: Replaced over 300 instances of hardcoded white text and backgrounds with theme-aware dynamic variables.
 - **Aqua Theme Accessibility**: Achieved 100% legibility across Dashboard, Finance, and Acquisitions modules in light mode.

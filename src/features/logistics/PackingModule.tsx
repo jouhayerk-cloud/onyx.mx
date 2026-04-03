@@ -21,10 +21,12 @@ import {
     Edit,
     Printer,
     Video,
-    Hash
+    Hash,
+    Copy
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Barcode from 'react-barcode';
+import { QRCodeCanvas } from 'qrcode.react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -673,8 +675,7 @@ export const PackingModule: React.FC = () => {
 
 /* ─── CARD VIEW (Gallery) ─── */
 const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
-    const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
-    const vendorColor = (vendors as any)[vendorCode]?.color || 'transparent';
+    const vendorColor = item.codes.vendorColor || 'transparent';
     const d = item.normData;
     const isVid = item.imageUrl ? isVideoFile(item.imageUrl) : false;
     const dimsCm = [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×');
@@ -754,8 +755,7 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
 
 /* ─── ROW VIEW (Inventory List style) ─── */
 const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }: any) => {
-    const vendorCode = (item.codes.bookBardcode || '').split('-')[0];
-    const vendorColor = (vendors as any)[vendorCode]?.color || '#555';
+    const vendorColor = item.codes.vendorColor || '#555';
     const d = item.normData;
     const isVid = item.imageUrl ? isVideoFile(item.imageUrl) : false;
     const dimsCm = [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×');
@@ -818,25 +818,10 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
                             style={{ backgroundColor: vendorColor }}>
-                            {item.codes.bookBardcode || vendorCode || 'N/A'}
+                            {item.codes.bookBardcode || 'N/A'}
                         </span>
                     </div>
 
-                    {/* Barcode Field (Secondary) */}
-                    <div className="flex flex-col min-w-[120px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5 overflow-hidden">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Barcode (Code 39)</span>
-                        <div className="bg-white p-1 rounded-md scale-75 origin-left -ml-2">
-                             <Barcode 
-                                value={item.codes.bookBardcode || 'N/A'} 
-                                format="CODE39" 
-                                width={1} 
-                                height={24} 
-                                displayValue={false} 
-                                background="transparent"
-                                margin={0}
-                            />
-                        </div>
-                    </div>
 
                     {/* Price / Qty */}
                     <div className="flex flex-col min-w-[72px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
@@ -895,21 +880,62 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Status</p><p className="text-[11px] font-bold text-white/70 uppercase">{d.status || '—'}</p></div>
                         <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Book Retail</p><p className="text-[11px] font-mono font-black text-green-400">${item.codes.bookRetail || '—'}</p></div>
                     </div>
-                    {/* Barcode in expanded view */}
-                    <div className="mt-4 flex flex-col gap-2 p-3 bg-white rounded-2xl border border-white/10 w-fit mx-auto">
-                        <div className="flex items-center justify-between gap-8 mb-1">
-                            <span className="text-[8px] font-black text-black/40 uppercase tracking-widest">Master Tag Barcode</span>
-                            <span className="text-[10px] font-mono font-bold text-black">{item.codes.bookBardcode}</span>
-                        </div>
-                        <div className="bg-white flex justify-center">
-                            <Barcode 
-                                value={item.codes.bookBardcode || 'N/A'} 
-                                format="CODE39" 
-                                width={1.8} 
-                                height={60} 
-                                displayValue={false}
-                                margin={10}
-                            />
+                    {/* Consolidated Artifact Identity Hub */}
+                    <div className="mt-5 max-w-2xl mx-auto">
+                        <div className="bg-white rounded-[1.5rem] p-5 shadow-lg border border-black/5 flex flex-col gap-4 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500">
+                            {/* Hub Header */}
+                            <div className="flex items-center justify-between border-b border-black/[0.03] pb-3 px-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-sm text-black text-[10px] font-black uppercase shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                        {item.codes.bookBardcode}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Hub Body */}
+                            <div className="flex flex-col sm:flex-row items-stretch gap-6 px-1">
+                                {/* Barcode Column */}
+                                <div className="flex-1 flex flex-col items-center justify-center py-2 min-h-[90px] border-b sm:border-b-0 sm:border-r border-black/[0.03] pr-0 sm:pr-6">
+                                    <div className="p-2 bg-white border border-black/5 rounded-none shadow-sm transition-all grayscale group-hover/hub:grayscale-0">
+                                        <Barcode 
+                                            value={item.codes.bookBardcode || 'N/A'} 
+                                            format="CODE39" 
+                                            width={1.5} 
+                                            height={50} 
+                                            displayValue={false}
+                                            margin={0}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* QR Column */}
+                                <div className="flex-none flex flex-col items-center justify-center p-3 bg-black/[0.01] rounded-none min-w-[120px] relative">
+                                    <div className="p-1.5 bg-white border border-black/5 rounded-none shadow-sm">
+                                        <QRCodeCanvas 
+                                            value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`}
+                                            size={70}
+                                            level="H"
+                                            includeMargin={false}
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
+                                            toast.success('Link Copied');
+                                        }}
+                                        className="mt-2.5 flex items-center gap-1 text-[8px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest transition-all p-1"
+                                        title="Copy Trace Link"
+                                    >
+                                        <Copy size={10} /> COPY
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {/* Minimalism: Slim accent line at bottom */}
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: vendorColor, opacity: 0.1 }} />
                         </div>
                     </div>
                     {d.description && (

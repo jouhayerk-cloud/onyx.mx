@@ -96,7 +96,7 @@ export const WorkbookProductionView: React.FC = () => {
                                             {vendorCode}
                                         </span>
                                         {item.tagId && (
-                                            <span className="text-[9px] font-mono text-white/40">#{item.tagId}</span>
+                                            <span className="text-[9px] font-mono text-white/40">#{String(item.tagId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()}</span>
                                         )}
                                     </div>
                                     <h3 className="text-sm font-bold text-white mt-1 group-hover:text-[#FFED00] transition-colors line-clamp-1">

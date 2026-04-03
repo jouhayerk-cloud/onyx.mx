@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import Barcode from 'react-barcode';
+import { QRCodeCanvas } from 'qrcode.react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import {
     inventoryStatusFilterAtom,
@@ -300,6 +302,63 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono text-(--text-color)/70">{weightStr || '—'}</p></div>
                             <div><p className={lbl}>Landed USD</p><p className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
                             <div><p className={lbl}>Retail USD</p><p className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                            {/* Consolidated Artifact Identity Hub - List View */}
+                            <div className="col-span-full pt-6 mt-2 border-t border-white/5">
+                                <div className="max-w-2xl bg-white rounded-[1.5rem] p-5 shadow-lg border border-black/5 flex flex-col gap-4 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500">
+                                    {/* Hub Header */}
+                                    <div className="flex items-center justify-between border-b border-black/[0.03] pb-3 px-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded-sm text-black text-[10px] font-black uppercase shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                                {calculated.bookBardcode}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Hub Body */}
+                                    <div className="flex flex-col sm:flex-row items-stretch gap-6 px-1">
+                                        {/* Barcode Column */}
+                                        <div className="flex-1 flex flex-col items-center justify-center py-2 min-h-[90px] border-b sm:border-b-0 sm:border-r border-black/[0.03] pr-0 sm:pr-6">
+                                            <div className="p-2 bg-white border border-black/5 rounded-none shadow-sm grayscale group-hover/hub:grayscale-0 transition-all">
+                                                <Barcode 
+                                                    value={calculated.bookBardcode || 'N/A'} 
+                                                    format="CODE39" 
+                                                    width={1.5} 
+                                                    height={50} 
+                                                    displayValue={false}
+                                                    margin={0}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* QR Column */}
+                                        <div className="flex-none flex flex-col items-center justify-center p-3 bg-black/[0.01] rounded-none min-w-[120px] relative group/qr">
+                                            <div className="p-1.5 bg-white border border-black/5 rounded-none shadow-sm">
+                                                <QRCodeCanvas 
+                                                    value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`}
+                                                    size={70}
+                                                    level="H"
+                                                    includeMargin={false}
+                                                />
+                                            </div>
+                                            {/* Floating Copy Icon */}
+                                            <button 
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`);
+                                                    toast.success('Link Copied');
+                                                }}
+                                                className="absolute -top-1 -right-1 p-1.5 bg-white rounded-full border border-black/5 shadow-sm text-blue-500 hover:scale-110 transition-all z-10"
+                                                title="Copy Trace Link"
+                                            >
+                                                <Copy size={10} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: vendorColor, opacity: 0.1 }} />
+                                </div>
+                            </div>
                             <div className="flex items-center gap-6 col-span-full pt-4 border-t border-white/5 mt-2">
                                 {isEditable && (
                                     <button onClick={handleEdit} className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all" title="Edit Item">
@@ -548,6 +607,63 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                         <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> REMOVE ARTIFACT</button>
                                     </div>
                                 )}
+                            </div>
+                            {/* Consolidated Artifact Identity Hub - Modal View */}
+                            <div className="flex flex-col gap-4">
+                                <div className="bg-white rounded-[1.5rem] p-6 shadow-lg border border-black/5 flex flex-col gap-6 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500">
+                                    {/* Hub Header */}
+                                    <div className="flex items-center justify-between border-b border-black/[0.03] pb-3 px-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="px-3 py-1 rounded-sm text-black text-[12px] font-black uppercase shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                                {calculated.bookBardcode}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Hub Body */}
+                                    <div className="flex flex-col sm:flex-row items-stretch gap-8 px-1">
+                                        {/* Barcode Column */}
+                                        <div className="flex-1 flex flex-col items-center justify-center py-4 min-h-[110px] border-b sm:border-b-0 sm:border-r border-black/[0.03] pr-0 sm:pr-8">
+                                            <div className="p-3 bg-white border border-black/5 rounded-none shadow-sm grayscale group-hover/hub:grayscale-0 transition-all">
+                                                <Barcode 
+                                                    value={calculated.bookBardcode || 'N/A'} 
+                                                    format="CODE39" 
+                                                    width={1.6} 
+                                                    height={65} 
+                                                    displayValue={false}
+                                                    margin={0}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* QR Column */}
+                                        <div className="flex-none flex flex-col items-center justify-center p-4 bg-black/[0.015] rounded-none min-w-[150px] relative group/qr">
+                                            <div className="p-2 bg-white border border-black/5 rounded-none shadow-sm transition-all">
+                                                <QRCodeCanvas 
+                                                    value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`}
+                                                    size={85}
+                                                    level="H"
+                                                    includeMargin={false}
+                                                />
+                                            </div>
+                                            {/* Floating Copy Icon */}
+                                            <button 
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`);
+                                                    toast.success('Link Copied');
+                                                }}
+                                                className="absolute -top-2 -right-2 p-2 bg-white rounded-full border border-black/5 shadow-md text-blue-500 hover:scale-110 transition-all z-10"
+                                                title="Copy Trace Link"
+                                            >
+                                                <Copy size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: vendorColor, opacity: 0.1 }} />
+                                </div>
                             </div>
                             {renderPaymentHistory()}
                         </div>
