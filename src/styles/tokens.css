@@ -110,26 +110,26 @@ html.theme-earth {
   color-scheme: dark;
 }
 
-/* NACAR (Light) */
+/* NACAR (Light Stone) */
 html.theme-nacar {
-  --c1: #ffffff;
-  --c2: #fcfdfe;
-  --c3: #f5f0fa;
-  --c4: #f2fae8;
-  --c5: #fdfae2;
+  --c1: #fdfaf2;
+  --c2: #faf8f0;
+  --c3: #fff7e6;
+  --c4: #f4f1de;
+  --c5: #fcf9f2;
   --c6: #ffffff;
-  --app-bg: rgba(255, 255, 255, 0.2);
-  --app-bg-solid: #ffffff;
-  --sidebar-bg: rgba(255, 255, 255, 0.4);
-  --main-color: #bfaee3;
-  --secondary-color: #c9e4b5;
-  --text-color: #2d2640;
-  --text-color-primary: #2d2640;
-  --secondary-text-color: #6f6885;
-  --text-color-secondary: #6f6885;
-  --border-color: rgba(191, 174, 227, 0.2);
-  --input-color: rgba(255, 255, 255, 0.7);
-  --glass-bg: rgba(255, 255, 255, 0.4);
+  --app-bg: rgba(253, 250, 242, 0.2);
+  --app-bg-solid: #fdfaf2;
+  --sidebar-bg: rgba(253, 250, 242, 0.45);
+  --main-color: #c17e61;
+  --secondary-color: #a3b18a;
+  --text-color: #1a1614;
+  --text-color-primary: #0a0808;
+  --secondary-text-color: #5d5d52;
+  --text-color-secondary: #5d5d52;
+  --border-color: rgba(193, 126, 97, 0.25);
+  --input-color: rgba(255, 255, 255, 0.8);
+  --glass-bg: rgba(255, 255, 255, 0.1);
   color-scheme: light;
 }
 
