@@ -40,8 +40,8 @@ const FullscreenViewer: React.FC<{
                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
                     {idx + 1} / {images.length}
                 </span>
-                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all pointer-events-auto active:scale-90">
-                    <X size={18} />
+                <button onClick={onClose} className="w-12 h-12 flex items-center justify-center text-white/40 hover:text-white transition-all pointer-events-auto active:scale-95">
+                    <X size={24} strokeWidth={2} />
                 </button>
             </div>
 
@@ -58,12 +58,12 @@ const FullscreenViewer: React.FC<{
             {images.length > 1 && (
                 <>
                     <button onClick={e => { e.stopPropagation(); setIdx(p => (p - 1 + images.length) % images.length); }}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all active:scale-90">
-                        <ChevronLeft size={24} />
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95">
+                        <ChevronLeft size={48} strokeWidth={1} />
                     </button>
                     <button onClick={e => { e.stopPropagation(); setIdx(p => (p + 1) % images.length); }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all active:scale-90">
-                        <ChevronRight size={24} />
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95">
+                        <ChevronRight size={48} strokeWidth={1} />
                     </button>
                 </>
             )}
@@ -276,30 +276,30 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                 {/* Logo + back */}
                 <div className="flex items-center gap-3">
                     {onBack ? (
-                        <button onClick={onBack} className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90">
-                            <ChevronLeft size={16} />
+                        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
+                            <ChevronLeft size={20} strokeWidth={2.5} />
                         </button>
                     ) : null}
                     <OnyxLogo width={20} height={20} className="opacity-60" />
                 </div>
 
                 {/* Tag ID badge */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5">
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/70">{tagId}</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{tagId}</span>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                     <button onClick={handleShare}
-                        className="flex items-center gap-1.5 px-3 h-8 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90">
-                        <Share2 size={12} />
-                        <span className="hidden sm:inline">{copied ? 'Copied!' : 'Share'}</span>
+                        className="flex items-center gap-2 h-10 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all active:scale-95">
+                        <Share2 size={14} strokeWidth={2.5} />
+                        <span className="hidden sm:inline">{copied ? 'COPIED' : 'SHARE'}</span>
                     </button>
                     {item.images.length > 0 && (
                         <button onClick={() => openViewer(0)}
-                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90">
-                            <Maximize size={14} />
+                            className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-95">
+                            <Maximize2 size={18} strokeWidth={2} />
                         </button>
                     )}
                 </div>
