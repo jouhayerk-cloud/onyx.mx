@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Barcode from 'react-barcode';
-import { QRCodeCanvas } from 'qrcode.react';
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
@@ -814,12 +814,25 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                     </div>
 
                     {/* Tag ID */}
-                    <div className="flex flex-col min-w-[64px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                    <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5 group/tag">
                         <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
-                            style={{ backgroundColor: vendorColor }}>
-                            {item.codes.bookBardcode || 'N/A'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
+                                style={{ backgroundColor: vendorColor }}>
+                                {item.codes.bookBardcode || 'N/A'}
+                            </span>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
+                                    toast.success('Trace Link Copied');
+                                }}
+                                className="p-1 -m-1 text-white/20 hover:text-(--main-color) transition-all opacity-0 group-hover/tag:opacity-100"
+                                title="Copy Trace Link"
+                            >
+                                <Copy size={12} />
+                            </button>
+                        </div>
                     </div>
 
 
@@ -882,62 +895,44 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                     </div>
                     {/* Consolidated Artifact Identity Hub */}
                     <div className="mt-5 max-w-2xl mx-auto">
-                        <div className="bg-white rounded-[1.5rem] p-5 shadow-lg border border-black/5 flex flex-col gap-4 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500">
-                            {/* Hub Header */}
-                            <div className="flex items-center justify-between border-b border-black/[0.03] pb-3 px-1">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="px-2 py-0.5 rounded-sm text-black text-[10px] font-black uppercase shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                        {item.codes.bookBardcode}
-                                    </span>
-                                    {/* Floating Copy Icon - Now outside QR container */}
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
-                                            toast.success('Link Copied');
-                                        }}
-                                        className="p-1.5 bg-black/[0.03] hover:bg-blue-500 hover:text-white rounded-md text-black/30 transition-all"
-                                        title="Copy Trace Link"
-                                    >
-                                        <Copy size={12} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Hub Body */}
-                            <div className="flex flex-col sm:flex-row items-stretch gap-6 px-1">
-                                {/* Barcode Column */}
-                                <div className="flex-1 flex flex-col items-center justify-center py-2 min-h-[90px] border-b sm:border-b-0 sm:border-r border-black/[0.03] pr-0 sm:pr-6">
-                                    <div className="p-2 bg-white border border-black/5 rounded-none shadow-sm transition-all grayscale group-hover/hub:grayscale-0">
-                                        <Barcode 
-                                            value={item.codes.bookBardcode || 'N/A'} 
-                                            format="CODE39" 
-                                            width={1.5} 
-                                            height={50} 
-                                            displayValue={false}
-                                            margin={0}
-                                        />
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                            {/* Barcode Panel - High Density White */}
+                            <div className="flex-1 bg-white rounded-none p-1.5 shadow-2xl border-2 border-black/10 flex flex-col gap-1.5 overflow-hidden relative group/hub hover:shadow-[0_0_30px_rgba(0,0,0,0.15)] transition-all duration-500">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-1">
+                                        <div className="w-1.5 h-1.5 rounded-none bg-black/20" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 rounded-none text-black text-[9px] font-black uppercase tracking-widest shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                            {item.codes.bookBardcode}
+                                        </span>
                                     </div>
                                 </div>
-
-                                {/* QR Column */}
-                                <div className="flex-none flex flex-col items-center justify-center p-3 bg-black/[0.01] rounded-none min-w-[160px] relative">
-                                    <div className="p-1.5 bg-white border border-black/5 rounded-none shadow-sm">
-                                        <QRCodeCanvas 
-                                            value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`}
-                                            size={130}
-                                            level="H"
-                                            includeMargin={false}
-                                        />
-                                    </div>
+                                <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0">
+                                    <Barcode 
+                                        value={item.codes.bookBardcode || 'N/A'} 
+                                        format="CODE39" 
+                                        width={2.8} 
+                                        height={80} 
+                                        displayValue={false}
+                                        margin={0}
+                                    />
                                 </div>
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color) opacity-20" />
                             </div>
-                            
-                            {/* Minimalism: Slim accent line at bottom */}
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: vendorColor, opacity: 0.1 }} />
+
+                            {/* Free-Floating QR - Theme Colored */}
+                            <div className="flex-none p-2 relative group/qr">
+                                <QRCodeSVG 
+                                    value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`}
+                                    size={140}
+                                    level="H"
+                                    includeMargin={false}
+                                    fgColor="var(--main-color)"
+                                    bgColor="transparent"
+                                />
+                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">Logistics Trace</div>
+                            </div>
                         </div>
                     </div>
                     {d.description && (
