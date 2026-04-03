@@ -326,15 +326,33 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
                 
-                <div className={`grid gap-0.5 bg-black/40 ${mediaUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6'}`} style={{ aspectRatio: mediaUrls.length > 6 ? (mediaUrls.length > 20 ? 'auto' : '16/9') : '1/1' }}>
-                    {mediaUrls.slice(0, 60).map((url, i) => (
-                        <div key={i} className={`relative overflow-hidden group/galimg aspect-square`}
-                             onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
-                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
-                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
+                {(() => {
+                    const total = mediaUrls.length;
+                    const gridCols = total <= 2 ? 'grid-cols-2' : total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
+                    const displayCount = 24;
+                    const visibleUrls = mediaUrls.slice(0, displayCount);
+                    const remaining = total - displayCount;
+
+                    return (
+                        <div className={`grid gap-0.5 bg-black/40 ${gridCols}`} style={{ aspectRatio: total > 6 ? (total > 18 ? 'auto' : '16/9') : '1/1' }}>
+                            {visibleUrls.map((url, i) => (
+                                <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
+                                     onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
+                                    <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
+                                    {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
+                                    {i === visibleUrls.length - 1 && remaining > 0 && (
+                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-xl font-black text-white">+{remaining}</span>
+                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">More</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    );
+                })()}
 
                 <div className="p-5 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
