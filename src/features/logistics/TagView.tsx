@@ -351,8 +351,8 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Dimensions</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">{dimensionsStr} <span className="text-[10px] text-white/40 ml-1">CM</span></span>
-                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{dimensionsInchStr} <span className="text-[9px] opacity-60">IN</span></span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">{dimensionsInchStr} <span className="text-[10px] text-white/40 ml-1">IN</span></span>
+                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{dimensionsStr} <span className="text-[9px] opacity-60 uppercase">CM</span></span>
                                 </div>
                             </div>
                         )}
@@ -363,8 +363,8 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Weight</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">{weightStr.replace(' kg', '')} <span className="text-[10px] text-white/40 ml-1">KG</span></span>
-                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{weightLbs} <span className="text-[9px] opacity-60">LBS</span></span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">{weightLbs} <span className="text-[10px] text-white/40 ml-1">LBS</span></span>
+                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{weightStr.replace(' kg', '')} <span className="text-[9px] opacity-60 uppercase">KG</span></span>
                                 </div>
                             </div>
                         )}
