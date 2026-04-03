@@ -162,115 +162,145 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar">
                     
-                    {viewMode === 'list' && (
-                        <div className="flex flex-col gap-3">
-                            {filteredItems.map((item: any) => {
-                                const norm = normalizeInventoryData(item.data);
-                                const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-                                const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
-                                const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
-                                const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
-                                const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
-                                
-                                return (
-                                    <div key={item.row} className="flex items-center px-6 py-4 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
-                                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 mr-6 shrink-0">
-                                            <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-sm font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                            <div className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-1">{norm.color} · {norm.material}</div>
-                                        </div>
-                                        <div className="px-3 py-1 rounded-lg text-black text-[10px] font-black uppercase tracking-tight mx-6" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode}</div>
-                                        <div className="text-right flex flex-col items-end min-w-[120px]">
-                                            <span className="text-[10px] font-mono font-black text-white/80">${Math.ceil(norm.price || 0).toLocaleString()}</span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest mt-1" style={{ color: accentColor }}>{payStatus || 'New'}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {viewMode === 'grid' && (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                            {filteredItems.map((item: any) => {
-                                const norm = normalizeInventoryData(item.data);
-                                const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
-                                const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
-                                
-                                return (
-                                    <div key={item.row} className="flex flex-col rounded-[32px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
-                                        <div className="aspect-square relative flex items-center justify-center bg-black/20 p-6">
-                                            <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
-                                            <div className="absolute top-4 left-4">
-                                                <div className="px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-md bg-black/60 border border-white/10" style={{ color: accentColor }}>{payStatus || 'New'}</div>
+                    {(() => {
+                        const getStatusLabel = (s: string) => {
+                            if (s === 'GREEN') return 'Paid';
+                            if (s === 'YELLOW') return 'Requested';
+                            if (s === 'RED') return 'Partial';
+                            if (s === 'BLUE') return 'New';
+                            if (s === 'PURPLE') return 'Acquired';
+                            return s || 'New';
+                        };
+                        
+                        if (viewMode === 'list') {
+                            return (
+                                <div className="flex flex-col gap-3">
+                                    {filteredItems.map((item: any) => {
+                                        const norm = normalizeInventoryData(item.data);
+                                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                                        const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
+                                        const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
+                                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+                                        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
+                                        
+                                        return (
+                                            <div key={item.row} className="flex items-center px-6 py-4 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
+                                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 mr-6 shrink-0">
+                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-sm font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                                    <div className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-1">{norm.color} · {norm.material}</div>
+                                                </div>
+                                                <div className="px-3 py-1 rounded-lg text-black text-[10px] font-black uppercase tracking-tight mx-6" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode}</div>
+                                                <div className="text-right flex flex-col items-end min-w-[120px]">
+                                                    <span className="text-[10px] font-mono font-black text-white/80">${Math.ceil(norm.price || 0).toLocaleString()}</span>
+                                                    <span className="text-[8px] font-black uppercase tracking-widest mt-1" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="p-5 flex flex-col gap-2">
-                                            <h3 className="text-[12px] font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                            <div className="flex justify-between items-center mt-2">
-                                                <span className="text-[11px] font-mono font-bold text-white/60">${Math.ceil(norm.price || 0).toLocaleString()}</span>
-                                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">x{norm.quantity || 1}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                        );
+                                    })}
+                                </div>
+                            );
+                        }
 
-                    {viewMode === 'gallery' && (
-                        <div className="columns-1 md:columns-2 gap-8 space-y-8">
-                            {filteredItems.map((item: any) => {
-                                const norm = normalizeInventoryData(item.data);
-                                const mediaUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 8);
-                                const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
-                                const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
-                                
-                                return (
-                                    <div key={item.row} className="break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl">
-                                        <div className={`grid gap-1 bg-black/20 ${displayUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                                            {displayUrls.map((url, i) => (
-                                                <div key={i} className={`relative overflow-hidden ${displayUrls.length % 2 !== 0 && i === 0 ? 'col-span-2' : ''}`}>
-                                                    <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" style={{ maxHeight: i === 0 ? '500px' : '250px' }} />
-                                                    {i === 0 && (
-                                                        <div className="absolute top-6 left-6 z-10">
-                                                            <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
-                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
-                                                                {payStatus || 'New'}
-                                                            </div>
+                        if (viewMode === 'grid') {
+                            return (
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {filteredItems.map((item: any) => {
+                                        const norm = normalizeInventoryData(item.data);
+                                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                                        const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
+                                        const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
+                                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+                                        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
+                                        
+                                        return (
+                                            <div key={item.row} className="flex flex-col rounded-[32px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
+                                                <div className="aspect-square relative flex items-center justify-center bg-black/20 p-6">
+                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
+                                                    <div className="absolute top-4 left-4 z-10">
+                                                        <div className="px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-md bg-black/60 border border-white/10" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</div>
+                                                    </div>
+                                                    <div className="absolute bottom-4 right-4 z-10">
+                                                        <div className="px-2 py-0.5 rounded text-[8px] font-bold text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="p-5 flex flex-col gap-2">
+                                                    <h3 className="text-[12px] font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                                    <div className="flex justify-between items-center mt-2">
+                                                        <span className="text-[11px] font-mono font-bold text-white/60">${Math.ceil(norm.price || 0).toLocaleString()}</span>
+                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">x{norm.quantity || 1}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        }
+
+                        if (viewMode === 'gallery') {
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 auto-rows-max">
+                                    {filteredItems.map((item: any) => {
+                                        const norm = normalizeInventoryData(item.data);
+                                        const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+                                        const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
+                                        const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
+                                        const mediaUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                                        const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 8);
+                                        const isLarge = displayUrls.length >= 4;
+                                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+                                        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
+                                        
+                                        return (
+                                            <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isLarge ? 'md:col-span-2' : ''}`}>
+                                                <div className={`grid gap-1 bg-black/20 ${displayUrls.length === 1 ? 'grid-cols-1' : isLarge ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'}`}>
+                                                    {displayUrls.map((url, i) => (
+                                                        <div key={i} className={`relative overflow-hidden ${(displayUrls.length % 2 !== 0 && i === 0 && !isLarge) ? 'col-span-2' : ''}`}>
+                                                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" style={{ maxHeight: i === 0 ? '600px' : '300px' }} />
+                                                            {i === 0 && (
+                                                                <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
+                                                                    <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
+                                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                                                        {getStatusLabel(payStatus || '')}
+                                                                    </div>
+                                                                    <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                                                        {calculated.bookBardcode}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                        <div className="p-8 flex flex-col gap-1 inline-flex w-full">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                                <span className="text-lg font-mono font-black text-white/40">${Math.ceil(norm.price || 0).toLocaleString()}</span>
-                                            </div>
-                                            <div className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] mt-2 mb-4">{norm.color} · {norm.material}</div>
-                                            <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-4">
-                                                <div className="flex items-center gap-6">
-                                                   <div className="flex flex-col">
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Quantity</span>
-                                                        <span className="text-xs font-black text-white/60">x{norm.quantity || 1}</span>
-                                                   </div>
-                                                   <div className="flex flex-col border-l border-white/10 pl-6">
-                                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tag ID</span>
-                                                        <span className="text-xs font-black text-white/60">{norm.itemId}</span>
-                                                   </div>
+                                                <div className="p-8 flex flex-col gap-1 inline-flex w-full">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                                        <span className="text-lg font-mono font-black text-white/40">${Math.ceil(norm.price || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] mt-2 mb-4">{norm.color} · {norm.material}</div>
+                                                    <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-4">
+                                                        <div className="flex items-center gap-6">
+                                                           <div className="flex flex-col">
+                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Quantity</span>
+                                                                <span className="text-xs font-black text-white/60">x{norm.quantity || 1}</span>
+                                                           </div>
+                                                           <div className="flex flex-col border-l border-white/10 pl-6">
+                                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Tag ID</span>
+                                                                <span className="text-xs font-black text-white/60">{norm.itemId}</span>
+                                                           </div>
+                                                        </div>
+                                                        <Maximize2 size={16} className="text-white/10 group-hover:text-white/40 transition-all" />
+                                                    </div>
                                                 </div>
-                                                <Maximize2 size={16} className="text-white/10 group-hover:text-white/40 transition-all" />
                                             </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                        );
+                                    })}
+                                </div>
+                            );
+                        }
+                    })()}
 
                     {/* Payments Traceability List */}
                     {aggregateFinancials.uniquePayments.length > 0 && (

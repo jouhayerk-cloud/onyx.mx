@@ -756,23 +756,12 @@ export const UnifiedInventoryView = () => {
                             <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:underline ml-2">Clear</button>
                         </div>
                     )}
-                    <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/5 mr-2">
-                        <button onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
-                            title="List View">
-                            <LayoutList size={16} />
-                        </button>
-                        <button onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
-                            title="Grid View">
-                            <LayoutGrid size={16} />
-                        </button>
-                        <button onClick={() => setViewMode('gallery')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
-                            title="Gallery View">
-                            <Layout size={16} />
-                        </button>
-                    </div>
+                    <button onClick={() => setViewMode(viewMode === 'list' ? 'grid' : viewMode === 'grid' ? 'gallery' : 'list')}
+                        className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-95 group mr-2"
+                        title={`Current View: ${viewMode.toUpperCase()} (Click to cycle)`}>
+                        {viewMode === 'list' ? <LayoutList size={16} className="text-(--main-color)" /> : viewMode === 'grid' ? <LayoutGrid size={16} className="text-(--main-color)" /> : <Layout size={16} className="text-(--main-color)" />}
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">{viewMode}</span>
+                    </button>
                     <button 
                         onClick={handleCopyShareLink}
                         className={`flex items-center gap-2 px-4 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 border border-white/10'}`}
@@ -866,28 +855,37 @@ export const UnifiedInventoryView = () => {
                     viewMode === 'grid' 
                         ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" 
                         : viewMode === 'gallery' 
-                            ? "columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8 pb-20" 
+                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20 auto-rows-max" 
                             : "flex flex-col gap-3 pb-20"
                 }>
                     {isLoading && items.length === 0 ? (
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
                     ) : (
-                        filteredItems.map(item => (
-                            <div key={item.row} className={viewMode === 'gallery' ? "break-inside-avoid" : ""}>
-                                <UnifiedInventoryCard 
-                                    item={item} 
-                                    isExpanded={expandedCards.has(String(item.row))} 
-                                    onToggleExpand={() => toggleExpandCard(String(item.row))} 
-                                    exchangeRate={exchangeRate} 
-                                    showFinancials={showFinancials} 
-                                    viewMode={viewMode} 
-                                    partialPayIds={partialPayIds} 
-                                    fullPayIds={fullPayIds} 
-                                    onEdit={handleEditItem} 
-                                    financeDocs={financeDocs} 
-                                />
-                            </div>
-                        ))
+                        filteredItems.map(item => {
+                            const mediaCount = (item.data.mediaUrls || '').split(',').map((u: string) => u.trim()).filter(Boolean).length;
+                            const isLarge = mediaCount >= 4;
+                            
+                            return (
+                                <div key={item.row} className={
+                                    viewMode === 'gallery' 
+                                        ? `break-inside-avoid ${isLarge ? 'md:col-span-2' : ''}` 
+                                        : ""
+                                }>
+                                    <UnifiedInventoryCard 
+                                        item={item} 
+                                        isExpanded={expandedCards.has(String(item.row))} 
+                                        onToggleExpand={() => toggleExpandCard(String(item.row))} 
+                                        exchangeRate={exchangeRate} 
+                                        showFinancials={showFinancials} 
+                                        viewMode={viewMode} 
+                                        partialPayIds={partialPayIds} 
+                                        fullPayIds={fullPayIds} 
+                                        onEdit={handleEditItem} 
+                                        financeDocs={financeDocs} 
+                                    />
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             </div>
