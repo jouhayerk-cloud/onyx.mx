@@ -282,16 +282,6 @@ const InventoryBar: React.FC = () => {
                             color="var(--color-inventory)"
                         />
 
-                        <div className="w-px h-5 bg-white/5 mx-0.5" />
-
-                        <StudioAction 
-                            icon={ArrowUpDown} 
-                            label="SORT"
-                            active={isSortOpen}
-                            onClick={() => setIsSortOpen(!isSortOpen)}
-                            color="var(--color-inventory)"
-                        />
-
                         <div className="w-px h-5 bg-white/5 mx-0.5 hidden sm:block" />
 
                         <StudioAction 
