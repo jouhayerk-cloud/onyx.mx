@@ -66,7 +66,7 @@ import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
-import { OnyxLogo } from '../../components/OnyxLogo';
+import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { getStatusClass } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
@@ -876,6 +876,14 @@ export function MainHeader() {
 
     return (
         <div className="main-header h-14 sm:h-16 flex items-center px-4 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
+            {/* Mobile Sidebar Launcher — Integrated Logo */}
+            <button 
+                onClick={() => setSidebarState('expanded')}
+                className="flex md:hidden items-center justify-center p-1.5 mr-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all shrink-0"
+                title="Open Studio Menu"
+            >
+                <OnyxMiniLogo className="w-6 h-6" />
+            </button>
 
 
 
