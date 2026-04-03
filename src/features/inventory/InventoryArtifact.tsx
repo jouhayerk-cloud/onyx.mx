@@ -258,31 +258,49 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         
                                         return (
                                             <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
-                                                <div className={`grid gap-0.5 bg-black/20 ${displayUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
-                                                    {displayUrls.map((url, i) => (
-                                                        <div key={i} className={`relative overflow-hidden aspect-square`}>
-                                                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-                                                            {i === 0 && (
-                                                                <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
-                                                                    <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
-                                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
-                                                                        {getStatusLabel(payStatus || '')}
-                                                                    </div>
-                                                                    <div className="flex flex-col gap-2">
-                                                                        <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
-                                                                            {calculated.bookBardcode}
+                                                {(() => {
+                                                    const total = displayUrls.length;
+                                                    const gridCols = total <= 2 ? 'grid-cols-2' : total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
+                                                    const displayCount = 24;
+                                                    const visibleUrls = displayUrls.slice(0, displayCount);
+                                                    const remaining = total - displayCount;
+
+                                                    return (
+                                                        <div className={`grid gap-0.5 bg-black/20 ${gridCols}`}>
+                                                            {visibleUrls.map((url, i) => (
+                                                                <div key={i} className={`relative overflow-hidden aspect-square cursor-pointer`}>
+                                                                    <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+                                                                    {i === 0 && (
+                                                                        <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
+                                                                            <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
+                                                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                                                                {getStatusLabel(payStatus || '')}
+                                                                            </div>
+                                                                            <div className="flex flex-col gap-2">
+                                                                                <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                                                                    {calculated.bookBardcode}
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                    <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
+                                                                                    <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="flex gap-2">
-                                                                            <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
-                                                                            <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
+                                                                    )}
+                                                                    {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
+                                                                    {i === visibleUrls.length - 1 && remaining > 0 && (
+                                                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                                                                            <div className="flex flex-col items-center">
+                                                                                <span className="text-xl font-black text-white">+{remaining}</span>
+                                                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">More</span>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
+                                                            ))}
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                    );
+                                                })()}
                                                 <div className="p-8 flex flex-col gap-1 inline-flex w-full">
                                                     <div className="flex items-center justify-between">
                                                         <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
