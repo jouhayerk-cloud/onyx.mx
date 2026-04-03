@@ -20,6 +20,8 @@ export const HeroBackground = () => {
             <div className="liquid-blob blob-1" />
             <div className="liquid-blob blob-2" />
             <div className="liquid-blob blob-3" />
+            <div className="liquid-blob blob-4" />
+            <div className="liquid-blob blob-5" />
             <div className="gradient-overlay-scrim" />
         </div>
     );

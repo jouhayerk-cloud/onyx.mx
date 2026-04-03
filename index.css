@@ -59,10 +59,24 @@ html:not([class*='theme-talan']):not([class*='theme-fluorite']):not([class*='the
 }
 
 .blob-3 {
-  background: radial-gradient(circle, var(--c3, #8da388), transparent 70%);
+  background: radial-gradient(circle, var(--c3, #221a16), transparent 70%);
   top: 40%;
   left: 30%;
   animation: move-blob-3 45s infinite alternate ease-in-out;
+}
+
+.blob-4 {
+  background: radial-gradient(circle, var(--main-color, #8da388), transparent 75%);
+  bottom: 20%;
+  left: 40%;
+  animation: move-blob-4 30s infinite alternate-reverse ease-in-out;
+}
+
+.blob-5 {
+  background: radial-gradient(circle, var(--secondary-color, #b8860b), transparent 60%);
+  top: 15%;
+  right: 25%;
+  animation: move-blob-5 40s infinite alternate-reverse ease-in-out;
 }
 
 .static-bg {
@@ -82,6 +96,16 @@ html:not([class*='theme-talan']):not([class*='theme-fluorite']):not([class*='the
 @keyframes move-blob-3 {
   from { transform: translate(0, 0) scale(1); }
   to { transform: translate(15%, -15%) scale(1.4); }
+}
+
+@keyframes move-blob-4 {
+  from { transform: translate(0, 0) scale(0.8) rotate(0deg); }
+  to { transform: translate(-30%, 15%) scale(1.2) rotate(45deg); }
+}
+
+@keyframes move-blob-5 {
+  from { transform: translate(0, 0) scale(1) rotate(0deg); }
+  to { transform: translate(20%, -20%) scale(0.7) rotate(-35deg); }
 }
 
 .gradient-overlay-scrim {
