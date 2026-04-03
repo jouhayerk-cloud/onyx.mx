@@ -6,7 +6,7 @@ import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
 import {
     Package, Loader2, ChevronLeft, ChevronRight, X,
-    ZoomIn, Share2, Maximize2, Maximize
+    ZoomIn, Share2, Maximize2, Maximize, Ruler, Scale, Layers
 } from 'lucide-react';
 import { OnyxLogo } from '../../components/OnyxLogo';
 
@@ -264,7 +264,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
             )}
 
             {/* ── TOP NAV BAR ── */}
-            <div className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 h-14 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-white/5">
+            <div className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 h-16 bg-[#0a0a0a]/80 backdrop-blur-xl">
                 {/* Logo + back */}
                 <div className="flex items-center gap-3">
                     {onBack ? (
@@ -298,15 +298,14 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
             </div>
 
             {/* ── MAIN CARD ── gallery-card style, full width ── */}
-            <div className="max-w-5xl mx-auto w-full">
-
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-0">
                 {/* ── IMAGE GRID ── */}
-                <div className="overflow-hidden bg-[#111] border-b border-white/5">
+                <div className="overflow-hidden">
                     <ImageGrid images={item.images} onOpenViewer={openViewer} />
                 </div>
 
                 {/* ── DETAILS PANEL ── */}
-                <div className="p-5 sm:p-8 flex flex-col gap-6 bg-[#111] border-b border-white/5">
+                <div className="py-12 sm:py-20 flex flex-col gap-12">
                     {/* Row 1: Barcode tag + codes + title */}
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -335,40 +334,51 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                         </p>
                     </div>
 
-                    {/* Row 2: Specs horizontal strip */}
-                    <div className="flex items-start gap-6 flex-nowrap py-4 border-y border-white/5 overflow-x-auto no-scrollbar">
+                    {/* Row 2: Specs horizontal strip - BORDERLESS / LARGE TAGS / FLOATING ICONS */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 py-4">
                         {dimensionsStr && (
-                            <div className="flex flex-col gap-1 shrink-0">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span>
-                                <span className="text-[11px] font-mono text-white/60">{dimensionsStr} cm</span>
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                                    <Ruler size={22} strokeWidth={1.5} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Dimensions</span>
+                                    <span className="text-xl font-black text-white font-mono break-all leading-tight">{dimensionsStr} <span className="text-[10px] text-white/40 ml-1">CM</span></span>
+                                </div>
                             </div>
                         )}
                         {weightStr && (
-                            <>
-                                <div className="w-px h-8 bg-white/5 shrink-0" />
-                                <div className="flex flex-col gap-1 shrink-0">
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
-                                    <span className="text-[11px] font-mono text-white/60">{weightStr}</span>
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                                    <Scale size={22} strokeWidth={1.5} />
                                 </div>
-                            </>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Weight</span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">{weightStr.replace(' kg', '')} <span className="text-[10px] text-white/40 ml-1">KG</span></span>
+                                </div>
+                            </div>
                         )}
                         {norm.quantity && Number(norm.quantity) > 1 && (
-                            <>
-                                <div className="w-px h-8 bg-white/5 shrink-0" />
-                                <div className="flex flex-col gap-1 shrink-0">
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Quantity</span>
-                                    <span className="text-[11px] font-mono text-white/60">× {norm.quantity}</span>
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                                    <Package size={22} strokeWidth={1.5} />
                                 </div>
-                            </>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Inventory</span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">× {norm.quantity} <span className="text-[10px] text-white/40 ml-1">Units</span></span>
+                                </div>
+                            </div>
                         )}
                         {item.images.length > 0 && (
-                            <>
-                                <div className="w-px h-8 bg-white/5 shrink-0" />
-                                <div className="flex flex-col gap-1 shrink-0">
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Images</span>
-                                    <span className="text-[11px] font-mono text-white/60">{item.images.length} files</span>
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                                    <Layers size={22} strokeWidth={1.5} />
                                 </div>
-                            </>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Traceability</span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">{item.images.length} <span className="text-[10px] text-white/40 ml-1">Assets</span></span>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -381,20 +391,6 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                     )}
                 </div>
 
-                {/* ── IMAGE THUMBNAIL STRIP (clickable, accessible on mobile) ── */}
-                {item.images.length > 1 && (
-                    <div className="p-4 sm:p-6 bg-[#0f0f0f] border-b border-white/5">
-                        <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-3">{item.images.length} Images — Tap to View</p>
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                            {item.images.map((src, i) => (
-                                <div key={i} onClick={() => openViewer(i)}
-                                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 cursor-zoom-in transition-all hover:ring-2 hover:ring-white/30 active:scale-95">
-                                    <img src={src} className="w-full h-full object-cover" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* ── FOOTER ── */}
                 <div className="px-6 py-8 sm:px-8 flex items-center justify-center bg-[#0a0a0a]">
