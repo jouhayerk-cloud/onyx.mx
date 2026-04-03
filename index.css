@@ -11,7 +11,38 @@
   max-height: 100%;
   display: flex;
   overflow: hidden;
-  background-color: var(--app-bg);
+  background-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+/* Global Animated Gradient Background */
+.animate-gradient-bg {
+  background: linear-gradient(-45deg, 
+    var(--c1, #0a0a0f), 
+    var(--c2, #1a1a24), 
+    var(--c3, #161622), 
+    var(--c1, #0a0a0f)
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.static-bg {
+  background-color: var(--app-bg-solid, #0a0a0f);
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%);
+  z-index: 1;
 }
 
 .sidebar {
