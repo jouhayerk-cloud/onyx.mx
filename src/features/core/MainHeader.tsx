@@ -78,13 +78,18 @@ import {
     ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout
 } from 'lucide-react';
 
+import { THEME_ASSETS } from '../../lib/themes-assets';
+
 declare const __APP_VERSION__: string;
 
 const themes = [
-    { name: 'talan', gradient: 'var(--gradient-talan)' },
-    { name: 'fluorite', gradient: 'var(--gradient-fluorite)' },
-    { name: 'nacar', gradient: 'var(--gradient-nacar)' },
-    { name: 'aqua', gradient: 'var(--gradient-aqua)' },
+    { name: 'talan', swatch: THEME_ASSETS.talan.swatch },
+    { name: 'fluorite', swatch: THEME_ASSETS.fluorite.swatch },
+    { name: 'nacar', swatch: THEME_ASSETS.nacar.swatch },
+    { name: 'aqua', swatch: THEME_ASSETS.aqua.swatch },
+    { name: 'earth', gradient: 'var(--gradient-earth)' },
+    { name: 'cherry', gradient: 'var(--gradient-cherry)' },
+    { name: 'stitch', gradient: 'var(--gradient-stitch)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
@@ -990,11 +995,16 @@ export function MainHeader() {
                                     <div className="grid grid-cols-4 gap-2">
                                         {themes.map(th => (
                                             <button key={th.name} onClick={() => setTheme(th.name)}
-                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th ${theme === th.name ? 'ring-2 ring-(--text-color)/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
-                                                style={{ background: th.gradient }} title={th.name} 
+                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-(--text-color)/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
+                                                style={{ 
+                                                    background: th.swatch ? `url(${th.swatch})` : th.gradient,
+                                                    backgroundSize: 'cover',
+                                                    backgroundPosition: 'center'
+                                                }} 
+                                                title={th.name} 
                                             >
-                                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 transition-opacity">
-                                                    <span className="text-[6px] font-black uppercase tracking-widest text-(--text-color) drop-shadow-md">{th.name}</span>
+                                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
+                                                    <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
                                                 </span>
                                             </button>
                                         ))}

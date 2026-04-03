@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.61.0 (2026-04-03)
+- **High-Fidelity Theme Swatches**: Replaced gradient thumbnails with actual stone texture swatches in the Settings menu.
+- **Reference HEX Integration**: Extracted and embedded theme color metadata (Primary/Accents) into the core assets engine.
+- **Improved Selector UX**: Textured background support and better readability for theme labels in the appearance menu.
+
+
 ## v1.60.0 (2026-04-03)
 - **Studio UI Modernization [Major]**: Transitioned to a high-performance, 5-layer animated CSS "Liquid Shades" background system, replaces legacy video backgrounds.
 - **Dynamic Performance Mode**: Now uses theme-aware fixed gradients instead of flat colors for a premium static UI state.
