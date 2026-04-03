@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.62.0 (2026-04-03)
+- **Primary Theme Optimization**: Removed Earth, Cherry, and Stitch themes to streamline the visual experience.
+- **Nacar Realism Overhaul**: Corrected Nacar colors to a honey-amber palette (#fffcf5/ #d4a373) matched to its natural source.
+- **Enhanced Contrast**: Switched Nacar typography to a deep stone brown for superior legibility.
+
+
 ## v1.61.0 (2026-04-03)
 - **High-Fidelity Theme Swatches**: Replaced gradient thumbnails with actual stone texture swatches in the Settings menu.
 - **Reference HEX Integration**: Extracted and embedded theme color metadata (Primary/Accents) into the core assets engine.
