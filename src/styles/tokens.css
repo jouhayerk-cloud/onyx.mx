@@ -63,6 +63,7 @@ html.theme-talan {
   --text-color-secondary: #8a8e85;
   --border-color: rgba(184, 134, 11, 0.2);
   --input-color: rgba(0, 0, 0, 0.5);
+  --performance-bg: linear-gradient(135deg, #0d0b0a 0%, #161210 100%);
   color-scheme: dark;
 }
 
@@ -85,6 +86,7 @@ html.theme-fluorite {
   --text-color-secondary: #a0f0ef;
   --border-color: rgba(0, 229, 255, 0.2);
   --input-color: rgba(0, 0, 0, 0.4);
+  --performance-bg: linear-gradient(135deg, #1c0e3a 0%, #0a2a40 100%);
   color-scheme: dark;
 }
 
@@ -107,6 +109,7 @@ html.theme-earth {
   --text-color-secondary: #fde68a;
   --border-color: rgba(217, 119, 6, 0.2);
   --input-color: rgba(0, 0, 0, 0.4);
+  --performance-bg: linear-gradient(135deg, #081f13 0%, #0b2f20 100%);
   color-scheme: dark;
 }
 
@@ -130,6 +133,7 @@ html.theme-nacar {
   --border-color: rgba(193, 126, 97, 0.25);
   --input-color: rgba(255, 255, 255, 0.8);
   --glass-bg: rgba(255, 255, 255, 0.1);
+  --performance-bg: linear-gradient(135deg, #fdfaf2 0%, #f4f1de 100%);
   color-scheme: light;
 }
 
@@ -153,6 +157,7 @@ html.theme-aqua {
   --border-color: rgba(0, 188, 212, 0.25);
   --input-color: rgba(255, 255, 255, 0.8);
   --glass-bg: rgba(255, 255, 255, 0.4);
+  --performance-bg: linear-gradient(135deg, #fdfcf0 0%, #e0f2f1 100%);
   color-scheme: light;
 }
 

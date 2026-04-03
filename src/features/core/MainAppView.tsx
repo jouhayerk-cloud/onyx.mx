@@ -360,7 +360,7 @@ export function MainAppView() {
                                 <>
                                     <OnyxLogo className="w-16 h-16 transition-transform duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
                                     <div className="flex flex-col items-center mb-6">
-                                        <span className="sidebar-logo-text text-[11px]! font-bold! tracking-[0.2em]! opacity-90! text-white/80">Onyx.mx</span>
+                                        <span className="sidebar-logo-text text-[11px]! font-bold! tracking-[0.2em]! opacity-90! text-(--text-color) opacity-80">Onyx.mx</span>
                                     </div>
                                 </>
                             )}
