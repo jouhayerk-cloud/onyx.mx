@@ -918,12 +918,12 @@ export function MainHeader() {
                     <>
                         <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
                         <div className="ml-auto">
-                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
+                            <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
                         </div>
                     </>
                 )}
                 {(activeView === 'create' || !activeView) && (
-                    <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">ONYX.MX</span>
+                    <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
                 )}
             </div>
 
@@ -932,20 +932,20 @@ export function MainHeader() {
             <div className="flex items-center gap-2 sm:gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
                 <div className="flex flex-col items-end">
                     <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-60 leading-none mb-1">WELCOME,</span>
-                    <span className="text-sm font-black text-white/80 tracking-tight leading-none capitalize">
+                    <span className="text-sm font-black text-(--text-color) opacity-80 tracking-tight leading-none capitalize">
                         {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                             ? user.name.split(' ')[0]
                             : user?.email?.split('@')[0] || 'User'}
                     </span>
                 </div>
 
-                <div className="w-px h-8 bg-white/5 mx-1" />
+                <div className="w-px h-8 bg-(--border-color) mx-1" />
 
                 <div className="flex items-center gap-1.5 relative">
                     <button
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                         className={`p-2 rounded-xl transition-all active:scale-95 flex flex-col items-center justify-center group/sett ${
-                            isSettingsOpen ? 'bg-(--main-color)/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'
+                            isSettingsOpen ? 'bg-(--main-color)/10 text-(--main-color)' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-(--text-color)/5'
                         }`}
                     >
                         <Settings size={17} strokeWidth={2.25} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
@@ -960,16 +960,16 @@ export function MainHeader() {
 
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/30">Settings</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-(--text-color) opacity-30">Settings</span>
                                     <div className="flex items-center gap-4">
                                         <button 
                                             onClick={() => setPerformanceMode(!performanceMode)} 
-                                            className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-white/20 hover:text-white/40'}`}
+                                            className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
                                             title="Performance Mode"
                                         >
                                             <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
                                         </button>
-                                        <button onClick={() => setIsSettingsOpen(false)} className="text-white/20 hover:text-white transition-all transform hover:rotate-90">
+                                        <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
                                             <X size={14} strokeWidth={3} />
                                         </button>
                                     </div>
@@ -978,23 +978,23 @@ export function MainHeader() {
                                 {/* Primary Action: REFRESH */}
                                 <button 
                                     onClick={handleRefresh} 
-                                    className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group rounded-none"
+                                    className="flex flex-col items-center justify-center p-8 bg-(--text-color)/5 hover:bg-(--text-color)/10 active:bg-blue-500/20 transition-all group rounded-none"
                                 >
-                                    <RefreshCw size={28} strokeWidth={1.5} className="text-white/40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/60">Refresh Sync</span>
+                                    <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
+                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
                                 </button>
 
                                 {/* Appearance Row */}
                                 <div className="flex flex-col gap-4">
-                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 border-b border-white/5 pb-1 w-fit">Appearance</span>
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-(--text-color)/5 pb-1 w-fit">Appearance</span>
                                     <div className="grid grid-cols-4 gap-2">
                                         {themes.map(th => (
                                             <button key={th.name} onClick={() => setTheme(th.name)}
-                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
+                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th ${theme === th.name ? 'ring-2 ring-(--text-color)/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
                                                 style={{ background: th.gradient }} title={th.name} 
                                             >
                                                 <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 transition-opacity">
-                                                    <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
+                                                    <span className="text-[6px] font-black uppercase tracking-widest text-(--text-color) drop-shadow-md">{th.name}</span>
                                                 </span>
                                             </button>
                                         ))}

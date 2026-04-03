@@ -12,7 +12,12 @@ export const HeroBackground = () => {
     const performanceMode = useAtomValue(performanceModeAtom);
 
     if (performanceMode) {
-        return <div className="fixed inset-0 bg-(--app-bg-solid) z--2" />;
+        return (
+            <div 
+                className="fixed inset-0 z--2" 
+                style={{ background: 'var(--performance-bg)' }}
+            />
+        );
     }
 
     return (

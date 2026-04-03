@@ -46,8 +46,8 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout } from 'lucide-react';
 
 
-const lbl = "text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
-const inp = "h-12 w-full px-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl text-xs text-white placeholder-white/20 outline-none focus:border-(--main-color)/50 focus:bg-white/[0.08] transition-all";
+const lbl = "text-[9px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
+const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-color)/12 rounded-2xl text-xs text-(--text-color) placeholder-(--text-color)/30 outline-none focus:border-(--main-color)/50 focus:bg-(--text-color)/[0.08] transition-all";
 const inpNum = inp + " font-mono text-center";
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
@@ -79,7 +79,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 
     return createPortal(
         <div className="fixed inset-0 z-10000 bg-black/98 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-300" onClick={onClose} onWheel={handleWheel}>
-            <button onClick={onClose} className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all">
+            <button onClick={onClose} className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full bg-(--text-color)/5 border border-(--text-color)/10 flex items-center justify-center text-(--text-color) opacity-30 hover:opacity-100 hover:bg-(--text-color)/10 transition-all">
                 <X className="w-6 h-6" />
             </button>
             {mediaUrls.length > 1 && (
@@ -152,8 +152,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const renderPaymentHistory = () => {
         if (!itemPayments || itemPayments.length === 0) return null;
         return (
-            <div className="col-span-full pt-6 mt-2 border-t border-white/5 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3 ml-1">Payment History (MXN)</h4>
+            <div className="col-span-full pt-6 mt-2 border-t border-(--border-color) space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-(--text-color) opacity-40 mb-3 ml-1">Payment History (MXN)</h4>
                 <div className="flex flex-col gap-2">
                     {itemPayments.map((p: any) => {
                         const net = p.amount || 0;
@@ -162,22 +162,22 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         const format = (val: number) => showFinancials ? `$${val.toLocaleString('en-US')}` : '***';
 
                         return (
-                            <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-white/5 border border-white/5 transition-all hover:bg-white/10">
+                            <div key={p.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-3 rounded-xl bg-(--text-color)/5 border border-(--border-color) transition-all hover:bg-(--text-color)/10">
                                 <div className="flex flex-col min-w-[120px]">
-                                    <span className="text-[11px] text-white font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
+                                    <span className="text-[11px] text-(--text-color) font-bold tracking-tight">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date'}</span>
                                     <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 ${p.status === 'Paid' ? 'text-green-400' : p.status === 'Requested' ? 'text-yellow-400' : 'text-sky-400'}`}>{p.status || 'New'}</span>
                                 </div>
                                 <div className="flex items-center gap-6 sm:gap-12 w-full sm:w-auto no-scrollbar justify-between sm:justify-end">
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-0.5">Net Paid</span>
-                                        <span className="text-[11px] font-mono font-bold text-white/80">{format(net)}</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">Net Paid</span>
+                                        <span className="text-[11px] font-mono font-bold text-(--text-color) opacity-80">{format(net)}</span>
                                     </div>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-0.5">Taxes/Fees</span>
-                                        <span className="text-[11px] font-mono font-bold text-red-400/80">{format(fees)}</span>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color) opacity-30 mb-0.5">Taxes/Fees</span>
+                                        <span className="text-[11px] font-mono font-bold text-red-400 opacity-80">{format(fees)}</span>
                                     </div>
-                                    <div className="flex flex-col items-end border-l border-white/10 pl-6 sm:pl-12 min-w-[100px]">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color)/50 mb-0.5">Total</span>
+                                    <div className="flex flex-col items-end border-l border-(--border-color) pl-6 sm:pl-12 min-w-[100px]">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-(--main-color) opacity-50 mb-0.5">Total</span>
                                         <span className="text-[13px] font-mono font-black text-(--main-color)">{format(total)}</span>
                                     </div>
                                 </div>

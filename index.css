@@ -44,6 +44,12 @@ html:not([class*='theme-talan']):not([class*='theme-fluorite']):not([class*='the
   opacity: 0.25;
 }
 
+/* Specific Talan Polish: Darker, deeper, more shadow-dominant */
+html.theme-talan .liquid-blob {
+  opacity: 0.22;
+  filter: blur(280px);
+}
+
 .blob-1 {
   background: radial-gradient(circle, var(--c1, #00bcd4), transparent 70%);
   top: -20%;
