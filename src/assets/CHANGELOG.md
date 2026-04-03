@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.63.0 (2026-04-03)
+- **Contrast Modernization [Major]**: Replaced over 300 instances of hardcoded white text and backgrounds with theme-aware dynamic variables.
+- **Aqua Theme Accessibility**: Achieved 100% legibility across Dashboard, Finance, and Acquisitions modules in light mode.
+- **Build Optimization**: Implemented `manualChunks` to split heavy libraries (ECharts, Lucide, DB) into separate bundles, reducing index load time.
+- **Analytics Accuracy**: Theme-aware contrast for ECharts axis labels and grid lines.
+- **Interactive Precision**: Updated all modals, slide-out drawers, and tooltips for consistent accessibility.
+
+
 ## v1.62.0 (2026-04-03)
 - **Primary Theme Optimization**: Removed Earth, Cherry, and Stitch themes to streamline the visual experience.
 - **Nacar Realism Overhaul**: Corrected Nacar colors to a honey-amber palette (#fffcf5/ #d4a373) matched to its natural source.

@@ -24,7 +24,7 @@ const StatCard = ({ icon: Icon, label, value, subtitle, color = 'var(--main-colo
 }) => (
     <div className="bg-(--glass-bg) border border-(--border-color) rounded-4xl p-6 flex flex-col gap-3 hover:translate-y-[-2px] transition-all group shadow-sm">
         <div className="flex items-center justify-between">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5 shadow-inner" style={{ background: `${color}15` }}>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-(--text-color)/5 shadow-inner" style={{ background: `${color}15` }}>
                 <Icon size={24} strokeWidth={1.5} style={{ color }} />
             </div>
             {subtitle && <span className="text-[10px] font-mono font-bold text-(--text-color-secondary) opacity-40">{subtitle}</span>}
@@ -135,8 +135,8 @@ export function AdminDashboard() {
     const vendorChartOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { left: '3%', right: '4%', bottom: '3%', top: '3%', containLabel: true },
-        xAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 10 } },
-        yAxis: { type: 'category', data: vendorSummaries.map(v => v.vendorId), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: 'rgba(255,255,255,0.6)', fontWeight: 'bold' } },
+        xAxis: { type: 'value', axisLine: { show: false }, splitLine: { lineStyle: { color: 'var(--border-color)' } }, axisLabel: { color: 'var(--text-color)', opacity: 0.3, fontSize: 10 } },
+        yAxis: { type: 'category', data: vendorSummaries.map(v => v.vendorId), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: 'var(--text-color)', opacity: 0.6, fontWeight: 'bold' } },
         series: [{
             name: 'Value USD', type: 'bar', data: vendorSummaries.map(v => v.totalAcqUsd),
             itemStyle: { color: (params: any) => vendorSummaries[params.dataIndex].color + 'BB', borderRadius: [0, 8, 8, 0] }
@@ -158,8 +158,8 @@ export function AdminDashboard() {
 
     const categoriesOption = useMemo<EChartsOption>(() => ({
         tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: shapeTypeSummaries.slice(0, 8).map(s => s.label.split(' · ')[0]), axisLabel: { rotate: 45, color: 'rgba(255,255,255,0.4)', fontSize: 8 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        xAxis: { type: 'category', data: shapeTypeSummaries.slice(0, 8).map(s => s.label.split(' · ')[0]), axisLabel: { rotate: 45, color: 'var(--text-color)', opacity: 0.4, fontSize: 8 } },
+        yAxis: { type: 'value', splitLine: { lineStyle: { color: 'var(--border-color)' } } },
         series: [{
             type: 'pictorialBar', symbol: 'roundRect',
             data: shapeTypeSummaries.slice(0, 8).map(s => s.count),
@@ -192,7 +192,7 @@ export function AdminDashboard() {
                         <DollarSign size={16} strokeWidth={2.5} />
                         <span className="text-[10px] font-black uppercase tracking-widest leading-none">{showFinancials ? 'Lock Financials' : 'Unlock Financials'}</span>
                     </button>
-                    <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-end">
+                    <div className="px-6 py-3 bg-(--text-color)/5 border border-(--text-color)/10 rounded-2xl flex flex-col items-end">
                         <span className="text-[9px] font-black opacity-20 uppercase tracking-widest leading-none mb-1">Active Index</span>
                         <span className="text-sm font-mono font-black text-(--text-color)">{items.length.toLocaleString()} <span className="text-[10px] opacity-20">REC</span></span>
                     </div>
@@ -245,16 +245,16 @@ export function AdminDashboard() {
                 {/* ── Dispersal Analysis ─────────────────────────────────── */}
                 <div className="bg-(--glass-bg) border border-(--border-color) rounded-[2.5rem] p-8">
                     <div className="flex items-center gap-3 mb-8">
-                        <DollarSign size={18} strokeWidth={1.75} className="text-white/30" />
+                        <DollarSign size={18} strokeWidth={1.75} className="text-(--text-color)/30" />
                         <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-(--text-color)">Expense Allocation by Category</h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {expenseCategories.map(e => (
-                            <div key={e.label} className="p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-(--main-color)/30 transition-all flex flex-col gap-2 relative overflow-hidden group">
+                            <div key={e.label} className="p-6 bg-(--text-color)/5 rounded-3xl border border-(--text-color)/5 hover:border-(--main-color)/30 transition-all flex flex-col gap-2 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity"><DollarSign className="w-10 h-10" /></div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-(--text-color-secondary)">{e.label}</p>
                                 <p className="text-xl font-mono font-black text-(--text-color)">{showFinancials ? `$${e.total.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '***'}</p>
-                                <div className="w-full h-1 bg-white/10 rounded-full mt-2 overflow-hidden">
+                                <div className="w-full h-1 bg-(--text-color)/10 rounded-full mt-2 overflow-hidden">
                                     <div className="h-full bg-(--main-color)" style={{ width: `${Math.round((e.total / totals.totalExpenses) * 100)}%` }} />
                                 </div>
                             </div>
