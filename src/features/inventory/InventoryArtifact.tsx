@@ -17,7 +17,7 @@ import {
     getStatusClass 
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2 } from 'lucide-react';
+import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video } from 'lucide-react';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 interface InventoryArtifactProps {
@@ -242,35 +242,44 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
                         if (viewMode === 'gallery') {
                             return (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 auto-rows-max">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 auto-rows-max">
                                     {filteredItems.map((item: any) => {
                                         const norm = normalizeInventoryData(item.data);
                                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                                         const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
                                         const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
                                         const mediaUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                        const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 8);
-                                        const isLarge = displayUrls.length >= 4;
+                                        const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+                                        const mediaCount = displayUrls.length;
+                                        const isLarge = mediaCount >= 4 && mediaCount < 10;
+                                        const isFull = mediaCount >= 10;
                                         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
                                         return (
-                                            <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isLarge ? 'md:col-span-2' : ''}`}>
-                                                <div className={`grid gap-1 bg-black/20 ${displayUrls.length === 1 ? 'grid-cols-1' : isLarge ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'}`}>
+                                            <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
+                                                <div className={`grid gap-0.5 bg-black/20 ${displayUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
                                                     {displayUrls.map((url, i) => (
-                                                        <div key={i} className={`relative overflow-hidden ${(displayUrls.length % 2 !== 0 && i === 0 && !isLarge) ? 'col-span-2' : ''}`}>
-                                                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" style={{ maxHeight: i === 0 ? '600px' : '300px' }} />
+                                                        <div key={i} className={`relative overflow-hidden aspect-square`}>
+                                                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                                                             {i === 0 && (
                                                                 <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
                                                                     <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
                                                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
                                                                         {getStatusLabel(payStatus || '')}
                                                                     </div>
-                                                                    <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
-                                                                        {calculated.bookBardcode}
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                                                            {calculated.bookBardcode}
+                                                                        </div>
+                                                                        <div className="flex gap-2">
+                                                                            <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
+                                                                            <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             )}
+                                                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
                                                         </div>
                                                     ))}
                                                 </div>

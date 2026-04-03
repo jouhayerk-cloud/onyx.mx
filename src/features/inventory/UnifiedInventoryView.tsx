@@ -326,17 +326,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
                 
-                <div className={`grid gap-1 bg-black/40 ${mediaUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`} style={{ aspectRatio: mediaUrls.length > 2 ? '1/1' : '4/3' }}>
-                    {mediaUrls.slice(0, 4).map((url, i) => (
-                        <div key={i} className={`relative overflow-hidden group/galimg ${mediaUrls.length === 3 && i === 0 ? 'row-span-2' : ''}`}
+                <div className={`grid gap-0.5 bg-black/40 ${mediaUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6'}`} style={{ aspectRatio: mediaUrls.length > 6 ? (mediaUrls.length > 20 ? 'auto' : '16/9') : '1/1' }}>
+                    {mediaUrls.slice(0, 60).map((url, i) => (
+                        <div key={i} className={`relative overflow-hidden group/galimg aspect-square`}
                              onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
                             <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
-                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={20} className="text-white/60" /></div>}
-                            {i === 3 && mediaUrls.length > 4 && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                    <span className="text-lg font-black text-white">+{mediaUrls.length - 4}</span>
-                                </div>
-                            )}
+                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
                         </div>
                     ))}
                 </div>
@@ -344,10 +339,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 <div className="p-5 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col gap-1">
-                            <h3 className="font-black text-lg text-white leading-tight uppercase truncate max-w-[180px]">{norm.shape || 'OBJECT'}</h3>
+                            <h3 className="font-black text-lg text-white leading-tight uppercase truncate max-w-[220px]">{norm.shape || 'OBJECT'}</h3>
                             <div className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">{norm.shortDescription || 'Artifact'}</div>
                         </div>
-                        <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                        <div className="flex flex-col items-end gap-2">
+                             <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                             <div className="flex gap-1.5">
+                                 <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
+                                 <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
+                             </div>
+                        </div>
                     </div>
                     
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
@@ -362,7 +363,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
                             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
@@ -863,12 +864,13 @@ export const UnifiedInventoryView = () => {
                     ) : (
                         filteredItems.map(item => {
                             const mediaCount = (item.data.mediaUrls || '').split(',').map((u: string) => u.trim()).filter(Boolean).length;
-                            const isLarge = mediaCount >= 4;
+                            const isLarge = mediaCount >= 4 && mediaCount < 10;
+                            const isFull = mediaCount >= 10;
                             
                             return (
                                 <div key={item.row} className={
                                     viewMode === 'gallery' 
-                                        ? `break-inside-avoid ${isLarge ? 'md:col-span-2' : ''}` 
+                                        ? `break-inside-avoid ${isFull ? 'col-span-full' : isLarge ? 'md:col-span-2' : ''}` 
                                         : ""
                                 }>
                                     <UnifiedInventoryCard 
