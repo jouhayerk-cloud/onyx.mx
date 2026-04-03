@@ -19,12 +19,7 @@
   --color-analytics: #6BCEBB;
   --color-control: #a78bfa;
   
-  /* Stitch Design Tokens */
-  --stitch-app-bg: #13171f;
-  --stitch-card-bg: #1C212D;
-  --stitch-tag-bg: #1e3a5f;
-  --stitch-tag-text: #60a5fa;
-  --stitch-tag-border: #254b7a;
+  /* Stitch Design Tokens Decommissioned */
   
   /* Legacy/Base Variables */
   --main-color: #7FBBFF;
@@ -90,50 +85,27 @@ html.theme-fluorite {
   color-scheme: dark;
 }
 
-/* EARTH (Dark) - Formerly Malaquite */
-html.theme-earth {
-  --c1: #081f13;
-  --c2: #0b2f20;
-  --c3: #0f4028;
-  --c4: #165b38;
-  --c5: #0b2f20;
-  --c6: #051a0e;
-  --app-bg: rgba(5, 20, 15, 0.25);
-  --app-bg-solid: #0c2819;
-  --sidebar-bg: rgba(12, 40, 25, 0.45);
-  --main-color: #d97706;
-  --secondary-color: #b45309;
-  --text-color: #ffffff;
-  --text-color-primary: #ffffff;
-  --secondary-text-color: #fde68a;
-  --text-color-secondary: #fde68a;
-  --border-color: rgba(217, 119, 6, 0.2);
-  --input-color: rgba(0, 0, 0, 0.4);
-  --performance-bg: linear-gradient(135deg, #081f13 0%, #0b2f20 100%);
-  color-scheme: dark;
-}
-
-/* NACAR (Light Stone) */
+/* NACAR (Light Stone) - Photographic Accuracy Refinement */
 html.theme-nacar {
-  --c1: #fdfaf2;
-  --c2: #faf8f0;
+  --c1: #fffcf5;
+  --c2: #fdfcf0;
   --c3: #fff7e6;
   --c4: #f4f1de;
-  --c5: #fcf9f2;
+  --c5: #d4a373;
   --c6: #ffffff;
-  --app-bg: rgba(253, 250, 242, 0.2);
-  --app-bg-solid: #fdfaf2;
-  --sidebar-bg: rgba(253, 250, 242, 0.45);
-  --main-color: #c17e61;
-  --secondary-color: #a3b18a;
-  --text-color: #1a1614;
-  --text-color-primary: #0a0808;
-  --secondary-text-color: #5d5d52;
-  --text-color-secondary: #5d5d52;
-  --border-color: rgba(193, 126, 97, 0.25);
-  --input-color: rgba(255, 255, 255, 0.8);
-  --glass-bg: rgba(255, 255, 255, 0.1);
-  --performance-bg: linear-gradient(135deg, #fdfaf2 0%, #f4f1de 100%);
+  --app-bg: rgba(255, 252, 245, 0.35);
+  --app-bg-solid: #fffcf5;
+  --sidebar-bg: rgba(253, 252, 240, 0.55);
+  --main-color: #d4a373;
+  --secondary-color: #8a8e85;
+  --text-color: #453e3a;
+  --text-color-primary: #2a2624;
+  --secondary-text-color: #8a8e85;
+  --text-color-secondary: #8a8e85;
+  --border-color: rgba(212, 163, 115, 0.3);
+  --input-color: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(255, 252, 245, 0.25);
+  --performance-bg: linear-gradient(135deg, #fffcf5 0%, #f4f1de 100%);
   color-scheme: light;
 }
 
@@ -161,61 +133,9 @@ html.theme-aqua {
   color-scheme: light;
 }
 
-/* CHERRY BLOSSOM (Light) */
-html.theme-cherry {
-  --c1: #ffffff;
-  --c2: #f0f7ff;
-  --c3: #fffafa;
-  --c4: #f5faff;
-  --c5: #fff5f8;
-  --c6: #ffffff;
-  --app-bg: rgba(255, 255, 255, 0.5);
-  --app-bg-solid: #ffffff;
-  --sidebar-bg: rgba(255, 255, 255, 0.85);
-  --main-color: #ffdce0;
-  --secondary-color: #dcf2ff;
-  --text-color: #5b4b4d;
-  --text-color-primary: #5b4b4d;
-  --secondary-text-color: #8c7c7e;
-  --text-color-secondary: #8c7c7e;
-  --border-color: rgba(0, 0, 0, 0.04);
-  --input-color: rgba(255, 255, 255, 0.9);
-  --glass-bg: rgba(255, 255, 255, 0.6);
-  --performance-bg: linear-gradient(135deg, #f0f7ff 0%, #fff5f8 100%);
-  color-scheme: light;
-}
-
-/* STITCH (Modern Dark) */
-html.theme-stitch {
-  --c1: #13171f;
-  --c2: #1C212D;
-  --c3: #1e3a5f;
-  --c4: #254b7a;
-  --c5: #000000;
-  --c6: #13171f;
-  --app-bg: #13171f;
-  --app-bg-solid: #13171f;
-  --sidebar-bg: #1C212D;
-  --main-color: #60a5fa;
-  --secondary-color: #254b7a;
-  --text-color: #f0f0f0;
-  --text-color-primary: #ffffff;
-  --secondary-text-color: #94a3b8;
-  --text-color-secondary: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.05);
-  --input-color: rgba(0, 0, 0, 0.4);
-  --performance-bg: linear-gradient(135deg, #13171f 0%, #1c212d 50%, #1e3a5f 100%);
-  color-scheme: dark;
-}
-
 /* Theme Gradient Tokens */
 :root {
   --gradient-talan: linear-gradient(135deg, #0d0b0a, #b8860b, #161210);
   --gradient-fluorite: linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40);
-  --gradient-earth: linear-gradient(135deg, #051a0e, #d97706, #0b2f20);
-  --gradient-nacar: linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4);
-  --gradient-aqua: linear-gradient(135deg, #fdfcf0, #00bcd4, #c17e61);
-  --gradient-cherry: linear-gradient(135deg, #f0f7ff, #ffdce0, #ffffff);
-  --gradient-stitch: linear-gradient(135deg, #13171f, #1C212D, #1e3a5f);
   --gradient-studio: linear-gradient(135deg, #000000, #18181B, #09090B);
 }

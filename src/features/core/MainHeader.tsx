@@ -87,9 +87,6 @@ const themes = [
     { name: 'fluorite', swatch: THEME_ASSETS.fluorite.swatch },
     { name: 'nacar', swatch: THEME_ASSETS.nacar.swatch },
     { name: 'aqua', swatch: THEME_ASSETS.aqua.swatch },
-    { name: 'earth', gradient: 'var(--gradient-earth)' },
-    { name: 'cherry', gradient: 'var(--gradient-cherry)' },
-    { name: 'stitch', gradient: 'var(--gradient-stitch)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];

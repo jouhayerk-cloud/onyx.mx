@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.62.0 (2026-04-03)
+- **Theme System Simplification**: Decommissioned and removed **Earth**, **Cherry**, and **Stitch** themes to focus the application exclusively on the 4 primary stone signatures (Talan, Fluorite, Nacar, Aqua).
+- **Nacar Stone Realism Overhaul**: Recalibrated the **Nacar** palette for absolute photographic accuracy with its source stone artifact. 
+    - Transitioned to a warm honey-white base (`#fffcf5`) and golden amber vein accents (`#d4a373`).
+    - Standardized on deep stone-brown typography (`#453e3a`) for superior contrast and readability.
+- **Codebase Sanitization**: Removed legacy CSS tokens and defunct theme selector references for better maintainability.
+
+
 ## v1.61.0 (2026-04-03)
 - **High-Fidelity Theme Swatches [Modernization]**: Replaced CSS gradient thumbnails in the Settings menu with actual "Liquid Stone" texture swatches (Base64) for Talan, Fluorite, Nacar, and Aqua themes.
 - **Theme Color Extraction**: Integrated precise HEX color metadata (Primary, Secondary, Accents) directly into the new `theme-assets.ts` module for design system consistency.
