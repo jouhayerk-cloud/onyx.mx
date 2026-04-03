@@ -44,25 +44,25 @@
 
 /* THEMES */
 
-/* OBSIDIAN (Dark) */
-html.theme-obsidian {
-  --c1: #1a1a24;
-  --c2: #212130;
-  --c3: #2a2a3d;
-  --c4: #1f1f2e;
-  --c5: #161622;
-  --c6: #0d0d14;
-  --app-bg: rgba(10, 10, 15, 0.4);
-  --app-bg-solid: #1a1a24;
-  --sidebar-bg: rgba(26, 26, 36, 0.92);
+/* TALAN (Dark Stone) */
+html.theme-talan {
+  --c1: #0d0b0a;
+  --c2: #161210;
+  --c3: #1a1614;
+  --c4: #221a16;
+  --c5: #0d0d0d;
+  --c6: #000000;
+  --app-bg: rgba(13, 11, 10, 0.45);
+  --app-bg-solid: #0d0b0a;
+  --sidebar-bg: rgba(22, 18, 16, 0.94);
   --main-color: #8da388;
-  --secondary-color: #6d8269;
-  --text-color: #ffffff;
+  --secondary-color: #b8860b;
+  --text-color: #f5f5f0;
   --text-color-primary: #ffffff;
-  --secondary-text-color: #aeb4c0;
-  --text-color-secondary: #aeb4c0;
-  --border-color: rgba(255, 255, 255, 0.12);
-  --input-color: rgba(0, 0, 0, 0.4);
+  --secondary-text-color: #8a8e85;
+  --text-color-secondary: #8a8e85;
+  --border-color: rgba(184, 134, 11, 0.2);
+  --input-color: rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -133,25 +133,25 @@ html.theme-nacar {
   color-scheme: light;
 }
 
-/* TEHU (Light) */
-html.theme-tehu {
-  --c1: #fdfafa;
-  --c2: #f6efe8;
-  --c3: #eff6ec;
-  --c4: #fdf3e7;
-  --c5: #fcf6ef;
+/* AQUA (Light Coastal Stone) */
+html.theme-aqua {
+  --c1: #fdfcf0;
+  --c2: #fffde6;
+  --c3: #f5fbfb;
+  --c4: #e0f2f1;
+  --c5: #fcf9f2;
   --c6: #ffffff;
-  --app-bg: rgba(255, 255, 255, 0.3);
-  --app-bg-solid: #fcf9f6;
-  --sidebar-bg: rgba(252, 249, 246, 0.96);
-  --main-color: #f97316;
-  --secondary-color: #ea580c;
-  --text-color: #431407;
-  --text-color-primary: #431407;
-  --secondary-text-color: #7c2d12;
-  --text-color-secondary: #7c2d12;
-  --border-color: rgba(124, 45, 18, 0.1);
-  --input-color: rgba(255, 255, 255, 0.7);
+  --app-bg: rgba(253, 252, 240, 0.35);
+  --app-bg-solid: #fdfcf0;
+  --sidebar-bg: rgba(253, 252, 240, 0.96);
+  --main-color: #00bcd4;
+  --secondary-color: #c17e61;
+  --text-color: #3d2b1f;
+  --text-color-primary: #2d1b0d;
+  --secondary-text-color: #5b6e7a;
+  --text-color-secondary: #5b6e7a;
+  --border-color: rgba(0, 188, 212, 0.15);
+  --input-color: rgba(255, 255, 255, 0.8);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;
 }
@@ -203,11 +203,11 @@ html.theme-stitch {
 
 /* Theme Gradient Tokens */
 :root {
-  --gradient-obsidian: linear-gradient(135deg, #1a1a24, #212130, #2a2a3d);
+  --gradient-talan: linear-gradient(135deg, #0d0b0a, #b8860b, #161210);
   --gradient-fluorite: linear-gradient(135deg, #2a0a4a, #1c0e3a, #0a2a40);
   --gradient-earth: linear-gradient(135deg, #051a0e, #d97706, #0b2f20);
   --gradient-nacar: linear-gradient(135deg, #fdfcf0, #f4fae8, #eef9e4);
-  --gradient-tehu: linear-gradient(135deg, #fdfafa, #f6efe8, #eff6ec);
+  --gradient-aqua: linear-gradient(135deg, #fdfcf0, #00bcd4, #c17e61);
   --gradient-cherry: linear-gradient(135deg, #f0f7ff, #ffdce0, #ffffff);
   --gradient-stitch: linear-gradient(135deg, #13171f, #1C212D, #1e3a5f);
   --gradient-studio: linear-gradient(135deg, #000000, #18181B, #09090B);
