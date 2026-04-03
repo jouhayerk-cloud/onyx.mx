@@ -16,33 +16,80 @@
   z-index: 1;
 }
 
-/* Global Animated Gradient Background */
+/* Global Liquid Gradient Background */
 .animate-gradient-bg {
-  background: linear-gradient(-45deg, 
-    var(--c1, #0a0a0f), 
-    var(--c2, #1a1a24), 
-    var(--c3, #161622), 
-    var(--c1, #0a0a0f)
-  );
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2;
+  background-color: var(--app-bg-solid, #0a0a0f);
+  overflow: hidden;
+}
+
+.liquid-blob {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.25;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Light themes need multiply/overlay for blobs on light bg */
+html:not([class*='theme-talan']):not([class*='theme-fluorite']):not([class*='theme-earth']):not([class*='theme-stitch']) .liquid-blob {
+  mix-blend-mode: multiply;
+  opacity: 0.15;
+}
+
+.blob-1 {
+  background: radial-gradient(circle, var(--c1, #00bcd4), transparent 70%);
+  top: -20%;
+  left: -20%;
+  animation: move-blob-1 25s infinite alternate ease-in-out;
+}
+
+.blob-2 {
+  background: radial-gradient(circle, var(--c2, #b8860b), transparent 70%);
+  bottom: -20%;
+  right: -20%;
+  animation: move-blob-2 35s infinite alternate-reverse ease-in-out;
+}
+
+.blob-3 {
+  background: radial-gradient(circle, var(--c3, #8da388), transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation: move-blob-3 45s infinite alternate ease-in-out;
 }
 
 .static-bg {
   background-color: var(--app-bg-solid, #0a0a0f);
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+@keyframes move-blob-1 {
+  from { transform: translate(0, 0) scale(1) rotate(0deg); }
+  to { transform: translate(30%, 20%) scale(1.3) rotate(15deg); }
+}
+
+@keyframes move-blob-2 {
+  from { transform: translate(0, 0) scale(1.2) rotate(0deg); }
+  to { transform: translate(-25%, -35%) scale(0.9) rotate(-20deg); }
+}
+
+@keyframes move-blob-3 {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(15%, -15%) scale(1.4); }
 }
 
 .gradient-overlay-scrim {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%);
-  z-index: 1;
+  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.2) 100%);
+  z-index: 10;
+  pointer-events: none;
 }
 
 .sidebar {

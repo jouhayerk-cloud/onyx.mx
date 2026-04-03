@@ -146,11 +146,11 @@ html.theme-aqua {
   --sidebar-bg: rgba(253, 252, 240, 0.96);
   --main-color: #00bcd4;
   --secondary-color: #c17e61;
-  --text-color: #3d2b1f;
-  --text-color-primary: #2d1b0d;
-  --secondary-text-color: #5b6e7a;
-  --text-color-secondary: #5b6e7a;
-  --border-color: rgba(0, 188, 212, 0.15);
+  --text-color: #1a1614;
+  --text-color-primary: #0a0808;
+  --secondary-text-color: #435159;
+  --text-color-secondary: #435159;
+  --border-color: rgba(0, 188, 212, 0.25);
   --input-color: rgba(255, 255, 255, 0.8);
   --glass-bg: rgba(255, 255, 255, 0.4);
   color-scheme: light;
