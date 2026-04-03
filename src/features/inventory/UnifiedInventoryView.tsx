@@ -328,13 +328,39 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                 
                 {(() => {
                     const total = mediaUrls.length;
-                    const gridCols = total <= 2 ? 'grid-cols-2' : total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
                     const displayCount = 24;
                     const visibleUrls = mediaUrls.slice(0, displayCount);
                     const remaining = total - displayCount;
+                    
+                    // Dynamic Grid Configuration - Fixed Aspect Ratio for few images (Landscape/Portrait)
+                    if (total === 1) {
+                        return (
+                            <div className="relative w-full bg-black/40 overflow-hidden cursor-pointer"
+                                 onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}>
+                                <img src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 hover:scale-105" />
+                                {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
+                            </div>
+                        );
+                    }
+                    
+                    if (total <= 3) {
+                        return (
+                            <div className={`grid gap-px bg-black/40 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                {visibleUrls.map((url, i) => (
+                                    <div key={i} className="relative overflow-hidden cursor-pointer bg-black/20"
+                                         onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
+                                        <img src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 hover:scale-110" />
+                                        {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={24} className="text-white/60" /></div>}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    }
+
+                    const gridCols = total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
 
                     return (
-                        <div className={`grid gap-0.5 bg-black/40 ${gridCols}`} style={{ aspectRatio: total > 6 ? (total > 18 ? 'auto' : '16/9') : '1/1' }}>
+                        <div className={`grid gap-px bg-black/40 ${gridCols}`} style={{ aspectRatio: total > 6 ? (total > 18 ? 'auto' : '16/9') : '4/3' }}>
                             {visibleUrls.map((url, i) => (
                                 <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
                                      onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
@@ -356,17 +382,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
                 <div className="p-5 flex flex-col gap-3">
                     <div className="flex justify-between items-start">
-                        <div className="flex flex-col gap-1">
-                            <h3 className="font-black text-lg text-white leading-tight uppercase truncate max-w-[220px]">{norm.shape || 'OBJECT'}</h3>
-                            <div className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">{norm.shortDescription || 'Artifact'}</div>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                             <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
-                             <div className="flex gap-1.5">
-                                 <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
-                                 <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
+                        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                             <div className="flex items-center gap-2">
+                                <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                                <div className="flex gap-1">
+                                     <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
+                                     <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
+                                </div>
                              </div>
+                             <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight mt-1 truncate">{norm.shape || 'OBJECT'}</h3>
+                             <div className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">{norm.shortDescription || 'Artifact'}</div>
                         </div>
+                        <span className="text-2xl font-mono font-black text-(--main-color) ml-4 whitespace-nowrap">${Math.ceil(Number(norm.price || 0)).toLocaleString()}</span>
                     </div>
                     
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
@@ -641,27 +668,32 @@ export const UnifiedInventoryView = () => {
             if (vendorFilter !== 'All' && vPre !== vendorFilter) return false;
             const cat = `${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.trim();
             if (categoryFilter !== 'All' && cat !== categoryFilter) return false;
-            const mat = `${item.data.color || ''} ${item.data.material || ''}`.trim();
-            if (materialFilter !== 'All' && mat !== materialFilter) return false;
+            const matRaw = `${(item.data.color || '').trim()} ${(item.data.material || '').trim()}`.trim();
+            if (materialFilter !== 'All' && matRaw.toLowerCase() !== materialFilter.toLowerCase()) return false;
             if (searchTerm) {
-                const terms = searchTerm.toLowerCase().split(' ').filter(Boolean);
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
-                const standardSearchStr = `${itemId} ${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''} ${item.data.color || ''} ${item.data.material || ''}`.toLowerCase();
-                
-                // If the search string looks like a list of IDs (e.g. SU32622HL SU32623EF)
-                // We check if the current item's ID matches ANY of the terms.
-                const isPossibleIdList = terms.every(t => t.length >= 4);
-                
-                if (isPossibleIdList) {
-                    const matchesId = terms.some(t => itemId.includes(t));
-                    if (!matchesId) {
-                        // If it doesn't match ID, we fallback to standard AND logic for all terms
-                        if (!terms.every(t => standardSearchStr.includes(t))) return false;
-                    }
-                } else {
-                    // Standard search: all terms must be present somewhere
-                    if (!terms.every(t => standardSearchStr.includes(t))) return false;
-                }
+                // Build a wide search string including all relevant fields
+                const searchStr = [
+                    itemId,
+                    item.data.shape || '',
+                    item.data.shortDescription || item.data.short_description || '',
+                    item.data.color || '',
+                    item.data.material || '',
+                    String(item.data.price || item.data.price_mxn || ''),
+                    String(item.data.quantity || ''),
+                    String(item.data.widthCm || ''),
+                    String(item.data.heightCm || ''),
+                    String(item.data.lengthCm || ''),
+                    String(item.data.weightKg || ''),
+                ].join(' ').toLowerCase();
+
+                // Space = OR between groups; + = AND within a group
+                const groups = searchTerm.trim().split(/\s+/).filter(Boolean);
+                const matchesAnyGroup = groups.some(group => {
+                    const tokens = group.toLowerCase().split('+').filter(Boolean);
+                    return tokens.every(t => searchStr.includes(t));
+                });
+                if (!matchesAnyGroup) return false;
             }
             return true;
         });
@@ -679,7 +711,7 @@ export const UnifiedInventoryView = () => {
             }
             return sortOrder === 'desc' ? comp : -comp;
         });
-    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter]);
+    }, [items, statusFilter, vendorFilter, searchTerm, sortKey, sortOrder, partialPayIds, user, categoryFilter, materialFilter]);
 
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault(); if (!itemRow || !editData) return; 
@@ -738,7 +770,20 @@ export const UnifiedInventoryView = () => {
 
     const activeVendors = useMemo(() => Array.from(new Set(items.map(i => i.data.itemId?.split('-')[0]).filter(Boolean))).sort(), [items]);
     const activeCategories = useMemo(() => Array.from(new Set(items.map(i => `${i.data.shape || ''} ${i.data.shortDescription || ''}`.trim()).filter(Boolean))).sort(), [items]);
-    const activeMaterials = useMemo(() => Array.from(new Set(items.map(i => `${i.data.color || ''} ${i.data.material || ''}`.trim()).filter(Boolean))).sort(), [items]);
+    // Deduplicate materials cross-vendor: normalize color+material to lowercase for dedup, then Title Case
+    const activeMaterials = useMemo(() => {
+        const normalized = new Map<string, string>(); // key=lowercase, value=display
+        items.forEach(i => {
+            const raw = `${(i.data.color || '').trim()} ${(i.data.material || '').trim()}`.trim();
+            if (!raw) return;
+            const key = raw.toLowerCase();
+            if (!normalized.has(key)) {
+                const display = raw.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                normalized.set(key, display);
+            }
+        });
+        return Array.from(normalized.values()).sort();
+    }, [items]);
     
     useEffect(() => {
         setGlobalActiveVendors(activeVendors);
@@ -756,92 +801,127 @@ export const UnifiedInventoryView = () => {
     useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
     const toggleExpandCard = (id: string) => setExpandedCards(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
-            <div className="z-40 flex items-center justify-between px-6 py-3 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
-                <div className="flex items-center gap-6">
-                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
-                    <div className="w-px h-6 bg-white/5" />
-                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
-                    <div className="w-px h-6 bg-white/5" />
-                    <div className="flex flex-col"><div className={lbl + " mb-0"}>Total {showFinancials ? 'MXN' : ''}</div><div className="text-xl font-bold text-(--main-color) leading-none">{showFinancials ? `$${totalValueMXN.toLocaleString()}` : '***'}</div></div>
+            {/* ── INFO PANEL ── */}
+            <div className="z-40 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
+                {/* Row 1: Stats + Actions */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 gap-3 overflow-x-auto no-scrollbar">
+                    {/* Left: Stats */}
+                    <div className="flex items-center gap-4 shrink-0">
+                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
+                        <div className="w-px h-6 bg-white/5" />
+                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
+                        <div className="w-px h-6 bg-white/5" />
+                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Total {showFinancials ? 'MXN' : ''}</div><div className="text-xl font-bold text-(--main-color) leading-none">{showFinancials ? `$${totalValueMXN.toLocaleString()}` : '***'}</div></div>
+                    </div>
+
+                    {/* Center: Sort By pills (always visible) */}
+                    <div className="hidden md:flex items-center gap-2 flex-1 justify-center">
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 shrink-0">Sort</span>
+                        {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: '#' }].map((o) => (
+                            <button key={o.key}
+                                onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
+                                className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${sortKey === o.key ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
+                                {o.label}
+                                {sortKey === o.key && <span className="opacity-70">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Right: Status filter + Selection actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isSelectionMode && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 animate-in fade-in slide-in-from-right-2">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SEL</span>
+                                <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:underline ml-1">CLR</button>
+                            </div>
+                        )}
+                        {/* Payment Status cycle button */}
+                        <button
+                            onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                            title="Cycle payment status filter">
+                            <div className={`w-2.5 h-2.5 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
+                            <span className="text-[9px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter}</span>
+                        </button>
+                        <button
+                            onClick={handleCopyShareLink}
+                            className={`flex items-center gap-2 px-3 h-9 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/30 hover:text-white hover:bg-white/10 border border-white/10'}`}>
+                            <Share2 size={13} strokeWidth={2.5} />
+                            <span className="hidden sm:inline">{isSelectionMode ? 'Copy Link' : 'Share'}</span>
+                        </button>
+                        <button
+                            onClick={() => { setIsSelectionMode(!isSelectionMode); if (!isSelectionMode) setSelectedIds([]); }}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-all border ${isSelectionMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/5 text-white/40 hover:text-white'}`}
+                            title={isSelectionMode ? "Exit Selection Mode" : "Select Items"}>
+                            {isSelectionMode ? <X size={16} /> : <Check size={16} />}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {isSelectionMode && (
-                        <div className="flex items-center gap-2 mr-4 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 animate-in fade-in slide-in-from-right-2">
-                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
-                            <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:underline ml-2">Clear</button>
-                        </div>
-                    )}
-                    <button onClick={() => setViewMode(viewMode === 'list' ? 'grid' : viewMode === 'grid' ? 'gallery' : 'list')}
-                        className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-95 group mr-2"
-                        title={`Current View: ${viewMode.toUpperCase()} (Click to cycle)`}>
-                        {viewMode === 'list' ? <LayoutList size={16} className="text-(--main-color)" /> : viewMode === 'grid' ? <LayoutGrid size={16} className="text-(--main-color)" /> : <Layout size={16} className="text-(--main-color)" />}
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/60 group-hover:text-white">{viewMode}</span>
-                    </button>
-                    <button 
-                        onClick={handleCopyShareLink}
-                        className={`flex items-center gap-2 px-4 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 border border-white/10'}`}
-                    >
-                        <Share2 size={14} strokeWidth={2.5} />
-                        <span>{isSelectionMode ? 'Copy Selection Link' : 'Share View'}</span>
-                    </button>
-                    <button 
-                        onClick={() => {
-                            setIsSelectionMode(!isSelectionMode);
-                            if (!isSelectionMode) setSelectedIds([]);
-                        }}
-                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border ${isSelectionMode ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/5 text-white/40 hover:text-white'}`}
-                        title={isSelectionMode ? "Exit Selection Mode" : "Select Items to Share"}
-                    >
-                        {isSelectionMode ? <X size={18} /> : <Check size={18} />}
-                    </button>
-                </div>
+                {/* Row 2: Active filter bubbles (animated, only when filters are set) */}
+                {(vendorFilter !== 'All' || categoryFilter !== 'All' || materialFilter !== 'All') && (
+                    <div className="flex items-center gap-2 px-4 sm:px-6 pb-2.5 flex-wrap">
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mr-1">Active:</span>
+                        {vendorFilter !== 'All' && (
+                            <button onClick={() => setVendorFilter('All')}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/10 border border-white/20 text-white/70 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
+                                {vendorFilter}
+                                <X size={10} strokeWidth={3} className="opacity-50 group-hover:opacity-100" />
+                            </button>
+                        )}
+                        {categoryFilter !== 'All' && (
+                            <button onClick={() => setCategoryFilter('All')}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/10 border border-white/20 text-white/70 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
+                                <Layers size={9} className="opacity-60" />
+                                {categoryFilter.length > 20 ? categoryFilter.slice(0, 20) + '…' : categoryFilter}
+                                <X size={10} strokeWidth={3} className="opacity-50 group-hover:opacity-100" />
+                            </button>
+                        )}
+                        {materialFilter !== 'All' && (
+                            <button onClick={() => setMaterialFilter('All')}
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/10 border border-white/20 text-white/70 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
+                                <Box size={9} className="opacity-60" />
+                                {materialFilter.length > 22 ? materialFilter.slice(0, 22) + '…' : materialFilter}
+                                <X size={10} strokeWidth={3} className="opacity-50 group-hover:opacity-100" />
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
-            <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${(isFiltersOpen || isSortMenuOpen) ? 'h-16 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                <div className="h-full flex items-center px-6 gap-6 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
-                    <button onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
-                            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 transition-all group">
-                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/10' : statusFilter === 'Partial' ? 'bg-red-500' : statusFilter === 'Requested' ? 'bg-yellow-500' : statusFilter === 'Paid' ? 'bg-green-500' : statusFilter === 'New' ? 'bg-blue-500' : 'bg-white/20'}`} />
-                        <span className="text-[10px] font-black tracking-widest text-white/50 uppercase group-hover:text-white">{statusFilter}</span>
-                    </button>
-                    <div className="w-px h-6 bg-white/10" />
-                    <div className="ml-auto flex items-center gap-6">
-                        {isSortMenuOpen && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mr-2">Sort By</span>
-                                {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: 'Number' }].map((o) => (
-                                    <button key={o.key} onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortKey === o.key ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40'}`}>{o.label}</button>
-                                ))}
-                            </div>
-                        )}
-                        {(isSortMenuOpen && isFiltersOpen) && <div className="w-px h-6 bg-white/10" />}
-                        {isFiltersOpen && (
-                            <div className="flex items-center gap-3">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mr-1">Discovery</span>
-                                <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`p-2 rounded-xl transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40'}`}><Tag size={16} /></button>
-                                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`p-2 rounded-xl transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Layers size={16} /></button>
-                                <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`p-2 rounded-xl transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40'}`}><Box size={16} /></button>
-                            </div>
-                        )}
+            {/* ── DEPLOY PANEL: Filter sub-panel (only when FILTERS is ON) ── */}
+            <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'max-h-14 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                <div className="flex items-center px-4 sm:px-6 gap-3 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl h-12">
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0">Filters</span>
+                    <div className="w-px h-5 bg-white/10 shrink-0" />
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isVendorFilterOpen ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                            <Tag size={12} /> Vendor
+                        </button>
+                        <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isCategoryOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                            <Layers size={12} /> Type
+                        </button>
+                        <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isMaterialOpen ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>
+                            <Box size={12} /> Material
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+            {/* ── DEPLOYED FILTER BARS (only show when isFiltersOpen) ── */}
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isVendorFilterOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Vendors</span>
-                    <button onClick={() => setVendorFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black shadow-lg shadow-black/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Vendor</span>
+                    <button onClick={() => setVendorFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
                     {activeVendors.map(v => {
                         const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
                         const isActive = vendorFilter === v;
                         return (
-                            <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${isActive ? 'text-black border-transparent shadow-lg shadow-black/20' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                            <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                                 {v}
                             </button>
                         );
@@ -849,22 +929,22 @@ export const UnifiedInventoryView = () => {
                 </div>
             </div>
 
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isCategoryOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Type</span>
-                    <button onClick={() => setCategoryFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Type</span>
+                    <button onClick={() => setCategoryFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
                     {activeCategories.map(c => (
-                        <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{c}</button>
+                        <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{c}</button>
                     ))}
                 </div>
             </div>
 
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isMaterialOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
                 <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-4">Material</span>
-                    <button onClick={() => setMaterialFilter('All')} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Material</span>
+                    <button onClick={() => setMaterialFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
                     {activeMaterials.map(m => (
-                        <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${materialFilter === m ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{m}</button>
+                        <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{m}</button>
                     ))}
                 </div>
             </div>
@@ -881,8 +961,8 @@ export const UnifiedInventoryView = () => {
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
                     ) : (
                         filteredItems.map(item => {
-                            const mediaCount = (item.data.mediaUrls || '').split(',').map((u: string) => u.trim()).filter(Boolean).length;
-                            const isLarge = mediaCount >= 4 && mediaCount < 10;
+                            const mediaCount = ((item.data.generatedPngUrl ? item.data.generatedPngUrl + ',' : '') + (item.data.mediaUrls || '')).split(',').map((u: string) => u.trim()).filter(Boolean).length;
+                            const isLarge = mediaCount >= 1 && mediaCount < 10;
                             const isFull = mediaCount >= 10;
                             
                             return (

@@ -251,7 +251,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const mediaUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
                                         const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
                                         const mediaCount = displayUrls.length;
-                                        const isLarge = mediaCount >= 4 && mediaCount < 10;
+                                        const isLarge = mediaCount >= 1 && mediaCount < 10;
                                         const isFull = mediaCount >= 10;
                                         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
@@ -260,13 +260,65 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                             <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
                                                 {(() => {
                                                     const total = displayUrls.length;
-                                                    const gridCols = total <= 2 ? 'grid-cols-2' : total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
                                                     const displayCount = 24;
                                                     const visibleUrls = displayUrls.slice(0, displayCount);
                                                     const remaining = total - displayCount;
+                                                    
+                                                    // Dynamic Grid Configuration - Full Aspect Ratio for few images
+                                                    if (total === 1) {
+                                                        return (
+                                                            <div className="relative w-full bg-black/20 overflow-hidden cursor-pointer">
+                                                                <img src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 group-hover:scale-105" />
+                                                                {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
+                                                                <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
+                                                                    <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
+                                                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                                                        {getStatusLabel(payStatus || '')}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                                                            {calculated.bookBardcode}
+                                                                        </div>
+                                                                        <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
+                                                                        <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    
+                                                    if (total <= 3) {
+                                                        return (
+                                                            <div className={`grid gap-px bg-black/20 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                                                                {visibleUrls.map((url, i) => (
+                                                                    <div key={i} className="relative overflow-hidden cursor-pointer bg-black/10">
+                                                                        <img src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 group-hover:scale-110" />
+                                                                        {i === 0 && (
+                                                                            <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
+                                                                                <div className="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: accentColor }}>
+                                                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
+                                                                                    {getStatusLabel(payStatus || '')}
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                                                                        {calculated.bookBardcode}
+                                                                                    </div>
+                                                                                    <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
+                                                                                    <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                        {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={24} className="text-white/60" /></div>}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    const gridCols = total <= 6 ? 'grid-cols-3' : total <= 12 ? 'grid-cols-4 md:grid-cols-4' : 'grid-cols-4 md:grid-cols-6';
 
                                                     return (
-                                                        <div className={`grid gap-0.5 bg-black/20 ${gridCols}`}>
+                                                        <div className={`grid gap-px bg-black/20 ${gridCols}`}>
                                                             {visibleUrls.map((url, i) => (
                                                                 <div key={i} className={`relative overflow-hidden aspect-square cursor-pointer`}>
                                                                     <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
@@ -276,14 +328,12 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}` }} />
                                                                                 {getStatusLabel(payStatus || '')}
                                                                             </div>
-                                                                            <div className="flex flex-col gap-2">
+                                                                            <div className="flex items-center gap-2">
                                                                                 <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 inline-flex" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
                                                                                     {calculated.bookBardcode}
                                                                                 </div>
-                                                                                <div className="flex gap-2">
-                                                                                    <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
-                                                                                    <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
-                                                                                </div>
+                                                                                <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookAqCode}</div>
+                                                                                <div className="px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{calculated.bookLandCode}</div>
                                                                             </div>
                                                                         </div>
                                                                     )}

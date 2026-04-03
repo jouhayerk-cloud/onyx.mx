@@ -75,7 +75,7 @@ import {
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe, DollarSign,
     OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter,
-    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink
+    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout
 } from 'lucide-react';
 
 declare const __APP_VERSION__: string;
@@ -255,20 +255,25 @@ const InventoryBar: React.FC = () => {
     const [isSortOpen, setIsSortOpen] = useAtom(isInventorySortMenuOpenAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    const cycleView = () => setViewMode(v => v === 'list' ? 'grid' : v === 'grid' ? 'gallery' : 'list');
+    const ViewIcon = viewMode === 'list' ? LayoutList : viewMode === 'grid' ? LayoutGrid : Layout;
+    const viewLabel = viewMode === 'list' ? 'LIST' : viewMode === 'grid' ? 'GRID' : 'GALLERY';
+
     return (
         <>
-            <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+            <div className={`flex flex-1 items-center gap-1 min-w-0 overflow-x-auto no-scrollbar ${isSearchOpen ? '' : 'sm:gap-2'}`}>
                 <DeployableSearch 
                     value={search} 
                     onChange={setSearch} 
                     isOpen={isSearchOpen} 
                     setIsOpen={setIsSearchOpen} 
                     accentColor="var(--color-inventory)"
-                    placeholder="FIND ITEMS..."
+                    placeholder="EM+GREEN+CYL  SU+WHITE..."
                 />
 
                 {!isSearchOpen && (
-                    <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                    <div className="flex items-center gap-0.5 shrink-0 animate-in fade-in duration-300">
                         <StudioAction 
                             icon={Filter} 
                             label="FILTERS"
@@ -277,7 +282,7 @@ const InventoryBar: React.FC = () => {
                             color="var(--color-inventory)"
                         />
 
-                        <div className="w-px h-5 bg-white/5 mx-1" />
+                        <div className="w-px h-5 bg-white/5 mx-0.5" />
 
                         <StudioAction 
                             icon={ArrowUpDown} 
@@ -287,12 +292,14 @@ const InventoryBar: React.FC = () => {
                             color="var(--color-inventory)"
                         />
 
-                        <div className="w-px h-5 bg-white/5 mx-1 hidden sm:block" />
+                        <div className="w-px h-5 bg-white/5 mx-0.5 hidden sm:block" />
 
                         <StudioAction 
-                            icon={viewMode === 'grid' ? List : LayoutGrid}
-                            label={viewMode === 'grid' ? 'LIST' : 'GRID'}
-                            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                            icon={ViewIcon}
+                            label={viewLabel}
+                            active={true}
+                            onClick={cycleView}
+                            color="var(--color-inventory)"
                         />
                     </div>
                 )}
