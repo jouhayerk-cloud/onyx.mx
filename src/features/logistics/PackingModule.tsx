@@ -888,10 +888,22 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                 <div className="flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full bg-black/20" />
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     <span className="px-2 py-0.5 rounded-sm text-black text-[10px] font-black uppercase shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
                                         {item.codes.bookBardcode}
                                     </span>
+                                    {/* Floating Copy Icon - Now outside QR container */}
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
+                                            toast.success('Link Copied');
+                                        }}
+                                        className="p-1.5 bg-black/[0.03] hover:bg-blue-500 hover:text-white rounded-md text-black/30 transition-all"
+                                        title="Copy Trace Link"
+                                    >
+                                        <Copy size={12} />
+                                    </button>
                                 </div>
                             </div>
 
@@ -912,25 +924,15 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                 </div>
 
                                 {/* QR Column */}
-                                <div className="flex-none flex flex-col items-center justify-center p-3 bg-black/[0.01] rounded-none min-w-[120px] relative">
+                                <div className="flex-none flex flex-col items-center justify-center p-3 bg-black/[0.01] rounded-none min-w-[160px] relative">
                                     <div className="p-1.5 bg-white border border-black/5 rounded-none shadow-sm">
                                         <QRCodeCanvas 
                                             value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`}
-                                            size={70}
+                                            size={130}
                                             level="H"
                                             includeMargin={false}
                                         />
                                     </div>
-                                    <button 
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
-                                            toast.success('Link Copied');
-                                        }}
-                                        className="mt-2.5 flex items-center gap-1 text-[8px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest transition-all p-1"
-                                        title="Copy Trace Link"
-                                    >
-                                        <Copy size={10} /> COPY
-                                    </button>
                                 </div>
                             </div>
                             
