@@ -81,13 +81,10 @@ import {
 declare const __APP_VERSION__: string;
 
 const themes = [
-    { name: 'obsidian', gradient: 'var(--gradient-obsidian)' },
+    { name: 'marble', gradient: 'var(--gradient-obsidian)' },
     { name: 'fluorite', gradient: 'var(--gradient-fluorite)' },
-    { name: 'earth', gradient: 'var(--gradient-earth)' },
     { name: 'nacar', gradient: 'var(--gradient-nacar)' },
-    { name: 'tehu', gradient: 'var(--gradient-tehu)' },
-    { name: 'cherry', gradient: 'var(--gradient-cherry)' },
-    { name: 'stitch', gradient: 'var(--gradient-stitch)' },
+    { name: 'tehuacan', gradient: 'var(--gradient-tehu)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
@@ -959,53 +956,56 @@ export function MainHeader() {
                             {/* Backdrop */}
                             <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
                             {/* Panel */}
-                            <div className="fixed top-16 right-6 w-72 bg-(--background-color)/90 backdrop-blur-2xl border border-(--text-color)/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-5 z-9999 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl rounded-none shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
 
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.25em] text-(--main-color)">Settings</span>
-                                    <button onClick={() => setIsSettingsOpen(false)} className="w-6 h-6 flex items-center justify-center rounded-full bg-(--text-color)/5 hover:bg-(--text-color)/10 text-(--text-color) opacity-30 hover:opacity-100 transition-all">
-                                        <X size={12} />
-                                    </button>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/30">Settings</span>
+                                    <div className="flex items-center gap-4">
+                                        <button 
+                                            onClick={() => setPerformanceMode(!performanceMode)} 
+                                            className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-white/20 hover:text-white/40'}`}
+                                            title="Performance Mode"
+                                        >
+                                            <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
+                                        </button>
+                                        <button onClick={() => setIsSettingsOpen(false)} className="text-white/20 hover:text-white transition-all transform hover:rotate-90">
+                                            <X size={14} strokeWidth={3} />
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* Language */}
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Language</span>
-                                    <button onClick={() => setLanguage(l => l === 'en' ? 'es' : 'en')} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group">
-                                        <Globe size={15} strokeWidth={1.75} className="text-(--text-color) opacity-40 group-hover:opacity-70 transition-opacity" />
-                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70">Display Language</span>
-                                        <span className="text-[10px] uppercase font-black bg-(--text-color)/10 px-2.5 py-1 rounded-lg text-(--text-color) opacity-60">{language === 'en' ? 'EN' : 'ES'}</span>
-                                    </button>
-                                </div>
+                                {/* Primary Action: REFRESH */}
+                                <button 
+                                    onClick={handleRefresh} 
+                                    className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group rounded-none"
+                                >
+                                    <RefreshCw size={28} strokeWidth={1.5} className="text-white/40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
+                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/60">Refresh Sync</span>
+                                </button>
 
-                                {/* Appearance — Theme + Performance */}
-                                <div className="flex flex-col gap-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Appearance</span>
-                                    <div className="grid grid-cols-6 gap-2">
+                                {/* Appearance Row */}
+                                <div className="flex flex-col gap-4">
+                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 border-b border-white/5 pb-1 w-fit">Appearance</span>
+                                    <div className="grid grid-cols-4 gap-2">
                                         {themes.map(th => (
                                             <button key={th.name} onClick={() => setTheme(th.name)}
-                                                className={`w-8 h-8 rounded-xl cursor-pointer transition-all hover:scale-110 border ${theme === th.name ? 'border-(--main-color) ring-2 ring-(--main-color)/30 scale-110 shadow-lg' : 'border-(--text-color)/10 hover:border-(--text-color)/20'}`}
-                                                style={{ background: th.gradient }} title={th.name} />
+                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
+                                                style={{ background: th.gradient }} title={th.name} 
+                                            >
+                                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 transition-opacity">
+                                                    <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
+                                                </span>
+                                            </button>
                                         ))}
                                     </div>
-                                    <button onClick={() => setPerformanceMode(!performanceMode)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group mt-1">
-                                        <Zap size={15} strokeWidth={1.75} className={`transition-colors ${performanceMode ? 'text-yellow-400' : 'text-(--text-color) opacity-40 group-hover:opacity-70'}`} />
-                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70">Performance Mode</span>
-                                        <span className={`text-[10px] uppercase font-black px-2.5 py-1 rounded-lg transition-colors ${performanceMode ? 'bg-yellow-400/20 text-yellow-400' : 'bg-(--text-color)/10 text-(--text-color) opacity-40'}`}>{performanceMode ? 'ON' : 'OFF'}</span>
-                                    </button>
                                 </div>
 
-                                {/* Actions */}
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-30">Actions</span>
-                                    <button onClick={handleRefresh} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-(--text-color)/5 hover:bg-(--text-color)/10 border border-(--text-color)/5 transition-all group">
-                                        <RefreshCw size={15} strokeWidth={1.75} className="text-(--text-color) opacity-40 group-hover:opacity-70 transition-opacity" />
-                                        <span className="flex-1 text-xs font-bold text-(--text-color) opacity-70 text-left">Refresh Sync</span>
-                                    </button>
-                                    <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-all group">
-                                        <LogOut size={15} strokeWidth={1.75} className="text-red-500/60 group-hover:text-red-500 transition-colors" />
-                                        <span className="flex-1 text-xs font-bold text-red-500/70 group-hover:text-red-500 text-left transition-colors">Logout Session</span>
+                                {/* Bottom Row: LOGOUT */}
+                                <div className="mt-auto">
+                                    <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
+                                        <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
+                                        <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
                                     </button>
                                 </div>
                             </div>
