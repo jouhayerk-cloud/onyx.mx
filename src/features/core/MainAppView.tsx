@@ -159,6 +159,23 @@ export function MainAppView() {
         const params = new URLSearchParams(window.location.search);
         let updated = false;
 
+        const artifact = params.get('artifact');
+        const ids = params.get('ids');
+
+        if (artifact === 'inventory' && ids) {
+            setInventoryArtifactConfig({
+                isOpen: true,
+                itemIds: ids.split(',').filter(Boolean),
+                title: 'Shared Inventory Items'
+            });
+            // params.delete('artifact'); // Keep as part of the app state if needed, or delete to clean up URL
+            // params.delete('ids');
+            // params.delete('view');
+            // params.delete('selection');
+            // updated = true;
+        }
+
+        // Support Legacy params
         const inventoryIds = params.get('inventoryArtifactIds');
         if (inventoryIds) {
             setInventoryArtifactConfig({

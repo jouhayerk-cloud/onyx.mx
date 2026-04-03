@@ -43,7 +43,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout } from 'lucide-react';
 
 
 const lbl = "text-[9px] font-black text-white/30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -318,9 +318,77 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     }
 
     const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
+    
+    if (viewMode === 'gallery') {
+        return (
+            <div className={`group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
+                 style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
+                
+                {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
+                
+                <div className={`grid gap-1 bg-black/40 ${mediaUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`} style={{ aspectRatio: mediaUrls.length > 2 ? '1/1' : '4/3' }}>
+                    {mediaUrls.slice(0, 4).map((url, i) => (
+                        <div key={i} className={`relative overflow-hidden group/galimg ${mediaUrls.length === 3 && i === 0 ? 'row-span-2' : ''}`}
+                             onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
+                            <img src={getCleanImageUrl(url)} className="w-full h-full object-cover transition-transform duration-700 group-hover/galimg:scale-110" />
+                            {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={20} className="text-white/60" /></div>}
+                            {i === 3 && mediaUrls.length > 4 && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                    <span className="text-lg font-black text-white">+{mediaUrls.length - 4}</span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="p-5 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-1">
+                            <h3 className="font-black text-lg text-white leading-tight uppercase truncate max-w-[180px]">{norm.shape || 'OBJECT'}</h3>
+                            <div className="text-[10px] text-white/40 font-black uppercase tracking-[0.2em]">{norm.shortDescription || 'Artifact'}</div>
+                        </div>
+                        <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 py-3 border-y border-white/5">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.15em]">Dimensions</span>
+                            <span className="text-[10px] font-mono text-white/60">{dimensionsStr || '—'}</span>
+                        </div>
+                        <div className="w-px h-6 bg-white/5" />
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.15em]">Weight</span>
+                            <span className="text-[10px] font-mono text-white/60">{weightStr || '—'}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-black text-white">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</span>
+                            <span className="text-[10px] font-mono text-white/30">x{norm.quantity || 1}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {isSelectionMode && (
+                    <div className="absolute top-4 right-4 z-20" onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}>
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/40 border-white/20 backdrop-blur-md'}`}>
+                            {selectedIds.includes(item.row ?? item.data?.id) && <Check size={16} className="text-black" strokeWidth={4} />}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
     return (
         <div className={`group relative flex flex-col rounded-xl overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
-             style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
+             style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" onClick={(e) => { e.stopPropagation(); if (mediaUrls.length > 1) { setCardIdx(p => (p + 1) % mediaUrls.length); } }}>
@@ -438,7 +506,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
     const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-    const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); const [viewMode] = useAtom(inventoryViewModeAtom);
+    const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
@@ -459,8 +527,13 @@ export const UnifiedInventoryView = () => {
         const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
         if (idsToShare.length === 0) return toast.error('No items to share.');
         const idsParam = encodeURIComponent(idsToShare.join(','));
-        const url = `${window.location.origin}${window.location.pathname}?artifact=inventory&ids=${idsParam}`;
-        navigator.clipboard.writeText(url).then(() => toast.success('Share link copied!'));
+        const viewParam = viewMode;
+        const selectionParam = selectedIds.length > 0 ? '&selection=true' : '';
+        const url = `${window.location.origin}${window.location.pathname}?artifact=inventory&ids=${idsParam}&view=${viewParam}${selectionParam}`;
+        
+        navigator.clipboard.writeText(url).then(() => {
+            toast.success(selectedIds.length > 0 ? `Shared ${selectedIds.length} selected items!` : 'Share link copied!');
+        });
     };
 
     const handleToggleSelection = (id: string | number) => {
@@ -528,7 +601,7 @@ export const UnifiedInventoryView = () => {
         const filtered = items.filter(item => {
             if (item.data.is_hidden) return false;
             
-            const status = getStatusClass(item.data, partialPayIds);
+            const status = getStatusClass(item.data, partialPayIds, fullPayIds);
             if (statusFilter !== 'All') {
                 if (statusFilter === 'Partial' && status !== 'RED') return false;
                 if (statusFilter === 'Requested' && status !== 'YELLOW') return false;
@@ -554,15 +627,20 @@ export const UnifiedInventoryView = () => {
             if (searchTerm) {
                 const terms = searchTerm.toLowerCase().split(' ').filter(Boolean);
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
-                const standardSearchStr = `${itemId} ${item.data.shape || ''} ${item.data.shortDescription || ''} ${item.data.color || ''}`.toLowerCase();
+                const standardSearchStr = `${itemId} ${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''} ${item.data.color || ''} ${item.data.material || ''}`.toLowerCase();
                 
-                // If any term matches the Tag ID exactly, or matches as a prefix, we consider it a specific ID search
-                // and allow OR logic for these ID-like terms.
-                const isIdSearch = terms.every(t => t.length >= 4 && (t.startsWith('su') || t.startsWith('mw') || /^[a-z]{2}\d+/.test(t)));
+                // If the search string looks like a list of IDs (e.g. SU32622HL SU32623EF)
+                // We check if the current item's ID matches ANY of the terms.
+                const isPossibleIdList = terms.every(t => t.length >= 4);
                 
-                if (isIdSearch) {
-                    if (!terms.some(t => itemId.includes(t))) return false;
+                if (isPossibleIdList) {
+                    const matchesId = terms.some(t => itemId.includes(t));
+                    if (!matchesId) {
+                        // If it doesn't match ID, we fallback to standard AND logic for all terms
+                        if (!terms.every(t => standardSearchStr.includes(t))) return false;
+                    }
                 } else {
+                    // Standard search: all terms must be present somewhere
                     if (!terms.every(t => standardSearchStr.includes(t))) return false;
                 }
             }
@@ -678,6 +756,23 @@ export const UnifiedInventoryView = () => {
                             <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:underline ml-2">Clear</button>
                         </div>
                     )}
+                    <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 border border-white/5 mr-2">
+                        <button onClick={() => setViewMode('list')}
+                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
+                            title="List View">
+                            <LayoutList size={16} />
+                        </button>
+                        <button onClick={() => setViewMode('grid')}
+                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
+                            title="Grid View">
+                            <LayoutGrid size={16} />
+                        </button>
+                        <button onClick={() => setViewMode('gallery')}
+                            className={`p-2 rounded-lg transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white border border-white/10 shadow-sm' : 'text-white/30 hover:text-white/60'}`}
+                            title="Gallery View">
+                            <Layout size={16} />
+                        </button>
+                    </div>
                     <button 
                         onClick={handleCopyShareLink}
                         className={`flex items-center gap-2 px-4 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 border border-white/10'}`}
@@ -767,8 +862,33 @@ export const UnifiedInventoryView = () => {
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar">
-                <div className={viewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" : "flex flex-col gap-3 pb-20"}>
-                    {isLoading && items.length === 0 ? <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div> : filteredItems.map(item => <UnifiedInventoryCard key={item.row} item={item} isExpanded={expandedCards.has(String(item.row))} onToggleExpand={() => toggleExpandCard(String(item.row))} exchangeRate={exchangeRate} showFinancials={showFinancials} viewMode={viewMode} partialPayIds={partialPayIds} fullPayIds={fullPayIds} onEdit={handleEditItem} financeDocs={financeDocs} />)}
+                <div className={
+                    viewMode === 'grid' 
+                        ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" 
+                        : viewMode === 'gallery' 
+                            ? "columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8 pb-20" 
+                            : "flex flex-col gap-3 pb-20"
+                }>
+                    {isLoading && items.length === 0 ? (
+                        <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
+                    ) : (
+                        filteredItems.map(item => (
+                            <div key={item.row} className={viewMode === 'gallery' ? "break-inside-avoid" : ""}>
+                                <UnifiedInventoryCard 
+                                    item={item} 
+                                    isExpanded={expandedCards.has(String(item.row))} 
+                                    onToggleExpand={() => toggleExpandCard(String(item.row))} 
+                                    exchangeRate={exchangeRate} 
+                                    showFinancials={showFinancials} 
+                                    viewMode={viewMode} 
+                                    partialPayIds={partialPayIds} 
+                                    fullPayIds={fullPayIds} 
+                                    onEdit={handleEditItem} 
+                                    financeDocs={financeDocs} 
+                                />
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
