@@ -251,7 +251,15 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
         norm.widthCm ? `W ${norm.widthCm}` : '',
         norm.heightCm ? `H ${norm.heightCm}` : '',
     ].filter(Boolean).join(' · ') || null;
+
+    const dimensionsInchStr = [
+        norm.lengthCm ? `${(Number(norm.lengthCm) * 0.3937).toFixed(1)}"` : '',
+        norm.widthCm ? `${(Number(norm.widthCm) * 0.3937).toFixed(1)}"` : '',
+        norm.heightCm ? `${(Number(norm.heightCm) * 0.3937).toFixed(1)}"` : '',
+    ].filter(Boolean).join(' × ') || null;
+
     const weightStr = norm.weightKg ? `${norm.weightKg} kg` : null;
+    const weightLbs = norm.weightKg ? (Number(norm.weightKg) * 2.2046).toFixed(1) : null;
 
     const materialLabel = [norm.color, norm.material].filter(Boolean).join(' ') || 'Natural Stone';
     const typeLabel = [norm.shape, norm.shortDescription].filter(Boolean).join(' ') || 'Stone Artifact';
@@ -310,7 +318,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-2 flex-wrap">
                             {/* Vendor barcode tag */}
-                            <div className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-tight text-black" style={{ backgroundColor: vendorColor }}>
+                            <div className="px-6 py-3 rounded-2xl text-base font-black uppercase tracking-tight text-black" style={{ backgroundColor: vendorColor }}>
                                 {codes.bookBardcode || vendorCode}
                             </div>
                             {/* AQ / LD codes */}
@@ -329,7 +337,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                         <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-tight break-words">
                             {typeLabel}
                         </h1>
-                        <p className="text-[11px] font-bold text-white/30 uppercase tracking-[0.25em]">
+                        <p className="text-lg font-bold text-white/60 uppercase tracking-[0.25em]">
                             {materialLabel}
                         </p>
                     </div>
@@ -343,7 +351,8 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Dimensions</span>
-                                    <span className="text-xl font-black text-white font-mono break-all leading-tight">{dimensionsStr} <span className="text-[10px] text-white/40 ml-1">CM</span></span>
+                                    <span className="text-xl font-black text-white font-mono leading-tight">{dimensionsStr} <span className="text-[10px] text-white/40 ml-1">CM</span></span>
+                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{dimensionsInchStr} <span className="text-[9px] opacity-60">IN</span></span>
                                 </div>
                             </div>
                         )}
@@ -355,31 +364,19 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Weight</span>
                                     <span className="text-xl font-black text-white font-mono leading-tight">{weightStr.replace(' kg', '')} <span className="text-[10px] text-white/40 ml-1">KG</span></span>
+                                    <span className="text-xs font-black text-white/30 font-mono mt-1">{weightLbs} <span className="text-[9px] opacity-60">LBS</span></span>
                                 </div>
                             </div>
                         )}
-                        {norm.quantity && Number(norm.quantity) > 1 && (
-                            <div className="flex items-center gap-5">
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
-                                    <Package size={22} strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Inventory</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">× {norm.quantity} <span className="text-[10px] text-white/40 ml-1">Units</span></span>
-                                </div>
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                                <Package size={22} strokeWidth={1.5} />
                             </div>
-                        )}
-                        {item.images.length > 0 && (
-                            <div className="flex items-center gap-5">
-                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
-                                    <Layers size={22} strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Traceability</span>
-                                    <span className="text-xl font-black text-white font-mono leading-tight">{item.images.length} <span className="text-[10px] text-white/40 ml-1">Assets</span></span>
-                                </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] mb-0.5">Quantity</span>
+                                <span className="text-xl font-black text-white font-mono leading-tight">{norm.quantity || 1} <span className="text-[10px] text-white/40 ml-1">Items</span></span>
                             </div>
-                        )}
+                        </div>
                     </div>
 
                     {/* Row 3: Retail price (public, no financials gate) */}
