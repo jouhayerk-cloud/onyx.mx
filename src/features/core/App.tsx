@@ -108,9 +108,13 @@ export default function App() {
 
 
   useEffect(() => {
-
-    const themeClasses = ['theme-obsidian', 'theme-fluorite', 'theme-earth', 'theme-nacar', 'theme-tehu', 'theme-cherry', 'theme-stitch', 'theme-studio'];
-    document.documentElement.classList.remove(...themeClasses);
+    // Robustly remove any existing theme classes
+    const classes = Array.from(document.documentElement.classList);
+    classes.forEach(c => {
+      if (c.startsWith('theme-')) document.documentElement.classList.remove(c);
+    });
+    
+    // Apply new theme
     document.documentElement.classList.add(`theme-${theme}`);
   }, [theme]);
 

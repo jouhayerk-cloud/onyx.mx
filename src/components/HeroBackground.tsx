@@ -11,21 +11,15 @@ import { performanceModeAtom } from '../lib/atoms';
 export const HeroBackground = () => {
     const performanceMode = useAtomValue(performanceModeAtom);
 
+    if (performanceMode) {
+        return <div className="fixed inset-0 bg-(--app-bg-solid) z--2" />;
+    }
+
     return (
-        <div 
-            aria-hidden="true"
-            className={`hero-background-layer ${performanceMode ? 'static-bg' : 'animate-gradient-bg'}`}
-            style={{
-                position: 'fixed',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                pointerEvents: 'none',
-                zIndex: -2,
-                userSelect: 'none',
-                overflow: 'hidden'
-            }}
-        >
+        <div className="fixed inset-0 overflow-hidden z--2 pointer-events-none select-none animate-gradient-bg">
+            <div className="liquid-blob blob-1" />
+            <div className="liquid-blob blob-2" />
+            <div className="liquid-blob blob-3" />
             <div className="gradient-overlay-scrim" />
         </div>
     );
