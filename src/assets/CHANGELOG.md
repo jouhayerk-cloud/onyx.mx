@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.64.6] - 2026-04-03
+### Refined
+- **Identity Hub SVG QR**: Switched to `QRCodeSVG` with `var(--main-color)` overlay for better visibility and theme integration.
+- **Action Row Utility**: Relocated the "Copy Trace Link" utility from the barcode panel to a free-floating icon in the item card action row.
+- **Logistics Integration**: Added a high-density Copy icon next to the Tag ID badge in `PackingModule` rows.
+
+## [1.64.5] - 2026-04-03
+### Changed
+- **Free-Floating Identity QR**: The QR code is now a standalone, theme-colored element (non-white background) for a more integrated aesthetic.
+- **Barcode Panel Optimization**: The high-density white panel now exclusively houses the barcode and its associated metadata (Tag ID, Copy button).
+- **Responsive Hub Refactoring**: Improved the alignment of the Identity Hub components for better mobile and desktop readability.
+### Added
+- **Ultra-High-Density Identity Hub**: Minimalist, square-bordered design for QR and Barcodes.
+- **Maximized Scannability**: Increased barcode thickness and QR dimensions.
+- **Strategic Copy Utility**: Relocated COPY button for zero interference with codes.
+- **Project-wide Standardization**: Unified aesthetics in Inventory and Logistics modules.
+
 ## v1.64.2 (2026-04-03)
 - **Identity Hub Refinement**: Removed "Identity Hub" text labels for a more purely minimalistic aesthetic.
 - **Tag ID Standard**: Enforced a project-wide standard for Tag IDs, showing only alphanumeric barcode IDs (e.g., `AN3261XODD`) and removing legacy dashed formats (e.g., `AN-1LVDFT9U`).
