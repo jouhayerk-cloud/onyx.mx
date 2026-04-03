@@ -1,6 +1,6 @@
 
 
-import { segmentationColors, SCRIPT_URL } from './consts';
+import { segmentationColors, SCRIPT_URL, vendors } from './consts';
 import type { BoundingBoxMaskType } from './Types';
 import type { UserRole } from './atoms';
 
@@ -816,7 +816,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const costUsdRounded    = Math.floor(costUsd);
   const landedCostRounded = Math.floor(landedCost);
 
-  const vendorPrefix = String(norm.vendorId || norm.itemId || '').substring(0, 2).toUpperCase();
+  const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
   const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
 
   const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
@@ -832,6 +832,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBardcode: newTagId,
+    vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
   };
 };
 

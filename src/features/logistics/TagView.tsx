@@ -233,7 +233,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
             </div>
             <div className="flex flex-col gap-3">
                 <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Trace Lost</h1>
-                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] max-w-xs">{tagId} · Artifact trace could not be resolved</p>
+                <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.3em] max-w-xs">{String(tagId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()} · Artifact trace could not be resolved</p>
             </div>
         </div>
     );
@@ -286,7 +286,7 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                 {/* Tag ID badge */}
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: vendorColor }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{tagId}</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">{codes.bookBardcode}</span>
                 </div>
 
                 {/* Actions */}
