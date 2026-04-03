@@ -50,7 +50,7 @@ const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', 
 }) => (
     <div className={`flex items-center justify-between ${isCollapsed ? '' : 'mb-3'}`}>
         <div className="flex items-center gap-2 cursor-pointer group/header" onClick={onToggle}>
-            <div className={`p-1.5 rounded-lg transition-colors ${isCollapsed ? 'bg-white/5' : ''}`} style={{ color: isCollapsed ? '#fff' : color }}>
+            <div className={`p-1.5 rounded-lg transition-colors ${isCollapsed ? 'bg-(--text-color)/5' : ''}`} style={{ color: isCollapsed ? 'var(--text-color)' : color }}>
                 <Icon size={14} strokeWidth={2.5} />
             </div>
             {preTitleContent && (
@@ -65,7 +65,7 @@ const SectionHeader = ({ icon: Icon, title, badge, color = 'var(--main-color)', 
                         <span className="px-1.5 py-0.5 rounded bg-(--text-color)/5 text-[9px] font-black uppercase tracking-widest text-(--text-color-secondary)">{badge}</span>
                     )}
                     {onToggle && (
-                        <div className="text-white/20 group-hover/header:text-white/60 transition-colors">
+                        <div className="text-(--text-color)/20 group-hover/header:text-(--text-color)/60 transition-colors">
                             {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                         </div>
                     )}
@@ -137,15 +137,15 @@ const CompactFinancialsGraph = ({
     return (
         <div className={`flex flex-col ${hideLegend ? (fullWidth ? 'w-full' : '') : 'mt-1 min-w-[340px]'}`}>
             {/* Unified 5-Segment Stacked Bar */}
-            <div className={`relative ${fullWidth ? 'h-6 w-full' : (hideLegend ? 'h-5 w-[140px]' : 'h-6 w-full')} bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner flex`}>
+            <div className={`relative ${fullWidth ? 'h-6 w-full' : (hideLegend ? 'h-5 w-[140px]' : 'h-6 w-full')} bg-(--text-color)/5 rounded-full overflow-hidden border border-(--text-color)/5 shadow-inner flex`}>
                 {sections.map((s, i) => (
                     s.width > 0 && (
                         <div 
                             key={s.label}
-                            className={`h-full transition-all duration-1000 relative overflow-hidden ${i > 0 ? 'border-l border-white/10' : ''}`}
+                            className={`h-full transition-all duration-1000 relative overflow-hidden ${i > 0 ? 'border-l border-(--border-color)' : ''}`}
                             style={{ width: `${s.width}%`, backgroundColor: s.color }}
                         >
-                            <div className="absolute inset-0 bg-linear-to-r from-white/10 to-transparent" />
+                            <div className="absolute inset-0 bg-linear-to-r from-(--text-color)/10 to-transparent" />
                         </div>
                     )
                 ))}
@@ -173,12 +173,12 @@ const CompactFinancialsGraph = ({
             
             {/* Legend & Amount Tags */}
             {!hideLegend && (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 items-center mt-3 pt-2 border-t border-white/5">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 items-center mt-3 pt-2 border-t border-(--text-color)/5">
                     {sections.map(s => (
                         <div key={s.label} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
                             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.color }} />
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{s.label.split(' (')[0]}</span>
-                            <span className="text-[9px] font-mono font-black text-white/90">
+                            <span className="text-[7px] font-black text-(--text-color)/40 uppercase tracking-widest">{s.label.split(' (')[0]}</span>
+                            <span className="text-[9px] font-mono font-black text-(--text-color)/90">
                                 <span className="text-[7px] mr-1 opacity-40">{mode}</span>
                                 {fmt(s.val)}
                             </span>
@@ -208,9 +208,9 @@ const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?:
             <line x1={x0+dx} y1={y0+dy} x2={x0+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
             <line x1={x0+dx} y1={y0+dy} x2={x1+dx} y2={y0+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
             <line x1={x0+dx} y1={y2+dy} x2={x1+dx} y2={y2+dy} stroke={color} strokeWidth="0.7" strokeDasharray="2,2" opacity="0.5" />
-            <polygon points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y0+dy} ${x1},${y0}`} fill="rgba(255,255,255,0.05)" stroke={color} strokeWidth="1" />
-            <polygon points={`${x1},${y0} ${x1+dx},${y0+dy} ${x1+dx},${y2+dy} ${x1},${y2}`} fill="rgba(255,255,255,0.02)" stroke={color} strokeWidth="1" />
-            <rect x={x0} y={y0} width={dw} height={dh} fill="rgba(255,255,255,0.04)" stroke={color} strokeWidth="1.2" />
+            <polygon points={`${x0},${y0} ${x0+dx},${y0+dy} ${x1+dx},${y0+dy} ${x1},${y0}`} fill="var(--text-color)" fillOpacity="0.05" stroke={color} strokeWidth="1" />
+            <polygon points={`${x1},${y0} ${x1+dx},${y0+dy} ${x1+dx},${y2+dy} ${x1},${y2}`} fill="var(--text-color)" fillOpacity="0.02" stroke={color} strokeWidth="1" />
+            <rect x={x0} y={y0} width={dw} height={dh} fill="var(--text-color)" fillOpacity="0.04" stroke={color} strokeWidth="1.2" />
             {type !== 'pallet' && (
                 <>
                     <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.5" opacity="0.3" />
@@ -632,9 +632,9 @@ export const ClientOverview: React.FC = () => {
         const isSmall = size === 'small';
         const displayAmount = typeof amount === 'number' ? amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : amount;
         return (
-            <div className={`inline-flex items-center gap-1 ${isSmall ? 'px-1 py-0' : 'px-1.5 py-0.5'} rounded bg-white/5 border border-white/10 ${className}`}>
+            <div className={`inline-flex items-center gap-1 ${isSmall ? 'px-1 py-0' : 'px-1.5 py-0.5'} rounded bg-(--text-color)/5 border border-(--text-color)/10 ${className}`}>
                 <span className={`${isSmall ? 'text-[7px]' : 'text-[8px]'} font-black uppercase tracking-widest ${isUSD ? 'text-emerald-400' : 'text-sky-400'}`}>{type}</span>
-                <span className={`${isSmall ? 'text-[9px]' : 'text-[11px]'} font-mono font-black text-white/90`}>{displayAmount}</span>
+                <span className={`${isSmall ? 'text-[9px]' : 'text-[11px]'} font-mono font-black text-(--text-color)/90`}>{displayAmount}</span>
             </div>
         );
     };
@@ -651,11 +651,11 @@ export const ClientOverview: React.FC = () => {
     if (isLoading) return (
         <div className="flex flex-col gap-4 p-4 animate-pulse">
             <div className="grid grid-cols-3 gap-3">
-                {[...Array(3)].map((_, i) => <div key={i} className="h-20 rounded-2xl bg-white/5 skeleton" />)}
+                {[...Array(3)].map((_, i) => <div key={i} className="h-20 rounded-2xl bg-(--text-color)/5 skeleton" />)}
             </div>
-            <div className="h-40 rounded-2xl bg-white/5 skeleton" />
+            <div className="h-40 rounded-2xl bg-(--text-color)/5 skeleton" />
             <div className="grid grid-cols-2 gap-3">
-                {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-white/5 skeleton" />)}
+                {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-2xl bg-(--text-color)/5 skeleton" />)}
             </div>
         </div>
     );
@@ -667,7 +667,7 @@ export const ClientOverview: React.FC = () => {
                     
                     {/* ROW 1: Logistics & Financials */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div className={`lg:col-span-2 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isFinancialsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                        <div className={`lg:col-span-2 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isFinancialsCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             {(() => {
                                 const totalPortfolioUsd = globalTotals.totalOpsUsd + globalTotals.totalAcqValueUsd;
                                 const totalPortfolioMxn = globalTotals.totalOpsMxn + (globalTotals.totalAcqValueUsd * currentExchangeRate);
@@ -679,7 +679,7 @@ export const ClientOverview: React.FC = () => {
                                             compactSummary={
                                                 <div className="flex flex-col gap-2 mt-1 min-w-[340px]">
                                                     <div className="flex flex-wrap gap-3 items-center opacity-60">
-                                                        <span className="text-[10px] font-black font-mono text-white/40 uppercase">MX Total</span>
+                                                        <span className="text-[10px] font-black font-mono text-(--text-color)/40 uppercase">MX Total</span>
                                                         <CurrencyTag type="MXN" amount={totalPortfolioMxn} size="small" />
                                                         <CurrencyTag type="USD" amount={totalPortfolioUsd} size="small" className="opacity-40" />
                                                     </div>
@@ -689,9 +689,9 @@ export const ClientOverview: React.FC = () => {
                                         {!isFinancialsCollapsed && (
                                             <>
                                                 <div className="mt-2 animate-in fade-in duration-300">
-                                                    <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-white/5 border border-white/10 shadow-inner overflow-hidden">
+                                                    <div className="group relative flex flex-col p-2.5 mb-3 rounded-xl bg-(--text-color)/5 border border-(--text-color)/10 shadow-inner overflow-hidden">
                                                         <div className="absolute top-0 right-0 w-32 h-32 bg-(--main-color)/5 blur-2xl -mr-16 -mt-16 rounded-full" />
-                                                        <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
+                                                        <span className="text-[7px] font-black text-(--text-color)/20 uppercase tracking-[0.4em] mb-1 relative z-10">Mexico Total:</span>
                                                         
                                                         <div className="flex items-end justify-between relative z-10 leading-none gap-4">
                                                             <div className="flex items-baseline gap-2.5">
@@ -732,12 +732,12 @@ export const ClientOverview: React.FC = () => {
                                                                         }); 
                                                                     }
                                                                 }}
-                                                                className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-white/2 hover:bg-white/5 border-white/5 hover:border-(--main-color)/20'}`}
+                                                                className={`group relative flex flex-col p-2 rounded-lg border transition-all cursor-pointer ${c.standout ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg scale-[1.02]' : c.isTotal ? 'bg-(--main-color)/5 border-(--main-color)/20 shadow-inner' : 'bg-(--text-color)/2 hover:bg-(--text-color)/5 border-(--text-color)/5 hover:border-(--main-color)/20'}`}
                                                             >
                                                                 {c.icon && <div className="absolute top-1.5 right-1.5 opacity-30 group-hover:opacity-100 transition-opacity"><c.icon size={18} style={{ color: c.color }} /></div>}
                                                                 <span className={`${c.standout ? 'text-[11px]' : c.isTotal ? 'text-[8.5px]' : 'text-[10px]'} font-black uppercase tracking-[0.2em] mb-1.5 block w-fit`} style={{ color: c.color }}>{c.label}</span>
                                                                 <div className="flex flex-col leading-none">
-                                                                    <span className={`${c.standout ? 'text-[18px]' : 'text-[14px]'} font-black font-mono text-white tracking-tighter`}>
+                                                                    <span className={`${c.standout ? 'text-[18px]' : 'text-[14px]'} font-black font-mono text-(--text-color) tracking-tighter`}>
                                                                         {currencyMode === 'MXN' ? fmtMXN(c.v.mxn) : fmtUSD(c.v.usd)}
                                                                     </span>
                                                                     <span className={`text-[7px] font-black px-1 rounded w-fit mt-1.5 ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
@@ -756,7 +756,7 @@ export const ClientOverview: React.FC = () => {
                                                         ].map(stat => (
                                                             <div key={stat.label} onClick={stat.action} className={`group relative flex flex-col p-3.5 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all ${stat.action ? 'cursor-pointer active:scale-95' : ''}`}>
                                                                 <div className="absolute top-3 right-3 opacity-30 group-hover:opacity-100 transition-opacity"><stat.icon size={18} style={{ color: stat.color }} /></div>
-                                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
+                                                                <span className="text-[8px] font-black text-(--text-color)/40 uppercase tracking-[0.2em] mb-2">{stat.label}</span>
                                                                 <div className="flex flex-col leading-none">
                                                                     <span className={`font-black font-mono tracking-tighter ${stat.size || 'text-[18px]'}`} style={{ color: stat.color }}>
                                                                         {stat.isCurrency 
@@ -780,7 +780,7 @@ export const ClientOverview: React.FC = () => {
                             })()}
                         </div>
 
-                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isLogisticsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                        <div className={`p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isLogisticsCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Package} title="Storage & Logistics" color="#6BCEBB" 
                                 onToggle={() => setIsLogisticsCollapsed(!isLogisticsCollapsed)} isCollapsed={isLogisticsCollapsed}
@@ -788,20 +788,20 @@ export const ClientOverview: React.FC = () => {
                                     <div className="flex flex-col gap-2 mt-1 min-w-[280px]">
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-[12px] font-black text-white">{globalTotals.totalCratesAndPallets}</span>
-                                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Units</span>
+                                                <span className="text-[12px] font-black text-(--text-color)">{globalTotals.totalCratesAndPallets}</span>
+                                                <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest">Units</span>
                                             </div>
-                                            <div className="h-3 w-px bg-white/10" />
+                                            <div className="h-3 w-px bg-(--text-color)/10" />
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[12px] font-black text-(--main-color)">{globalTotals.packedCrates}</span>
-                                                <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Packed</span>
+                                                <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest">Packed</span>
                                             </div>
                                             <div className="ml-auto flex gap-2">
                                                 <CurrencyTag type="USD" amount={globalTotals.logisticsSpendUsd} size="small" className="scale-90" />
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 h-[3px] bg-white/5 rounded-full overflow-hidden flex">
+                                            <div className="flex-1 h-[3px] bg-(--text-color)/5 rounded-full overflow-hidden flex">
                                                 <div 
                                                     className="h-full bg-(--main-color) transition-all duration-1000 shadow-[0_0_8px_var(--main-color)]" 
                                                     style={{ width: `${(globalTotals.packedCrates / Math.max(1, globalTotals.totalCratesAndPallets)) * 100}%` }} 
@@ -817,10 +817,10 @@ export const ClientOverview: React.FC = () => {
                                     {/* Crate/Pallet Types Grid */}
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                         {globalTotals.groupedLogistics.map((g, idx) => (
-                                            <div key={idx} className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-(--main-color)/30 transition-all overflow-hidden">
+                                            <div key={idx} className="group relative flex flex-col p-3 rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--main-color)/30 transition-all overflow-hidden">
                                                 <div className="absolute top-2 right-2 flex flex-col items-end">
-                                                    <span className="text-[14px] font-black text-white leading-none">{g.count}</span>
-                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5">Stock</span>
+                                                    <span className="text-[14px] font-black text-(--text-color) leading-none">{g.count}</span>
+                                                    <span className="text-[7px] font-black text-(--text-color)/20 uppercase tracking-widest mt-0.5">Stock</span>
                                                 </div>
                                                 
                                                 <div className="flex justify-center py-2 mb-2 group-hover:scale-110 transition-transform duration-500">
@@ -834,12 +834,12 @@ export const ClientOverview: React.FC = () => {
 
                                                 <div className="space-y-1 relative z-10">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{g.type}</span>
-                                                        <span className="text-[10px] font-mono font-black text-white/80">{g.w}x{g.h}x{g.l}</span>
+                                                        <span className="text-[9px] font-black text-(--text-color)/40 uppercase tracking-widest">{g.type}</span>
+                                                        <span className="text-[10px] font-mono font-black text-(--text-color)/80">{g.w}x{g.h}x{g.l}</span>
                                                     </div>
                                                     <div className="flex items-center justify-between pt-1">
-                                                        <span className="text-[8px] font-black text-white/20 uppercase italic">Packed: {g.packed}</span>
-                                                        <div className="flex-1 max-w-[40px] h-1 bg-white/5 rounded-full overflow-hidden ml-2">
+                                                        <span className="text-[8px] font-black text-(--text-color)/20 uppercase italic">Packed: {g.packed}</span>
+                                                        <div className="flex-1 max-w-[40px] h-1 bg-(--text-color)/5 rounded-full overflow-hidden ml-2">
                                                             <div className="h-full bg-(--main-color)" style={{ width: `${(g.packed / g.count) * 100}%` }} />
                                                         </div>
                                                     </div>
@@ -849,8 +849,8 @@ export const ClientOverview: React.FC = () => {
                                     </div>
 
                                     {/* Detailed Logistics Stats */}
-                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
-                                        <div className="flex flex-col p-3 rounded-xl bg-white/2 border border-white/5">
+                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-(--text-color)/5">
+                                        <div className="flex flex-col p-3 rounded-xl bg-(--text-color)/2 border border-(--text-color)/5">
                                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Item Packing Fill</span>
                                             <div className="flex items-end justify-between leading-none">
                                                 <span className="text-[22px] font-black font-mono text-white">{globalTotals.packedItems}</span>
@@ -860,8 +860,8 @@ export const ClientOverview: React.FC = () => {
                                                 <div className="h-full bg-(--main-color) transition-all duration-1000" style={{ width: `${(globalTotals.packedItems / Math.max(1, globalTotals.totalItems)) * 100}%` }} />
                                             </div>
                                         </div>
-                                        <div className="flex flex-col p-3 rounded-xl bg-white/2 border border-white/5">
-                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-2">Logistics Investment</span>
+                                        <div className="flex flex-col p-3 rounded-xl bg-(--text-color)/2 border border-(--text-color)/5">
+                                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-widest mb-2">Logistics Investment</span>
                                             <div className="space-y-2 mt-auto">
                                                 <CurrencyTag type="USD" amount={globalTotals.logisticsSpendUsd} />
                                                 <CurrencyTag type="MXN" amount={globalTotals.logisticsSpendMxn} className="opacity-40" />
@@ -875,14 +875,14 @@ export const ClientOverview: React.FC = () => {
 
                     {/* ROW 2: Queue & Upcoming */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div className={`md:col-span-9 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                        <div className={`md:col-span-9 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isQueueCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Activity} title="Active Request Queue" color="#F43F5E" 
                                 onToggle={() => setIsQueueCollapsed(!isQueueCollapsed)} isCollapsed={isQueueCollapsed}
                                 compactSummary={
                                     <div className="flex flex-wrap gap-3 items-center">
                                         <span className="text-[12px] font-black text-rose-500">{requisitions.length} <span className="opacity-30 text-[8px] uppercase">Dests</span></span>
-                                        <div className="h-3 w-px bg-white/10" />
+                                        <div className="h-3 w-px bg-(--text-color)/10" />
                                         <CurrencyTag type="USD" amount={activeDestReqNetMXN / currentExchangeRate} className="scale-90 origin-left" />
                                         <CurrencyTag type="MXN" amount={activeDestReqNetMXN} className="opacity-40 scale-90 origin-left" />
                                     </div>
@@ -890,19 +890,19 @@ export const ClientOverview: React.FC = () => {
                             />
                             {!isQueueCollapsed && (
                                 <div className="mt-4 space-y-2 animate-in fade-in duration-300">
-                                    {requisitions.length === 0 ? <p className="text-[10px] font-black text-white/20 uppercase text-center py-6">Queue Empty</p> : requisitions.map((req) => {
+                                    {requisitions.length === 0 ? <p className="text-[10px] font-black text-(--text-color)/20 uppercase text-center py-6">Queue Empty</p> : requisitions.map((req) => {
                                         const destReqMXN = req.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
                                         const destReqUSD = destReqMXN / currentExchangeRate;
                                         const isExpanded = !!expandedDests[req.key];
                                         const vendorId = req.vendorId || req.docs[0]?.vendor_id;
                                         const vendorColor = (vendors as any)[vendorId]?.color || '#888';
                                         return (
-                                            <div key={req.key} className="group rounded-lg bg-white/2 hover:bg-white/5 border border-white/5 transition-all overflow-hidden">
+                                            <div key={req.key} className="group rounded-lg bg-(--text-color)/2 hover:bg-(--text-color)/5 border border-(--text-color)/5 transition-all overflow-hidden">
                                                 <div className="flex items-center gap-4 p-3 cursor-pointer" onClick={() => toggleDest(req.key)}>
                                                     <div className="w-14 h-10 flex items-center justify-center shrink-0">
                                                         <img src={req.cfg.icon} alt={req.cfg.name} className="max-w-full max-h-full object-contain opacity-100 drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]" />
                                                     </div>
-                                                    <div className="flex-1 min-w-0 pointer-events-auto hover:bg-white/5 transition-colors p-1 rounded-md" onClick={(e) => {
+                                                    <div className="flex-1 min-w-0 pointer-events-auto hover:bg-(--text-color)/5 transition-colors p-1 rounded-md" onClick={(e) => {
                                                         e.stopPropagation();
                                                         const docIds = req.docs.flatMap(d => {
                                                             const r = d.related_ids || d.related_inventory_ids || [];
@@ -912,15 +912,15 @@ export const ClientOverview: React.FC = () => {
                                                     }}>
                                                         <div className="flex items-center gap-2 mb-1">
                                                             <div className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{vendorId || 'Mixed'}</div>
-                                                            <p className="text-[11px] font-black text-white/80 uppercase truncate tracking-widest">{req.cfg.name}</p>
+                                                            <p className="text-[11px] font-black text-(--text-color)/80 uppercase truncate tracking-widest">{req.cfg.name}</p>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <p className="text-[9px] font-mono text-white/30 truncate max-w-[300px]">{req.docs[0]?.description || 'Multiple units'}</p>
+                                                            <p className="text-[9px] font-mono text-(--text-color)/30 truncate max-w-[300px]">{req.docs[0]?.description || 'Multiple units'}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-end gap-1 shrink-0 px-2 min-w-[100px]">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[14px] font-black font-mono text-white tracking-tighter">
+                                                            <span className="text-[14px] font-black font-mono text-(--text-color) tracking-tighter">
                                                                 {currencyMode === 'MXN' ? fmtMXN(destReqMXN) : fmtUSD(destReqUSD)}
                                                             </span>
                                                             <span className={`text-[8px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
@@ -931,7 +931,7 @@ export const ClientOverview: React.FC = () => {
                                                     <button onClick={e => { e.stopPropagation(); handleMarkAsPaid(req.key, destReqMXN, req.docs); }} className="px-3 py-1.5 h-full rounded-lg bg-(--main-color) text-black font-black text-[9px] uppercase tracking-widest ml-1 self-stretch shadow-lg">Paid</button>
                                                 </div>
                                                 {isExpanded && (
-                                                    <div className="px-3 pb-3 pt-2 space-y-2 border-t border-white/5">
+                                                    <div className="px-3 pb-3 pt-2 space-y-2 border-t border-(--text-color)/5">
                                                         {req.docs.map(d => {
                                                             const rowMxn = (d.amount || 0) + (d.commission || 0);
                                                             const rowUsd = rowMxn / (d.exchange_rate || currentExchangeRate || 20);
@@ -959,9 +959,9 @@ export const ClientOverview: React.FC = () => {
                                                             const isVendorPayment = catStr === 'vendor payment';
 
                                                             return (
-                                                                <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-white/2 hover:bg-white/5 border border-white/5 transition-all">
+                                                                <div key={d.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2.5 px-3 rounded-xl bg-(--text-color)/2 hover:bg-(--text-color)/5 border border-(--text-color)/5 transition-all">
                                                                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                                                                        <div className="mt-0.5 p-1.5 rounded-lg bg-black/20 text-white/40 border border-white/5 shrink-0 shadow-inner">
+                                                                        <div className="mt-0.5 p-1.5 rounded-lg bg-black/20 text-(--text-color)/40 border border-(--text-color)/5 shrink-0 shadow-inner">
                                                                             <CatIcon size={12} />
                                                                         </div>
                                                                         <div className="flex flex-col min-w-0">
@@ -969,12 +969,12 @@ export const ClientOverview: React.FC = () => {
                                                                                 <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase text-black" style={{ backgroundColor: vColor }}>
                                                                                     {rowVendorId || 'UNK'}
                                                                                 </span>
-                                                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">
+                                                                                <span className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest">
                                                                                     {(!isMerch && isVendorPayment) ? null : (d.category || 'General')}
                                                                                     {d.subcategory && <>{(!isMerch && isVendorPayment) ? '' : ' • '}{d.subcategory}</>}
                                                                                 </span>
                                                                             </div>
-                                                                            <span className="text-[11px] font-medium text-white/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
+                                                                            <span className="text-[11px] font-medium text-(--text-color)/70 truncate max-w-[400px] mb-2">{d.description || 'Payment'}</span>
                                                                             
                                                                             {ids.length > 0 && (
                                                                                 <button 
@@ -996,8 +996,8 @@ export const ClientOverview: React.FC = () => {
                                                                         {(d.commission || 0) > 0 && (
                                                                             <div className="hidden sm:flex items-center gap-3 mr-2">
                                                                                 <div className="flex flex-col items-end gap-0.5">
-                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Net Paid</span>
-                                                                                    <span className="text-[9px] font-mono font-bold text-white/70">
+                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
+                                                                                    <span className="text-[9px] font-mono font-bold text-(--text-color)/70">
                                                                                         {currencyMode === 'MXN' ? fmtMXN(d.amount || 0) : fmtUSD((d.amount || 0) / (d.exchange_rate || currentExchangeRate || 20))}
                                                                                     </span>
                                                                                 </div>
@@ -1009,18 +1009,18 @@ export const ClientOverview: React.FC = () => {
                                                                                 </div>
                                                                             </div>
                                                                         )}
-                                                                        <div className={`flex flex-col items-end shrink-0 ${(d.commission || 0) > 0 ? 'sm:border-l sm:border-white/10 sm:pl-3' : ''}`}>
-                                                                            <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${(d.commission || 0) > 0 ? 'text-sky-400/50' : 'text-white/30'}`}>Total {currencyMode}</span>
+                                                                        <div className={`flex flex-col items-end shrink-0 ${(d.commission || 0) > 0 ? 'sm:border-l sm:border-(--text-color)/10 sm:pl-3' : ''}`}>
+                                                                            <span className={`text-[7px] font-black uppercase tracking-widest mb-1 leading-none ${(d.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>Total {currencyMode}</span>
                                                                             <div className="flex flex-col items-end leading-none">
                                                                                 <div className="flex items-center gap-1.5 mb-1">
-                                                                                    <span className="text-[13px] font-black font-mono text-white tracking-tighter">
+                                                                                    <span className="text-[13px] font-black font-mono text-(--text-color) tracking-tighter">
                                                                                         {currencyMode === 'MXN' ? fmtMXN(rowMxn) : fmtUSD(rowUsd)}
                                                                                     </span>
                                                                                     <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
                                                                                         {currencyMode}
                                                                                     </span>
                                                                                 </div>
-                                                                                <span className="text-[8px] font-mono font-black text-white/30 opacity-70">
+                                                                                <span className="text-[8px] font-mono font-black text-(--text-color)/30 opacity-70">
                                                                                     Eq: {currencyMode === 'MXN' ? fmtUSD(rowUsd) : fmtMXN(rowMxn)}
                                                                                 </span>
                                                                             </div>
@@ -1038,7 +1038,7 @@ export const ClientOverview: React.FC = () => {
                             )}
                         </div>
 
-                        <div className={`md:col-span-3 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
+                        <div className={`md:col-span-3 p-4 rounded-xl border border-(--border-color) transition-all duration-300 ${isPaymentsCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-lg'}`}>
                             <SectionHeader 
                                 icon={Wallet} title="Upcoming Payments" color="#FBBF24" 
                                 onToggle={() => setIsPaymentsCollapsed(!isPaymentsCollapsed)} isCollapsed={isPaymentsCollapsed}
@@ -1087,7 +1087,7 @@ export const ClientOverview: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className={`p-8 rounded-xl border border-(--border-color) transition-all duration-300 ${isAnalysisCollapsed ? 'bg-white/2' : 'bg-(--sidebar-bg) shadow-2xl'}`}>
+                    <div className={`p-8 rounded-xl border border-(--border-color) transition-all duration-300 ${isAnalysisCollapsed ? 'bg-(--text-color)/2' : 'bg-(--sidebar-bg) shadow-2xl'}`}>
                         <div className="flex items-center justify-between mb-8">
                             <SectionHeader 
                                 icon={TrendingUp} title="Global Distribution Analysis" color="#6BCEBB" 
@@ -1095,7 +1095,7 @@ export const ClientOverview: React.FC = () => {
                                 compactSummary={
                                     <div className="flex flex-wrap gap-4 items-center">
                                         <span className="text-[12px] font-black text-(--main-color)">{globalTotals.totalItems} <span className="opacity-30 text-[8px] uppercase whitespace-nowrap">Units Total</span></span>
-                                        <div className="h-3 w-px bg-white/10" />
+                                        <div className="h-3 w-px bg-(--text-color)/10" />
                                         <CurrencyTag type="USD" amount={globalTotals.totalAcqValueUsd} className="scale-90 origin-left" />
                                         <CurrencyTag type="MXN" amount={globalTotals.totalAcqValueUsd * currentExchangeRate} className="opacity-40 scale-90 origin-left" />
                                     </div>
@@ -1103,7 +1103,7 @@ export const ClientOverview: React.FC = () => {
                             />
                             {!isAnalysisCollapsed && (
                                 <div className="hidden sm:flex gap-4">
-                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Acq. Balance: {fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
+                                    <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.3em]">Acq. Balance: {fmtUSDCompact(globalTotals.totalAcqValueUsd)}</span>
                                 </div>
                             )}
                         </div>
@@ -1112,8 +1112,8 @@ export const ClientOverview: React.FC = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
 
                         {/* Acquisitions Concentration (Value) - Pie Chart - TOP */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10 mb-6">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-6">Acquisitions Concentration (Value)</span>
+                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-(--text-color)/5 pb-10 mb-6">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-6">Acquisitions Concentration (Value)</span>
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
                                 <div className="w-full sm:w-1/2 h-56">
                                     <EChart option={pieChartOption} style={{ height: '100%' }} />
@@ -1122,15 +1122,15 @@ export const ClientOverview: React.FC = () => {
                                     {vendorSummaries.slice(0, 8).map(v => (
                                         <div key={v.vendorId} 
                                             onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: v.vendorId, title: `${v.vendorId} Payments` })}
-                                            className="flex flex-col border-b border-white/2 pb-2 group cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded-md transition-all"
+                                            className="flex flex-col border-b border-(--text-color)/2 pb-2 group cursor-pointer hover:bg-(--text-color)/5 px-2 -mx-2 rounded-md transition-all"
                                         >
                                             <div className="flex items-center justify-between mb-1.5">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
-                                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest group-hover:text-white/60">{v.vendorId}</span>
+                                                    <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest group-hover:text-(--text-color)/60">{v.vendorId}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="text-[12px] font-mono font-black text-white/80">
+                                                    <span className="text-[12px] font-mono font-black text-(--text-color)/80">
                                                         {currencyMode === 'MXN' ? fmtMXN(v.totalAcqUsd * currentExchangeRate) : fmtUSD(v.totalAcqUsd)}
                                                     </span>
                                                     <span className={`text-[7px] font-black px-1 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
@@ -1138,7 +1138,7 @@ export const ClientOverview: React.FC = () => {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-1 w-full bg-(--text-color)/5 rounded-full overflow-hidden">
                                                 <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${(v.totalAcqUsd / globalTotals.totalAcqValueUsd * 100)}%`, backgroundColor: v.color }} />
                                             </div>
                                         </div>
@@ -1148,10 +1148,10 @@ export const ClientOverview: React.FC = () => {
                         </div>
 
                         {/* Units by Vendor - Horizontal Segmented Bar - SECOND */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-white/5 pb-10 mb-6">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 ">Units Share by Vendor</span>
+                        <div className="flex flex-col col-span-1 lg:col-span-2 border-b border-(--text-color)/5 pb-10 mb-6">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-(--text-color)/20 mb-4 ">Units Share by Vendor</span>
                             <div className="flex flex-col gap-4">
-                                <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-white/5 border border-white/5">
+                                <div className="h-3 w-full rounded-2xl overflow-hidden flex shadow-2xl bg-(--text-color)/5 border border-(--text-color)/5">
                                     {vendorSummaries.map((v, idx) => {
                                         const share = (v.itemCount / globalTotals.totalItems) * 100;
                                         return (
@@ -1167,7 +1167,7 @@ export const ClientOverview: React.FC = () => {
                                                 style={{ width: `${share}%`, backgroundColor: v.color }} 
                                                 className="h-full hover:brightness-125 transition-all cursor-pointer group relative"
                                             >
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-(--sidebar-bg)/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-(--text-color)/10 shadow-2xl text-(--text-color)">
                                                     {v.vendorId}: {v.itemCount} units ({share.toFixed(1)}%)
                                                 </div>
                                             </div>
@@ -1185,7 +1185,7 @@ export const ClientOverview: React.FC = () => {
                                                 }).map(i => i.data.id),
                                                 title: `Items for ${v.vendorId}`
                                             })}
-                                            className="flex items-center gap-2 group cursor-pointer hover:bg-white/5 p-1 rounded transition-all"
+                                            className="flex items-center gap-2 group cursor-pointer hover:bg-(--text-color)/5 p-1 rounded transition-all"
                                         >
                                             <div className="w-2 h-2 rounded-sm group-hover:scale-125 transition-all shadow-lg shadow-black/40" style={{ backgroundColor: v.color }} />
                                             <span className="text-[10px] font-black text-(--text-color) opacity-30 group-hover:opacity-100 uppercase tracking-widest truncate">{v.vendorId}</span>
@@ -1200,13 +1200,13 @@ export const ClientOverview: React.FC = () => {
                         <div className="flex flex-col col-span-1 lg:col-span-2 mt-4">
                             <SectionHeader icon={Layers} title="Material + Color Attribution" color="#EF4444" />
                             <div className="mt-8 flex flex-col gap-6">
-                                <div className="h-2 w-full rounded-full overflow-hidden flex bg-white/5">
+                                <div className="h-2 w-full rounded-full overflow-hidden flex bg-(--text-color)/5">
                                     {attributeStats.topCM.map(([label, count], idx) => {
                                         const share = (count / globalTotals.totalItems) * 100;
                                         const hue = (idx * 45) % 360;
                                         return (
                                             <div key={label} style={{ width: `${share}%`, backgroundColor: `hsla(${hue}, 70%, 50%, 0.8)` }} className="h-full hover:brightness-125 transition-all cursor-pointer group relative">
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-white/10 shadow-2xl">{label}: {count} units</div>
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 bg-(--sidebar-bg)/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] whitespace-nowrap z-50 pointer-events-none font-mono border border-(--text-color)/10 shadow-2xl text-(--text-color)">{label}: {count} units</div>
                                             </div>
                                         );
                                     })}
@@ -1224,15 +1224,15 @@ export const ClientOverview: React.FC = () => {
                                                     }).map(i => i.data.id),
                                                     title: `${label} Items`
                                                 })}
-                                                className="flex flex-col group p-2 rounded bg-white/2 hover:bg-(--main-color)/10 hover:border-(--main-color)/20 border border-transparent transition-all cursor-pointer"
+                                                className="flex flex-col group p-2 rounded bg-(--text-color)/2 hover:bg-(--main-color)/10 hover:border-(--main-color)/20 border border-transparent transition-all cursor-pointer"
                                             >
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
-                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white">{label}</span>
+                                                    <span className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest truncate group-hover:text-(--text-color)">{label}</span>
                                                 </div>
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-[14px] font-mono font-black text-white/20 group-hover:text-(--main-color) transition-colors">{count}</span>
-                                                    <span className="text-[8px] font-black text-white/10 uppercase">Units</span>
+                                                    <span className="text-[14px] font-mono font-black text-(--text-color)/20 group-hover:text-(--main-color) transition-colors">{count}</span>
+                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase">Units</span>
                                                 </div>
                                             </div>
                                         );
@@ -1242,14 +1242,14 @@ export const ClientOverview: React.FC = () => {
                         </div>
 
                         {/* Shape + Description Analysis Distribution */}
-                        <div className="flex flex-col col-span-1 lg:col-span-2 pt-10 border-t border-white/5 mt-4">
+                        <div className="flex flex-col col-span-1 lg:col-span-2 pt-10 border-t border-(--text-color)/5 mt-4">
                             <SectionHeader icon={Grid} title="Shape + Description Distribution" color="#818cf8" />
                             <div className="mt-8 flex flex-col lg:flex-row items-center gap-8">
                                 <div className="w-full lg:w-1/2 h-64 relative">
                                     <EChart option={shapeDescPieOption} style={{ height: '100%' }} />
                                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-[20px] font-black text-white/90 leading-none">{attributeStats.topSD.length}</span>
-                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Categories</span>
+                                        <span className="text-[20px] font-black text-(--text-color)/90 leading-none">{attributeStats.topSD.length}</span>
+                                        <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-widest mt-1">Categories</span>
                                     </div>
                                 </div>
                                 <div className="w-full lg:w-1/2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 px-4 max-h-[300px] overflow-y-auto custom-scrollbar">
@@ -1267,20 +1267,20 @@ export const ClientOverview: React.FC = () => {
                                                     }).map(i => i.data.id),
                                                     title: `${label} Items`
                                                 })}
-                                                className="flex flex-col border-b border-white/2 pb-2 group hover:bg-(--main-color)/5 transition-all p-1 rounded cursor-pointer"
+                                                className="flex flex-col border-b border-(--text-color)/5 pb-2 group hover:bg-(--main-color)/5 transition-all p-1 rounded cursor-pointer"
                                             >
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
-                                                        <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate group-hover:text-white max-w-[150px]">{label}</span>
+                                                        <span className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest truncate group-hover:text-(--text-color) max-w-[150px]">{label}</span>
                                                     </div>
-                                                    <span className="text-[12px] font-mono font-black text-white/80">{count}</span>
+                                                    <span className="text-[12px] font-mono font-black text-(--text-color)/80">{count}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                     <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                                                     <div className="h-1 flex-1 bg-(--text-color)/5 rounded-full overflow-hidden">
                                                         <div className="h-full group-hover:brightness-125 transition-all" style={{ width: `${share}%`, backgroundColor: `hsla(${hue}, 80%, 60%, 1)` }} />
                                                     </div>
-                                                    <span className="text-[8px] font-black text-white/20 uppercase w-8 text-right group-hover:text-(--main-color)">{share.toFixed(1)}%</span>
+                                                    <span className="text-[8px] font-black text-(--text-color)/20 uppercase w-8 text-right group-hover:text-(--main-color)">{share.toFixed(1)}%</span>
                                                 </div>
                                             </div>
                                         );

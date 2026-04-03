@@ -134,7 +134,7 @@ const SubTabPills: React.FC<{
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
-                        ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-white/35 hover:text-white/70 hover:bg-white/10'}`}
+                        ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-(--text-color)/35 hover:text-(--text-color)/70 hover:bg-white/10'}`}
                     style={active === t.id ? { backgroundColor: accentColor } : {}}>
                     {TabIcon && <TabIcon size={13} strokeWidth={1.75} />}
                     {t.label}
@@ -159,7 +159,7 @@ const StudioAction: React.FC<{
         disabled={disabled}
         title={title}
         className={`flex flex-col items-center justify-center p-1 px-2.5 min-w-[48px] rounded-xl transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
-            active ? 'text-(--main-color)' : 'text-white/40 hover:text-white'
+            active ? 'text-(--main-color)' : 'text-(--text-color)/40 hover:text-(--text-color)'
         }`}
         style={active && color ? { color } : {}}
     >
@@ -178,7 +178,7 @@ const DeployableSearch: React.FC<{
 }> = ({ value, onChange, isOpen, setIsOpen, placeholder = "SEARCH...", accentColor = "var(--main-color)" }) => (
     <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
         {!isOpen ? (
-            <button onClick={() => setIsOpen(true)} className="p-2 text-white/40 hover:text-white hover:scale-110 transition-all">
+            <button onClick={() => setIsOpen(true)} className="p-2 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
                 <Search size={19} strokeWidth={2.25} />
             </button>
         ) : (
@@ -191,14 +191,14 @@ const DeployableSearch: React.FC<{
                     onChange={e => onChange(e.target.value)}
                     onBlur={() => { if (!value) setIsOpen(false); }}
                     placeholder={placeholder}
-                    className="flex-1 bg-transparent border-none text-[12px] font-bold text-white outline-none placeholder-white/20 uppercase tracking-widest py-2"
+                    className="flex-1 bg-transparent border-none text-[12px] font-bold text-(--text-color) outline-none placeholder-(--text-color)/20 uppercase tracking-widest py-2"
                 />
                 {value && (
-                    <button onClick={() => onChange('')} className="p-1.5 text-white/20 hover:text-white transition-colors">
+                    <button onClick={() => onChange('')} className="p-1.5 text-(--text-color)/20 hover:text-(--text-color) transition-colors">
                         <X size={14} strokeWidth={3} />
                     </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-all transform hover:rotate-90">
+                <button onClick={() => setIsOpen(false)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-(--text-color)/30 hover:text-(--text-color) transition-all transform hover:rotate-90">
                     <X size={12} strokeWidth={2.5} />
                 </button>
             </div>
@@ -210,7 +210,7 @@ const DeployableSearch: React.FC<{
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
-        <div className="hidden md:flex items-center gap-2 pr-4 border-r border-white/10 shrink-0 truncate">
+        <div className="hidden md:flex items-center gap-2 pr-4 border-r border-(--text-color)/10 shrink-0 truncate">
             <BadgeIcon size={14} strokeWidth={2} style={{ color }} />
             <span className="text-[9px] font-black uppercase tracking-[0.22em] truncate opacity-80" style={{ color }}>{label}</span>
         </div>
@@ -229,16 +229,16 @@ const ShippingStats: React.FC = () => {
     const volPct = truckVol > 0 ? Math.round((vol / truckVol) * 100) : 0;
 
     return (
-        <div className="hidden lg:flex items-center gap-3 text-[9px] font-mono text-white/40">
-            <span className="flex items-center gap-1"><span className="text-white/70 font-black">{loaded.length}</span> crates</span>
+        <div className="hidden lg:flex items-center gap-3 text-[9px] font-mono text-(--text-color)/40">
+            <span className="flex items-center gap-1"><span className="text-(--text-color)/70 font-black">{loaded.length}</span> crates</span>
             <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-16 h-1 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <span>{pct}% wt</span>
             </div>
             <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-16 h-1 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6BCEBB] rounded-full transition-all" style={{ width: `${volPct}%` }} />
                 </div>
                 <span>{volPct}% vol</span>
@@ -281,7 +281,7 @@ const InventoryBar: React.FC = () => {
                             color="var(--color-inventory)"
                         />
 
-                        <div className="w-px h-5 bg-white/5 mx-0.5 hidden sm:block" />
+                        <div className="w-px h-5 bg-(--text-color)/5 mx-0.5 hidden sm:block" />
 
                         <StudioAction 
                             icon={ViewIcon}
@@ -347,7 +347,7 @@ const FinanceBar: React.FC = () => {
                         color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
                     />
 
-                    <div className="w-px h-5 bg-white/5 mx-1" />
+                    <div className="w-px h-5 bg-(--text-color)/5 mx-1" />
 
                     <StudioAction 
                         icon={Filter}
@@ -357,7 +357,7 @@ const FinanceBar: React.FC = () => {
                         color="var(--color-finance)"
                     />
 
-                    <div className="w-px h-5 bg-white/5 mx-1" />
+                    <div className="w-px h-5 bg-(--text-color)/5 mx-1" />
 
                     <StudioAction 
                         icon={LayoutList}
@@ -449,7 +449,7 @@ const ControlBar: React.FC = () => (
     <>
         <ModuleBadge icon="shield" label="Control" color="var(--color-control)" />
         <div className="ml-auto">
-            <span className="text-[9px] font-black text-white/15 uppercase tracking-widest">Developer Only</span>
+            <span className="text-[9px] font-black text-(--text-color)/15 uppercase tracking-widest">Developer Only</span>
         </div>
     </>
 );

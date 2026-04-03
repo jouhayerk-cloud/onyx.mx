@@ -33,6 +33,16 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       minify: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'jotai'],
+            'vendor-charts': ['echarts-for-react', 'echarts'],
+            'vendor-db': ['rxdb', 'rxjs'],
+            'vendor-utils': ['lucide-react', 'gsap', 'xlsx', 'exceljs'],
+          }
+        }
+      }
     }
   };
 });

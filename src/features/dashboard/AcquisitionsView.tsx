@@ -200,15 +200,15 @@ export const AcquisitionsView: React.FC<AcquisitionsViewProps> = ({ mode = 'arch
     return (
         <div className="flex flex-col h-full overflow-hidden bg-(--bg-color-main)">
             {mode === 'archive' && (
-                <div className="dashboard-stats py-2 px-4 border-b border-white/5 bg-black/20">
+                <div className="dashboard-stats py-2 px-4 border-b border-(--text-color)/5 bg-(--text-color)/5">
                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="flex items-center gap-2">
-                            <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest" htmlFor="exchange-rate">MXN/USD</label>
-                            <input id="exchange-rate" className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs w-16" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
+                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="exchange-rate">MXN/USD</label>
+                            <input id="exchange-rate" className="bg-(--text-color)/5 border border-(--text-color)/10 rounded px-2 py-0.5 text-xs w-16 text-(--text-color) font-mono" type="number" value={exchangeRate} onChange={e => setExchangeRate(parseFloat(e.target.value))} step="0.1" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest" htmlFor="workbook-prefix">Book</label>
-                            <input id="workbook-prefix" className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs w-16 uppercase" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
+                            <label className="text-[10px] uppercase font-black text-(--text-color)/30 tracking-widest" htmlFor="workbook-prefix">Book</label>
+                            <input id="workbook-prefix" className="bg-(--text-color)/5 border border-(--text-color)/10 rounded px-2 py-0.5 text-xs w-16 uppercase text-(--text-color) font-mono" type="text" value={workbookPrefix} onChange={e => setWorkbookPrefix(e.target.value)} />
                         </div>
                     </div>
                 </div>

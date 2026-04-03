@@ -1546,10 +1546,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 return (
                                     <button key={group.vendorId} 
                                         onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` })}
-                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-white/20"
+                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-(--text-color)/20"
                                         title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
                                         style={{ 
-                                            background: `conic-gradient(${color} 0% ${paidPerc}%, rgba(255,255,255,0.05) ${paidPerc}% 100%)`,
+                                            background: `conic-gradient(${color} 0% ${paidPerc}%, var(--border-color) ${paidPerc}% 100%)`,
                                             padding: '1.5px'
                                         }}>
                                         <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.05)]"
@@ -1558,41 +1558,41 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                         </div>
                                         {/* Minimal pulse indicator if 0% paid */}
                                         {paidPerc === 0 && (
-                                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse border border-white/10" style={{ backgroundColor: color }} />
+                                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-(--text-color)/20 animate-pulse border border-(--text-color)/10" style={{ backgroundColor: color }} />
                                         )}
                                     </button>
                                 );
                             })}
-                            <div className="w-px h-3 bg-white/10 mx-1" />
-                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Ongoing Liquidations</span>
+                            <div className="w-px h-3 bg-(--text-color)/10 mx-1" />
+                            <span className="text-[7px] font-black text-(--text-color)/20 uppercase tracking-widest">Ongoing Liquidations</span>
                         </div>
                     )}
                     {/* Primary Grid: Rates & Summary Totals */}
                     <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-2.5' : 'gap-1'} mb-1`}>
                         {/* Exchange Rates Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
                                 <TrendingUp size={14} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
+                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col">
-                                    <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
+                                    <span className="text-[8px] font-bold text-(--text-color)/10 uppercase mb-0.5">Wbk</span>
                                     <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{exchangeRate.toFixed(2)}</span>
                                 </div>
-                                <div className="flex flex-col border-l border-white/5 pl-3">
-                                    <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Live</span>
+                                <div className="flex flex-col border-l border-(--text-color)/5 pl-3">
+                                    <span className="text-[8px] font-bold text-(--text-color)/10 uppercase mb-0.5">Live</span>
                                     <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Paid Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
                                 <CheckCircle size={14} className="text-[#6BCEBB]" />
                             </div>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
+                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
                             <div className="flex items-center gap-2 leading-tight">
                                 <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                     {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
@@ -1604,11 +1604,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         </div>
 
                         {/* Pending Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all`}>
+                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
                             <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
                                 <Clock size={14} className="text-[#FACC15]" />
                             </div>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
+                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
                             <div className="flex items-center gap-2 leading-tight">
                                 <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                     {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
@@ -1625,10 +1625,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             {destinationFilter !== 'All' ? (
                                 <div className="flex items-center justify-between gap-2 leading-tight relative z-10">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 flex items-center justify-center bg-white/10 rounded-lg p-0.5 border border-white/10">
+                                        <div className="w-5 h-5 flex items-center justify-center bg-(--text-color)/10 rounded-lg p-0.5 border border-(--text-color)/10">
                                             <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
                                         </div>
-                                        <span className={`font-black font-mono text-white tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
+                                        <span className={`font-black font-mono text-(--text-color) tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
                                             {currencyMode === 'MXN' ? fmtMXN(activeDestReqNetMXN) : fmtUSD(activeDestReqNetMXN / rate)}
                                         </span>
                                     </div>
@@ -1638,7 +1638,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 </div>
                             ) : (
                                 <div className="flex-1 flex items-center relative z-10 px-1">
-                                    <span className="text-[9px] font-black text-white/10 uppercase tracking-widest">No Selection</span>
+                                    <span className="text-[9px] font-black text-(--text-color)/10 uppercase tracking-widest">No Selection</span>
                                 </div>
                             )}
                         </div>
@@ -1652,31 +1652,31 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const paidPerc = Math.round((group.paidTotal / group.total) * 100);
                                 return (
                                     <div key={group.vendorId}
-                                        className="group relative flex flex-col p-3 rounded-xl bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-lg overflow-hidden"
+                                        className="group relative flex flex-col p-3 rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all shadow-lg overflow-hidden"
                                         style={{ borderTop: `2px solid ${color}` }}>
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 <span className="text-xs font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
-                                                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
+                                                <span className="text-[9px] font-bold text-(--text-color)/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
                                             </div>
-                                            <div className="p-1.5 bg-white/5 rounded-lg border border-white/10 opacity-30 group-hover:opacity-100 transition-opacity">
+                                            <div className="p-1.5 bg-(--text-color)/5 rounded-lg border border-(--text-color)/10 opacity-30 group-hover:opacity-100 transition-opacity">
                                                 <Archive size={14} style={{ color }} />
                                             </div>
                                         </div>
                                         <div className="mt-auto">
                                             <div className="flex items-center gap-2 mb-2 overflow-hidden">
-                                                <span className="text-[17px] font-black font-mono text-white leading-none whitespace-nowrap">
+                                                <span className="text-[17px] font-black font-mono text-(--text-color) leading-none whitespace-nowrap">
                                                     {currencyMode === 'MXN' ? fmtMXN(group.total) : fmtUSD(group.total / rate)}
                                                 </span>
                                                 <span className={`text-[9px] font-black px-1.5 rounded shrink-0 ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
                                                     {currencyMode}
                                                 </span>
                                             </div>
-                                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="w-full h-1 bg-(--text-color)/5 rounded-full overflow-hidden">
                                                 <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
                                             </div>
                                             <div className="flex items-center justify-between mt-2.5 gap-2">
-                                                {paidPerc > 0 ? <span className="text-[9px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
+                                                {paidPerc > 0 ? <span className="text-[9px] font-black text-(--text-color)/30 uppercase">{paidPerc}% Paid</span> : <div />}
                                                 <div className="flex items-center gap-3">
                                                     <button 
                                                         onClick={(e) => {
@@ -1690,10 +1690,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                     </button>
                                                     <button 
                                                         onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
-                                                        }}
-                                                        className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-3"
+                                                              e.stopPropagation();
+                                                              setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
+                                                          }}
+                                                        className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-(--text-color)/10 pl-3"
                                                     >
                                                         <Receipt size={11} /> Ledger
                                                     </button>
@@ -1729,7 +1729,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const isActive = subcatFilter === s;
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-xl border border-transparent transition-all whitespace-nowrap shrink-0 group/f hover:bg-white/5 ${isActive ? 'bg-white/5 border-white/5' : ''}`}>
+                                        className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-xl border border-transparent transition-all whitespace-nowrap shrink-0 group/f hover:bg-(--text-color)/5 ${isActive ? 'bg-(--text-color)/5 border-(--text-color)/5' : ''}`}>
                                         <cfg.icon size={16} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-110 opacity-100' : 'opacity-30 group-hover/f:opacity-100 group-hover/f:scale-110'}`} />
                                         <span className={`text-[7px] font-black tracking-[0.2em] transition-all uppercase ${isActive ? 'opacity-100' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
                                             {cfg.label}
@@ -1773,12 +1773,12 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             onClick={() => setShowAdd(true)}
                             className="w-full mb-3 flex items-center justify-center gap-4 py-5 px-8 rounded-[32px] border border-(--main-color)/20 bg-(--main-color)/10 hover:bg-(--main-color)/20 transition-all group relative overflow-hidden active:scale-95 duration-200 shadow-lg shadow-(--main-color)/5"
                         >
-                            <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/30 group-hover:border-(--main-color)/30 transition-all duration-300">
-                                <Plus className="w-7 h-7 text-white/40 group-hover:text-(--main-color) transition-colors" />
+                            <div className="w-12 h-12 rounded-full bg-(--text-color)/5 border border-(--text-color)/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/30 group-hover:border-(--main-color)/30 transition-all duration-300">
+                                <Plus className="w-7 h-7 text-(--text-color)/40 group-hover:text-(--main-color) transition-colors" />
                             </div>
                             <div className="text-left flex-1">
-                                <span className="block text-[11px] font-black uppercase tracking-[0.4em] text-white/30 group-hover:text-white transition-all">New Transaction</span>
-                                <span className="block text-[9px] font-bold text-white/10 uppercase tracking-widest mt-1 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
+                                <span className="block text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color)/30 group-hover:text-(--text-color) transition-all">New Transaction</span>
+                                <span className="block text-[9px] font-bold text-(--text-color)/10 uppercase tracking-widest mt-1 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
                             </div>
                             <div className="opacity-0 group-hover:opacity-30 transition-opacity">
                                 <Plus size={24} className="text-(--main-color)" />
@@ -1813,14 +1813,14 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                             return (
                                 <div key={r.id} 
-                                    className={`group relative flex flex-col p-3 bg-white/5 border-b border-white/5 transition-all hover:bg-white/7 ${isExpanded ? 'bg-white/8 my-3 rounded-xl border-x border-white/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
+                                    className={`group relative flex flex-col p-3 bg-(--text-color)/5 border-b border-(--text-color)/5 transition-all hover:bg-(--text-color)/7 ${isExpanded ? 'bg-(--text-color)/8 my-3 rounded-xl border-x border-(--text-color)/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
                                     
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
                                         {/* Column 1: Compact Icon + Date Stack */}
-                                        <div className="shrink-0 flex items-center gap-3 border-r border-white/5 pr-4 min-w-[120px]">
+                                        <div className="shrink-0 flex items-center gap-3 border-r border-(--text-color)/5 pr-4 min-w-[120px]">
                                             <cat.icon size={16} style={{ color: cat.color }} className="shrink-0 opacity-80" />
                                             <div className="flex flex-col items-start justify-center gap-1.5">
-                                                <span className="text-[11px] font-black tracking-tighter text-white opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                                <span className="text-[11px] font-black tracking-tighter text-(--text-color) opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
                                                 {/* Payment Status Indicator Pill */}
                                                 {(() => {
                                                     const isPartial = String(r.description || '').includes('%');
@@ -1875,8 +1875,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {(r.commission || 0) > 0 && (
                                                     <>
                                                         <div className="hidden sm:flex flex-col items-end gap-0.5">
-                                                            <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Net Paid</span>
-                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-white/70">
+                                                            <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
+                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-(--text-color)/70">
                                                                 {currencyMode === 'MXN' ? fmtMXN(r.amount || 0) : fmtUSD((r.amount || 0) / (liveExchangeRate || exchangeRate))}
                                                             </span>
                                                         </div>
@@ -1888,10 +1888,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                         </div>
                                                     </>
                                                 )}
-                                                <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'sm:border-l sm:border-white/10 sm:pl-4' : ''}`}>
-                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-white/30'}`}>Total {currencyMode}</span>
+                                                <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'sm:border-l sm:border-(--text-color)/10 sm:pl-4' : ''}`}>
+                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>Total {currencyMode}</span>
                                                     <div className="flex items-center justify-end gap-1.5 leading-none">
-                                                        <span className="text-[14px] sm:text-[16px] font-black font-mono text-white tracking-tighter">
+                                                        <span className="text-[14px] sm:text-[16px] font-black font-mono text-(--text-color) tracking-tighter">
                                                             {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
                                                         </span>
                                                     </div>
@@ -1903,7 +1903,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {destCfg ? (
                                                     <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" title={destCfg.name} />
                                                 ) : (
-                                                    <Info size={14} className="text-white/10" />
+                                                    <Info size={14} className="text-(--text-color)/10" />
                                                 )}
                                             </div>
                                         </div>
@@ -1911,22 +1911,22 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                     {/* Expanded Content: Deep Metadata */}
                                     {isExpanded && (
-                                        <div className="mt-4 pt-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="mt-4 pt-4 border-t border-(--text-color)/5 animate-in slide-in-from-top-2 duration-300">
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 {/* Logic Details */}
                                                 <div className="space-y-4">
                                                     <div>
-                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest block mb-2.5">Transactional Detail</span>
-                                                         <p className="text-[12px] sm:text-[13px] font-medium text-white/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided.'}"</p>
+                                                        <span className="text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-2.5">Transactional Detail</span>
+                                                         <p className="text-[12px] sm:text-[13px] font-medium text-(--text-color)/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided.'}"</p>
                                                     </div>
                                                     <div className="flex items-center gap-8">
                                                         <div>
-                                                             <span className="text-[9px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest mb-1.5 block">Payment Method</span>
-                                                             <span className="text-[10px] sm:text-[11px] font-black text-white/80 uppercase block">{r.payment_method || 'Standard Wire'}</span>
+                                                             <span className="text-[9px] sm:text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest mb-1.5 block">Payment Method</span>
+                                                             <span className="text-[10px] sm:text-[11px] font-black text-(--text-color)/80 uppercase block">{r.payment_method || 'Standard Wire'}</span>
                                                         </div>
                                                         <div>
-                                                             <span className="text-[8px] sm:text-[9px] font-black text-white/20 uppercase tracking-widest block mb-1.5">Fee %</span>
-                                                             <span className="text-[11px] sm:text-[12px] font-mono font-black text-white/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
+                                                             <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1.5">Fee %</span>
+                                                             <span className="text-[11px] sm:text-[12px] font-mono font-black text-(--text-color)/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1934,13 +1934,13 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                 {/* Linked Items / Artifact Trigger */}
                                                 <div className="lg:col-span-2">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
+                                                        <span className="text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
                                                     </div>
                                                     {(() => {
                                                         const rel = r.related_ids || r.related_inventory_ids || '';
                                                         const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-                                                        if (ids.length === 0) return <span className="text-[10px] font-mono text-white/10 uppercase">No items linked</span>;
+                                                        if (ids.length === 0) return <span className="text-[10px] font-mono text-(--text-color)/10 uppercase">No items linked</span>;
                                                         
                                                         return (
                                                             <div className="flex items-center gap-2">
@@ -1949,10 +1949,10 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                         e.stopPropagation();
                                                                         setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
                                                                     }}
-                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all group/items"
+                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 transition-all group/items"
                                                                 >
                                                                     <LayoutGrid size={14} className="text-(--main-color)" />
-                                                                    <span className="text-[10px] font-black text-white/60 group-hover/items:text-white uppercase tracking-widest">Items ({ids.length})</span>
+                                                                    <span className="text-[10px] font-black text-(--text-color)/60 group-hover/items:text-(--text-color) uppercase tracking-widest">Items ({ids.length})</span>
                                                                 </button>
                                                                 <button 
                                                                     onClick={(e) => {
@@ -1963,7 +1963,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                         toast.success('Inventory Link copied!');
                                                                     }}
                                                                     title="Copy Direct Link to Items"
-                                                                    className="flex items-center justify-center p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:text-(--main-color) transition-all text-white/40"
+                                                                    className="flex items-center justify-center p-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 hover:text-(--main-color) transition-all text-(--text-color)/40"
                                                                 >
                                                                     <Link size={14} />
                                                                 </button>
@@ -1976,7 +1976,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                         toast.success('Payment Link copied!');
                                                                     }}
                                                                     title="Copy Direct Link to Ledger"
-                                                                    className="flex items-center justify-center p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:text-sky-400 transition-all text-white/40 ml-2"
+                                                                    className="flex items-center justify-center p-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 hover:text-sky-400 transition-all text-(--text-color)/40 ml-2"
                                                                 >
                                                                     <Receipt size={14} />
                                                                 </button>
@@ -1987,7 +1987,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             </div>
 
                                             {/* Relocated Actions Footnote */}
-                                            <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+                                            <div className="mt-6 pt-4 border-t border-(--text-color)/5 flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
                                                     <button 
                                                         onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
@@ -1998,7 +1998,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                     {(user?.role === 'Admin' || user?.role === 'Developer') && (
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setEditRecord(r); }}
-                                                            className="flex items-center gap-2 h-8 px-4 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all hover:scale-105 active:scale-95">
+                                                            className="flex items-center gap-2 h-8 px-4 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 text-(--text-color)/40 hover:text-(--text-color) hover:bg-(--text-color)/10 transition-all hover:scale-105 active:scale-95">
                                                             <Pencil size={14} />
                                                             <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>
                                                         </button>

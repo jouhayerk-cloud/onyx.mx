@@ -204,10 +204,10 @@ const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInv
                 <div className="flex-1 min-w-0 flex items-center gap-8">
                     {/* Size & ID */}
                     <div className="min-w-[140px]">
-                        <p className="text-[7px] font-mono text-white/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</p>
-                        <h3 className="text-xl font-black uppercase tracking-tight text-white leading-tight mt-1">
-                            {crate.width_cm}<span className="text-white/30 text-sm">×</span>{crate.length_cm}<span className="text-white/30 text-sm">×</span>{crate.height_cm}
-                            <span className="text-[9px] text-white/30 font-black ml-1">CM</span>
+                        <p className="text-[7px] font-mono text-(--text-color)/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</p>
+                        <h3 className="text-xl font-black uppercase tracking-tight text-(--text-color) leading-tight mt-1">
+                            {crate.width_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.length_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.height_cm}
+                            <span className="text-[9px] text-(--text-color)/30 font-black ml-1">CM</span>
                         </h3>
                         {crate.groupedCount && crate.groupedCount > 1 && (
                             <p className="text-[9px] font-black text-(--main-color)/70 mt-1 uppercase tracking-widest">
@@ -219,36 +219,36 @@ const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInv
                     {/* Stats */}
                     <div className="flex gap-4 min-w-[200px]">
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Volume</p>
-                            <p className="text-sm font-mono font-black text-white">{vol} m³</p>
+                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Volume</p>
+                            <p className="text-sm font-mono font-black text-(--text-color)">{vol} m³</p>
                         </div>
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Weight</p>
+                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Weight</p>
                             <p className="text-sm font-mono font-black text-(--main-color)">
                                 {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
                             </p>
                         </div>
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Fill</p>
+                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Fill</p>
                             <p className={`text-sm font-mono font-black ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                                 {fillPct.toFixed(1)}%
                             </p>
                         </div>
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5 text-center">
-                            <p className="text-[7px] uppercase tracking-widest text-white/30 font-black">Items</p>
-                            <p className="text-sm font-mono font-black text-white">{itemCount}</p>
+                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Items</p>
+                            <p className="text-sm font-mono font-black text-(--text-color)">{itemCount}</p>
                         </div>
                     </div>
 
                     {/* Description / Summary */}
                     <div className="flex-1 min-w-0 hidden lg:block">
-                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-white/20 mb-1">Contents / Notes</p>
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-(--text-color)/20 mb-1">Contents / Notes</p>
                         {crate.contents_summary ? (
-                            <p className="text-[11px] text-white/40 font-medium italic line-clamp-2">{crate.contents_summary}</p>
+                            <p className="text-[11px] text-(--text-color)/40 font-medium italic line-clamp-2">{crate.contents_summary}</p>
                         ) : crate.description ? (
-                            <p className="text-[11px] text-white/30 line-clamp-2 font-mono italic">{crate.description}</p>
+                            <p className="text-[11px] text-(--text-color)/30 line-clamp-2 font-mono italic">{crate.description}</p>
                         ) : (
-                            <p className="text-[11px] text-white/10 italic">No description provided</p>
+                            <p className="text-[11px] text-(--text-color)/10 italic">No description provided</p>
                         )}
                     </div>
                 </div>
@@ -534,7 +534,7 @@ export const CratesInventoryView: React.FC = () => {
             <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10">
                 <div className="flex items-center gap-8">
                     <div>
-                        <h2 className="text-lg font-black uppercase tracking-tight text-white">
+                        <h2 className="text-lg font-black uppercase tracking-tight text-(--text-color)">
                             Shipping <span className="text-(--main-color) italic">Crates</span>
                         </h2>
                         <div className="flex items-center gap-5 mt-1">
@@ -545,7 +545,7 @@ export const CratesInventoryView: React.FC = () => {
                             ].map(s => (
                                 <div key={s.label} className="flex items-center gap-1.5">
                                     <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{s.label}</span>
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color)/30">{s.label}</span>
                                     <span className={`text-[11px] font-mono font-black ${s.color}`}>{s.value}</span>
                                 </div>
                             ))}
