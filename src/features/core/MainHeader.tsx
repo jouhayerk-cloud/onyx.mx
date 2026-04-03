@@ -81,10 +81,10 @@ import {
 declare const __APP_VERSION__: string;
 
 const themes = [
-    { name: 'marble', gradient: 'var(--gradient-obsidian)' },
+    { name: 'talan', gradient: 'var(--gradient-talan)' },
     { name: 'fluorite', gradient: 'var(--gradient-fluorite)' },
     { name: 'nacar', gradient: 'var(--gradient-nacar)' },
-    { name: 'tehuacan', gradient: 'var(--gradient-tehu)' },
+    { name: 'aqua', gradient: 'var(--gradient-aqua)' },
 ];
 
 const filterCycle: TrafficLightStatus[] = ['ALL', 'RED', 'YELLOW', 'GREEN'];
