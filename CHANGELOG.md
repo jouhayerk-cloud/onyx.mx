@@ -1,4 +1,25 @@
 # Changelog
+
+## v1.60.0 (2026-04-03)
+- **Global Animated Gradient Background [Major]**: Decommissioned resource-heavy video/image backgrounds in favor of a high-performance, 5-layer "Liquid Shades" CSS animation system (`HeroBackground.tsx`).
+- **Performance Mode with Theme-Aware Gradients**: Upgraded Performance Mode from a flat solid color to theme-staged fixed gradients, providing a premium static look while maintaining zero CPU overhead.
+- **Theme Curation & "Liquid Stone" Aesthetics**:
+    - **Talan (Dark Stone)**: Refined the background to a "shadow-dominant" obsidian feel with increased Gaussian blur and reduced blob opacity (0.22).
+    - **Nacar (True Onyx)**: Implemented an Amber-Gold and Misty Sage palette inspired by natural stone.
+    - **Aqua (Coastal Stone)**: Introduced a light pastel palette with pale yellows and earth tones.
+    - **Fluorite**: Restored and refined the classic Fluorite theme.
+- **Inventory UI Modernization**:
+    - **Borderless Glassmorphism**: Standardized a borderless aesthetic across all modules using `backdrop-blur-3xl`.
+    - **Tag Hierarchy**: Optimized Quantity (xM) and Price tag placement in List, Grid, and Gallery views for better scannability.
+    - **Less Rounded Edges**: Standardized inventory elements with reduced border-radius for a sharper, modern feel.
+- **Settings Menu Redesign**:
+    - **Compact Dynamic Panel**: Redesigned the Settings menu into a responsive, glassmorphic panel without frames or containers.
+    - **Performance Mode FAB**: Converted the performance toggle into a free-floating icon.
+    - **Improved Refresh Sync**: Enlarged the sync button with semi-transparent background states.
+- **Accessibility & Contrast Restoration**:
+    - **Aqua Contrast Correction**: Replaced over 30 instances of hardcoded `text-white` with theme-aware variables (`text-(--text-color)`), ensuring light themes correctly display dark text for labels and system badges.
+    - **Premium Typography**: Standardized on high-density black/bold typography across all modules.
+
 3: 
 4: ## v1.58.6 (2026-03-31)
 5: - **Immediate Database Synchronization**: Implemented a reactive sync trigger in `DataSyncProvider.tsx` that performs an explicit manual poll from Supabase immediately after any save or deletion completes, ensuring the UI reflects changes instantly.
