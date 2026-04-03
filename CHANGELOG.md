@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.61.0 (2026-04-03)
+- **High-Fidelity Theme Swatches [Modernization]**: Replaced CSS gradient thumbnails in the Settings menu with actual "Liquid Stone" texture swatches (Base64) for Talan, Fluorite, Nacar, and Aqua themes.
+- **Theme Color Extraction**: Integrated precise HEX color metadata (Primary, Secondary, Accents) directly into the new `theme-assets.ts` module for design system consistency.
+- **Enhanced Settings UI**: Optimized theme selector rendering with textured backgrounds, cover-fit sizing, and improved label contrast on hover.
+
+
 ## v1.60.0 (2026-04-03)
 - **Global Animated Gradient Background [Major]**: Decommissioned resource-heavy video/image backgrounds in favor of a high-performance, 5-layer "Liquid Shades" CSS animation system (`HeroBackground.tsx`).
 - **Performance Mode with Theme-Aware Gradients**: Upgraded Performance Mode from a flat solid color to theme-staged fixed gradients, providing a premium static look while maintaining zero CPU overhead.

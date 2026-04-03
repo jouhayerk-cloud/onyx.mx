@@ -181,6 +181,7 @@ html.theme-cherry {
   --border-color: rgba(0, 0, 0, 0.04);
   --input-color: rgba(255, 255, 255, 0.9);
   --glass-bg: rgba(255, 255, 255, 0.6);
+  --performance-bg: linear-gradient(135deg, #f0f7ff 0%, #fff5f8 100%);
   color-scheme: light;
 }
 
@@ -203,6 +204,7 @@ html.theme-stitch {
   --text-color-secondary: #94a3b8;
   --border-color: rgba(255, 255, 255, 0.05);
   --input-color: rgba(0, 0, 0, 0.4);
+  --performance-bg: linear-gradient(135deg, #13171f 0%, #1c212d 50%, #1e3a5f 100%);
   color-scheme: dark;
 }
 
