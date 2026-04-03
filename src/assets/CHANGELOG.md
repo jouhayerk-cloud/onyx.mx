@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.64.7] - 2026-04-03
+### Refined
+- **Responsive Barcode Scaling**: Optimized barcode dimensions for high-density layouts and added `overflow-hidden w-full` constraints to ensure adaptivity to all screen widths.
+
 ## [1.64.6] - 2026-04-03
 ### Refined
 - **Identity Hub SVG QR**: Switched to `QRCodeSVG` with `var(--main-color)` overlay for better visibility and theme integration.

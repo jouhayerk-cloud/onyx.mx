@@ -908,12 +908,12 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0">
+                                <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                     <Barcode 
                                         value={item.codes.bookBardcode || 'N/A'} 
                                         format="CODE39" 
-                                        width={2.8} 
-                                        height={80} 
+                                        width={2.0} 
+                                        height={60} 
                                         displayValue={false}
                                         margin={0}
                                     />

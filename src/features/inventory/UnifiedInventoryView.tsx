@@ -317,12 +317,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0">
+                                        <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                             <Barcode 
                                                 value={calculated.bookBardcode || 'N/A'} 
                                                 format="CODE39" 
-                                                width={2.8} 
-                                                height={80} 
+                                                width={2.0} 
+                                                height={60} 
                                                 displayValue={false}
                                                 margin={0}
                                             />
@@ -631,12 +631,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center justify-center p-2 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0">
+                                        <div className="flex items-center justify-center p-2 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                             <Barcode 
                                                 value={calculated.bookBardcode || 'N/A'} 
                                                 format="CODE39" 
-                                                width={3.2} 
-                                                height={100} 
+                                                width={2.4} 
+                                                height={80} 
                                                 displayValue={false}
                                                 margin={0}
                                             />
