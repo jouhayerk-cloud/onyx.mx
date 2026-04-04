@@ -19,11 +19,10 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [tagId, setTagId] = useState<string | null>(null);
   const [view, setView] = useState<'app' | 'tag'>('app');
-  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   /**
-   * UNIVERSAL ID DETECTION - v2.2 Deep Hash & Power Hunt
-   * Prioritizes Hash fragments for Google Sites compatibility
+   * UNIVERSAL ID DETECTION
+   * Detects tagid from local URL or hash fragments
    */
   useEffect(() => {
     const findTagInString = (str: string) => {
@@ -34,7 +33,7 @@ export default function App() {
         const namedMatch = decoded.match(/tagid[=\-:_ ]*([A-Z0-9\-]{4,20})/i);
         if (namedMatch) return namedMatch[1];
         
-        // Priority 2: Direct SU Pattern Hunt (e.g. #SU3261HX)
+        // Priority 2: Direct SU Pattern Hunt
         const suMatch = decoded.match(/(SU[0-9]{3,}[A-Z]{0,2})/i);
         if (suMatch) return suMatch[1];
         
@@ -43,42 +42,31 @@ export default function App() {
     };
 
     const attemptSync = () => {
-      // 1. Priority: Hash Fragment (Most durable in Google Sites)
+      // 1. Hash Fragment
       let id = findTagInString(window.location.hash);
       
-      // 2. Next: Referrer (Parent context)
-      if (!id) id = findTagInString(document.referrer);
-      
-      // 3. Fallback: Search params
+      // 2. Search params
       if (!id) {
         const params = new URLSearchParams(window.location.search);
         id = params.get('tagid') || params.get('tagID');
       }
 
+      // 3. Referrer (Fallback)
+      if (!id) id = findTagInString(document.referrer);
+
       if (id && id !== tagId) {
-        setSyncStatus(`Found: ${id}`);
         setTagId(id);
         setView('tag');
-        setTimeout(() => setSyncStatus(null), 4000);
         return true;
       }
       return false;
     };
 
-    // Diagnostics
-    const ref = document.referrer ? "googleusercontent..." : "None";
-    setSyncStatus(`🔍 Syncing... (Ref: ${ref})`);
-
-    let attempts = 0;
-    const interval = setInterval(() => {
-      if (attemptSync() || attempts > 20) {
-          clearInterval(interval);
-          if (attempts > 20 && !tagId) setSyncStatus(null);
-      }
-      attempts++;
-    }, 500);
-
-    return () => clearInterval(interval);
+    attemptSync();
+    
+    // Check one more time after a short delay for slow-loading iframes
+    const timeout = setTimeout(attemptSync, 1000);
+    return () => clearTimeout(timeout);
   }, [tagId]);
 
   useEffect(() => {
@@ -199,12 +187,6 @@ export default function App() {
 
   return (
     <>
-      {syncStatus && (
-        <div className="fixed top-0 left-0 right-0 z-[10000] bg-cyan-500/90 text-black text-[10px] py-1 px-4 font-mono flex items-center justify-center animate-pulse">
-          {syncStatus}
-        </div>
-      )}
-
       {view === 'tag' && tagId ? (
          <TagView tagId={tagId} />
       ) : (

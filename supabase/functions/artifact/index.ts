@@ -10,11 +10,12 @@ serve(async (req) => {
   
   const findTag = (str: string) => {
     if (!str) return null;
-    const match = str.match(/tagid[=\-:_ ]*([A-Z0-9\-]{4,20})/i);
-    return match ? match[1] : null;
+    const match = str.match(/(tagid[=\-:_ ]*([A-Z0-9\-]{4,20}))|(SU[0-9]{3,}[A-Z]{0,2})/i);
+    if (!match) return null;
+    return match[2] || match[0];
   }
   
-  const tagid = findTag(url.search) || findTag(url.pathname) || findTag(referrer);
+  const tagid = findTag(url.search) || findTag(url.pathname);
   const userAgent = req.headers.get('user-agent') || '';
   const isCrawler = /bot|facebookexternalhit|whatsapp|slack|twitterbot|linkedinbot/i.test(userAgent);
 
@@ -26,6 +27,7 @@ serve(async (req) => {
       const { data } = await supabase.from('inventory').select('*').eq('book_barcode', tagid).maybeSingle();
       inventoryItem = data;
       if (!inventoryItem) {
+        // Fallback: Parse SU pattern for legacy/production lookup
         const match = tagid.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
         if (match) {
             const [_, v, wb, num] = match;
@@ -42,25 +44,38 @@ serve(async (req) => {
     return Response.redirect(appUrl, 302);
   }
 
-  // CRAWLER ONLY: High-Compatibility Branding (Rare Earth Gallery)
-  const title = tagid || "Rare Earth Gallery";
+  // CRAWLER METADATA
+  const title = tagid || "ONYX ARTIFACT";
   const desc = inventoryItem ? (inventoryItem.shape + ' | ' + (inventoryItem.item_type || 'ITEM') + ' | ' + inventoryItem.color).toUpperCase() : 'Secure Traceability Hub';
-  const img = (inventoryItem?.media_urls || '').split(',')[0] || 'https://jouhayerk-cloud.github.io/onyx.mx/OnyxMini.svg';
+  
+  // IMAGE RESOLUTION: Ensure it's a full absolute URL
+  let img = 'https://jouhayerk-cloud.github.io/onyx.mx/OnyxMini.svg';
+  if (inventoryItem?.media_urls) {
+      const firstImg = inventoryItem.media_urls.split(',')[0].trim();
+      if (firstImg.startsWith('http')) {
+          img = firstImg;
+      } else {
+          // Construct Supabase Storage URL if it's just a path
+          img = `${SUPABASE_URL}/storage/v1/object/public/inventory/${firstImg}`;
+      }
+  }
 
   const html = `<!DOCTYPE html><html><head>
-    <meta charset="UTF-8"><title>${title}</title>
-    <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
-    <meta property="og:image" content="${img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+    <meta charset="UTF-8">
+    <title>${title}</title>
+    <meta property="og:title" content="${title}">
+    <meta property="og:description" content="${desc}">
+    <meta property="og:image" content="${img}">
+    <meta property="og:image:alt" content="${title}">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://rareearthgallerycc.com">
     <meta name="twitter:card" content="summary_large_image">
     <meta http-equiv="refresh" content="0;url=${appUrl}">
-  </head><body><a href="${appUrl}">Loading Rare Earth Artifact...</a></body></html>`;
+  </head><body><a href="${appUrl}">Loading Artifact...</a></body></html>`;
 
   return new Response(html, { 
     headers: { 
         "Content-Type": "text/html; charset=utf-8",
-        "X-Content-Type-Options": "nosniff" 
+        "X-Content-Type-Options": "nosniff"
     } 
   });
 })
