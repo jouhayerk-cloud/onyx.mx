@@ -22,6 +22,10 @@ const FullscreenViewer: React.FC<{
     onClose: () => void;
 }> = ({ images, initialIdx, onClose }) => {
     const [idx, setIdx] = useState(initialIdx);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+    const minSwipeDistance = 50;
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -33,8 +37,33 @@ const FullscreenViewer: React.FC<{
         return () => window.removeEventListener('keydown', onKey);
     }, [images.length, onClose]);
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+        
+        if (isLeftSwipe) setIdx(p => (p + 1) % images.length);
+        if (isRightSwipe) setIdx(p => (p - 1 + images.length) % images.length);
+    };
+
     return (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col" onClick={onClose}>
+        <div 
+            className="fixed inset-0 z-[9999] bg-black flex flex-col" 
+            onClick={onClose}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
             {/* Top bar */}
             <div className="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-4 z-10 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
                 <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
@@ -48,8 +77,9 @@ const FullscreenViewer: React.FC<{
             {/* Main image */}
             <div className="flex-1 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
                 <img
+                    key={idx}
                     src={images[idx]}
-                    className="max-w-full max-h-full object-contain select-none"
+                    className="max-w-full max-h-full object-contain select-none animate-in fade-in zoom-in-95 duration-300"
                     draggable={false}
                 />
             </div>
@@ -58,11 +88,11 @@ const FullscreenViewer: React.FC<{
             {images.length > 1 && (
                 <>
                     <button onClick={e => { e.stopPropagation(); setIdx(p => (p - 1 + images.length) % images.length); }}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95">
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95 hidden sm:flex">
                         <ChevronLeft size={48} strokeWidth={1} />
                     </button>
                     <button onClick={e => { e.stopPropagation(); setIdx(p => (p + 1) % images.length); }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95">
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-white/20 hover:text-white transition-all active:scale-95 hidden sm:flex">
                         <ChevronRight size={48} strokeWidth={1} />
                     </button>
                 </>
