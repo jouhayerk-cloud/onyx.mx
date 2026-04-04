@@ -141,7 +141,7 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
             "QUANTITY": d.quantity || 1,
             "LANDED CODE": c.bookLandCode,
             "ACQ CODE": c.bookAqCode,
-            "QR URL": `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`
+            "QR URL": `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBardcode}`
         };
     });
 
@@ -303,7 +303,7 @@ export const PackingModule: React.FC = () => {
                 const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
                 const retailStr = String(c.bookRetail || '0').padStart(4, '0');
                 const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
-                const qrUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${c.bookBardcode}`;
+                const qrUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBardcode}`;
                 return [c.bookBardcode, desc, matColor, sizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
             });
 

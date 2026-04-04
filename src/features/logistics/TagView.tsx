@@ -170,28 +170,65 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
 
     // Fetch item
     useEffect(() => {
-        const fetchStandalone = async () => {
+        const resolveItem = async () => {
             if (!tagId) return;
             setLoading(true);
             try {
-                const { data: directData } = await supabase.from('inventory').select('*').eq('book_barcode', tagId).maybeSingle();
-                if (directData) { setFetchedItem({ data: directData }); return; }
+                // 1. Try exact match on book_barcode (User's preferred style SU32615EE)
+                const { data: directData } = await supabase.from('inventory')
+                    .select('*')
+                    .eq('book_barcode', tagId)
+                    .maybeSingle();
+                
+                if (directData) { 
+                    setFetchedItem({ data: directData }); 
+                    return; 
+                }
 
+                // 2. Fallback: Parse barcode style (SU + 326 + 15 + EE)
                 const match = tagId.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
                 if (match) {
                     const [_, vendorPrefix, wbStr, itemNumStr] = match;
                     const { data: parsedData } = await supabase.from('inventory').select('*')
                         .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
                         .eq('item_number', parseInt(itemNumStr, 10));
-                    const found = parsedData?.find(d => String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase()));
-                    if (found) { setFetchedItem({ data: found }); return; }
+                    
+                    if (parsedData && parsedData.length > 0) {
+                        const found = parsedData.find(d => 
+                            String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
+                        ) || parsedData[0];
+                        setFetchedItem({ data: found }); 
+                        return; 
+                    }
                 }
 
-                const { data: prodData } = await supabase.from('production').select('*').eq('tag_id', tagId).maybeSingle();
-                if (prodData) setFetchedItem({ data: prodData, source: 'production' });
-            } catch (err) { console.error(err); } finally { setLoading(false); }
+                // 3. Fallback: Production table
+                const { data: prodData } = await supabase.from('production')
+                    .select('*')
+                    .eq('tag_id', tagId)
+                    .maybeSingle();
+                if (prodData) {
+                    setFetchedItem({ data: prodData, source: 'production' });
+                    return;
+                }
+
+                // 4. Last resort: Try as item_id (legacy SU-...)
+                const { data: legacyData } = await supabase.from('inventory')
+                    .select('*')
+                    .eq('item_id', tagId)
+                    .maybeSingle();
+                if (legacyData) {
+                    setFetchedItem({ data: legacyData });
+                    return;
+                }
+
+            } catch (err) { 
+                console.error("Artifact resolution error:", err); 
+            } finally { 
+                setLoading(false); 
+            }
         };
-        fetchStandalone();
+        resolveItem();
     }, [tagId]);
 
     const item = useMemo(() => {
@@ -211,10 +248,10 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const openViewer = useCallback((idx: number) => { setViewerIdx(idx); setShowViewer(true); }, []);
 
     const handleShare = useCallback(() => {
-        // Use the Edge Function as a proxy for social previews
-        const proxyUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact-preview?tagid=${tagId}`;
+        // Use the Unified Hub for social previews and direct access
+        const hubUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${tagId}`;
         
-        navigator.clipboard.writeText(proxyUrl).then(() => {
+        navigator.clipboard.writeText(hubUrl).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
