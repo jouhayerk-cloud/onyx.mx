@@ -19,54 +19,49 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [tagId, setTagId] = useState<string | null>(null);
   const [view, setView] = useState<'app' | 'tag'>('app');
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   /**
-   * UNIVERSAL ID DETECTION - v2.0 Deep Decode
+   * UNIVERSAL ID DETECTION - v2.1 Deep Sync & Debug
    * Detects tagid from local URL, hash, or parent referrer (Google Sites)
    */
   useEffect(() => {
     const findTagInString = (str: string) => {
       if (!str) return null;
       try {
-        // Double decode to handle Google Sites encoding (%3D, %3F, etc.)
         const decoded = decodeURIComponent(decodeURIComponent(str));
-        // Refined regex: Handles any alphanumeric ID after tagid separator
         const match = decoded.match(/tagid[=\-:_ ]*([A-Z0-9\-]+)/i);
         return match ? match[1] : null;
       } catch (e) { return null; }
     };
 
     const attemptSync = () => {
-      // 1. Try local URL parameters
       const params = new URLSearchParams(window.location.search);
       let id = params.get('tagid') || params.get('tagID') || params.get('TAGID');
 
-      // 2. Try parent URL via referrer (Iframe mode)
-      if (!id) {
-        id = findTagInString(document.referrer);
-      }
-
-      // 3. Try hash fragment (fallback)
-      if (!id) {
-         id = findTagInString(window.location.hash);
-      }
+      if (!id) id = findTagInString(document.referrer);
+      if (!id) id = findTagInString(window.location.hash);
 
       if (id && id !== tagId) {
-        console.log("Onyx Hub: Syncing TagID:", id);
+        setSyncStatus(`Found: ${id}`);
         setTagId(id);
         setView('tag');
+        setTimeout(() => setSyncStatus(null), 3000);
         return true;
       }
       return false;
     };
 
-    // Initial check
-    const found = attemptSync();
-    
-    // Iterative Hunt: Google Sites referrers can be delayed or throttled
+    // Show initial trace
+    const ref = document.referrer ? document.referrer.split('?')[0] : 'None';
+    setSyncStatus(`🔍 Checking Parent: ${ref}...`);
+
     let attempts = 0;
     const interval = setInterval(() => {
-      if (attemptSync() || attempts > 20) clearInterval(interval);
+      if (attemptSync() || attempts > 20) {
+          clearInterval(interval);
+          if (attempts > 20 && !tagId) setSyncStatus(null);
+      }
       attempts++;
     }, 500);
 
@@ -191,14 +186,19 @@ export default function App() {
 
   return (
     <>
-      {tagId ? (
+      {syncStatus && (
+        <div className="fixed top-0 left-0 right-0 z-[10000] bg-cyan-500/90 text-black text-[10px] py-1 px-4 font-mono flex items-center justify-center animate-pulse">
+          {syncStatus}
+        </div>
+      )}
+
+      {view === 'tag' && tagId ? (
          <TagView tagId={tagId} />
       ) : (
         <>
           <DataSyncProvider />
-          {showWelcome ? (
-            <WelcomePage onComplete={() => setShowWelcome(false)} />
-          ) : (user as any)?.__denied ? (
+          {showWelcome && <WelcomePage onComplete={() => setShowWelcome(false)} />}
+          {(user as any)?.__denied ? (
             <div className="w-full h-screen flex items-center justify-center">
               <div className="text-center p-8 max-w-sm">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
