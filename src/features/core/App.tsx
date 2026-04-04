@@ -18,10 +18,26 @@ export default function App() {
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // Detect Tag Scan from URL
+  // Detect Tag Scan from URL (including parent frame for Google Sites)
   const tagId = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('tagid');
+    // 1. Try local URL (normal mode)
+    const localParams = new URLSearchParams(window.location.search);
+    const localTag = localParams.get('tagid');
+    if (localTag) return localTag;
+
+    // 2. Try parent URL via referrer (Iframe mode for Google Sites)
+    try {
+      const referrer = document.referrer;
+      if (referrer && referrer.includes('tagid=')) {
+        const refUrl = new URL(referrer);
+        const refTag = refUrl.searchParams.get('tagid');
+        if (refTag) return refTag;
+      }
+    } catch (e) {
+      // CORS might block full URL access, but we try as a fallback
+    }
+    
+    return null;
   }, []);
 
   useEffect(() => {

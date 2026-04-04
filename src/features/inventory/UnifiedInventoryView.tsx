@@ -333,7 +333,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     {/* Free-Floating QR - SVG Theme Colored */}
                                     <div className="flex-none p-2 relative group/qr">
                                         <QRCodeSVG 
-                                            value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`}
+                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
                                             size={140}
                                             level="H"
                                             includeMargin={false}
@@ -349,7 +349,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 <button 
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`);
+                                        navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
                                         toast.success('Trace Link Copied');
                                     }}
                                     className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all"
@@ -603,7 +603,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`);
+                                            navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
                                             toast.success('Trace Link Copied');
                                         }}
                                         className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
@@ -647,7 +647,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     {/* Free-Floating Modal QR - SVG Theme Colored */}
                                     <div className="flex-none p-4 relative group/modal-qr">
                                         <QRCodeSVG 
-                                            value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${calculated.bookBardcode}`}
+                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
                                             size={200}
                                             level="H"
                                             includeMargin={false}
