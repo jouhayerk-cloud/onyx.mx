@@ -10,7 +10,7 @@ serve(async (req) => {
   
   const findTag = (str: string) => {
     if (!str) return null;
-    const match = str.match(/tagid[=\-: ]*([A-Z]{2}[0-9A-Z\-]+)/i);
+    const match = str.match(/tagid[=\-:_ ]*([A-Z0-9\-]{4,20})/i);
     return match ? match[1] : null;
   }
   
@@ -38,14 +38,12 @@ serve(async (req) => {
 
   const appUrl = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagid || ''}`;
 
-  // PURE REDIRECT FOR HUMANS
-  // 100% guarantee that no "Raw Code" is ever shown in a browser.
   if (!isCrawler) {
     return Response.redirect(appUrl, 302);
   }
 
-  // CRAWLER ONLY: High-Compatibility Meta-Tags
-  const title = tagid || "Onyx Artifact";
+  // CRAWLER ONLY: High-Compatibility Branding (Rare Earth Gallery)
+  const title = tagid || "Rare Earth Gallery";
   const desc = inventoryItem ? (inventoryItem.shape + ' | ' + (inventoryItem.item_type || 'ITEM') + ' | ' + inventoryItem.color).toUpperCase() : 'Secure Traceability Hub';
   const img = (inventoryItem?.media_urls || '').split(',')[0] || 'https://jouhayerk-cloud.github.io/onyx.mx/OnyxMini.svg';
 
@@ -53,9 +51,11 @@ serve(async (req) => {
     <meta charset="UTF-8"><title>${title}</title>
     <meta property="og:title" content="${title}"><meta property="og:description" content="${desc}">
     <meta property="og:image" content="${img}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-    <meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://rareearthgallerycc.com">
+    <meta name="twitter:card" content="summary_large_image">
     <meta http-equiv="refresh" content="0;url=${appUrl}">
-  </head><body><a href="${appUrl}">Loading...</a></body></html>`;
+  </head><body><a href="${appUrl}">Loading Rare Earth Artifact...</a></body></html>`;
 
   return new Response(html, { 
     headers: { 
