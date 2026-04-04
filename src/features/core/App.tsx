@@ -22,39 +22,52 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   /**
-   * UNIVERSAL ID DETECTION - v2.1 Deep Sync & Debug
-   * Detects tagid from local URL, hash, or parent referrer (Google Sites)
+   * UNIVERSAL ID DETECTION - v2.2 Deep Hash & Power Hunt
+   * Prioritizes Hash fragments for Google Sites compatibility
    */
   useEffect(() => {
     const findTagInString = (str: string) => {
       if (!str) return null;
       try {
         const decoded = decodeURIComponent(decodeURIComponent(str));
-        const match = decoded.match(/tagid[=\-:_ ]*([A-Z0-9\-]+)/i);
-        return match ? match[1] : null;
+        // Priority 1: Named tagid
+        const namedMatch = decoded.match(/tagid[=\-:_ ]*([A-Z0-9\-]{4,20})/i);
+        if (namedMatch) return namedMatch[1];
+        
+        // Priority 2: Direct SU Pattern Hunt (e.g. #SU3261HX)
+        const suMatch = decoded.match(/(SU[0-9]{3,}[A-Z]{0,2})/i);
+        if (suMatch) return suMatch[1];
+        
+        return null;
       } catch (e) { return null; }
     };
 
     const attemptSync = () => {
-      const params = new URLSearchParams(window.location.search);
-      let id = params.get('tagid') || params.get('tagID') || params.get('TAGID');
-
+      // 1. Priority: Hash Fragment (Most durable in Google Sites)
+      let id = findTagInString(window.location.hash);
+      
+      // 2. Next: Referrer (Parent context)
       if (!id) id = findTagInString(document.referrer);
-      if (!id) id = findTagInString(window.location.hash);
+      
+      // 3. Fallback: Search params
+      if (!id) {
+        const params = new URLSearchParams(window.location.search);
+        id = params.get('tagid') || params.get('tagID');
+      }
 
       if (id && id !== tagId) {
         setSyncStatus(`Found: ${id}`);
         setTagId(id);
         setView('tag');
-        setTimeout(() => setSyncStatus(null), 3000);
+        setTimeout(() => setSyncStatus(null), 4000);
         return true;
       }
       return false;
     };
 
-    // Show initial trace
-    const ref = document.referrer ? document.referrer.split('?')[0] : 'None';
-    setSyncStatus(`🔍 Checking Parent: ${ref}...`);
+    // Diagnostics
+    const ref = document.referrer ? "googleusercontent..." : "None";
+    setSyncStatus(`🔍 Syncing... (Ref: ${ref})`);
 
     let attempts = 0;
     const interval = setInterval(() => {
