@@ -382,13 +382,13 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
                         </div>
                     </div>
 
-                    {/* Row 3: Retail price (public, no financials gate) */}
-                    {codes.bookRetail && (
+                    {/* Row 3: Retail price - HIDDEN PER USER REQUEST */}
+                    {/* {codes.bookRetail && (
                         <div className="flex items-baseline gap-3">
                             <span className="text-4xl font-black text-white font-mono">${codes.bookRetail}</span>
                             <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">USD · Retail</span>
                         </div>
-                    )}
+                    )} */}
                 </div>
 
 
