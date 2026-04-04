@@ -18,24 +18,31 @@ export default function App() {
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // Detect Tag Scan from URL (including parent frame for Google Sites)
+  // Detect Tag Scan from URL (Universal detection for Google Sites)
   const tagId = useMemo(() => {
-    // 1. Try local URL (normal mode)
-    const localParams = new URLSearchParams(window.location.search);
-    const localTag = localParams.get('tagid');
-    if (localTag) return localTag;
+    /** 
+     * Robust scanner that handles:
+     * - ?tagid=SU326...
+     * - ?tagid-SU326...
+     * - #tagid=SU326...
+     * - Referral URLs from Google Sites
+     */
+    const findTagInString = (str: string) => {
+      if (!str) return null;
+      // Regex looks for 'tagid' followed by any separator (=, -, :, or space)
+      const match = str.match(/tagid[=\-: ]*([A-Z]{2}[0-9A-Z\-]+)/i);
+      return match ? match[1] : null;
+    };
 
-    // 2. Try parent URL via referrer (Iframe mode for Google Sites)
+    // 1. Try local URL search/hash
+    const fromLocation = findTagInString(window.location.search) || findTagInString(window.location.hash);
+    if (fromLocation) return fromLocation;
+
+    // 2. Try parent URL via referrer (Iframe mode)
     try {
-      const referrer = document.referrer;
-      if (referrer && referrer.includes('tagid=')) {
-        const refUrl = new URL(referrer);
-        const refTag = refUrl.searchParams.get('tagid');
-        if (refTag) return refTag;
-      }
-    } catch (e) {
-      // CORS might block full URL access, but we try as a fallback
-    }
+      const fromReferrer = findTagInString(document.referrer);
+      if (fromReferrer) return fromReferrer;
+    } catch (e) {}
     
     return null;
   }, []);

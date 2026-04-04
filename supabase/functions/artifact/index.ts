@@ -7,11 +7,16 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ""
 serve(async (req) => {
   const url = new URL(req.url)
   
-  // Robust param detection
-  const tagid = url.searchParams.get('tagid') || 
-                url.searchParams.get('tagID') || 
-                url.searchParams.get('TagID') || 
-                url.searchParams.get('TAGID');
+  /** 
+   * UNIVERSAL PARAMETER DETECTION
+   * Handles ?tagid=XXX, ?tagid-XXX, etc.
+   */
+  const findTagInStr = (str: string) => {
+    const match = str.match(/tagid[=\-: ]*([A-Z]{2}[0-9A-Z\-]+)/i);
+    return match ? match[1] : null;
+  }
+  
+  const tagid = findTagInStr(url.search) || findTagInStr(url.pathname);
 
   // If a crawler (WhatsApp, Slack, etc.) is checking the link, serve metadata
   const userAgent = req.headers.get('user-agent') || '';
@@ -37,13 +42,10 @@ serve(async (req) => {
 
   const appUrlWithTag = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${tagid || ''}`;
 
-  // If it's a human, just redirect them to the working GitHub URL immediately.
-  // This bypasses all "Raw Code" and Google Sites iframe issues.
   if (!isCrawler) {
     return Response.redirect(appUrlWithTag, 302);
   }
 
-  // If it's a crawler, serve the metadata
   const itemName = inventoryItem?.shape || "Onyx Artifact";
   const itemDesc = inventoryItem ? `${inventoryItem.material} ${inventoryItem.color}` : "Secure Traceability Hub";
   const imageUrl = inventoryItem?.media_urls?.split(',')[0] || "https://jouhayerk-cloud.github.io/onyx.mx/OnyxMini.svg";
