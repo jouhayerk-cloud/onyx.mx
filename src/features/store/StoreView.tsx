@@ -23,7 +23,8 @@ import {
     imageCache,
     fetchImageBatch,
     resizeImage,
-    generateVideoThumbnail
+    generateVideoThumbnail,
+    isVideoFile
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
@@ -48,7 +49,8 @@ import {
     Play,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    Video
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
