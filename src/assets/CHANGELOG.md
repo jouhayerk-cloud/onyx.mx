@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.65.0] - 2026-04-04
+### Added
+- **Store Module Redesign [Major]**: Transitioned the Store module to a high-density, multi-image "Gallery" aesthetic inspired by the Unified Inventory View.
+- **Dynamic Gallery Grid**: Artifact cards now support high-fidelity multi-image grids (2x2, 3x2) with "+X more" overlays and interactive hover scaling.
+- **Premium Detail Panel**: Redesigned the item detail view with Studio typography (Outfit/Inter), glassmorphic layout elements, and descriptive financial coding (ACQ/LND).
+- **Acquisition Workflow Optimization**: Refined the "Mark for Acquisition" action with a high-contrast primary button and improved bag management notifications.
+- **Theme-Aware Continuity**: Ensured 100% theme-aware styling and contrast consistency across the entire shopping experience.
+
 ## [1.64.7] - 2026-04-03
 ### Refined
 - **Responsive Barcode Scaling**: Optimized barcode dimensions for high-density layouts and added `overflow-hidden w-full` constraints to ensure adaptivity to all screen widths.
