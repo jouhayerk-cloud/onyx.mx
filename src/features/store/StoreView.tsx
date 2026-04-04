@@ -422,10 +422,10 @@ export const StoreView = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-12 max-w-[2100px] mx-auto pb-40">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-12 max-w-[2100px] mx-auto pb-40">
                         {filteredItems.map((item, idx) => (
                             <ArtifactCard 
-                                key={item.row} 
+                                key={item.row || item.id} 
                                 item={item} 
                                 index={idx}
                                 inBag={shoppingBag.some(b => b.row === item.row)}
@@ -482,191 +482,135 @@ const ArtifactCard = ({ item, index, inBag, onClick, onUpdateRating }: any) => {
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
     
     const mediaUrls = useMemo(() => {
-        const urls = [n.generatedPngUrl, ...(n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [])];
-        return urls.filter(Boolean);
+        const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+        const main = n.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
+        return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
     }, [n.generatedPngUrl, n.mediaUrls]);
 
-    const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-    const [isVideo, setIsVideo] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [showViewer, setShowViewer] = useState(false);
+    const [viewerIdx, setViewerIdx] = useState(0);
 
-    useEffect(() => {
-        const rawUrl = mediaUrls[activeMediaIndex];
-        if (!rawUrl) return;
-
-        let isActive = true;
-        setIsLoading(true);
-
-        const fileId = extractFileId(rawUrl);
-        if (!fileId) {
-            setImageDataUrl(rawUrl);
-            setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
-            setIsLoading(false);
-            return;
+    const renderGalleryMedia = () => {
+        const total = mediaUrls.length;
+        if (total === 0) {
+            return (
+                <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4 bg-neutral-950/40">
+                    <PackageSearch size={80} strokeWidth={0.5} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em]">Imagery Pending</span>
+                </div>
+            );
         }
 
-        const thumbKey = fileId + '_thumb';
-        if (imageCache.has(thumbKey)) {
-            setImageDataUrl(imageCache.get(thumbKey)!);
-            setIsVideo(rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4'));
-            setIsLoading(false);
-            return;
+        if (total === 1) {
+            return (
+                <div className="relative w-full h-full bg-neutral-950/40 overflow-hidden group/galimg" onClick={(e) => { e.stopPropagation(); setViewerIdx(0); setShowViewer(true); }}>
+                    <img 
+                        src={getCleanImageUrl(mediaUrls[0])} 
+                        className={`w-full h-full object-cover opacity-60 group-hover/card:opacity-100 group-hover/card:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl ? 'p-12 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`} 
+                        alt=""
+                        style={n.generatedPngUrl ? { backgroundColor: n.dominantColor || n.vibeColor || 'rgba(255,255,255,0.02)' } : {}}
+                    />
+                    {isVideoFile(mediaUrls[0]) && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover/card:scale-125 transition-transform duration-500">
+                                <Play className="w-6 h-6 text-white fill-white ml-1" strokeWidth={3} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
         }
 
-        if (imageCache.has(fileId)) {
-            const cached = imageCache.get(fileId)!;
-            const isVid = cached.startsWith('data:video/') || rawUrl.toLowerCase().includes('.mov') || rawUrl.toLowerCase().includes('.mp4');
-            if (isVid) {
-                setIsVideo(true);
-                generateVideoThumbnail(cached).then(thumb => {
-                    if (isActive) {
-                        setImageDataUrl(thumb);
-                        imageCache.set(thumbKey, thumb);
-                    }
-                }).catch(() => {
-                    if (isActive) setImageDataUrl(cached);
-                });
-            } else {
-                setImageDataUrl(cached);
-                setIsVideo(false);
-            }
-            setIsLoading(false);
-            return;
-        }
+        // Multiple images - Dynamic Grid
+        const displayCount = 6;
+        const visibleUrls = mediaUrls.slice(0, displayCount);
+        const remaining = total - displayCount;
+        const gridCols = total <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-        fetchImageBatch(fileId)
-            .then(async (res) => {
-                if (!isActive) return;
-                const dataUrl = `data:${res.mimeType};base64,${res.base64}`;
-                let finalUrl = dataUrl;
-                const isVid = res.mimeType.startsWith('video/');
-                if (isVid) {
-                    setIsVideo(true);
-                    finalUrl = await generateVideoThumbnail(dataUrl);
-                    imageCache.set(fileId, dataUrl);
-                    imageCache.set(thumbKey, finalUrl);
-                } else {
-                    finalUrl = await resizeImage(dataUrl, 600);
-                    imageCache.set(fileId, finalUrl);
-                    setIsVideo(false);
-                }
-                setImageDataUrl(finalUrl);
-            })
-            .catch(() => {
-                if (isActive) setImageDataUrl(null);
-            })
-            .finally(() => {
-                if (isActive) setIsLoading(false);
-            });
-
-        return () => { isActive = false; };
-    }, [activeMediaIndex, mediaUrls]);
-
-    const handleNavigate = (e: React.MouseEvent, dir: number) => {
-        e.stopPropagation();
-        setActiveMediaIndex((prev) => (prev + dir + mediaUrls.length) % mediaUrls.length);
+        return (
+            <div className={`grid gap-px bg-black/40 h-full w-full ${gridCols}`}>
+                {visibleUrls.map((url, i) => (
+                    <div key={i} className={`relative overflow-hidden group/galimg aspect-square cursor-pointer`}
+                         onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}>
+                        <img 
+                            src={getCleanImageUrl(url)} 
+                            className="w-full h-full object-cover opacity-40 group-hover/card:opacity-80 transition-all duration-700 hover:scale-110" 
+                            alt=""
+                        />
+                        {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={16} className="text-white/60" /></div>}
+                        {i === visibleUrls.length - 1 && remaining > 0 && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                                <div className="flex flex-col items-center">
+                                    <span className="text-xl font-black text-white">+{remaining}</span>
+                                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest mt-1">More</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {/* Visual filler for odd grids */}
+                {visibleUrls.length === 2 && <div className="bg-white/2" />}
+            </div>
+        );
     };
-
-    const imgStyle = n.generatedPngUrl && activeMediaIndex === 0 ? { backgroundColor: n.dominantColor || n.vibeColor || 'rgba(255,255,255,0.02)' } : {};
 
     return (
         <div 
             onClick={onClick}
-            className="group/card relative flex flex-col bg-white/5 backdrop-blur-3xl border border-white/5 rounded-3xl overflow-hidden transition-all duration-700 hover:scale-[1.02] hover:border-white/20 hover:shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] cursor-pointer fade-in-item"
-            style={{ animationDelay: `${index * 30}ms`, position: 'relative', fontFamily: 'Inter, sans-serif' }}
+            className="group/card relative flex flex-col bg-white/[0.03] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] overflow-hidden transition-all duration-700 hover:scale-[1.02] hover:border-white/20 hover:shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)] cursor-pointer fade-in-item"
+            style={{ animationDelay: `${index * 40}ms`, position: 'relative', fontFamily: 'Inter, sans-serif' }}
         >
-            {/* Unified Card Header/Image Area */}
-            <div className="relative aspect-4/5 overflow-hidden bg-neutral-950/40">
-                {imageDataUrl ? (
-                    <>
-                        <img
-                            src={imageDataUrl}
-                            className={`w-full h-full object-cover opacity-60 group-hover/card:opacity-100 group-hover/card:scale-110 transition-all duration-[3s] cubic-bezier(0.16, 1, 0.3, 1) ${n.generatedPngUrl && activeMediaIndex === 0 ? 'p-16 drop-shadow-[0_30px_60px_rgba(0,0,0,0.8)]' : ''}`}
-                            style={imgStyle}
-                            alt={item.label}
-                        />
-                        {isVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover/card:scale-125 transition-transform duration-500">
-                                    <Play className="w-6 h-6 text-white fill-white ml-1" strokeWidth={3} />
-                                </div>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-4">
-                        {isLoading ? <div className="w-12 h-12 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" /> : <PackageSearch size={80} strokeWidth={0.5} />}
-                        <span className="text-[10px] font-black uppercase tracking-[0.5em]">{isLoading ? 'Synchronizing' : 'Imagery Pending'}</span>
-                    </div>
-                )}
-
-                {/* Navigation Overlays */}
-                {mediaUrls.length > 1 && (
-                    <>
-                        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 flex justify-between px-4 opacity-0 group-hover/card:opacity-100 transition-opacity z-20 pointer-events-none">
-                            <button 
-                                onClick={(e) => handleNavigate(e, -1)}
-                                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto"
-                            >
-                                <ChevronLeft size={20} strokeWidth={3} />
-                            </button>
-                            <button 
-                                onClick={(e) => handleNavigate(e, 1)}
-                                className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black pointer-events-auto"
-                            >
-                                <ChevronRight size={20} strokeWidth={3} />
-                            </button>
-                        </div>
-                        {/* Dots */}
-                        <div className="absolute top-20 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
-                            {mediaUrls.map((_, i) => (
-                                <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === activeMediaIndex ? 'w-4 bg-(--main-color)' : 'w-1 bg-white/20'}`} />
-                            ))}
-                        </div>
-                    </>
-                )}
+            {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} rating={n.rating || 0} onUpdateRating={(r: number) => onUpdateRating(r)} onClose={() => setShowViewer(false)} />}
+            
+            {/* Gallery Content Area */}
+            <div className="relative aspect-[4/5] overflow-hidden">
+                {renderGalleryMedia()}
 
                 {/* Badges Overlay */}
                 <div className="absolute top-8 left-8 flex items-start justify-between right-8 z-10">
                     <div className="flex flex-col gap-2">
-                         {/* Vendor ID Badge */}
-                         <div className="px-3 py-1 bg-black/40 backdrop-blur-md border border-white/10 text-[9px] font-black text-(--main-color) uppercase tracking-widest">{vendorPrefix}</div>
+                         <div className="px-4 py-1.5 bg-black/60 backdrop-blur-xl border border-white/10 text-[10px] font-black text-(--main-color) uppercase tracking-widest rounded-full">{vendorPrefix}</div>
                     </div>
                     {inBag && (
-                        <div className="w-10 h-10 bg-(--main-color) flex items-center justify-center shadow-3xl animate-in zoom-in duration-500 rounded-lg">
-                            <Check className="w-5 h-5 text-black" strokeWidth={3} />
+                        <div className="w-12 h-12 bg-(--main-color) flex items-center justify-center shadow-3xl animate-in zoom-in duration-500 rounded-2xl">
+                            <Check className="w-6 h-6 text-black" strokeWidth={4} />
                         </div>
                     )}
                 </div>
 
                 {/* Bottom Scrim */}
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black via-black/40 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black via-black/40 to-transparent pointer-events-none" />
             </div>
 
             {/* Combined Details Footer */}
-            <div className="p-8 flex flex-col gap-6">
-                <div className="flex flex-col gap-4">
+            <div className="p-10 flex flex-col gap-8">
+                <div className="flex flex-col gap-6">
                     <div className="w-full flex justify-between items-center -mb-2">
-                        <StarRating rating={n.rating || 0} onChange={onUpdateRating} fullWidth={true} />
+                        <StarRating rating={n.rating || 0} onChange={onUpdateRating} fullWidth={true} size={12} />
                     </div>
-                    <div className="flex flex-col">
-                        <h3 className="text-base font-black text-white uppercase italic tracking-tighter leading-none mb-2 group-hover/card:text-(--main-color) transition-colors">{n.shape} {n.shortDescription || 'Artifact'}</h3>
-                        <p className="text-sm font-bold text-white/40 uppercase tracking-[0.3em]">{n.color} {n.material}</p>
+                    <div className="flex flex-col gap-1">
+                        <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-tight group-hover/card:text-(--main-color) transition-colors drop-shadow-md">
+                            {n.shape} <span className="opacity-40">{n.shortDescription || 'Artifact'}</span>
+                        </h3>
+                        <p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.4em]">{n.color} {n.material}</p>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-baseline gap-2 leading-none">
-                            <span className="text-2xl font-black text-white tracking-tighter" style={{ fontFamily: 'Outfit, sans-serif' }}>${Number(n.price_mxn || n.price || 0).toLocaleString()}</span>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">MXN</span>
+                <div className="flex items-center justify-between pt-8 border-t border-white/5 mt-auto">
+                    <div className="flex flex-col">
+                        <div className="flex items-baseline gap-3 leading-none">
+                            <span className="text-4xl font-black text-white tracking-tighter italic" style={{ fontFamily: 'Outfit, sans-serif' }}>${Number(n.price_mxn || n.price || 0).toLocaleString()}</span>
+                            <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">MXN</span>
                         </div>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover/card:border-(--main-color)/50 group-hover/card:bg-(--main-color)/10 transition-all opacity-0 group-hover/card:opacity-100">
+                        <ArrowRight className="w-6 h-6 text-(--main-color)" />
                     </div>
                 </div>
             </div>
             
-            <div className="absolute inset-0 border border-white/0 group-hover/card:border-(--main-color)/20 transition-all pointer-events-none" />
+            {/* Interactive Border Highlight */}
+            <div className="absolute inset-0 border border-white/0 group-hover/card:border-(--main-color)/20 transition-all pointer-events-none rounded-[2.5rem]" />
         </div>
     );
 };
@@ -884,16 +828,16 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                          </div>
 
                          <div className="grid grid-cols-2 gap-10">
-                            <div className="p-10 border border-white/5 bg-white/2 flex flex-col gap-2 relative overflow-hidden group">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">ACQ</span>
-                                <span className="text-4xl font-black text-(--main-color) font-mono tracking-[0.2em] uppercase leading-none">{codes.bookAqCode}</span>
+                            <div className="p-10 bg-white/2 border border-white/5 rounded-4xl flex flex-col gap-2 relative overflow-hidden group">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">ACQ Artifact Code</span>
+                                <span className="text-4xl font-black text-(--main-color) font-mono tracking-[0.2em] uppercase leading-none drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]">{codes.bookAqCode}</span>
                                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Sparkles size={16} className="text-(--main-color)/40" />
                                 </div>
                             </div>
-                            <div className="p-10 border border-white/5 bg-white/2 flex flex-col gap-2 relative overflow-hidden group">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">LC</span>
-                                <span className="text-4xl font-black text-emerald-400 font-mono tracking-[0.2em] uppercase leading-none">{codes.bookLandCode}</span>
+                            <div className="p-10 bg-white/2 border border-white/5 rounded-4xl flex flex-col gap-2 relative overflow-hidden group">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">LND Landed Code</span>
+                                <span className="text-4xl font-black text-emerald-400 font-mono tracking-[0.2em] uppercase leading-none drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">{codes.bookLandCode}</span>
                                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Layers size={16} className="text-emerald-400/40" />
                                 </div>
@@ -936,34 +880,39 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                         ) : (
                             <div className="flex items-center justify-between gap-12">
                                 <div className="flex flex-col">
-                                <div className="flex items-baseline gap-4">
+                                    <div className="flex items-baseline gap-4">
                                         <span className="text-7xl font-black text-white tracking-tighter italic" style={{ fontFamily: 'Outfit, sans-serif' }}>${Number(n.price_mxn || n.price || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-6">
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); onAcquire(item); }}
-                                        className="h-24 px-16 flex items-center gap-6 bg-white text-black border border-white transition-all active:scale-95 shadow-3xl hover:bg-(--main-color) hover:border-(--main-color)"
+                                        className="h-28 px-16 flex items-center justify-center gap-8 bg-white text-black border border-white transition-all active:scale-95 shadow-[0_40px_100px_rgba(255,255,255,0.1)] hover:bg-(--main-color) hover:border-(--main-color) rounded-3xl group/btn"
                                     >
-                                        <Check className="w-8 h-8" strokeWidth={3} />
-                                        <span className="text-sm font-black uppercase tracking-[0.3em]">Mark for Acquisition</span>
+                                        <div className="w-12 h-12 bg-black/5 rounded-full flex items-center justify-center group-hover/btn:bg-black/10 transition-all">
+                                            <Check className="w-6 h-6" strokeWidth={4} />
+                                        </div>
+                                        <div className="flex flex-col items-start leading-none gap-1">
+                                            <span className="text-xs font-black uppercase tracking-[0.4em]">Acquire Artifact</span>
+                                            <span className="text-[8px] font-bold text-black/40 uppercase tracking-widest mt-0.5">Migrate to inventory stack</span>
+                                        </div>
                                     </button>
 
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
-                                        className={`h-16 px-16 flex items-center gap-6 transition-all active:scale-95 border ${inBag ? 'bg-white/5 border-white/10 text-white' : 'bg-transparent border-white/20 text-white/40 hover:text-white hover:border-white'}`}
+                                        className={`h-20 px-16 flex items-center justify-center gap-6 transition-all active:scale-95 border rounded-3xl ${inBag ? 'bg-white/5 border-white/10 text-white' : 'bg-transparent border-white/20 text-white/40 hover:text-white hover:border-white'}`}
                                     >
-                                        {inBag ? <Check className="w-4 h-4" strokeWidth={3} /> : <Plus className="w-4 h-4" strokeWidth={3} />}
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">{inBag ? 'In Bag' : 'Add to Bag'}</span>
+                                        {inBag ? <Check className="w-5 h-5 text-(--main-color)" strokeWidth={3} /> : <Plus className="w-5 h-5" strokeWidth={3} />}
+                                        <span className="text-xs font-black uppercase tracking-[0.3em]">{inBag ? 'In Shopping Bag' : 'Add to Shopping Bag'}</span>
                                     </button>
                                     
                                     <button 
                                         onClick={() => setShowConfirmRemove(true)}
-                                        className="h-10 px-16 flex items-center justify-center gap-4 text-white/20 hover:text-red-400 hover:bg-red-400/5 transition-all text-[9px] font-black uppercase tracking-widest border border-transparent hover:border-red-400/20"
+                                        className="h-12 px-16 flex items-center justify-center gap-4 text-white/20 hover:text-red-400 hover:bg-red-400/5 transition-all text-[10px] font-black uppercase tracking-widest border border-transparent hover:border-red-400/20 rounded-xl"
                                     >
                                         <Trash2 size={16} />
-                                        Remove
+                                        Remove from Collection
                                     </button>
                                 </div>
                             </div>
