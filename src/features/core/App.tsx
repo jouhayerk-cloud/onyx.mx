@@ -21,26 +21,29 @@ export default function App() {
   const [view, setView] = useState<'app' | 'tag'>('app');
 
   /**
-   * UNIVERSAL ID DETECTION
-   * Detects tagid from local URL, hash, or parent referrer (for iFrame/Google Sites)
+   * UNIVERSAL ID DETECTION - v2.0 Deep Decode
+   * Detects tagid from local URL, hash, or parent referrer (Google Sites)
    */
   useEffect(() => {
     const findTagInString = (str: string) => {
       if (!str) return null;
-      // Refined regex: Handles ?tagid=, ?tagid-, ?tagid:, /tagid/, etc.
-      // Now supports wider range of characters for IDs like SU3261HX
-      const match = str.match(/tagid[=\-: ]*([A-Z]{2}[0-9A-Z\-]+)/i);
-      return match ? match[1] : null;
+      try {
+        // Double decode to handle Google Sites encoding (%3D, %3F, etc.)
+        const decoded = decodeURIComponent(decodeURIComponent(str));
+        // Refined regex: Handles any alphanumeric ID after tagid separator
+        const match = decoded.match(/tagid[=\-:_ ]*([A-Z0-9\-]+)/i);
+        return match ? match[1] : null;
+      } catch (e) { return null; }
     };
 
     const attemptSync = () => {
       // 1. Try local URL parameters
       const params = new URLSearchParams(window.location.search);
-      let id = params.get('tagid');
+      let id = params.get('tagid') || params.get('tagID') || params.get('TAGID');
 
       // 2. Try parent URL via referrer (Iframe mode)
       if (!id) {
-        try { id = findTagInString(document.referrer); } catch (e) {}
+        id = findTagInString(document.referrer);
       }
 
       // 3. Try hash fragment (fallback)
@@ -49,6 +52,7 @@ export default function App() {
       }
 
       if (id && id !== tagId) {
+        console.log("Onyx Hub: Syncing TagID:", id);
         setTagId(id);
         setView('tag');
         return true;
@@ -59,16 +63,14 @@ export default function App() {
     // Initial check
     const found = attemptSync();
     
-    // Google Sites Fallback: Sometimes referrer isn't ready instantly
-    // We check every 500ms for a few seconds to "catch" the parent URL
-    if (!found) {
-      let attempts = 0;
-      const interval = setInterval(() => {
-        if (attemptSync() || attempts > 10) clearInterval(interval);
-        attempts++;
-      }, 500);
-      return () => clearInterval(interval);
-    }
+    // Iterative Hunt: Google Sites referrers can be delayed or throttled
+    let attempts = 0;
+    const interval = setInterval(() => {
+      if (attemptSync() || attempts > 20) clearInterval(interval);
+      attempts++;
+    }, 500);
+
+    return () => clearInterval(interval);
   }, [tagId]);
 
   useEffect(() => {
