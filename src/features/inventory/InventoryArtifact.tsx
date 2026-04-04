@@ -19,6 +19,9 @@ import {
 import { vendors } from '../../lib/consts';
 import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video } from 'lucide-react';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { 
+    ChevronLeft, ChevronRight 
+} from 'lucide-react';
 
 interface InventoryArtifactProps {
     ids: (string | number)[];
@@ -41,6 +44,66 @@ export const InventoryArtifact = () => {
     );
 };
 
+// ── Fullscreen Image Viewer (Universal Swipe Support) ───────────────────
+const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
+    const [currentIdx, setCurrentIdx] = useState(initialIdx);
+    const activeSrc = mediaUrls.length > 0 ? mediaUrls[currentIdx] : src;
+    const isVideo = isVideoFile(activeSrc);
+    
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const minSwipeDistance = 50;
+
+    const nav = (dir: number) => {
+        if (mediaUrls.length === 0) return; 
+        setCurrentIdx(p => (p + dir + mediaUrls.length) % mediaUrls.length);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        if (distance > minSwipeDistance) nav(1);
+        if (distance < -minSwipeDistance) nav(-1);
+    };
+
+    return createPortal(
+        <div 
+            className="fixed inset-0 z-100000 bg-black/98 backdrop-blur-3xl flex items-center justify-center animate-in fade-in duration-300" 
+            onClick={onClose}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+        >
+            <button onClick={onClose} className="absolute top-8 right-8 z-10 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all">
+                <X size={24} />
+            </button>
+            {mediaUrls.length > 1 && (
+                <div className="absolute inset-0 flex items-center justify-between px-8 pointer-events-none">
+                    <button onClick={(e) => { e.stopPropagation(); nav(-1); }} className="w-16 h-16 rounded-full bg-white/5 border border-white/10 hidden sm:flex items-center justify-center text-white/30 hover:text-white transition-all pointer-events-auto"><ChevronLeft size={32} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); nav(1); }} className="w-16 h-16 rounded-full bg-white/5 border border-white/10 hidden sm:flex items-center justify-center text-white/30 hover:text-white transition-all pointer-events-auto"><ChevronRight size={32} /></button>
+                </div>
+            )}
+            {isVideo ? (
+                <video src={getCleanImageUrl(activeSrc)} controls autoPlay className="max-w-[90vw] max-h-[90vh] shadow-2xl rounded-2xl" onClick={(e) => e.stopPropagation()} />
+            ) : (
+                <img key={currentIdx} src={getCleanImageUrl(activeSrc)} alt="" draggable={false}
+                    className="max-w-[90vw] max-h-[90vh] object-contain select-none animate-in fade-in zoom-in-95 duration-300"
+                    onClick={(e) => e.stopPropagation()}
+                />
+            )}
+        </div>, document.body
+    );
+};
+
 export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, onClose, initialView }) => {
     const items = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
@@ -48,6 +111,9 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'gallery'>(initialView || 'gallery');
+    const [showViewer, setShowViewer] = useState(false);
+    const [viewerIdx, setViewerIdx] = useState(0);
+    const [viewerUrls, setViewerUrls] = useState<string[]>([]);
     const currencyMode = 'MXN'; // Default to MXN for artifacts
 
     // Standardize IDs
@@ -134,6 +200,15 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />
             
+            {showViewer && (
+                <FullscreenImageViewer 
+                    src={viewerUrls[viewerIdx]} 
+                    mediaUrls={viewerUrls} 
+                    initialIdx={viewerIdx} 
+                    onClose={() => setShowViewer(false)} 
+                />
+            )}
+
             <div className="relative w-full max-w-7xl h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl flex flex-col overflow-hidden">
                 
                 {/* Modern Header */}
@@ -183,10 +258,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
+                                        const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+
                                         return (
-                                            <div key={item.row} className="flex items-center px-6 py-4 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
+                                            <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
+                                                className="flex items-center px-6 py-4 rounded-3xl bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
                                                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 mr-6 shrink-0">
-                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-cover" />
+                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || mediaUrlsArr[0])} className="w-full h-full object-cover" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="text-sm font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
@@ -215,10 +294,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
+                                        const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+
                                         return (
-                                            <div key={item.row} className="flex flex-col rounded-[32px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
+                                            <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
+                                                className="flex flex-col rounded-[32px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
                                                 <div className="aspect-square relative flex items-center justify-center bg-black/20 p-6">
-                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls?.split(',')[0])} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
+                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || mediaUrlsArr[0])} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
                                                     <div className="absolute top-4 left-4 z-10">
                                                         <div className="px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-md bg-black/60 border border-white/10" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</div>
                                                     </div>
@@ -248,26 +331,27 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                                         const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
                                         const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
-                                        const mediaUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                        const displayUrls = [norm.generatedPngUrl || mediaUrls[0], ...mediaUrls.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
-                                        const mediaCount = displayUrls.length;
+                                        const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+                                        const mediaCount = displayUrlsArr.length;
                                         const isLarge = mediaCount >= 1 && mediaCount < 10;
                                         const isFull = mediaCount >= 10;
                                         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
                                         return (
-                                            <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
+                                            <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
                                                 {(() => {
-                                                    const total = displayUrls.length;
+                                                    const total = displayUrlsArr.length;
                                                     const displayCount = 24;
-                                                    const visibleUrls = displayUrls.slice(0, displayCount);
+                                                    const visibleUrls = displayUrlsArr.slice(0, displayCount);
                                                     const remaining = total - displayCount;
                                                     
                                                     // Dynamic Grid Configuration - Full Aspect Ratio for few images
                                                     if (total === 1) {
                                                         return (
-                                                            <div className="relative w-full bg-black/20 overflow-hidden cursor-pointer">
+                                                            <div className="relative w-full bg-black/20 overflow-hidden cursor-pointer"
+                                                                onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}>
                                                                 <img src={getCleanImageUrl(visibleUrls[0])} className="w-full h-auto max-h-[800px] object-contain transition-transform duration-1000 group-hover:scale-105" />
                                                                 {isVideoFile(visibleUrls[0]) && <div className="absolute inset-0 flex items-center justify-center bg-black/20"><Video size={32} className="text-white/60" /></div>}
                                                                 <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -291,7 +375,8 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                         return (
                                                             <div className={`grid gap-px bg-black/20 ${total === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                                                                 {visibleUrls.map((url, i) => (
-                                                                    <div key={i} className="relative overflow-hidden cursor-pointer bg-black/10">
+                                                                    <div key={i} className="relative overflow-hidden cursor-pointer bg-black/10"
+                                                                        onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}>
                                                                         <img src={getCleanImageUrl(url)} className="w-full h-auto max-h-[700px] object-contain transition-transform duration-1000 group-hover:scale-110" />
                                                                         {i === 0 && (
                                                                             <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
@@ -320,7 +405,8 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                     return (
                                                         <div className={`grid gap-px bg-black/20 ${gridCols}`}>
                                                             {visibleUrls.map((url, i) => (
-                                                                <div key={i} className={`relative overflow-hidden aspect-square cursor-pointer`}>
+                                                                <div key={i} className={`relative overflow-hidden aspect-square cursor-pointer`}
+                                                                    onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}>
                                                                     <img src={getCleanImageUrl(url)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                                                                     {i === 0 && (
                                                                         <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
