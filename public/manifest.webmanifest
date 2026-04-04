@@ -3,23 +3,23 @@
   "name": "Onyx.mx",
   "icons": [
     {
-      "src": "favicon.svg?v=1.66.24",
+      "src": "favicon.svg?v=1.70.1",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
     },
     {
-      "src": "favicon.png?v=1.66.24",
+      "src": "favicon.png?v=1.70.1",
       "type": "image/png",
       "sizes": "32x32"
     },
     {
-      "src": "icon-192.png?v=1.66.24",
+      "src": "icon-192.png?v=1.70.1",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-512.png?v=1.66.24",
+      "src": "icon-512.png?v=1.70.1",
       "type": "image/png",
       "sizes": "512x512"
     }
@@ -27,6 +27,6 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "theme_color": "#0d0b0a",
-  "background_color": "#0d0b0a"
+  "theme_color": "#fdfcf0",
+  "background_color": "#fdfcf0"
 }

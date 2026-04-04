@@ -1,14 +1,18 @@
-<svg width="256" height="256" viewBox="0 0 1808 2096" version="1.1" xmlns="http://www.w3.org/2000/svg" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <!-- Exact Vector Reproduction from OnyxMiniLogo -->
-    <path d="M-0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill="#b8860b" opacity="0.3" />
-    <path d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill="#8da388" opacity="0.5" />
-    <path d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill="#f5f5f0" opacity="0.75" />
-    <path d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill="#f5f5f0" opacity="0.5" />
-    <path d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill="#8da388" opacity="0.5" />
-    <g transform="matrix(0.878961,0.476894,0,0.878961,179.953,-570.815)">
-        <text x="-103.102" y="1941.1" style="font-family:'Outfit', 'Ebrima-Bold', 'Ebrima', sans-serif;font-weight:700;font-size:647.349px;" fill="#f5f5f0" opacity="0.5">O<tspan x="331.464" y="1941.1">N</tspan></text>
-    </g>
-    <g transform="matrix(0.877743,-0.479132,0,0.877743,285.721,1126.22)">
-        <text x="745.011" y="853.282" style="font-family:'Outfit', 'Ebrima-Bold', 'Ebrima', sans-serif;font-weight:700;font-size:648.247px;" fill="#f5f5f0" opacity="0.5">Y<tspan x="1161.14" y="853.282">X</tspan></text>
-    </g>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- AQUA (Light Coastal Stone) Background -->
+  <rect width="256" height="256" rx="48" fill="#fdfcf0"/>
+  
+  <!-- Official Onyx Mini Logo Geometry (v1.70.1 Pixel-Perfect Restoration) -->
+  <g transform="translate(42, 28) scale(0.095)">
+    <!-- Lower Base (Coastal Sand) -->
+    <path d="M-0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill="#c17e61" fill-opacity="0.3" />
+    <!-- Left Column (Aqua) -->
+    <path d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill="#00bcd4" fill-opacity="0.5" />
+    <!-- Right Column (Aqua) -->
+    <path d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill="#00bcd4" fill-opacity="0.75" />
+    <!-- Top Cap Outer (Aqua) -->
+    <path d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill="#00bcd4" fill-opacity="0.5" />
+    <!-- Top Cap Inner (Aqua Accent) -->
+    <path d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill="#00bcd4" fill-opacity="0.5" />
+  </g>
 </svg>
