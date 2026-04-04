@@ -161,6 +161,7 @@ export function MainAppView() {
 
         const artifact = params.get('artifact');
         const ids = params.get('ids');
+        const tagid = params.get('tagid');
 
         if (artifact === 'inventory' && ids) {
             setInventoryArtifactConfig({
@@ -168,11 +169,18 @@ export function MainAppView() {
                 itemIds: ids.split(',').filter(Boolean),
                 title: 'Shared Inventory Items'
             });
-            // params.delete('artifact'); // Keep as part of the app state if needed, or delete to clean up URL
-            // params.delete('ids');
-            // params.delete('view');
-            // params.delete('selection');
-            // updated = true;
+        } else if (tagid && user) {
+            // Internal deep link for tagid
+            import('../../lib/supabase').then(async ({ supabase }) => {
+                const { data } = await supabase.from('inventory').select('id').eq('book_barcode', tagid).maybeSingle();
+                if (data) {
+                    setInventoryArtifactConfig({
+                        isOpen: true,
+                        itemIds: [String(data.id)],
+                        title: `Item: ${tagid}`
+                    });
+                }
+            });
         }
 
         // Support Legacy params

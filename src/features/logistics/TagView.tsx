@@ -211,11 +211,14 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     const openViewer = useCallback((idx: number) => { setViewerIdx(idx); setShowViewer(true); }, []);
 
     const handleShare = useCallback(() => {
-        navigator.clipboard.writeText(window.location.href).then(() => {
+        // Use the Edge Function as a proxy for social previews
+        const proxyUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact-preview?tagid=${tagId}`;
+        
+        navigator.clipboard.writeText(proxyUrl).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         });
-    }, []);
+    }, [tagId]);
 
     // ── Loading ─────────────────────────────────────────────────────────────
     if (loading) return (
