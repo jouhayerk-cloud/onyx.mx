@@ -17,35 +17,59 @@ export default function App() {
   const performanceMode = useAtomValue(performanceModeAtom);
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [tagId, setTagId] = useState<string | null>(null);
+  const [view, setView] = useState<'app' | 'tag'>('app');
 
-  // Detect Tag Scan from URL (Universal detection for Google Sites)
-  const tagId = useMemo(() => {
-    /** 
-     * Robust scanner that handles:
-     * - ?tagid=SU326...
-     * - ?tagid-SU326...
-     * - #tagid=SU326...
-     * - Referral URLs from Google Sites
-     */
+  /**
+   * UNIVERSAL ID DETECTION
+   * Detects tagid from local URL, hash, or parent referrer (for iFrame/Google Sites)
+   */
+  useEffect(() => {
     const findTagInString = (str: string) => {
       if (!str) return null;
-      // Regex looks for 'tagid' followed by any separator (=, -, :, or space)
+      // Refined regex: Handles ?tagid=, ?tagid-, ?tagid:, /tagid/, etc.
+      // Now supports wider range of characters for IDs like SU3261HX
       const match = str.match(/tagid[=\-: ]*([A-Z]{2}[0-9A-Z\-]+)/i);
       return match ? match[1] : null;
     };
 
-    // 1. Try local URL search/hash
-    const fromLocation = findTagInString(window.location.search) || findTagInString(window.location.hash);
-    if (fromLocation) return fromLocation;
+    const attemptSync = () => {
+      // 1. Try local URL parameters
+      const params = new URLSearchParams(window.location.search);
+      let id = params.get('tagid');
 
-    // 2. Try parent URL via referrer (Iframe mode)
-    try {
-      const fromReferrer = findTagInString(document.referrer);
-      if (fromReferrer) return fromReferrer;
-    } catch (e) {}
+      // 2. Try parent URL via referrer (Iframe mode)
+      if (!id) {
+        try { id = findTagInString(document.referrer); } catch (e) {}
+      }
+
+      // 3. Try hash fragment (fallback)
+      if (!id) {
+         id = findTagInString(window.location.hash);
+      }
+
+      if (id && id !== tagId) {
+        setTagId(id);
+        setView('tag');
+        return true;
+      }
+      return false;
+    };
+
+    // Initial check
+    const found = attemptSync();
     
-    return null;
-  }, []);
+    // Google Sites Fallback: Sometimes referrer isn't ready instantly
+    // We check every 500ms for a few seconds to "catch" the parent URL
+    if (!found) {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        if (attemptSync() || attempts > 10) clearInterval(interval);
+        attempts++;
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [tagId]);
 
   useEffect(() => {
     // Detect Supabase Confirmation/Recovery links
