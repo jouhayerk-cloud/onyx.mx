@@ -3,6 +3,12 @@
   "name": "Onyx.mx",
   "icons": [
     {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
       "src": "favicon.png",
       "type": "image/png",
       "sizes": "32x32"
@@ -21,6 +27,6 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "theme_color": "#111111",
-  "background_color": "#111111"
+  "theme_color": "#0d0b0a",
+  "background_color": "#0d0b0a"
 }
