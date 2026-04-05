@@ -130,20 +130,18 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
     return (
         <div className="h-full flex flex-col bg-[#050505] text-white selection:bg-white/20 overflow-hidden relative">
             {/* Header / Search Marquee - Fixed at top */}
-            <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-20 pb-12'}`}>
+            <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-8 pb-8'}`}>
                 <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-12">
-                    {/* Logo & Title */}
-                    <div className={`flex flex-col items-center gap-6 transition-all duration-700 ${isInitial ? 'scale-110' : 'scale-90 opacity-60'}`}>
-                        <OnyxLogo width={48} height={48} />
-                        <div className="text-center">
-                            <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-none italic">Viewer</h1>
-                            <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.6em] mt-3 ml-2">Clean Search Module v1.80.0</p>
+                    {/* Logo & Title - Hidden when results active */}
+                    {(isInitial && results.length === 0) && (
+                        <div className={`flex flex-col items-center gap-6 transition-all duration-700 scale-110`}>
+                            <OnyxLogo width={48} height={48} />
                         </div>
-                    </div>
+                    )}
 
-                    {/* Search Bar */}
+                    {/* Search Bar - Shrinks when results active */}
                     <div className="relative group">
-                        <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none text-white/20 group-focus-within:text-white transition-colors">
+                        <div className={`absolute inset-y-0 left-8 flex items-center pointer-events-none text-white/20 group-focus-within:text-white transition-all ${!isInitial ? 'scale-75 translate-x--2' : ''}`}>
                             <Search size={28} strokeWidth={2.5} />
                         </div>
                         <input
@@ -152,11 +150,15 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                             onChange={handleInput}
                             onKeyDown={handleKeyDown}
                             placeholder="INPUT BARCODES SEPARATED BY SPACE..."
-                            className="w-full h-24 sm:h-32 px-24 bg-white/2 border border-white/10 rounded-full text-xl sm:text-3xl font-black uppercase tracking-tight placeholder:text-white/5 focus:border-white/20 focus:bg-white/5 transition-all outline-none shadow-2xl"
+                            className={`w-full transition-all duration-700 bg-white/2 border border-white/10 rounded-full font-black uppercase tracking-tight placeholder:text-white/5 focus:border-white/20 focus:bg-white/5 outline-none shadow-2xl ${
+                                isInitial && results.length === 0 
+                                ? 'h-24 sm:h-32 px-24 text-xl sm:text-3xl' 
+                                : 'h-16 px-16 text-base sm:text-lg'
+                            }`}
                         />
                         {loading && (
                             <div className="absolute inset-y-0 right-10 flex items-center">
-                                <Loader2 size={32} className="animate-spin text-white/20" />
+                                <Loader2 size={24} className="animate-spin text-white/20" />
                             </div>
                         )}
                     </div>
