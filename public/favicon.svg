@@ -1,18 +1,44 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="256" height="256" viewBox="0 0 2096 2096" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- AQUA High-Fidelity Gradients (v1.70.3) -->
+    <linearGradient id="AquaGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00bcd4" />
+      <stop offset="100%" stop-color="#4dd0e1" />
+    </linearGradient>
+    <linearGradient id="SandGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c17e61" />
+      <stop offset="100%" stop-color="#d4a373" />
+    </linearGradient>
+    <linearGradient id="DeepStone" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1614" />
+      <stop offset="100%" stop-color="#435159" />
+    </linearGradient>
+  </defs>
+
   <!-- AQUA (Light Coastal Stone) Background -->
-  <rect width="256" height="256" rx="48" fill="#fdfcf0"/>
+  <rect width="2096" height="2096" rx="420" fill="#fdfcf0"/>
   
-  <!-- Official Onyx Mini Logo Geometry (v1.70.1 Pixel-Perfect Restoration) -->
-  <g transform="translate(42, 28) scale(0.095)">
-    <!-- Lower Base (Coastal Sand) -->
-    <path d="M-0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill="#c17e61" fill-opacity="0.3" />
-    <!-- Left Column (Aqua) -->
-    <path d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill="#00bcd4" fill-opacity="0.5" />
-    <!-- Right Column (Aqua) -->
-    <path d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill="#00bcd4" fill-opacity="0.75" />
-    <!-- Top Cap Outer (Aqua) -->
-    <path d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill="#00bcd4" fill-opacity="0.5" />
-    <!-- Top Cap Inner (Aqua Accent) -->
-    <path d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill="#00bcd4" fill-opacity="0.5" />
+  <!-- Official Onyx Mini Logo Restoration (v1.70.3 No-Clip Scaling) -->
+  <g transform="translate(262, 126) scale(0.85)">
+    <!-- 1. Lower Base (Coastal Sand) -->
+    <path d="M0,1609.06l900.137,486.336l907.485,-496.323l-900.137,-486.336l-907.485,496.323Z" fill="url(#SandGold)" fill-opacity="0.45" />
+    
+    <!-- 2. Vertical Columns (Aqua Highlights) -->
+    <path d="M890.8,887.045l0,903.041l-797.05,-435.924l-0,-903.041l797.05,435.924Z" fill="url(#AquaGlow)" fill-opacity="0.6" />
+    <path d="M890.8,878.436l0,925.882l823.072,-450.156l0,-925.881l-823.072,450.155Z" fill="url(#AquaGlow)" fill-opacity="0.85" />
+    
+    <!-- 3. Top Caps (Aqua Glow) -->
+    <path d="M81.042,441.337l812.569,439.024l806.948,-441.337l-812.569,-439.024l-806.948,441.337Z" fill="url(#AquaGlow)" fill-opacity="0.55" />
+    <path d="M215.715,439.546l668.333,361.094l679.915,-371.86l-668.333,-361.094l-679.915,371.86Z" fill="url(#AquaGlow)" fill-opacity="0.65" />
+
+    <!-- 4. Typography "ON" (Restored Transform with SandGold Fill) -->
+    <g transform="matrix(0.878961,0.476894,-0,0.878961,179.953,-570.815)">
+      <text x="-103.102" y="1941.1" font-family="sans-serif" font-weight="900" font-size="647.349px" fill="url(#SandGold)" fill-opacity="0.75">ON</text>
+    </g>
+
+    <!-- 5. Typography "YX" (Restored Transform with SandGold Fill) -->
+    <g transform="matrix(0.877743,-0.479132,-0,0.877743,285.721,1126.22)">
+      <text x="745.011" y="853.282" font-family="sans-serif" font-weight="900" font-size="648.247px" fill="url(#SandGold)" fill-opacity="0.75">YX</text>
+    </g>
   </g>
 </svg>
