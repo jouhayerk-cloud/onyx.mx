@@ -1,4 +1,15 @@
 # Changelog
+ 
+## v1.66.0 (2026-04-05)
+- **High-Fidelity Viewer Module [Major]**: Launched a dedicated search engine for rapid artifact discovery.
+    - **Dual-Mode Architecture**: Operates as both an integrated dashboard module and a standalone public iFrame for Google Sites.
+    - **Batch Barcode Querying**: Supports space-separated multiple Tag ID searches with real-time grid rendering.
+    - **Theme-Aware Search Marquee**: Fully synchronized with **Aqua** (Light) and **Talan** (Dark) design systems.
+- **URL-Aware Routing Optimization**: 
+    - Implemented `universalViewAtom` with lazy initialization to determine view state (App vs. Tag vs. Viewer) based on URL parameters.
+    - **Zero-Flicker iFrame Entry**: Bypasses the login wall for public users, resolving the "Empty Page" issue in Google Sites embeds.
+- **Sidebar Module Integration**: Functionalized the "Search" sidebar icon, mapping it to the new **Viewer** module tab for authenticated users.
+- **Global State Synchronization**: Migrated `tagId` and `activeView` to global Jotai atoms for unified navigation across the entire platform.
 
 ## v1.62.0 (2026-04-03)
 - **Theme System Simplification**: Decommissioned and removed **Earth**, **Cherry**, and **Stitch** themes to focus the application exclusively on the 4 primary stone signatures (Talan, Fluorite, Nacar, Aqua).

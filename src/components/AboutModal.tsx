@@ -103,8 +103,8 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between p-7 border-b border-white/10 bg-white/5 shadow-2xl">
                     <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/10 shadow-inner group transition-all hover:scale-105">
-                            <OnyxMiniLogo className="w-9 h-9 transition-all group-hover:rotate-12" />
+                        <div className="w-14 h-14 flex items-center justify-center group transition-all hover:scale-105">
+                            <OnyxMiniLogo className="w-12 h-12 transition-all group-hover:rotate-12 drop-shadow-[0_0_15px_rgba(255,255,255,0.15)]" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-black uppercase tracking-[0.25em] text-white leading-none mb-1 shadow-sm">Onyx.mx Studio</h1>
