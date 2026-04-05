@@ -71,5 +71,30 @@
         window.history.replaceState(null, '', '?' + params.toString() + window.location.hash);
       }
     </script>
-  </body>
+      <!-- Diagnostic Load Monitor -->
+    <script>
+      const bundle = document.getElementById('main-bundle');
+      if (bundle) {
+        bundle.onerror = () => {
+          const label = document.querySelector('.label');
+          if (label) {
+            label.innerHTML = 'Resource Error: Initialization assets could not be resolved.';
+            label.style.color = '#ff4444';
+            label.style.fontSize = '14px';
+            label.style.fontWeight = 'bold';
+          }
+          console.error("Studio Initialization Failure: Bundle 404 or CSP Block.");
+        };
+        
+        // Timeout watchdog: If nothing happens in 10s, show troubleshooting
+        setTimeout(() => {
+          const label = document.querySelector('.label');
+          if (label && label.innerHTML.includes('INITIALIZING')) {
+            label.innerHTML = 'Still initializing... check internet or domain configuration.';
+            label.style.opacity = '0.6';
+          }
+        }, 10000);
+      }
+    </script>
+</body>
 </html>
