@@ -33,22 +33,23 @@
         background: #050505;
       }
       .logo {
-        width: 48px;
-        height: 48px;
-        opacity: 0.2;
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        width: 64px;
+        height: 64px;
+        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.05));
+        animation: onyx-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
       .label {
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 900;
         text-transform: uppercase;
-        letter-spacing: 0.5em;
-        color: rgba(255, 255, 255, 0.1);
-        margin-left: 0.5em;
+        letter-spacing: 0.6em;
+        color: rgba(255, 255, 255, 0.15);
+        margin-left: 0.6em;
+        margin-top: 0.5rem;
       }
-      @keyframes pulse {
-        0%, 100% { opacity: 0.1; transform: scale(0.95); }
-        50% { opacity: 0.3; transform: scale(1); }
+      @keyframes onyx-pulse {
+        0%, 100% { opacity: 0.1; transform: scale(0.92) translateY(0); }
+        50% { opacity: 0.4; transform: scale(1) translateY(-2px); }
       }
     </style>
   </head>
