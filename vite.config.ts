@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       minify: true,
       rollupOptions: {
+        input: {
+          main: fileURLToPath(new URL('./index.html', import.meta.url)),
+          viewer: fileURLToPath(new URL('./iFrameViewer.html', import.meta.url)),
+        },
         output: {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'jotai'],

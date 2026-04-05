@@ -1,5 +1,6 @@
 
-import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
+import {
     activeViewAtom,
     createViewActiveTabAtom,
     logisticsSubTabAtom,
@@ -20,12 +21,14 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';import {
     processActiveStepLabelAtom,
     isDummyModeAtom,
     inventoryArtifactConfigAtom,
-    paymentsArtifactConfigAtom
+    paymentsArtifactConfigAtom,
+    universalViewAtom,
+    tagIdAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
-    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers
 } from 'lucide-react';
 
 import { MainHeader } from './MainHeader';
@@ -51,6 +54,7 @@ import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { AboutModal } from '../../components/AboutModal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
+import { ViewerView } from '../viewer/ViewerView';
 
 declare const __APP_VERSION__: string;
 
@@ -129,22 +133,17 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
     );
 };
 
-
-
-
 export function MainAppView() {
     const t = useTranslation();
     const [user] = useAtom(userAtom);
     const [activeView, setActiveView] = useAtom(activeViewAtom);
+    const setUniversalView = useSetAtom(universalViewAtom);
+    const setTagId = useSetAtom(tagIdAtom);
     const workflowStep = useAtomValue(workflowStepAtom);
     const isEditingMask = useAtomValue(isEditingMaskAtom);
-    const is3DViewerOpen = useAtomValue(is3DViewerOpenAtom);
     const [is3DWorkspaceOpen, setIs3DWorkspaceOpen] = useAtom(is3DWorkspaceOpenAtom);
     const sidebarState = useAtomValue(sidebarStateAtom);
     const setSidebarState = useSetAtom(sidebarStateAtom);
-    const isProcessing = useAtomValue(processIsProcessingAtom);
-    const activeStepLabel = useAtomValue(processActiveStepLabelAtom);
-    const setWorkflowStep = useSetAtom(workflowStepAtom);
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
     const [isDummyMode, setIsDummyMode] = useAtom(isDummyModeAtom);
@@ -153,8 +152,7 @@ export function MainAppView() {
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
 
-    const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
-
+    // Deep Link Effect
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         let updated = false;
@@ -170,7 +168,6 @@ export function MainAppView() {
                 title: 'Shared Inventory Items'
             });
         } else if (tagid && user) {
-            // Internal deep link for tagid
             import('../../lib/supabase').then(async ({ supabase }) => {
                 const { data } = await supabase.from('inventory').select('id').eq('book_barcode', tagid).maybeSingle();
                 if (data) {
@@ -183,7 +180,6 @@ export function MainAppView() {
             });
         }
 
-        // Support Legacy params
         const inventoryIds = params.get('inventoryArtifactIds');
         if (inventoryIds) {
             setInventoryArtifactConfig({
@@ -213,26 +209,21 @@ export function MainAppView() {
             const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
             window.history.replaceState(null, '', newUrl);
         }
-    }, [setInventoryArtifactConfig, setPaymentsArtifactConfig]);
+    }, [setInventoryArtifactConfig, setPaymentsArtifactConfig, user]);
 
     useEffect(() => {
         const handleResize = () => {
-
             if (window.innerWidth <= 768) {
                 setSidebarState(current => {
-                    if (current !== 'hidden') {
-                        return 'hidden';
-                    }
+                    if (current !== 'hidden') return 'hidden';
                     return current;
                 });
             }
         };
         window.addEventListener('resize', handleResize);
-
         return () => window.removeEventListener('resize', handleResize);
     }, [setSidebarState]);
 
-    // Dummy mode logic: if Client is in restricted modules, enable dummy mode
     useEffect(() => {
         if (user?.role === 'Client') {
             const dummyViews = ['upload', 'logistics', 'packing', 'process'];
@@ -267,63 +258,18 @@ export function MainAppView() {
             case 'finance': return <FinanceView />;
             case 'store': return <StoreView />;
             case 'process': return <ProcessView />;
+            case 'viewer':
+                return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
             default:
                 return <InventoryView />;
         }
     })();
 
-    const uploadSubItems = [
-        {
-            id: 'upload-wizard', label: 'Create', icon: 'upload', isActive: activeView === 'upload', action: () => {
-                setActiveView('upload');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        }
-    ];
-
-
-    const logisticsSubItems = [
-        {
-            id: 'crates', label: 'Crates', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'crates', action: () => {
-                setActiveView('logistics');
-                setLogisticsSubTab('crates');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'packing', label: 'Labels', icon: 'package', isActive: activeView === 'logistics' && logisticsSubTab === 'packing', action: () => {
-                setActiveView('logistics');
-                setLogisticsSubTab('packing');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-    ];
-
-    const financeSubItems = [
-        {
-            id: 'payments', label: 'Payments', icon: 'credit-card', isActive: activeView === 'finance' && financeSubTab === 'payments', action: () => {
-                setActiveView('finance');
-                setFinanceSubTab('payments');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-        {
-            id: 'expenses', label: 'Expenses', icon: 'layers', isActive: activeView === 'finance' && financeSubTab === 'expenses', action: () => {
-                setActiveView('finance');
-                setFinanceSubTab('expenses');
-                if (window.innerWidth <= 768) setSidebarState('hidden');
-            }
-        },
-    ];
-
     const handleSidebarStateToggle = () => {
         setSidebarState(current => {
             const states: SidebarState[] = ['expanded', 'compact', 'hidden'];
             const isMobile = window.innerWidth <= 768;
-            if (isMobile) {
-                // On mobile, skip 'expanded' and toggle between 'hidden' and 'compact'
-                return current === 'hidden' ? 'compact' : 'hidden';
-            }
+            if (isMobile) return current === 'hidden' ? 'compact' : 'hidden';
             const currentIndex = states.indexOf(current);
             const nextIndex = (currentIndex + 1) % states.length;
             return states[nextIndex];
@@ -332,7 +278,6 @@ export function MainAppView() {
 
     return (
         <>
-            {/* Sidebar FAB — only visible when sidebar is hidden */}
             {sidebarState === 'hidden' && (
                 <div 
                     className="fixed top-0 left-0 p-6 z-1000 group cursor-pointer"
@@ -342,9 +287,7 @@ export function MainAppView() {
                     }}
                     title="Open Navigation"
                 >
-                    {/* Transparent safety area behind logo to prevent top-bar overlap */}
                     <div className="absolute inset-0 bg-(--app-bg)/40 backdrop-blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-br-3xl pointer-events-none" />
-                    
                     <div className="relative hover:scale-110 active:scale-95 transition-all outline-none">
                         <OnyxMiniLogo className="w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" />
                     </div>
@@ -353,8 +296,6 @@ export function MainAppView() {
 
             <DataSyncProvider />
             <HeroBackground />
-
-
 
             <div className={`app-container sidebar-${sidebarState}`}>
                 <div className="sidebar border-none bg-transparent">
@@ -419,6 +360,15 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Inventory</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Inventory</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Search size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Viewer</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Viewer</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
@@ -495,9 +445,6 @@ export function MainAppView() {
                     </main>
                 </div>
             </div>
-
-            {/* is3DViewerOpen && <ThreeDViewer /> */}
-            {/* is3DWorkspaceOpen && <ThreeDWorkspace /> */}
 
             <BatchActionsModal />
             <UploadWizard />

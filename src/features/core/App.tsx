@@ -2,13 +2,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import { Toaster } from 'react-hot-toast';
-import { themeAtom, userAtom, performanceModeAtom, languageAtom } from '../../lib/atoms';
+import { themeAtom, userAtom, performanceModeAtom, languageAtom, universalViewAtom, tagIdAtom } from '../../lib/atoms';
 import { resolveUserRole } from '../../lib/utils';
 import { Login } from '../auth/Login';
 import { MainAppView } from './MainAppView';
 import { SCRIPT_URL } from '../../lib/consts';
 import { WelcomePage } from '../auth/WelcomePage';
 import { TagView } from '../logistics/TagView';
+import { ViewerView } from '../viewer/ViewerView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 
 export default function App() {
@@ -17,8 +18,8 @@ export default function App() {
   const performanceMode = useAtomValue(performanceModeAtom);
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [tagId, setTagId] = useState<string | null>(null);
-  const [view, setView] = useState<'app' | 'tag'>('app');
+  const [tagId, setTagId] = useAtom(tagIdAtom);
+  const [view, setView] = useAtom(universalViewAtom);
 
   /**
    * UNIVERSAL ID DETECTION
@@ -42,12 +43,13 @@ export default function App() {
     };
 
     const attemptSync = () => {
+      const params = new URLSearchParams(window.location.search);
+      
       // 1. Hash Fragment
       let id = findTagInString(window.location.hash);
       
       // 2. Search params
       if (!id) {
-        const params = new URLSearchParams(window.location.search);
         id = params.get('tagid') || params.get('tagID');
       }
 
@@ -59,6 +61,13 @@ export default function App() {
         setView('tag');
         return true;
       }
+
+      // 4. Viewer detection
+      if (params.get('viewer') === 'true' || window.location.hash.includes('viewer')) {
+        setView('viewer');
+        return true;
+      }
+
       return false;
     };
 
@@ -188,7 +197,9 @@ export default function App() {
   return (
     <>
       {view === 'tag' && tagId ? (
-         <TagView tagId={tagId} />
+         <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
+      ) : view === 'viewer' ? (
+         <ViewerView onOpenArtifact={(id) => { setTagId(id); setView('tag'); }} />
       ) : (
         <>
           <DataSyncProvider />

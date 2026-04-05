@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Onyx.mx Artifact Viewer</title>
+    <meta name="theme-color" content="#0a0a0a" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #0a0a0a;
+      }
+      #root {
+        height: 100vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Force Viewer mode if no specific artifact is targeted
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('tagid') && !params.get('tagID') && !params.get('viewer')) {
+        params.set('viewer', 'true');
+        window.history.replaceState(null, '', '?' + params.toString() + window.location.hash);
+      }
+    </script>
+  </body>
+</html>

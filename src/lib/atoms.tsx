@@ -152,7 +152,7 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process'>('activeView', 'inventory');
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory');
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
 export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All');
 export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date');
@@ -363,3 +363,15 @@ export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({
   isOpen: false,
   title: 'Payments Artifact',
 });
+
+// Viewer & Artifact Atoms
+export const viewerSearchQueryAtom = atomWithStorage<string>('viewerSearchQuery', '');
+export const tagIdAtom = atom<string | null, [string | null], void>(null, (get, set, update) => set(tagIdAtom, update));
+const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' => {
+  if (typeof window === 'undefined') return 'app';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('tagid') || params.get('tagID')) return 'tag';
+  if (params.get('viewer') === 'true' || window.location.hash.includes('viewer')) return 'viewer';
+  return 'app';
+};
+export const universalViewAtom = atom<'app' | 'tag' | 'viewer', ['app' | 'tag' | 'viewer'], void>(getInitialUniversalView(), (get, set, update) => set(universalViewAtom, update));
