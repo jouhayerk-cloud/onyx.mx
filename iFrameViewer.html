@@ -2,27 +2,66 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Onyx.mx Artifact Viewer</title>
+    <title>Onyx.mx | Artifact Viewer</title>
     <meta name="theme-color" content="#0a0a0a" />
     <style>
       body {
         margin: 0;
         padding: 0;
         overflow: hidden;
-        background: #0a0a0a;
+        background: #050505;
+        font-family: system-ui, -apple-system, sans-serif;
       }
       #root {
-        height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+      }
+      .loading-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        z-index: 100;
+        background: #050505;
+      }
+      .logo {
+        width: 48px;
+        height: 48px;
+        opacity: 0.2;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .label {
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.5em;
+        color: rgba(255, 255, 255, 0.1);
+        margin-left: 0.5em;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.1; transform: scale(0.95); }
+        50% { opacity: 0.3; transform: scale(1); }
       }
     </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root">
+      <div class="loading-splash">
+        <svg class="logo" viewBox="0 0 26 26" fill="white">
+            <path d="M13 0L26 26H22L13 8L4 26H0L13 0Z" />
+        </svg>
+        <div class="label">Initializing Onyx.mx Search Suite</div>
+      </div>
+    </div>
+    <script type="module" src="./src/main.tsx"></script>
     <script>
       // Force Viewer mode if no specific artifact is targeted
       const params = new URLSearchParams(window.location.search);

@@ -1,66 +1,80 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAtom } from 'jotai';
-import { Loader2, Search, Package, Ruler, Scale, X, Maximize2, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { viewerSearchQueryAtom, exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
 import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import { vendors } from '../../lib/consts';
+import { Video, Maximize2, Loader2, Search, Package } from 'lucide-react';
 
 // ── Condensed Viewer Card ─────────────────────────────────────────────────────
 const ViewerCard: React.FC<{ 
     item: ResolvedArtifact; 
     onOpenFull: () => void;
 }> = ({ item, onOpenFull }) => {
-    const data = item.data;
+    const norm = item.data;
     const codes = item.codes;
     const vendorCode = (codes.bookBardcode || '').substring(0, 2).toUpperCase();
     const vendorColor = (vendors as any)[vendorCode]?.color || '#6BCEBB';
     
-    const imageUrl = item.images[0] || null;
-    const typeLabel = [data.shape, data.shortDescription].filter(Boolean).join(' ') || 'Stone Artifact';
-    const materialLabel = [data.color, data.material].filter(Boolean).join(' ') || 'Natural Stone';
-
-    const dimStr = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
+    // Status colors and icons
+    const accentColor = '#38bdf8'; // Default to a professional blue
+    
+    const displayUrlsArr = item.images.slice(0, 24);
+    const materialLabel = [norm.color, norm.material].filter(Boolean).join(' ') || 'Natural Stone';
+    const typeLabel = [norm.shape, norm.shortDescription].filter(Boolean).join(' ') || 'Stone Artifact';
 
     return (
         <div 
-            className="group relative flex flex-col bg-white/5 border border-white/10 rounded-3xl overflow-hidden hover:border-white/20 transition-all hover:translate-y--1 cursor-pointer"
+            className="group flex flex-col rounded-[40px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all shadow-xl cursor-pointer"
             onClick={onOpenFull}
         >
-            {/* Image Section */}
-            <div className="aspect-square bg-black/40 relative overflow-hidden">
-                {imageUrl ? (
-                    <img src={imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={typeLabel} />
+            {/* Image Grid Section - Matches Inventory Gallery Card Grid Logic */}
+            <div className="relative w-full bg-black/20 overflow-hidden">
+                {item.images.length > 0 ? (
+                    <div className="aspect-square relative">
+                         <img src={getCleanImageUrl(item.images[0])} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={typeLabel} />
+                         {/* Vendor Badge */}
+                         <div className="absolute top-6 left-6 z-10 flex flex-col gap-3">
+                             <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur-xl bg-black/60 border border-white/10 flex items-center gap-2" style={{ color: vendorColor, borderColor: vendorColor + '40' }}>
+                                 {codes.bookBardcode}
+                             </div>
+                             {/* AQ / LD Micro Tags */}
+                             <div className="flex items-center gap-2">
+                                 {codes.bookAqCode && <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{codes.bookAqCode}</div>}
+                                 {codes.bookLandCode && <div className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-xl bg-black/40 border border-white/5 text-white/40">{codes.bookLandCode}</div>}
+                             </div>
+                         </div>
+                    </div>
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center opacity-10">
+                    <div className="aspect-square flex items-center justify-center opacity-10">
                         <Package size={48} strokeWidth={1} />
                     </div>
                 )}
-                {/* Vendor Badge */}
-                <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight text-black shadow-2xl" style={{ backgroundColor: vendorColor }}>
-                    {codes.bookBardcode}
-                </div>
             </div>
 
-            {/* Content Section */}
-            <div className="p-6 flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                    <h3 className="text-lg font-black text-white uppercase tracking-tighter truncate">{typeLabel}</h3>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest truncate">{materialLabel}</p>
+            {/* Premium Metadata Section - Matches TagView / Gallery Design */}
+            <div className="p-8 flex flex-col gap-1 w-full">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight truncate pr-4">{typeLabel}</h3>
+                    <span className="text-lg font-mono font-black text-white/40 shrink-0">x{norm.quantity || 1}</span>
                 </div>
-
-                {/* Micro Specs */}
-                <div className="flex items-center gap-3 pt-4 border-t border-white/5">
-                    {codes.bookAqCode && (
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">AQ {codes.bookAqCode}</span>
-                    )}
-                    {codes.bookLandCode && (
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">LD {codes.bookLandCode}</span>
-                    )}
-                    <div className="ml-auto flex items-center gap-1.5">
-                        <span className="text-[10px] font-mono font-black text-white/60">{data.quantity || 1}</span>
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Items</span>
+                <div className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] mt-2 mb-4 truncate">{materialLabel}</div>
+                
+                <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-4">
+                    <div className="flex items-center gap-6">
+                       <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Dimensions</span>
+                            <span className="text-xs font-black text-white/60 font-mono">
+                                {[norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') || 'ND'} CM
+                            </span>
+                       </div>
+                       <div className="flex flex-col border-l border-white/10 pl-6">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Net Weight</span>
+                            <span className="text-xs font-black text-white/60 font-mono">{norm.weightKg || 'ND'} KG</span>
+                       </div>
                     </div>
+                    <Maximize2 size={16} className="text-white/10 group-hover:text-white/40 transition-all shrink-0" />
                 </div>
             </div>
         </div>
@@ -114,9 +128,9 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-white/20 overflow-y-auto">
-            {/* Header / Search Marquee */}
-            <div className={`transition-all duration-700 ${isInitial && results.length === 0 ? 'min-h-screen flex flex-col items-center justify-center' : 'pt-20 pb-12'}`}>
+        <div className="h-full flex flex-col bg-[#050505] text-white selection:bg-white/20 overflow-hidden relative">
+            {/* Header / Search Marquee - Fixed at top */}
+            <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-20 pb-12'}`}>
                 <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-12">
                     {/* Logo & Title */}
                     <div className={`flex flex-col items-center gap-6 transition-all duration-700 ${isInitial ? 'scale-110' : 'scale-90 opacity-60'}`}>
@@ -129,8 +143,8 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
 
                     {/* Search Bar */}
                     <div className="relative group">
-                        <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none text-white/20 group-focus-within:text-white transition-colors">
-                            <Search size={24} strokeWidth={2.5} />
+                        <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none text-white/20 group-focus-within:text-white transition-colors">
+                            <Search size={28} strokeWidth={2.5} />
                         </div>
                         <input
                             type="text"
@@ -138,7 +152,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                             onChange={handleInput}
                             onKeyDown={handleKeyDown}
                             placeholder="INPUT BARCODES SEPARATED BY SPACE..."
-                            className="w-full h-24 sm:h-32 px-20 bg-white/5 border-2 border-white/10 rounded-[40px] text-xl sm:text-3xl font-black uppercase tracking-tight placeholder:text-white/10 focus:border-white/40 focus:bg-white/10 transition-all outline-none"
+                            className="w-full h-24 sm:h-32 px-24 bg-white/2 border border-white/10 rounded-full text-xl sm:text-3xl font-black uppercase tracking-tight placeholder:text-white/5 focus:border-white/20 focus:bg-white/5 transition-all outline-none shadow-2xl"
                         />
                         {loading && (
                             <div className="absolute inset-y-0 right-10 flex items-center">
@@ -149,32 +163,42 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 </div>
             </div>
 
-            {/* Results Grid */}
+            {/* Results Grid - Scrollable Section */}
             {!isInitial && (
-                <div className="max-w-[1600px] mx-auto px-6 pb-24">
-                    {results.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                            {results.map((item, idx) => (
-                                <ViewerCard 
-                                    key={`${item.data.id}-${idx}`} 
-                                    item={item} 
-                                    onOpenFull={() => onOpenArtifact?.(item.data.book_barcode || item.data.tag_id)} 
-                                />
-                            ))}
-                        </div>
-                    ) : !loading && (
-                        <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-40">
-                            <Package size={64} strokeWidth={0.5} />
-                            <p className="text-xs font-black uppercase tracking-widest text-center">No matching artifacts detected in this sector</p>
-                        </div>
-                    )}
+                <div className="flex-1 overflow-y-auto px-6 pb-24 custom-scrollbar">
+                    <div className="max-w-[1600px] mx-auto w-full">
+                        {results.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                                {results.map((item, idx) => (
+                                    <ViewerCard 
+                                        key={`${item.data.id}-${idx}`} 
+                                        item={item} 
+                                        onOpenFull={() => onOpenArtifact?.(item.data.book_barcode || item.data.tag_id)} 
+                                    />
+                                ))}
+                            </div>
+                        ) : !loading && (
+                            <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-40">
+                                <Package size={64} strokeWidth={0.5} />
+                                <p className="text-xs font-black uppercase tracking-widest text-center">No matching artifacts detected in this sector</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
-            <style>{`
+            <style dangerouslySetInnerHTML={{ __html: `
                 :root { color-scheme: dark; }
-                .overflow-y-auto::-webkit-scrollbar { width: 0px; }
-            `}</style>
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { 
+                    background: rgba(255, 255, 255, 0.1); 
+                    border-radius: 10px; 
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+                    background: rgba(255, 255, 255, 0.2); 
+                }
+            `}} />
         </div>
     );
 };
