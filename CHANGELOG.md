@@ -1,5 +1,15 @@
 # Changelog
  
+## v1.66.5 (2026-04-05)
+- **High-Fidelity Viewer UI Overhaul [Major]**: Transformed the search experience into a professional Studio Canvas.
+    - **Visual Parity**: Redesigned **ViewerCard** to match the **Inventory Gallery** (Gallery mode) aesthetic with refined typography and floating badges.
+    - **Technical Specs Integration**: Integrated **AQ/LD Codes**, **Dimensions**, and **Material-Origin** labels directly into the result cards, echoing the **TagView** design system.
+    - **Hover-Zoom Experience**: Added smooth image transitions and glassmorphic hover states for artifact discovery.
+- **Layout & Scrolling Stability**:
+    - Reconfigured the module as a `h-full flex flex-col` layout to ensure perfect containment within the window frame.
+    - Restored styled, thin scrollbars to ensure results are navigable across all screen sizes.
+    - Implemented a responsive `gap-8` grid (up to 4 columns) for superior result density.
+ 
 ## v1.66.0 (2026-04-05)
 - **High-Fidelity Viewer Module [Major]**: Launched a dedicated search engine for rapid artifact discovery.
     - **Dual-Mode Architecture**: Operates as both an integrated dashboard module and a standalone public iFrame for Google Sites.
@@ -968,8 +978,8 @@
 - **Sidebar Version Tag:** Logo and version number use theme-aware text colors, visible on both light and dark themes
 - **Background Containers:** Increased transparency across the app for a lighter, more modern feel
 
-## v1.10.67
-- **Top Bar Refactor:** Removed Onyx logo, "version": "1.50.0", inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
+## v1.66.5 — 2026-03-04
+- **Top Bar Refactor:** Removed Onyx logo, inventory title, toggle financial, and toggle display buttons from the header for a cleaner layout
 - **Search Bar:** Enhanced to full-width liquid glass style with responsive animations
 - **Sidebar:** Relocated Onyx logo and version tag to the bottom of the sidebar (expanded + compact modes)
 - **Dashboard:** Added "Lock Financial Info" toggle button to Admin Dashboard header
