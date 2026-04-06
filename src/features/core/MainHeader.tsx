@@ -75,7 +75,7 @@ import {
     LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
     Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe, DollarSign,
     OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter,
-    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout
+    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout, ShoppingBag
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -98,7 +98,7 @@ const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> 
 };
 
 const iconToLucide: Record<string, React.FC<any>> = {
-    'store': Store,
+    'store': ShoppingBag,
     'finance': CreditCard,
     'trucking': Truck,
     'upload': Upload,
@@ -128,16 +128,15 @@ const SubTabPills: React.FC<{
     onSelect: (id: string) => void;
     accentColor?: string;
 }> = ({ tabs, active, onSelect, accentColor = 'var(--main-color)' }) => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-0.5">
         {tabs.map(t => {
             const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-200
-                        ${active === t.id ? 'text-black shadow-lg scale-[1.03] bg-white/30' : 'bg-white/5 text-(--text-color)/35 hover:text-(--text-color)/70 hover:bg-white/10'}`}
-                    style={active === t.id ? { backgroundColor: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={13} strokeWidth={1.75} />}
-                    {t.label}
+                    className={`flex flex-col items-center justify-center p-1 px-3 min-w-[44px] transition-all hover:bg-white/5 active:scale-90 group/pill select-none
+                        ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
+                    style={active === t.id ? { color: accentColor } : {}}>
+                    {TabIcon && <TabIcon size={14} strokeWidth={2} />}
                 </button>
             );
         })}
@@ -158,13 +157,12 @@ const StudioAction: React.FC<{
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className={`flex flex-col items-center justify-center p-1 px-2.5 min-w-[48px] rounded-xl transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
+        className={`flex flex-col items-center justify-center p-1 px-2 min-w-[44px] transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
             active ? 'text-(--main-color)' : 'text-(--text-color)/40 hover:text-(--text-color)'
         }`}
         style={active && color ? { color } : {}}
     >
-        <Icon size={16} strokeWidth={2.25} className="group-hover/studio:scale-110 transition-transform" />
-        <span className="text-[7.5px] font-black uppercase tracking-[0.2em] leading-none mt-1.5 opacity-70 group-hover/studio:opacity-100">{label}</span>
+        <Icon size={18} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform" />
     </button>
 );
 
@@ -176,14 +174,14 @@ const DeployableSearch: React.FC<{
     placeholder?: string;
     accentColor?: string;
 }> = ({ value, onChange, isOpen, setIsOpen, placeholder = "SEARCH...", accentColor = "var(--main-color)" }) => (
-    <div className={`relative flex items-center transition-all duration-300 ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
+    <div className={`relative flex items-center transition-all duration-500 ease-out ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
         {!isOpen ? (
             <button onClick={() => setIsOpen(true)} className="p-2 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
-                <Search size={19} strokeWidth={2.25} />
+                <Search size={18} strokeWidth={2} />
             </button>
         ) : (
-            <div className="flex-1 flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                <Search size={15} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-60" />
+            <div className="flex-1 flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
+                <Search size={14} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
                 <input
                     autoFocus
                     type="text"
@@ -191,15 +189,15 @@ const DeployableSearch: React.FC<{
                     onChange={e => onChange(e.target.value)}
                     onBlur={() => { if (!value) setIsOpen(false); }}
                     placeholder={placeholder}
-                    className="flex-1 bg-transparent border-none text-[12px] font-bold text-(--text-color) outline-none placeholder-(--text-color)/20 uppercase tracking-widest py-2"
+                    className="flex-1 bg-transparent border-none text-[11px] font-black text-(--text-color) outline-none placeholder-(--text-color)/15 uppercase tracking-[0.25em] py-2"
                 />
                 {value && (
-                    <button onClick={() => onChange('')} className="p-1.5 text-(--text-color)/20 hover:text-(--text-color) transition-colors">
-                        <X size={14} strokeWidth={3} />
+                    <button onClick={() => onChange('')} className="p-1.5 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
+                        <X size={14} strokeWidth={2.5} />
                     </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-(--text-color)/30 hover:text-(--text-color) transition-all transform hover:rotate-90">
-                    <X size={12} strokeWidth={2.5} />
+                <button onClick={() => setIsOpen(false)} className="p-1.5 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
+                    <X size={12} strokeWidth={3} />
                 </button>
             </div>
         )}
@@ -210,9 +208,8 @@ const DeployableSearch: React.FC<{
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
-        <div className="hidden md:flex items-center gap-2 pr-4 border-r border-(--text-color)/10 shrink-0 truncate">
-            <BadgeIcon size={14} strokeWidth={2} style={{ color }} />
-            <span className="text-[9px] font-black uppercase tracking-[0.22em] truncate opacity-80" style={{ color }}>{label}</span>
+        <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-white/5 shrink-0 truncate">
+            <BadgeIcon size={13} strokeWidth={2} style={{ color }} />
         </div>
     );
 };
@@ -434,12 +431,12 @@ const PackingBar: React.FC = () => {
 const UploadBar: React.FC = () => {
     const itemData = useAtomValue(uploadItemDataAtom);
     return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
             <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
 
-            <div className="bg-(--main-color) text-black px-5 py-2.5 rounded-b-xl shadow-2xl flex flex-col items-center min-w-[90px] border-x border-b border-black/20 transform -translate-y-2 hover:translate-y-1 transition-all duration-700 cursor-default group z-50">
-                <span className="text-[9px] font-black uppercase tracking-[0.25em] leading-none mb-1.5 opacity-60 group-hover:opacity-100 transition-opacity">BOOK V</span>
-                <span className="text-[14px] font-black font-mono leading-none tracking-tight">{itemData.workbook || 'v326'}</span>
+            <div className="flex flex-col items-center justify-center min-w-[64px] transition-all select-none border-l border-white/5 pl-4 ml-2">
+                <span className="text-[7px] font-black uppercase tracking-[0.3em] leading-none mb-1.5 opacity-30">BOOK</span>
+                <span className="text-[12px] font-black font-mono leading-none tracking-tighter opacity-80">{itemData.workbook || 'v326'}</span>
             </div>
         </div>
     );
@@ -874,151 +871,145 @@ export function MainHeader() {
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="main-header h-14 sm:h-16 flex items-center px-4 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
-            {/* Mobile Sidebar Launcher — Integrated Logo */}
-            <button 
-                onClick={() => setSidebarState('expanded')}
-                className="flex md:hidden items-center justify-center p-1.5 mr-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all shrink-0"
-                title="Open Studio Menu"
-            >
-                <OnyxMiniLogo className="w-6 h-6" />
-            </button>
-
-
-
-            {/* Dynamic module bar — grows to fill available space */}
-            <div className="flex-1 flex items-center gap-2 sm:gap-3 overflow-x-hidden overflow-y-visible min-w-0">
-                {activeView === 'inventory' && <InventoryBar />}
-                {activeView === 'store' && <StoreBar />}
-                {activeView === 'finance' && <FinanceBar />}
-                {activeView === 'logistics' && <LogisticsBar />}
-                {activeView === 'packing' && <PackingBar />}
-                {activeView === 'upload' && <UploadBar />}
-                {activeView === 'control' && <ControlBar />}
-                {activeView === 'overview' && (
-                    <div className="flex items-center gap-3">
-                        <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
-                        
-                        <StudioAction 
-                            icon={DollarSign}
-                            label={currencyMode}
-                            active={true}
-                            onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
-                            color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
-                        />
-
-                        <StudioAction 
-                            icon={Download}
-                            label="EXPORT"
-                            onClick={handleMasterExportXLSX}
-                            disabled={isExporting}
-                            className={isExporting ? 'animate-bounce' : ''}
-                        />
-                    </div>
-                )}
-                {activeView === 'dashboard' && (
-                    <>
-                        <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
-                        <div className="ml-auto">
-                            <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
-                        </div>
-                    </>
-                )}
-                {(activeView === 'create' || !activeView) && (
-                    <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
+        <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
+            {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
+            <div className="flex items-center shrink-0">
+                {sidebarState === 'hidden' && (
+                    <button 
+                        onClick={() => {
+                            const isMobile = window.innerWidth <= 768;
+                            setSidebarState(isMobile ? 'compact' : 'expanded');
+                        }}
+                        className="p-1 px-2 -ml-2 rounded-xl hover:bg-white/5 active:scale-90 transition-all flex items-center gap-2 group/logo mr-4"
+                        title="Onyx.mx Menu"
+                    >
+                        <OnyxMiniLogo className="w-8 h-8 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                    </button>
                 )}
             </div>
 
+            {/* Dynamic Module Bar — Aligned Left & Horizontally Scrollable */}
+            <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-0">
+                    {activeView === 'inventory' && <InventoryBar />}
+                    {activeView === 'store' && <StoreBar />}
+                    {activeView === 'finance' && <FinanceBar />}
+                    {activeView === 'logistics' && <LogisticsBar />}
+                    {activeView === 'packing' && <PackingBar />}
+                    {activeView === 'upload' && <UploadBar />}
+                    {activeView === 'control' && <ControlBar />}
+                    {activeView === 'overview' && (
+                        <div className="flex items-center gap-1 sm:gap-4">
+                            <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
+                            <StudioAction 
+                                icon={DollarSign}
+                                label={currencyMode}
+                                active={true}
+                                onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
+                                color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
+                            />
+                            <StudioAction 
+                                icon={Download}
+                                label="EXPORT"
+                                onClick={handleMasterExportXLSX}
+                                disabled={isExporting}
+                                className={isExporting ? 'animate-bounce' : ''}
+                            />
+                        </div>
+                    )}
+                    {activeView === 'dashboard' && (
+                        <>
+                            <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
+                            <div className="ml-auto pr-4">
+                                <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
+                            </div>
+                        </>
+                    )}
+                    {(activeView === 'create' || !activeView) && (
+                        <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
+                    )}
+                </div>
 
-            {/* User Info & Actions */}
-            <div className="flex items-center gap-2 sm:gap-4 ml-4 pl-4 border-l border-white/5 shrink-0">
-                <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-60 leading-none mb-1">WELCOME,</span>
-                    <span className="text-sm font-black text-(--text-color) opacity-80 tracking-tight leading-none capitalize">
+            <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
+                <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-4">
+                    <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
+                    <span className="text-[11px] font-black text-(--text-color) opacity-70 tracking-tight leading-none capitalize">
                         {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                             ? user.name.split(' ')[0]
                             : user?.email?.split('@')[0] || 'User'}
                     </span>
                 </div>
 
-                <div className="w-px h-8 bg-(--border-color) mx-1" />
-
-                <div className="flex items-center gap-1.5 relative">
+                <div className="flex items-center relative h-full">
                     <button
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`p-2 rounded-xl transition-all active:scale-95 flex flex-col items-center justify-center group/sett ${
-                            isSettingsOpen ? 'bg-(--main-color)/10 text-(--main-color)' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-(--text-color)/5'
+                        className={`w-12 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
+                            isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
                         }`}
+                        title="Studio Settings"
                     >
-                        <Settings size={17} strokeWidth={2.25} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
-                        <span className="text-[7.5px] font-black uppercase tracking-[0.2em] mt-1 opacity-60">SETT</span>
+                        <Settings size={18} strokeWidth={2} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
                     </button>
+
                     {isSettingsOpen && createPortal(
                         <>
-                            {/* Backdrop */}
                             <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
-                            {/* Panel */}
-                            <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl rounded-none shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
-
-                                {/* Header */}
+                            <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-[0.5em] text-(--text-color) opacity-30">Settings</span>
-                                    <div className="flex items-center gap-4">
-                                        <button 
-                                            onClick={() => setPerformanceMode(!performanceMode)} 
-                                            className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
-                                            title="Performance Mode"
-                                        >
-                                            <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
-                                        </button>
-                                        <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
-                                            <X size={14} strokeWidth={3} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Primary Action: REFRESH */}
-                                <button 
-                                    onClick={handleRefresh} 
-                                    className="flex flex-col items-center justify-center p-8 bg-(--text-color)/5 hover:bg-(--text-color)/10 active:bg-blue-500/20 transition-all group rounded-none"
-                                >
-                                    <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
-                                </button>
-
-                                {/* Appearance Row */}
-                                <div className="flex flex-col gap-4">
-                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-(--text-color)/5 pb-1 w-fit">Appearance</span>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {themes.map(th => (
-                                            <button key={th.name} onClick={() => setTheme(th.name)}
-                                                className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-(--text-color)/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
-                                                style={{ 
-                                                    background: th.swatch ? `url(${th.swatch})` : th.gradient,
-                                                    backgroundSize: 'cover',
-                                                    backgroundPosition: 'center'
-                                                }} 
-                                                title={th.name} 
+                                        <div className="flex items-center gap-4">
+                                            <button 
+                                                onClick={() => setPerformanceMode(!performanceMode)} 
+                                                className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
                                             >
-                                                <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
-                                                    <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
-                                                </span>
+                                                <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
                                             </button>
-                                        ))}
+                                            <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
+                                                <X size={14} strokeWidth={3} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <button 
+                                        onClick={handleRefresh} 
+                                        className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group"
+                                    >
+                                        <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
+                                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
+                                    </button>
+
+                                    <div className="flex flex-col gap-4">
+                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-white/5 pb-1 w-fit">Appearance</span>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {themes.map(th => (
+                                                <button key={th.name} onClick={() => setTheme(th.name)}
+                                                    className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
+                                                    style={{ 
+                                                        background: `url(${th.swatch})`,
+                                                        backgroundSize: 'cover',
+                                                        backgroundPosition: 'center'
+                                                    }} 
+                                                    title={th.name} 
+                                                >
+                                                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
+                                                        <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-auto">
+                                        <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
+                                            <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
+                                        </button>
                                     </div>
                                 </div>
-
-                                {/* Bottom Row: LOGOUT */}
-                                <div className="mt-auto">
-                                    <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
-                                        <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
-                                        <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </>,
-                        document.body
-                    )}
+                            </>,
+                            document.body
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

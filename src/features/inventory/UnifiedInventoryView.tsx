@@ -173,6 +173,9 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
     const statusClass = getStatusClass(norm, partialPayIds, fullPayIds);
 
+    const itemPriceMXN = Math.ceil(Number(norm.price || 0));
+    const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
+
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -251,8 +254,6 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     };
 
     if (viewMode === 'list') {
-        const itemPriceMXN = Math.ceil(Number(norm.price || 0));
-        const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
         const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
 
@@ -305,12 +306,12 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         )}
                     </div>
                     <div className="flex-1 flex items-center px-3 gap-3 min-w-0 overflow-x-auto no-scrollbar">
-                        <div className="flex flex-col flex-1 min-w-0 py-1">
+                        <div className="flex flex-col shrink-0 min-w-[120px] py-1">
                             <div className="flex items-baseline gap-3">
-                                <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight truncate">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
+                                <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
                                 <span className="text-sm font-black text-(--main-color) font-mono">x{norm.quantity || 1}</span>
                             </div>
-                            <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
+                            <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
                         <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-(--text-color)/60 truncate max-w-[100px]">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-(--text-color)/40 truncate max-w-[100px]">{weightStr || '—'}</span></div></div>
@@ -422,9 +423,131 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     }
 
     const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
-    
+    const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
+
+    const FullscreenModal = isExpanded && viewMode !== 'list' && createPortal(
+        <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
+            <div className="relative w-full max-w-2xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
+                <div className="absolute top-6 right-6 z-10 flex gap-2">
+                    {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
+                    <button onClick={onToggleExpand} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
+                </div>
+                <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero">
+                    {mediaUrls[modalIdx] ? (
+                        <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
+                            {isVideoFile(mediaUrls[modalIdx]) ? (
+                                <video src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
+                            ) : (
+                                <img src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
+                            )}
+                            
+                            {/* Modal Hero Navigation Chevrons */}
+                            {mediaUrls.length > 1 && (
+                                <>
+                                    <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
+                                        <ChevronLeft size={24} />
+                                    </button>
+                                    <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p + 1) % mediaUrls.length); }}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
+                                        <ChevronRight size={24} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    ) : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={64} height={64} /></div>}
+                </div>
+
+                {/* Modal Thumbnail Gallery Bar */}
+                {mediaUrls.length > 1 && (
+                    <div className="px-8 py-3 bg-black/40 border-b border-white/5 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
+                        {mediaUrls.map((u, i) => (
+                            <div key={i} onClick={() => setModalIdx(i)}
+                                className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
+                                <img src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
+                    <div><h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
+                        <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
+                        <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
+                        <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
+                        <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
+                        <div><p className={lbl}>Acq. MXN</p><p className="text-xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
+                        <div><p className={lbl}>Landed USD</p><p className="text-xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
+                        <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                        <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
+                                    toast.success('Trace Link Copied');
+                                }}
+                                className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
+                                title="Copy Trace Link"
+                            >
+                                <Copy size={16} /> COPY TRACE LINK
+                            </button>
+                            {isInternalUser && (
+                                <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> REMOVE ARTIFACT</button>
+                            )}
+                        </div>
+                    </div>
+                    {/* Consolidated Artifact Identity Hub - Modal View */}
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-8">
+                            {/* Barcode Panel - Modal Scale */}
+                            <div className="flex-1 bg-white rounded-none p-2 shadow-2xl border-2 border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-[0_0_40px_rgba(0,0,0,0.2)] transition-all duration-500">
+                                <div className="flex items-center justify-between px-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-none bg-black/20" />
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="px-3 py-1 rounded-none text-black text-[12px] font-black uppercase tracking-[0.2em] shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                            {calculated.bookBardcode}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-center p-2 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
+                                    <Barcode 
+                                        value={calculated.bookBardcode || 'N/A'} 
+                                        format="CODE39" 
+                                        width={2.4} 
+                                        height={80} 
+                                        displayValue={false}
+                                        margin={0}
+                                    />
+                                </div>
+                                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-(--main-color) opacity-25" />
+                            </div>
+
+                            {/* Free-Floating Modal QR - SVG Theme Colored */}
+                            <div className="flex-none p-4 relative group/modal-qr">
+                                <QRCodeSVG 
+                                    value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
+                                    size={200}
+                                    level="H"
+                                    includeMargin={false}
+                                    fgColor="var(--main-color)"
+                                    bgColor="transparent"
+                                />
+                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.5em] whitespace-nowrap">Secure Identity Artifact</div>
+                            </div>
+                        </div>
+                    </div>
+                    {renderPaymentHistory()}
+                </div>
+            </div>
+        </div>, document.body
+    );
+
     if (viewMode === 'gallery') {
         return (
+            <>
             <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
                  style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
                 
@@ -500,8 +623,15 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                              </h3>
                         </div>
                         <div className="flex flex-col items-end ml-4 shrink-0">
-                            <span className="text-2xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">${Math.ceil(Number(norm.price || 0)).toLocaleString()}</span>
-                            <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mt-2">QTY {norm.quantity || 1}</span>
+                            <span className="text-[9px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">TOTAL MXN</span>
+                            <span className="text-2xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">
+                                {showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}
+                            </span>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">QTY {norm.quantity || 1}</span>
+                                <span className="w-px h-2 bg-white/10" />
+                                <span className="text-[10px] font-mono font-bold text-(--text-color)/60">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -533,13 +663,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                 )}
             </div>
+            {FullscreenModal}
+            </>
         );
     }
 
-    const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
+
     return (
-        <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
-             style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
+        <>
+            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
+                 style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" 
@@ -592,6 +725,17 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <span className="text-[9px] font-mono text-(--text-color)/40 truncate">{dimensionsStr || '—'}</span>
                     <span className="text-[9px] font-mono text-(--text-color)/20 truncate">{weightStr || '—'}</span>
                 </div>
+                {/* Financial Summary Overlay */}
+                <div className="flex flex-col gap-0.5 pt-2 mb-1 border-t border-white/5">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tight">
+                        <span className="text-(--text-color)/30">Cost MXN</span>
+                        <span className="text-(--text-color)/80 font-mono">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
+                        <span className="text-(--main-color)/40">Total MXN</span>
+                        <span className="text-(--main-color) font-mono">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
+                    </div>
+                </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">
                         {statusClass && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}
@@ -599,127 +743,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                 </div>
             </div>
-            {isExpanded && createPortal(
-                <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
-                    <div className="relative w-full max-w-2xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
-                        <div className="absolute top-6 right-6 z-10 flex gap-2">
-                            {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
-                            <button onClick={onToggleExpand} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
-                        </div>
-                        <div className="h-72 sm:h-96 bg-black relative shrink-0 group/hero">
-                            {mediaUrls[modalIdx] ? (
-                                <div className="w-full h-full relative cursor-zoom-in" onClick={() => { setViewerIdx(modalIdx); setShowViewer(true); }}>
-                                    {isVideoFile(mediaUrls[modalIdx]) ? (
-                                        <video src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" autoPlay muted loop />
-                                    ) : (
-                                        <img src={getCleanImageUrl(mediaUrls[modalIdx])} className="w-full h-full object-contain" />
-                                    )}
-                                    
-                                    {/* Modal Hero Navigation Chevrons */}
-                                    {mediaUrls.length > 1 && (
-                                        <>
-                                            <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p - 1 + mediaUrls.length) % mediaUrls.length); }}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
-                                                <ChevronLeft size={24} />
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setModalIdx(p => (p + 1) % mediaUrls.length); }}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-white/50 opacity-0 group-hover/hero:opacity-100 hover:text-white transition-all">
-                                                <ChevronRight size={24} />
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            ) : <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo width={64} height={64} /></div>}
-                        </div>
-
-                        {/* Modal Thumbnail Gallery Bar */}
-                        {mediaUrls.length > 1 && (
-                            <div className="px-8 py-3 bg-black/40 border-b border-white/5 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-                                {mediaUrls.map((u, i) => (
-                                    <div key={i} onClick={() => setModalIdx(i)}
-                                        className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${modalIdx === i ? 'border-(--main-color) scale-110' : 'border-transparent opacity-40 hover:opacity-100'}`}>
-                                        <img src={getCleanImageUrl(u)} className="w-full h-full object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
-                            <div><h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
-                                <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
-                                <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
-                                <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
-                                <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
-                                <div><p className={lbl}>Acq. MXN</p><p className="text-xl font-black text-green-400">{showFinancials ? `$${Math.ceil(Number(norm.price || 0))}` : '***'}</p></div>
-                                <div><p className={lbl}>Landed USD</p><p className="text-xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
-                                <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                                <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
-                                            toast.success('Trace Link Copied');
-                                        }}
-                                        className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
-                                        title="Copy Trace Link"
-                                    >
-                                        <Copy size={16} /> COPY TRACE LINK
-                                    </button>
-                                    {isInternalUser && (
-                                        <button onClick={handleDelete} className="flex items-center gap-2 h-10 px-4 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"><Trash2 size={16} /> REMOVE ARTIFACT</button>
-                                    )}
-                                </div>
-                            </div>
-                            {/* Consolidated Artifact Identity Hub - Modal View */}
-                            <div className="flex flex-col gap-4">
-                                <div className="flex flex-col sm:flex-row items-center gap-8">
-                                    {/* Barcode Panel - Modal Scale */}
-                                    <div className="flex-1 bg-white rounded-none p-2 shadow-2xl border-2 border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-[0_0_40px_rgba(0,0,0,0.2)] transition-all duration-500">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-none bg-black/20" />
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="px-3 py-1 rounded-none text-black text-[12px] font-black uppercase tracking-[0.2em] shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                                    {calculated.bookBardcode}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-center p-2 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
-                                            <Barcode 
-                                                value={calculated.bookBardcode || 'N/A'} 
-                                                format="CODE39" 
-                                                width={2.4} 
-                                                height={80} 
-                                                displayValue={false}
-                                                margin={0}
-                                            />
-                                        </div>
-                                        <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-(--main-color) opacity-25" />
-                                    </div>
-
-                                    {/* Free-Floating Modal QR - SVG Theme Colored */}
-                                    <div className="flex-none p-4 relative group/modal-qr">
-                                        <QRCodeSVG 
-                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
-                                            size={200}
-                                            level="H"
-                                            includeMargin={false}
-                                            fgColor="var(--main-color)"
-                                            bgColor="transparent"
-                                        />
-                                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.5em] whitespace-nowrap">Secure Identity Artifact</div>
-                                    </div>
-                                </div>
-                            </div>
-                            {renderPaymentHistory()}
-                        </div>
+            {isSelectionMode && (
+                <div className="absolute top-4 right-4 z-20" onClick={(e) => { e.stopPropagation(); handleToggleSelection(item.row ?? item.data?.id); }}>
+                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${selectedIds.includes(item.row ?? item.data?.id) ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/40 border-white/20 backdrop-blur-md'}`}>
+                        {selectedIds.includes(item.row ?? item.data?.id) && <Check size={16} className="text-black" strokeWidth={4} />}
                     </div>
-                </div>, document.body
+                </div>
             )}
         </div>
-    );
+        
+        {FullscreenModal}
+    </>
+);
 };
 
 export const UnifiedInventoryView = () => {

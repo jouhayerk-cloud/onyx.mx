@@ -1,4 +1,16 @@
 # Changelog
+
+## v1.66.6 (2026-04-06)
+- **Unified Inventory UI & Financials [Major]**: Unified the item details experience and integrated real-time MXN pricing.
+    - **Integrated MXN Pricing**: Added **MXN Price (Cost)** and **MXN Total** (Qty × Price) to Grid and Gallery view cards.
+    - **Unified Modal Portal**: Gallery view items now share the same high-fidelity fullscreen details modal as the Grid view.
+    - **Selection Mode Fix**: Restored and stabilized selection checkboxes for bulk actions in all view modes.
+- **Sidebar Navigation Overhaul [UX]**: 
+    - **Structural Reordering**: Reordered sidebar elements for a more logical operational flow (Control Center → Dashboard → Overview → Viewer → Store → Add Entry → Inventory → Payments → Labels → Crates → Process).
+    - **Refined Iconography**: Updated icons for **Overview** (BadgeDollarSign), **Inventory** (Album), **Viewer** (Shell), **Crates** (Cuboid), and **Labels** (Barcode).
+- **Top Bar Alignment [Aesthetics]**: 
+    - **Settings Position**: Fixed the **Settings** button to always align to the absolute right side of the screen.
+    - **Branding Logic**: Hidden state now only shows the Onyx logo in the top bar, hiding it when the sidebar is visible to prevent brand duplication.
  
 ## v1.66.5 (2026-04-05)
 - **High-Fidelity Viewer UI Overhaul [Major]**: Transformed the search experience into a professional Studio Canvas.

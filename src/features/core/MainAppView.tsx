@@ -28,7 +28,8 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
-    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers
+    ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
+    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign
 } from 'lucide-react';
 
 import { MainHeader } from './MainHeader';
@@ -278,21 +279,7 @@ export function MainAppView() {
 
     return (
         <>
-            {sidebarState === 'hidden' && (
-                <div 
-                    className="fixed top-0 left-0 p-6 z-1000 group cursor-pointer"
-                    onClick={() => {
-                        const isMobile = window.innerWidth <= 768;
-                        setSidebarState(isMobile ? 'compact' : 'expanded');
-                    }}
-                    title="Open Navigation"
-                >
-                    <div className="absolute inset-0 bg-(--app-bg)/40 backdrop-blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-br-3xl pointer-events-none" />
-                    <div className="relative hover:scale-110 active:scale-95 transition-all outline-none">
-                        <OnyxMiniLogo className="w-10 h-10 opacity-70 hover:opacity-100 transition-opacity" />
-                    </div>
-                </div>
-            )}
+
 
             <DataSyncProvider />
             <HeroBackground />
@@ -338,10 +325,28 @@ export function MainAppView() {
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
-                                    <LayoutDashboard size={20} strokeWidth={1.75} />
+                                    <BadgeDollarSign size={20} strokeWidth={1.75} />
                                     <span className="sidebar-list-item-text">Overview</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Overview</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Shell size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Viewer</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Viewer</span>
+                            </li>
+                        )}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
+                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Store size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Store</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Store</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
@@ -356,19 +361,10 @@ export function MainAppView() {
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
                             <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
-                                    <Store size={20} strokeWidth={1.75} />
+                                    <Album size={20} strokeWidth={1.75} />
                                     <span className="sidebar-list-item-text">Inventory</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Inventory</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor' || user?.role === 'Client') && (
-                            <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Search size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Viewer</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Viewer</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
@@ -381,31 +377,20 @@ export function MainAppView() {
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
-                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Store size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Store</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Store</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
-                            <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Truck size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Crates</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Crates</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Client') && (
                             <>
                                 <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { setActiveView('packing'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                     <div className="sidebar-list-item-main">
-                                        <Package size={20} strokeWidth={1.75} />
+                                        <Barcode size={20} strokeWidth={1.75} />
                                         <span className="sidebar-list-item-text">Labels</span>
                                     </div>
                                     <span className="sidebar-compact-tooltip">Labels</span>
+                                </li>
+                                <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                    <div className="sidebar-list-item-main">
+                                        <Cuboid size={20} strokeWidth={1.75} />
+                                        <span className="sidebar-list-item-text">Crates</span>
+                                    </div>
+                                    <span className="sidebar-compact-tooltip">Crates</span>
                                 </li>
                                 <li className={`sidebar-list-item ${activeView === 'process' ? 'active' : ''}`} onClick={() => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                     <div className="sidebar-list-item-main">
