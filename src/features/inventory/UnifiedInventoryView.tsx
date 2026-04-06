@@ -46,7 +46,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode } from 'lucide-react';
 
 
 const lbl = "text-[9px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -396,6 +396,17 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         )}
                         {/* Action Toolbar */}
                         <div className="flex items-center gap-6 col-span-full pt-8 mt-4 border-t border-white/5">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleExpand(2);
+                                }}
+                                className={`p-2 -m-2 transition-all flex items-center gap-2 group ${isExpanded === 2 ? 'text-(--main-color)' : 'text-(--main-color)/60 hover:text-(--main-color)'}`}
+                                title={isExpanded === 2 ? "Hide Identity Hub" : "Show Identity Hub (Barcode/QR)"}
+                            >
+                                <ScanBarcode size={18} strokeWidth={2} />
+                                <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Artifact Hub</span>
+                            </button>
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1009,9 +1020,15 @@ export const UnifiedInventoryView = () => {
     const [bgIdx, setBgIdx] = useState(0);
     useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
-    const toggleExpandCard = (id: string) => setExpandedCards(prev => {
+    const toggleExpandCard = (id: string, stage?: number) => setExpandedCards(prev => {
         const current = prev[id] || 0;
-        const next = (current + 1) % 3;
+        let next: number;
+        if (stage !== undefined) {
+            next = current === stage ? 0 : stage; // Toggle to stage or collapse
+        } else {
+            // Card click toggle: 0 <-> 1 (collapse even if at 2)
+            next = current === 0 ? 1 : 0;
+        }
         const copy = { ...prev };
         if (next === 0) delete copy[id];
         else copy[id] = next;
@@ -1190,7 +1207,7 @@ export const UnifiedInventoryView = () => {
                                     <UnifiedInventoryCard 
                                         item={item} 
                                         isExpanded={expandedCards[String(item.row)] || 0} 
-                                        onToggleExpand={() => toggleExpandCard(String(item.row))} 
+                                        onToggleExpand={(stage?: number) => toggleExpandCard(String(item.row), stage)} 
                                         exchangeRate={exchangeRate} 
                                         showFinancials={showFinancials} 
                                         viewMode={viewMode} 

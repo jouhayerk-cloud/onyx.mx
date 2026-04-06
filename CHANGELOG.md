@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.66.14 (2026-04-06)
+- **Inventory Expansion Refinement [UX]**: Decoupled the Stage 2 (Identity Hub) deployment from the standard card click cycle.
+    - **Card Toggle**: Clicking the inventory card now specifically toggles between Stage 0 (Compact) and Stage 1 (Extended Details).
+    - **Dedicated Artifact Hub Icon**: Added a `ScanBarcode` action button in the list view toolbar to explicitly deploy Stage 2 (Identity Hub).
+    - **Intuitive Navigation**: Improved interaction flow by providing both a general expansion toggle and targeted artifact access.
+
 ## v1.66.13 (2026-04-06)
 - **3-Stage Progressive Disclosure [Inventory]**: Implemented a numeric cycle (0, 1, 2) for inventory card expansion.
     - **Stage 1**: Reveals technical specs and thumbnail gallery.
