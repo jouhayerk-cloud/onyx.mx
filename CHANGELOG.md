@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.66.15 (2026-04-06)
+- **Expansion Logic Fix [UX]**: Resolved a regression in card expansion where passing an event object to the toggle handler broke the 3-stage deployment.
+- **Handler Hardening**: Standardized all `onToggleExpand` triggers to prevent argument leakage.
+
 ## v1.66.14 (2026-04-06)
 - **Inventory Expansion Refinement [UX]**: Decoupled the Stage 2 (Identity Hub) deployment from the standard card click cycle.
     - **Card Toggle**: Clicking the inventory card now specifically toggles between Stage 0 (Compact) and Stage 1 (Extended Details).
