@@ -133,10 +133,10 @@ const SubTabPills: React.FC<{
             const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
-                    className={`flex flex-col items-center justify-center p-1 px-3 min-w-[44px] transition-all hover:bg-white/5 active:scale-90 group/pill select-none
+                    className={`flex flex-col items-center justify-center p-1.5 px-4 min-w-[52px] transition-all hover:bg-white/5 active:scale-90 group/pill select-none
                         ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
                     style={active === t.id ? { color: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={14} strokeWidth={2} />}
+                    {TabIcon && <TabIcon size={18} strokeWidth={2} />}
                 </button>
             );
         })}
@@ -157,12 +157,12 @@ const StudioAction: React.FC<{
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className={`flex flex-col items-center justify-center p-1 px-2 min-w-[44px] transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
+        className={`flex flex-col items-center justify-center p-1.5 px-3 min-w-[52px] transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
             active ? 'text-(--main-color)' : 'text-(--text-color)/40 hover:text-(--text-color)'
         }`}
         style={active && color ? { color } : {}}
     >
-        <Icon size={18} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform" />
+        <Icon size={24} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform" />
     </button>
 );
 
@@ -176,12 +176,12 @@ const DeployableSearch: React.FC<{
 }> = ({ value, onChange, isOpen, setIsOpen, placeholder = "SEARCH...", accentColor = "var(--main-color)" }) => (
     <div className={`relative flex items-center transition-all duration-500 ease-out ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
         {!isOpen ? (
-            <button onClick={() => setIsOpen(true)} className="p-2 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
-                <Search size={18} strokeWidth={2} />
+            <button onClick={() => setIsOpen(true)} className="p-2.5 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
+                <Search size={22} strokeWidth={2} />
             </button>
         ) : (
-            <div className="flex-1 flex items-center gap-3 animate-in fade-in slide-in-from-left-4 duration-500">
-                <Search size={14} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
+            <div className="flex-1 flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
+                <Search size={18} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
                 <input
                     autoFocus
                     type="text"
@@ -189,15 +189,15 @@ const DeployableSearch: React.FC<{
                     onChange={e => onChange(e.target.value)}
                     onBlur={() => { if (!value) setIsOpen(false); }}
                     placeholder={placeholder}
-                    className="flex-1 bg-transparent border-none text-[11px] font-black text-(--text-color) outline-none placeholder-(--text-color)/15 uppercase tracking-[0.25em] py-2"
+                    className="flex-1 bg-transparent border-none text-[13px] font-black text-(--text-color) outline-none placeholder-(--text-color)/15 uppercase tracking-[0.25em] py-3"
                 />
                 {value && (
-                    <button onClick={() => onChange('')} className="p-1.5 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
-                        <X size={14} strokeWidth={2.5} />
+                    <button onClick={() => onChange('')} className="p-2 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
+                        <X size={18} strokeWidth={2.5} />
                     </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="p-1.5 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
-                    <X size={12} strokeWidth={3} />
+                <button onClick={() => setIsOpen(false)} className="p-2 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
+                    <X size={16} strokeWidth={3} />
                 </button>
             </div>
         )}
@@ -208,8 +208,8 @@ const DeployableSearch: React.FC<{
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
-        <div className="hidden sm:flex items-center gap-2 pr-3 border-r border-white/5 shrink-0 truncate">
-            <BadgeIcon size={13} strokeWidth={2} style={{ color }} />
+        <div className="hidden sm:flex items-center gap-3 pr-4 border-r border-white/5 shrink-0 truncate">
+            <BadgeIcon size={18} strokeWidth={2} style={{ color }} />
         </div>
     );
 };
@@ -226,16 +226,16 @@ const ShippingStats: React.FC = () => {
     const volPct = truckVol > 0 ? Math.round((vol / truckVol) * 100) : 0;
 
     return (
-        <div className="hidden lg:flex items-center gap-3 text-[9px] font-mono text-(--text-color)/40">
+        <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono text-(--text-color)/40">
             <span className="flex items-center gap-1"><span className="text-(--text-color)/70 font-black">{loaded.length}</span> crates</span>
-            <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-(--text-color)/10 rounded-full overflow-hidden">
+            <div className="flex items-center gap-1.5">
+                <div className="w-20 h-1.5 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <span>{pct}% wt</span>
             </div>
-            <div className="flex items-center gap-1">
-                <div className="w-16 h-1 bg-(--text-color)/10 rounded-full overflow-hidden">
+            <div className="flex items-center gap-1.5">
+                <div className="w-20 h-1.5 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#6BCEBB] rounded-full transition-all" style={{ width: `${volPct}%` }} />
                 </div>
                 <span>{volPct}% vol</span>
@@ -431,12 +431,12 @@ const PackingBar: React.FC = () => {
 const UploadBar: React.FC = () => {
     const itemData = useAtomValue(uploadItemDataAtom);
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
             <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
 
-            <div className="flex flex-col items-center justify-center min-w-[64px] transition-all select-none border-l border-white/5 pl-4 ml-2">
-                <span className="text-[7px] font-black uppercase tracking-[0.3em] leading-none mb-1.5 opacity-30">BOOK</span>
-                <span className="text-[12px] font-black font-mono leading-none tracking-tighter opacity-80">{itemData.workbook || 'v326'}</span>
+            <div className="flex flex-col items-center justify-center min-w-[72px] transition-all select-none border-l border-white/5 pl-5 ml-2">
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none mb-2 opacity-30">BOOK</span>
+                <span className="text-[14px] font-black font-mono leading-none tracking-tighter opacity-80">{itemData.workbook || 'v326'}</span>
             </div>
         </div>
     );
@@ -446,7 +446,7 @@ const ControlBar: React.FC = () => (
     <>
         <ModuleBadge icon="shield" label="Control" color="var(--color-control)" />
         <div className="ml-auto">
-            <span className="text-[9px] font-black text-(--text-color)/15 uppercase tracking-widest">Developer Only</span>
+            <span className="text-[11px] font-black text-(--text-color)/15 uppercase tracking-widest">Developer Only</span>
         </div>
     </>
 );
