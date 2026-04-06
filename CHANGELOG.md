@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.66.13 (2026-04-06)
+- **3-Stage Progressive Disclosure [Inventory]**: Implemented a numeric cycle (0, 1, 2) for inventory card expansion.
+    - **Stage 1**: Reveals technical specs and thumbnail gallery.
+    - **Stage 2 (Identity Hub)**: Deploys high-density Barcode and Theme-Aware QR panels with horizontal stacking on desktop.
+- **UI Structural Hardening**: Fixed critical JSX syntax errors and standardized variable scoping across all view modes (List, Grid, Gallery).
+- **Refined Identity Hub**: Optimized QR code contrast with theme-aware coloring and increased barcode layout width for maximum scanability.
+
+## v1.66.12 (2026-04-06)
+- **Modal Accessibility [UX]**: Expanded the fullscreen inventory detail card to **max-w-6xl**, providing significantly more screen real-estate for high-resolution displays.
+- **Identity Hub Proportionality [Visuals]**: Further refined the scale of the **Barcode** in the horizontal layout to a width factor of **5.8** and height of **140px** to ensure it fully bridges the expanded horizontal span.
+
+## v1.66.11 (2026-04-06)
+- **Artifact Detail Presence [Aesthetics]**: Increased the physical scale of the Barcode and QR code in the Inventory List's horizontal artifact layout for better proportional balance and improved scanability (Barcode Height: 120px, QR Size: 280px).
+
+## v1.66.10 (2026-04-06)
+- **Artifact Layout Optimization [UX]**: Reconfigured the artifact panel in the Inventory List view to stack the **Barcode** and **QR code** side-by-side on larger screens, maximizing space efficiency and improving the visual flow.
+
+## v1.66.9 (2026-04-06)
+- **Artifact Proportionality [Visuals]**: Reduced the scale of Barcode and QR code artifacts in the Inventory List view to a more balanced dimension (QR Size: 240px, Barcode Height: 80px) for improved visual density.
+
+## v1.66.8 (2026-04-06)
+- **Inventory List Detail Overhaul [Aesthetics]**: Reconfigured the expanded item detailed view for a more integrated, high-density experience.
+    - **Full-Width Alignment**: Removed the left indentation (`ml-14`) from the expanded panel, making it flush with the card header.
+    - **High-Density Cleanup**: Removed internal dividers from the thumbnail gallery and footer segments to achieve a seamless visual flow.
+    - **Artifact Scaling**: Significantly increased the dimensions of the **Barcode** (`height: 140px`) and **QR code** (`size: 480px`) to span the full width of the desktop interface.
+    - **Redundancy Removal**: Excised the secondary **Material** tag from the details grid as it is already displayed in the primary card header.
+
 ## v1.66.7 (2026-04-06)
 - **Top Bar UI Scaling [Aesthetics]**: Increased the size of all Top Bar icons and interactive elements for a more prominent "Studio" feel.
     - **Studio Actions**: Enlarged icons to **24px** with updated padding for better tap targets.
