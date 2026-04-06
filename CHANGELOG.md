@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.66.7 (2026-04-06)
+- **Top Bar UI Scaling [Aesthetics]**: Increased the size of all Top Bar icons and interactive elements for a more prominent "Studio" feel.
+    - **Studio Actions**: Enlarged icons to **24px** with updated padding for better tap targets.
+    - **Search & Navigation**: Scaled search input and sub-tab icons for improved legibility.
+    - **Module Badging**: Increased module indicator iconography to **18px**.
+- **Inventory Identity Hub Refinement [UX]**: 
+    - **Panel Optimization**: Reduced the overall footprint of Barcode and QR panels in item details for better content balance.
+    - **Theme-Aware QR Logic**: QR codes now dynamically switch to **White** in dark themes and **Black** in light themes, optimizing scanability across different lighting modes.
+
 ## v1.66.6 (2026-04-06)
 - **Unified Inventory UI & Financials [Major]**: Unified the item details experience and integrated real-time MXN pricing.
     - **Integrated MXN Pricing**: Added **MXN Price (Cost)** and **MXN Total** (Qty × Price) to Grid and Gallery view cards.

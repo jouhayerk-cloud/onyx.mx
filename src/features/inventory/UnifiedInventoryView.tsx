@@ -35,7 +35,8 @@ import {
     paymentsArtifactConfigAtom,
     isInventorySelectionModeAtom,
     selectedInventoryIdsAtom,
-    inventoryArtifactConfigAtom
+    inventoryArtifactConfigAtom,
+    themeAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
@@ -140,6 +141,8 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
 const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
+    const theme = useAtomValue(themeAtom);
+    const qrColor = (theme === 'nacar' || theme === 'aqua') ? '#000000' : '#FFFFFF';
     
     const handleToggleSelection = (id: string | number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -352,13 +355,13 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                             <div className="col-span-full pt-6 mt-2 border-t border-white/5">
                                 <div className="flex flex-col sm:flex-row items-center gap-6 max-w-2xl">
                                     {/* Barcode Panel - High Density White */}
-                                    <div className="flex-1 bg-white rounded-none p-1.5 shadow-2xl border-2 border-black/10 flex flex-col gap-1.5 overflow-hidden relative group/hub hover:shadow-[0_0_30px_rgba(0,0,0,0.15)] transition-all duration-500">
+                                    <div className="flex-1 bg-white rounded-none p-1 shadow-xl border border-black/10 flex flex-col gap-1 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500 max-w-[180px]">
                                         <div className="flex items-center justify-between px-1">
                                             <div className="flex items-center gap-1">
-                                                <div className="w-1.5 h-1.5 rounded-none bg-black/20" />
+                                                <div className="w-1 h-1 rounded-none bg-black/20" />
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="px-2 py-0.5 rounded-none text-black text-[9px] font-black uppercase tracking-widest shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                                <span className="px-1.5 py-0.5 rounded-none text-black text-[8px] font-black uppercase tracking-widest border border-black/5" style={{ backgroundColor: vendorColor }}>
                                                     {calculated.bookBardcode}
                                                 </span>
                                             </div>
@@ -367,8 +370,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                             <Barcode 
                                                 value={calculated.bookBardcode || 'N/A'} 
                                                 format="CODE39" 
-                                                width={2.0} 
-                                                height={60} 
+                                                width={1.5} 
+                                                height={40} 
                                                 displayValue={false}
                                                 margin={0}
                                             />
@@ -377,16 +380,16 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
 
                                     {/* Free-Floating QR - SVG Theme Colored */}
-                                    <div className="flex-none p-2 relative group/qr">
+                                    <div className="flex-none p-1.5 relative group/qr">
                                         <QRCodeSVG 
                                             value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
-                                            size={140}
+                                            size={100}
                                             level="H"
                                             includeMargin={false}
-                                            fgColor="var(--main-color)"
+                                            fgColor={qrColor}
                                             bgColor="transparent"
                                         />
-                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-black text-(--main-color) opacity-20 uppercase tracking-[0.3em]">Identity Hub</div>
+                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[7px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.3em]">Identity Hub</div>
                                     </div>
                                 </div>
                             </div>
@@ -499,43 +502,43 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                     {/* Consolidated Artifact Identity Hub - Modal View */}
                     <div className="flex flex-col gap-4">
-                        <div className="flex flex-col sm:flex-row items-center gap-8">
+                        <div className="flex flex-col sm:flex-row items-center gap-8 justify-center">
                             {/* Barcode Panel - Modal Scale */}
-                            <div className="flex-1 bg-white rounded-none p-2 shadow-2xl border-2 border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-[0_0_40px_rgba(0,0,0,0.2)] transition-all duration-500">
+                            <div className="flex-none bg-white rounded-none p-1.5 shadow-2xl border border-black/10 flex flex-col gap-1.5 overflow-hidden relative group/hub hover:shadow-xl transition-all duration-500 w-full sm:w-64">
                                 <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-none bg-black/20" />
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-none bg-black/20" />
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="px-3 py-1 rounded-none text-black text-[12px] font-black uppercase tracking-[0.2em] shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5" style={{ backgroundColor: vendorColor }}>
                                             {calculated.bookBardcode}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-center p-2 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
+                                <div className="flex items-center justify-center p-1.5 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                     <Barcode 
                                         value={calculated.bookBardcode || 'N/A'} 
                                         format="CODE39" 
-                                        width={2.4} 
-                                        height={80} 
+                                        width={1.6} 
+                                        height={50} 
                                         displayValue={false}
                                         margin={0}
                                     />
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-(--main-color) opacity-25" />
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-(--main-color) opacity-25" />
                             </div>
 
                             {/* Free-Floating Modal QR - SVG Theme Colored */}
                             <div className="flex-none p-4 relative group/modal-qr">
                                 <QRCodeSVG 
                                     value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
-                                    size={200}
+                                    size={150}
                                     level="H"
                                     includeMargin={false}
-                                    fgColor="var(--main-color)"
+                                    fgColor={qrColor}
                                     bgColor="transparent"
                                 />
-                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.5em] whitespace-nowrap">Secure Identity Artifact</div>
+                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] font-black text-(--main-color) opacity-30 uppercase tracking-[0.4em] whitespace-nowrap">Secure Identity Artifact</div>
                             </div>
                         </div>
                     </div>
