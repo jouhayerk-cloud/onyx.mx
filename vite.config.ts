@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { readFileSync } from 'fs';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
@@ -11,11 +12,16 @@ export default defineConfig(({ mode }) => {
   return {
     base: '/onyx.mx/',
     server: {
-      port: 3000,
+      port: 1001,
       host: '0.0.0.0',
+      https: mode === 'development' ? {} : false,
       allowedHosts: ['.loca.lt'],
     },
-    plugins: [react(), tailwindcss()],
+    plugins: [
+        react(), 
+        tailwindcss(), 
+        mode === 'development' ? basicSsl() : null
+    ].filter(Boolean),
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY),

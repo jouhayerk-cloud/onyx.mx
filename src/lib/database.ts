@@ -194,6 +194,13 @@ async function bulkUpsertChunked(collection: RxCollection<any>, docs: any[], chu
 }
 
 const createDatabase = async () => {
+    // Check for Secure Context (Required for RxDB's Crypto/Subtle functionalities)
+    if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+        console.error('❌ [DB] Insecure Context Detected. RxDB requires a secure context (HTTPS or localhost) to use the Web Crypto API.');
+        console.error('👉 Please access the app via https://192.168.1.71:1001/ or http://localhost:1001/');
+        throw new Error('RxDB Initialization Failed: Insecure Context');
+    }
+
     try {
         const db = await createRxDatabase<OnyxDatabase>({
             name: 'onyxdb18', // Forced clean start for mobile stability
