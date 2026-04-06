@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.66.16 (2026-04-06)
+- **Stability Finalization [Production]**: Hardened the 3-stage progressive disclosure handlers against event bubbling regressions.
+- **UX Polish**: Verified seamless transition between List, Grid, and Gallery views with persistent but safe expansion states.
+- **Production Readiness**: Final build and deployment of the modernized inventory identity hub.
+
 ## v1.66.15 (2026-04-06)
 - **Expansion Logic Fix [UX]**: Resolved a regression in card expansion where passing an event object to the toggle handler broke the 3-stage deployment.
 - **Handler Hardening**: Standardized all `onToggleExpand` triggers to prevent argument leakage.
