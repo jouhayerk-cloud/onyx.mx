@@ -138,7 +138,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
@@ -174,7 +174,9 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     const weightStr = formatWeightImperial(norm.weightKg);
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-    const statusClass = getStatusClass(norm, partialPayIds, fullPayIds);
+    const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+    const col = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
+    const accentColor = col;
 
     const itemPriceMXN = Math.ceil(Number(norm.price || 0));
     const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
@@ -257,13 +259,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     };
 
     if (viewMode === 'list') {
-        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
-        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
-
         return (
             <div className="flex flex-col gap-0.5">
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
-                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded ? 'ring-1 ring-(--main-color)/30' : ''}`}
+                <div className={`flex items-stretch overflow-hidden bg-(--sidebar-bg) border rounded-md hover:border-white/10 transition-all group shadow-sm cursor-pointer ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : ''}`}
                     onClick={onToggleExpand} style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }}>
                     
                     {/* Selection Checkbox */}
@@ -331,11 +330,11 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                         </div>
                     </div>
                 </div>
-                {isExpanded && (
-                    <div className="ml-14 mr-2 px-4 pb-4 pt-4 bg-black/30 backdrop-blur-sm border-x border-b border-white/5 rounded-b-lg animate-in slide-in-from-top-2 duration-300">
+                {isExpanded > 0 && (
+                    <div className="w-full px-4 md:px-10 pb-6 pt-4 bg-black/30 backdrop-blur-sm border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
                         {/* List View Thumbnail Gallery */}
                         {mediaUrls.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 border-b border-white/5 mb-6">
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 mb-6">
                                 {mediaUrls.map((u, i) => (
                                     <div key={i} onClick={(e) => { e.stopPropagation(); setViewerIdx(i); setShowViewer(true); }}
                                         className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 cursor-pointer hover:border-(--main-color)/50 transition-all group/thumb relative">
@@ -345,17 +344,18 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                 ))}
                             </div>
                         )}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-6 mb-4">
-                            <div><p className={lbl}>Material</p><p className="text-[11px] font-bold text-(--text-color)/70 uppercase">{norm.material || '—'}</p></div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-2">
                             <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono text-(--text-color)/70">{dimensionsStr || '—'}</p></div>
                             <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono text-(--text-color)/70">{weightStr || '—'}</p></div>
                             <div><p className={lbl}>Landed USD</p><p className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
                             <div><p className={lbl}>Retail USD</p><p className="text-sm font-black text-green-400 font-mono">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                            {/* Consolidated Artifact Identity Hub - List View */}
-                            <div className="col-span-full pt-6 mt-2 border-t border-white/5">
-                                <div className="flex flex-col sm:flex-row items-center gap-6 max-w-2xl">
+                        </div>
+                        {/* Consolidated Artifact Identity Hub - List View */}
+                        {isExpanded >= 2 && (
+                            <div className="col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20">
                                     {/* Barcode Panel - High Density White */}
-                                    <div className="flex-1 bg-white rounded-none p-1 shadow-xl border border-black/10 flex flex-col gap-1 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500 max-w-[180px]">
+                                    <div className="w-full bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
                                         <div className="flex items-center justify-between px-1">
                                             <div className="flex items-center gap-1">
                                                 <div className="w-1 h-1 rounded-none bg-black/20" />
@@ -370,8 +370,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                             <Barcode 
                                                 value={calculated.bookBardcode || 'N/A'} 
                                                 format="CODE39" 
-                                                width={1.5} 
-                                                height={40} 
+                                                width={5.8} 
+                                                height={140} 
                                                 displayValue={false}
                                                 margin={0}
                                             />
@@ -380,10 +380,10 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
 
                                     {/* Free-Floating QR - SVG Theme Colored */}
-                                    <div className="flex-none p-1.5 relative group/qr">
+                                    <div className="flex-none p-4 relative group/qr scale-90 sm:scale-100">
                                         <QRCodeSVG 
                                             value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
-                                            size={100}
+                                            size={280}
                                             level="H"
                                             includeMargin={false}
                                             fgColor={qrColor}
@@ -393,44 +393,45 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-6 col-span-full pt-4 border-t border-white/5 mt-2">
-                                {/* Free-Floating Copy Trace Link Icon */}
-                                <button 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
-                                        toast.success('Trace Link Copied');
-                                    }}
-                                    className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all"
-                                    title="Copy Trace Link"
-                                >
-                                    <Copy size={18} strokeWidth={2} />
+                        )}
+                        {/* Action Toolbar */}
+                        <div className="flex items-center gap-6 col-span-full pt-8 mt-4 border-t border-white/5">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
+                                    toast.success('Trace Link Copied');
+                                }}
+                                className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all flex items-center gap-2 group"
+                                title="Copy Trace Link"
+                            >
+                                <Copy size={18} strokeWidth={2} />
+                                <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Copy Link</span>
+                            </button>
+                            {isEditable && (
+                                <button onClick={handleEdit} className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all flex items-center gap-2 group" title="Edit Item">
+                                    <Pencil size={18} strokeWidth={2} />
+                                    <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
                                 </button>
-                                {isEditable && (
-                                    <button onClick={handleEdit} className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all" title="Edit Item">
-                                        <Pencil size={18} strokeWidth={2} />
-                                    </button>
-                                )}
-                                {isInternalUser && (
-                                    <button onClick={handleDelete} className="p-2 -m-2 text-red-500/60 hover:text-red-500 transition-all" title="Remove Artifact">
-                                        <Trash2 size={18} />
-                                    </button>
-                                )}
-                            </div>
-                            {renderPaymentHistory()}
+                            )}
+                            {isInternalUser && (
+                                <button onClick={handleDelete} className="p-2 -m-2 text-red-500/60 hover:text-red-500 transition-all flex items-center gap-2 group" title="Remove Artifact">
+                                    <Trash2 size={18} />
+                                    <span className="text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Delete</span>
+                                </button>
+                            )}
                         </div>
+                        {renderPaymentHistory()}
                     </div>
                 )}
             </div>
         );
     }
 
-    const col = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
-    const accentColor = statusClass === 'GREEN' ? '#22c55e' : statusClass === 'YELLOW' ? '#eab308' : statusClass === 'RED' ? '#ef4444' : statusClass === 'BLUE' ? '#38bdf8' : statusClass === 'PURPLE' ? '#a855f7' : 'transparent';
 
     const FullscreenModal = isExpanded && viewMode !== 'list' && createPortal(
         <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
-            <div className="relative w-full max-w-2xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
+            <div className="relative w-full max-w-6xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
                 <div className="absolute top-6 right-6 z-10 flex gap-2">
                     {isEditable && <button onClick={handleEdit} className="h-10 px-4 rounded-xl bg-(--main-color)/20 text-(--main-color) text-[10px] font-black uppercase tracking-widest hover:bg-(--main-color) hover:text-black transition-all">Edit Item</button>}
                     <button onClick={onToggleExpand} className="h-10 px-4 rounded-xl bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">Close</button>
@@ -551,8 +552,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
     if (viewMode === 'gallery') {
         return (
             <>
-            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
-                 style={{ borderColor: statusClass ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
+            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl ${isExpanded > 0 ? 'ring-2 ring-(--main-color)/40' : 'hover:border-(--main-color)/30'}`}
+                 style={{ borderColor: payStatus ? `color-mix(in srgb, ${col} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}>
                 
                 {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
                 
@@ -653,7 +654,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
-                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span>
                         </div>
                     </div>
                 </div>
@@ -674,8 +675,8 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
     return (
         <>
-            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
-                 style={{ borderColor: statusClass ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
+            <div className={`group relative flex flex-col rounded-md overflow-hidden cursor-pointer bg-(--sidebar-bg) border transition-all duration-400 hover:-translate-y-1 hover:shadow-xl ${isExpanded > 0 ? 'ring-1 ring-(--main-color)/30' : 'hover:border-(--main-color)/30'}`}
+                 style={{ borderColor: payStatus ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)' }} onClick={onToggleExpand}
              onMouseEnter={() => setIsHoveringCard(true)} onMouseLeave={() => { setIsHoveringCard(false); setCardIdx(0); }}>
             {showViewer && <FullscreenImageViewer src={mediaUrls[viewerIdx]} mediaUrls={mediaUrls} initialIdx={viewerIdx} onClose={() => setShowViewer(false)} />}
             <div className="aspect-4/3 relative overflow-hidden bg-black/20 group/gridimg" 
@@ -740,10 +741,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
                     </div>
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1.5">
-                        {statusClass && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}
-                        <span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: statusClass ? col : '#38bdf8' }}>{statusClass === 'GREEN' ? 'Paid' : statusClass === 'YELLOW' ? 'Requested' : statusClass === 'RED' ? 'Partial' : statusClass === 'BLUE' ? 'NEW' : statusClass === 'PURPLE' ? 'Acquired' : 'New'}</span>
-                    </div>
+                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span></div>
                 </div>
             </div>
             {isSelectionMode && (
@@ -762,7 +760,7 @@ const UnifiedInventoryCard = ({ item, isExpanded, onToggleExpand, exchangeRate, 
 
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
-    const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+    const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
     const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
@@ -1011,7 +1009,14 @@ export const UnifiedInventoryView = () => {
     const [bgIdx, setBgIdx] = useState(0);
     useEffect(() => { if (bgMediaUrls.length < 2) return; const i = setInterval(() => setBgIdx(p => (p + 1) % bgMediaUrls.length), 6000); return () => clearInterval(i); }, [bgMediaUrls]);
 
-    const toggleExpandCard = (id: string) => setExpandedCards(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const toggleExpandCard = (id: string) => setExpandedCards(prev => {
+        const current = prev[id] || 0;
+        const next = (current + 1) % 3;
+        const copy = { ...prev };
+        if (next === 0) delete copy[id];
+        else copy[id] = next;
+        return copy;
+    });
     return (
         <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
             {/* ── INFO PANEL ── */}
@@ -1184,7 +1189,7 @@ export const UnifiedInventoryView = () => {
                                 }>
                                     <UnifiedInventoryCard 
                                         item={item} 
-                                        isExpanded={expandedCards.has(String(item.row))} 
+                                        isExpanded={expandedCards[String(item.row)] || 0} 
                                         onToggleExpand={() => toggleExpandCard(String(item.row))} 
                                         exchangeRate={exchangeRate} 
                                         showFinancials={showFinancials} 
