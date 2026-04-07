@@ -8,12 +8,12 @@ import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, pay
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
     TrendingUp, Plus, Search, Filter, ArrowUpRight, CheckCircle, 
-    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3
+    Clock, AlertCircle, Info, ChevronDown, ChevronRight, LayoutGrid, List, Trash2, Receipt, Link, Pencil, Edit3, Video, Layers
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
@@ -1135,6 +1135,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Requested'>('All');
     const currencyMode = useAtomValue(currencyModeAtom);
 
     const toggleRow = (id: string) => {
@@ -1252,26 +1253,24 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 const destMatch = destinationFilter === 'All' || r.destination === destinationFilter;
                 const vendorMatch = vendorFilter === 'All' || getVendorIdFromDescription(r.description || '') === vendorFilter;
 
-                let searchMatch = true;
-                if (searchWords.length > 0) {
-                    const searchSource = [
-                        r.description || '',
-                        r.notes || '',
-                        r.vendor_id || '',
-                        r.subcategory || '',
-                        r.category || '',
-                        r.reference || '',
-                        r.destination || '',
-                        r.status || 'Requested'
-                    ].join(' ').toLowerCase();
+                const searchSource = [
+                    r.description || '',
+                    r.notes || '',
+                    r.vendor_id || '',
+                    r.subcategory || '',
+                    r.category || '',
+                    r.reference || '',
+                    r.destination || '',
+                    r.status || 'Requested'
+                ].join(' ').toLowerCase();
 
-                    searchMatch = searchWords.every(word => searchSource.includes(word));
-                }
+                const statusMatch = statusFilter === 'All' || r.status === statusFilter;
+                const searchMatch = searchWords.length === 0 || searchWords.every(word => searchSource.includes(word));
 
-                return subcatMatch && destMatch && vendorMatch && searchMatch;
+                return subcatMatch && destMatch && vendorMatch && statusMatch && searchMatch;
             })
             .sort((a, b) => new Date(b.date || '').getTime() - new Date(a.date || '').getTime());
-    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch]);
+    }, [docs, subcatFilter, destinationFilter, vendorFilter, financeSearch, statusFilter]);
 
     const handleRequestPayment = async (dest: PaymentDestination, percentage: number, manualFee: number = 0, includeIva: boolean = false, includeComm: boolean = false) => {
         if (!requestGroup) return;
@@ -1711,9 +1710,26 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             {/* ── Toggleable Filter Bar ── */}
             {showFilters && (
                 <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-white/5 animate-in slide-in-from-top-2 duration-300 relative z-10">
-                    <div className="flex flex-col md:flex-row items-center justify-between px-4 py-2 gap-4">
+                    <div className="flex items-center gap-2 px-4 py-1.5 overflow-x-auto no-scrollbar">
+                        {/* Status Filter Indicator */}
+                        <button 
+                            onClick={() => setStatusFilter(prev => prev === 'All' ? 'Paid' : prev === 'Paid' ? 'Requested' : 'All')}
+                            className="flex items-center justify-center w-[50px] h-[50px] transition-all duration-300 transform active:scale-90 shrink-0 group focus:outline-none"
+                            title={`Filter Status: ${statusFilter}`}
+                        >
+                            <div className={`w-[20px] h-[20px] rounded-full! border-2 transition-all duration-300 ${
+                                statusFilter === 'All' 
+                                    ? 'bg-white/5 border-white/20 group-hover:border-white/40' 
+                                    : statusFilter === 'Paid'
+                                        ? 'bg-[#22c55e] border-[#22c55e]/20 shadow-[0_0_12px_rgba(34,197,94,0.3)]'
+                                        : 'bg-[#eab308] border-[#eab308]/20 shadow-[0_0_12px_rgba(234,179,8,0.3)]'
+                            }`} />
+                        </button>
+
+                        <div className="w-px h-4 bg-white/10 shrink-0 mx-1" />
+
                         {/* Subcategories Filter */}
-                        <div className="flex items-center gap-0.5 overflow-x-auto custom-scrollbar w-full md:w-auto py-1 no-scrollbar">
+                        <div className="flex items-center gap-0.5">
                             {SUBCATEGORIES.map(s => {
                                 const labels: Record<string, { label: string; icon: any; color: string }> = {
                                     'All': { label: 'ALL', icon: LayoutGrid, color: '#888' },
@@ -1811,208 +1827,284 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                             };
                             const cat = labels[normalizeSubcat(r.subcategory || r.category)] || labels['All'];
 
+                            const accentColor = r.status === 'Paid' ? '#22c55e' : '#eab308';
+
                             return (
-                                <div key={r.id} 
-                                    className={`group relative flex flex-col p-3 bg-(--text-color)/5 border-b border-(--text-color)/5 transition-all hover:bg-(--text-color)/7 ${isExpanded ? 'bg-(--text-color)/8 my-3 rounded-xl border-x border-(--text-color)/10 shadow-2xl z-10' : ''} border-l-4 ${r.status === 'Paid' ? 'border-l-[#8DC63F]' : 'border-l-[#FACC15]'}`}>
+                                    <div key={r.id} 
+                                        className={`group relative flex flex-col p-3 bg-(--text-color)/5 border-b border-(--text-color)/5 transition-all hover:bg-(--text-color)/7 ${isExpanded ? 'bg-(--text-color)/8 my-3 rounded-xl border z-10' : ''}`}
+                                        style={{ 
+                                            borderColor: isExpanded ? `color-mix(in srgb, ${accentColor} 35%, var(--border-color))` : 'var(--border-color)',
+                                            borderLeftWidth: isExpanded ? '1px' : '4px',
+                                            borderLeftColor: accentColor,
+                                            boxShadow: isExpanded ? `0 20px 50px -12px color-mix(in srgb, ${accentColor}, transparent 90%)` : 'none'
+                                        }}>
                                     
                                     <div className="flex items-center gap-2 cursor-pointer no-select" onClick={() => toggleRow(r.id)}>
                                         {/* Column 1: Compact Icon + Date Stack */}
-                                        <div className="shrink-0 flex items-center gap-3 border-r border-(--text-color)/5 pr-4 min-w-[120px]">
-                                            <cat.icon size={16} style={{ color: cat.color }} className="shrink-0 opacity-80" />
-                                            <div className="flex flex-col items-start justify-center gap-1.5">
-                                                <span className="text-[11px] font-black tracking-tighter text-(--text-color) opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                                        <div className="shrink-0 flex items-center gap-2 sm:gap-3 border-r border-(--text-color)/5 pr-2 sm:pr-4 min-w-[80px] sm:min-w-[120px]">
+                                            <cat.icon size={14} style={{ color: cat.color }} className="shrink-0 opacity-80" />
+                                            <div className="flex flex-col items-start justify-center gap-1">
+                                                <span className="text-[10px] sm:text-[11px] font-black tracking-tighter text-(--text-color) opacity-80 leading-none">{r.date ? new Date(r.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}</span>
                                                 {/* Payment Status Indicator Pill */}
                                                 {(() => {
                                                     const isPartial = String(r.description || '').includes('%');
                                                     const isPaid = r.status === 'Paid';
                                                     if (isPartial && isPaid) return (
-                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/20">
-                                                            <span className="w-1 h-1 rounded-full bg-orange-400 animate-pulse" />PARTIAL
+                                                        <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-orange-400 animate-pulse" />PARTIAL
                                                         </span>
                                                     );
                                                     if (isPaid) return (
-                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-[#8DC63F]/15 text-[#8DC63F] border border-[#8DC63F]/20">
-                                                            <span className="w-1 h-1 rounded-full bg-[#8DC63F]" />PAID
+                                                        <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/20">
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#22c55e]" />PAID
                                                         </span>
                                                     );
                                                     if (isPartial) return (
-                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/20">
-                                                            <span className="w-1 h-1 rounded-full bg-red-400 animate-pulse" />PARTIAL
+                                                        <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/20">
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-red-400 animate-pulse" />PARTIAL
                                                         </span>
                                                     );
                                                     return (
-                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black uppercase tracking-wider bg-[#FACC15]/10 text-[#FACC15] border border-[#FACC15]/20">
-                                                            <span className="w-1 h-1 rounded-full bg-[#FACC15] animate-pulse" />PENDING
+                                                        <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded-full text-[6px] sm:text-[7px] font-black uppercase tracking-wider bg-[#eab308]/10 text-[#eab308] border border-[#eab308]/20">
+                                                            <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-[#eab308] animate-pulse" />PENDING
                                                         </span>
                                                     );
                                                 })()}
                                             </div>
                                         </div>
 
-                                        {/* Column 2: Simplified Vendor / CRATES logic */}
-                                        <div className="flex-1 min-w-0 px-3 flex items-center gap-4">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h4 className="text-[12px] sm:text-[13px] font-black text-white uppercase tracking-wider truncate">{r.description || r.notes || 'Unnamed Transaction'}</h4>
-                                                    {r.recurring && <Clock size={12} className="text-orange-500 opacity-50 shrink-0" />}
-                                                </div>
-                                                <div className="flex items-center gap-2.5">
-                                                     {r.vendor_id === 'CRATES' ? (
-                                                         <div className="flex items-center gap-1.5 py-0.5">
-                                                             <Box size={12} className="text-white/40" />
-                                                             <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">CRATES</span>
-                                                         </div>
-                                                     ) : r.vendor_id && (
-                                                         <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.2em] whitespace-nowrap" style={{ color: vendorColor }}>{r.vendor_id}</span>
-                                                     )}
-                                                </div>
+                                        {/* Column 2: Simplified Vendor / Description Logic */}
+                                        <div className="flex-1 min-w-0 px-2 sm:px-3 flex items-center gap-2 sm:gap-4 overflow-hidden">
+                                             {/* Vendor Tag First as Solid Block */}
+                                             {r.vendor_id === 'CRATES' ? (
+                                                 <div className="flex items-center gap-1 py-1 sm:py-1.5 px-2 rounded bg-white/5 border border-white/10 shrink-0">
+                                                     <Box size={10} className="text-white/40" />
+                                                     <span className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">CRATES</span>
+                                                 </div>
+                                             ) : r.vendor_id && (
+                                                 <span className="px-1.5 sm:px-3 py-0.5 sm:py-1 rounded text-[8px] sm:text-[11px] font-black uppercase tracking-tight whitespace-nowrap shrink-0 shadow-sm" 
+                                                       style={{ backgroundColor: vendorColor, color: getTextColorForBg(vendorColor) }}>
+                                                     {r.vendor_id}
+                                                 </span>
+                                             )}
+
+                                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                                                <h4 className="text-[12px] sm:text-[14px] font-black text-white uppercase tracking-wider truncate leading-none">{r.description || r.notes || 'Unnamed Transaction'}</h4>
+                                                {r.recurring && <Clock size={10} className="text-orange-500 opacity-50 shrink-0" />}
                                             </div>
                                         </div>
 
                                         {/* Column 3: Financials & Account Icon Segment */}
-                                        <div className="shrink-0 flex items-center justify-end gap-4 w-auto min-w-[170px]">
-                                            <div className="flex items-center gap-4">
+                                        <div className="shrink-0 flex items-center justify-end gap-2 sm:gap-4 w-auto min-w-[90px] sm:min-w-[170px]">
+                                            <div className="flex items-center gap-2 sm:gap-4">
                                                 {(r.commission || 0) > 0 && (
-                                                    <>
-                                                        <div className="hidden sm:flex flex-col items-end gap-0.5">
-                                                            <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
-                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-(--text-color)/70">
-                                                                {currencyMode === 'MXN' ? fmtMXN(r.amount || 0) : fmtUSD((r.amount || 0) / (liveExchangeRate || exchangeRate))}
-                                                            </span>
-                                                        </div>
-                                                        <div className="hidden sm:flex flex-col items-end gap-0.5">
-                                                            <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes/Fees</span>
-                                                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-red-400/80">
-                                                                {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
-                                                            </span>
-                                                        </div>
-                                                    </>
+                                                     <>
+                                                         <div className="hidden xl:flex flex-col items-end gap-0.5">
+                                                             <span className="text-[7px] font-black uppercase tracking-widest text-(--text-color)/30">Net Paid</span>
+                                                             <span className="text-[10px] sm:text-[11px] font-mono font-bold text-(--text-color)/70">
+                                                                 {currencyMode === 'MXN' ? fmtMXN(r.amount || 0) : fmtUSD((r.amount || 0) / (liveExchangeRate || exchangeRate))}
+                                                             </span>
+                                                         </div>
+                                                         <div className="hidden xl:flex flex-col items-end gap-0.5">
+                                                             <span className="text-[7px] font-black uppercase tracking-widest text-red-500/40">Taxes</span>
+                                                             <span className="text-[10px] sm:text-[11px] font-mono font-bold text-red-400/80">
+                                                                 {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
+                                                             </span>
+                                                         </div>
+                                                     </>
                                                 )}
-                                                <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'sm:border-l sm:border-(--text-color)/10 sm:pl-4' : ''}`}>
+                                                <div className={`flex flex-col items-end gap-0.5 ${(r.commission || 0) > 0 ? 'xl:border-l xl:border-(--text-color)/10 xl:pl-4' : ''}`}>
                                                     <span className={`text-[7px] font-black uppercase tracking-widest ${(r.commission || 0) > 0 ? 'text-sky-400/50' : 'text-(--text-color)/30'}`}>Total {currencyMode}</span>
-                                                    <div className="flex items-center justify-end gap-1.5 leading-none">
-                                                        <span className="text-[14px] sm:text-[16px] font-black font-mono text-(--text-color) tracking-tighter">
+                                                    <div className="flex items-center justify-end gap-1 sm:gap-1.5 leading-none">
+                                                        <span className="text-[13px] sm:text-[16px] font-black font-mono text-(--text-color) tracking-tighter">
                                                             {currencyMode === 'MXN' ? fmtMXN(totalNet) : fmtUSD(totalUSD)}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* Free-Floating Card/Account Icon */}
-                                            <div className="shrink-0 w-9 h-9 flex items-center justify-center relative">
+                                            {/* Card Icon */}
+                                            <div className="shrink-0 w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center relative">
                                                 {destCfg ? (
-                                                    <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" title={destCfg.name} />
+                                                    <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" />
                                                 ) : (
-                                                    <Info size={14} className="text-(--text-color)/10" />
+                                                    <Info size={12} className="text-(--text-color)/10" />
                                                 )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Expanded Content: Deep Metadata */}
+                                    {/* Expanded Content: High-Density Metadata Strip */}
                                     {isExpanded && (
-                                        <div className="mt-4 pt-4 border-t border-(--text-color)/5 animate-in slide-in-from-top-2 duration-300">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {/* Logic Details */}
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <span className="text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-2.5">Transactional Detail</span>
-                                                         <p className="text-[12px] sm:text-[13px] font-medium text-(--text-color)/70 leading-relaxed italic">"{r.notes || r.description || 'No additional notes provided.'}"</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-8">
-                                                        <div>
-                                                             <span className="text-[9px] sm:text-[10px] font-black text-(--text-color)/20 uppercase tracking-widest mb-1.5 block">Payment Method</span>
-                                                             <span className="text-[10px] sm:text-[11px] font-black text-(--text-color)/80 uppercase block">{r.payment_method || 'Standard Wire'}</span>
-                                                        </div>
-                                                        <div>
-                                                             <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1.5">Fee %</span>
-                                                             <span className="text-[11px] sm:text-[12px] font-mono font-black text-(--text-color)/80">{((r.commission || 0) / (r.amount || 1) * 100).toFixed(1)}%</span>
-                                                        </div>
-                                                    </div>
+                                        <div className="mt-3 pt-3 border-t border-(--text-color)/5 animate-in slide-in-from-top-2 duration-300">
+                                            {/* Scrollable Metadata Strip */}
+                                            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar pb-3 mb-2 px-1">
+                                                {/* Detail Block 1: Notes/Description */}
+                                                <div className="shrink-0 min-w-[180px] sm:min-w-[240px]">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Transactional Context</span>
+                                                    <p className="text-[10px] sm:text-[12px] font-medium text-(--text-color)/60 leading-tight italic truncate max-w-[300px]">"{r.notes || r.description || 'No additional notes.'}"</p>
                                                 </div>
 
-                                                {/* Linked Items / Artifact Trigger */}
-                                                <div className="lg:col-span-2">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <span className="text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">Linked Traceability</span>
-                                                    </div>
+                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
+
+                                                {/* Detail Block 2: Method */}
+                                                <div className="shrink-0">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Mtd</span>
+                                                    <span className="text-[9px] sm:text-[11px] font-black text-(--text-color)/80 uppercase whitespace-nowrap">{r.payment_method || 'Wire'}</span>
+                                                </div>
+
+                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
+
+                                                {/* Detail Block 3: Reference */}
+                                                <div className="shrink-0">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Ref</span>
+                                                    <span className="text-[9px] sm:text-[11px] font-mono font-bold text-(--text-color)/40 whitespace-nowrap">#{r.id.slice(0,8).toUpperCase()}</span>
+                                                </div>
+
+                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
+
+                                                {/* Detail Block 4: Taxes/Fees */}
+                                                <div className="shrink-0 text-right">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Tax</span>
+                                                    <span className="text-[9px] sm:text-[11px] font-mono font-bold text-red-500/60 whitespace-nowrap">
+                                                        {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
+                                                    </span>
+                                                </div>
+
+                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
+
+                                                {/* Detail Block 5: Global Artifact Hub Trigger */}
+                                                <div className="shrink-0">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Hub</span>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const rel = r.related_ids || r.related_inventory_ids || '';
+                                                            const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
+                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--main-color) hover:text-black hover:border-(--main-color) transition-all text-xs font-black uppercase tracking-tighter"
+                                                    >
+                                                        <Layers size={12} /> SYNC
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Linked Assets Strip (Asset Hub) */}
+                                            <div className="pt-2 border-t border-(--text-color)/5 mt-2">
+                                                <div className="flex items-center justify-between mb-3 px-1">
+                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">Linked Assets & Traceability</span>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const rel = r.related_ids || r.related_inventory_ids || '';
+                                                            const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
+                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 transition-all text-(--text-color)/40 hover:text-(--text-color)"
+                                                    >
+                                                        <LayoutGrid size={10} />
+                                                        <span className="text-[8px] font-black uppercase tracking-widest">Open Hub</span>
+                                                    </button>
+                                                </div>
                                                     {(() => {
                                                         const rel = r.related_ids || r.related_inventory_ids || '';
                                                         const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-                                                        if (ids.length === 0) return <span className="text-[10px] font-mono text-(--text-color)/10 uppercase">No items linked</span>;
-                                                        
-                                                        return (
-                                                            <div className="flex items-center gap-2">
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
-                                                                    }}
-                                                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 transition-all group/items"
-                                                                >
-                                                                    <LayoutGrid size={14} className="text-(--main-color)" />
-                                                                    <span className="text-[10px] font-black text-(--text-color)/60 group-hover/items:text-(--text-color) uppercase tracking-widest">Items ({ids.length})</span>
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        const baseUrl = window.location.origin + window.location.pathname;
-                                                                        const url = `${baseUrl}?inventoryArtifactIds=${ids.join(',')}`;
-                                                                        navigator.clipboard.writeText(url);
-                                                                        toast.success('Inventory Link copied!');
-                                                                    }}
-                                                                    title="Copy Direct Link to Items"
-                                                                    className="flex items-center justify-center p-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 hover:text-(--main-color) transition-all text-(--text-color)/40"
-                                                                >
-                                                                    <Link size={14} />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        const baseUrl = window.location.origin + window.location.pathname;
-                                                                        const url = `${baseUrl}?paymentsArtifactPaymentId=${r.id}&paymentsArtifactVendor=${encodeURIComponent(r.vendor_id || '')}`;
-                                                                        navigator.clipboard.writeText(url);
-                                                                        toast.success('Payment Link copied!');
-                                                                    }}
-                                                                    title="Copy Direct Link to Ledger"
-                                                                    className="flex items-center justify-center p-2 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 hover:text-sky-400 transition-all text-(--text-color)/40 ml-2"
-                                                                >
-                                                                    <Receipt size={14} />
-                                                                </button>
+                                                        if (ids.length === 0) return (
+                                                            <div className="py-8 border border-dashed border-(--text-color)/10 rounded-xl flex items-center justify-center opacity-20">
+                                                                <span className="text-[10px] font-mono uppercase tracking-[0.2em]">No direct items linked</span>
                                                             </div>
                                                         );
-                                                    })()}
-                                                </div>
-                                            </div>
+                                                        
+                                                        return (
+                                                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                                                                {ids.map(id => {
+                                                                    const invItem = inventory.find(i => String(i.row) === id || i.data.itemId === id || i.data.item_id === id);
+                                                                    const logCrate = logisticsData.find(l => String(l.id) === id);
+                                                                    
+                                                                    if (!invItem && !logCrate) return (
+                                                                        <div key={id} className="w-48 h-20 shrink-0 bg-(--text-color)/5 border border-(--text-color)/10 rounded-xl flex items-center justify-center p-3 grayscale opacity-30">
+                                                                            <span className="text-[9px] font-mono uppercase truncate opacity-50">{id}</span>
+                                                                        </div>
+                                                                    );
 
-                                            {/* Relocated Actions Footnote */}
-                                            <div className="mt-6 pt-4 border-t border-(--text-color)/5 flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <button 
-                                                        onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
-                                                        className={`flex items-center gap-2 h-8 px-4 rounded-lg border transition-all hover:scale-105 active:scale-95 ${r.status === 'Paid' ? 'bg-[#8DC63F]/10 border-[#8DC63F]/20 text-[#8DC63F]' : 'bg-[#FACC15]/10 border-[#FACC15]/20 text-[#FACC15]'}`}>
-                                                        {r.status === 'Requested' ? <Clock size={14} /> : <CheckCircle size={14} />}
-                                                        <span className="text-[9px] font-black uppercase tracking-widest">Mark as {r.status === 'Requested' ? 'Paid' : 'Requested'}</span>
-                                                    </button>
-                                                    {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setEditRecord(r); }}
-                                                            className="flex items-center gap-2 h-8 px-4 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 text-(--text-color)/40 hover:text-(--text-color) hover:bg-(--text-color)/10 transition-all hover:scale-105 active:scale-95">
-                                                            <Pencil size={14} />
-                                                            <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>
-                                                        </button>
-                                                    )}
+                                                                    const label = invItem?.data.name || invItem?.data.description || logCrate?.description || `Item ${id}`;
+                                                                    const subcat = invItem?.data.category || logCrate?.type || 'Asset';
+                                                                    const img = invItem?.imageUrl || (invItem?.data.mediaUrls ? invItem.data.mediaUrls.split(',')[0] : null);
+                                                                    const priceNum = parseFloat(String(invItem?.data.price_mxn || invItem?.data.price || logCrate?.cost_mxn || '0'));
+                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || 'UNKNOWN';
+                                                                    const vColor = vendors[vId as keyof typeof vendors]?.color || '#888';
+
+                                                                    return (
+                                                                        <div key={id} className="w-64 shrink-0 p-2.5 bg-(--text-color)/5 border border-(--text-color)/10 rounded-xl hover:bg-(--text-color)/10 transition-all group/item relative overflow-hidden flex items-center gap-3">
+                                                                            {/* Thumbnail */}
+                                                                            <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/5 overflow-hidden shrink-0 flex items-center justify-center relative shadow-lg shadow-black/20">
+                                                                                {img ? (
+                                                                                    <img src={getCleanImageUrl(img) || ''} className="w-full h-full object-cover opacity-80 group-hover/item:opacity-100 transition-opacity" />
+                                                                                ) : (
+                                                                                    <Box size={16} className="text-white/10" />
+                                                                                )}
+                                                                                {img && isVideoFile(img) && (
+                                                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/40">
+                                                                                        <Video size={12} />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Meta Stack */}
+                                                                            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                                                                <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color)/40 truncate">{id}</span>
+                                                                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tight flex-none shadow-sm" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
+                                                                                        {vId}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <p className="text-[11px] font-bold text-(--text-color) truncate uppercase leading-tight">{label}</p>
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <span className="text-[9px] font-black text-sky-400/60 uppercase tracking-widest">
+                                                                                        {currencyMode === 'MXN' ? fmtMXN(priceNum) : fmtUSD(priceNum / (liveExchangeRate || exchangeRate))}
+                                                                                    </span>
+                                                                                    <span className="text-[7px] font-bold text-(--text-color)/20 uppercase tracking-widest">{subcat}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            {/* Subtle hover indicator */}
+                                                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-(--main-color) transform translate-y-2 group-hover/item:translate-y-0 transition-transform opacity-30" />
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                            );
+                                                        })()}
+                                                    </div>
+
+                                                    {/* Relocated Actions Footnote */}
+                                                    <div className="mt-6 pt-4 border-t border-(--text-color)/5 flex items-center justify-between px-1">
+                                                        <div className="flex items-center gap-3">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleToggleStatus(r); }}
+                                                                className={`flex items-center gap-2 h-8 px-4 rounded-lg border transition-all hover:scale-105 active:scale-95 ${r.status === 'Paid' ? 'bg-[#22c55e]/10 border-[#22c55e]/20 text-[#22c55e]' : 'bg-[#eab308]/10 border-[#eab308]/20 text-[#eab308]'}`}>
+                                                                {r.status === 'Requested' ? <Clock size={14} /> : <CheckCircle size={14} />}
+                                                                <span className="text-[9px] font-black uppercase tracking-widest">Mark as {r.status === 'Requested' ? 'Paid' : 'Requested'}</span>
+                                                            </button>
+                                                            {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setEditRecord(r); }}
+                                                                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-(--text-color)/5 border border-(--text-color)/10 text-(--text-color)/40 hover:text-(--text-color) hover:bg-(--text-color)/10 transition-all hover:scale-105 active:scale-95">
+                                                                    <Pencil size={14} />
+                                                                    <span className="text-[9px] font-black uppercase tracking-widest">Edit Payment</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                                                            <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
+                                                                className="flex items-center gap-2 h-8 px-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500/60 hover:text-red-500 transition-all hover:scale-105 active:scale-95">
+                                                                <Trash2 size={14} />
+                                                                <span className="text-[9px] font-black uppercase tracking-widest">Delete Payment</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                                                    <button onClick={(e) => { e.stopPropagation(); handleDeletePayment(r); }}
-                                                        className="flex items-center gap-2 h-8 px-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500/60 hover:text-red-500 transition-all hover:scale-105 active:scale-95">
-                                                        <Trash2 size={14} />
-                                                        <span className="text-[9px] font-black uppercase tracking-widest">Delete Payment</span>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
                                     )}
                                 </div>
                             );
