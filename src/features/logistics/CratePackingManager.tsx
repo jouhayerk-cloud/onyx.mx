@@ -12,6 +12,7 @@ import {
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { WireframeCrate } from '../../components/CrateVisuals';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -76,79 +77,6 @@ const statusText = (s: string) => {
     if (s === 'Empty') return 'text-emerald-400';
     if (s === 'Partial') return 'text-amber-400';
     return 'text-rose-400';
-};
-
-// ─── Wireframe Crate Visual ───────────────────────────────────────────────────
-const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; selected?: boolean; type?: string }> = ({
-    w = 60, l = 60, h = 60, selected = false, type = 'crate'
-}) => {
-    // Normalize dims to max 48px display box
-    const visH = type === 'pallet' ? 15 : h;
-    const maxDim = Math.max(w, l, visH, 1);
-    const scale = 38 / maxDim;
-    const dw = Math.round(w * scale);
-    const dl = Math.round(l * scale);
-    const dh = Math.round(visH * scale);
-
-    // Isometric-style wireframe params
-    const depth = Math.round(dl * 0.35); // depth perspective
-    const color = selected ? 'var(--main-color)' : 'rgba(255,255,255,0.35)';
-    const svgW = dw + depth + 4;
-    const svgH = dh + depth + 4;
-
-    // Corners of front face
-    const x0 = 2, y0 = depth + 2;
-    const x1 = x0 + dw, y1 = y0;
-    const x2 = x1, y2 = y0 + dh;
-    const x3 = x0, y3 = y0 + dh;
-
-    // Top face offset
-    const dx = depth, dy = -depth;
-
-    return (
-        <svg
-            width={svgW}
-            height={svgH}
-            viewBox={`0 0 ${svgW} ${svgH}`}
-            className="overflow-visible"
-            style={{ filter: selected ? `drop-shadow(0 0 4px var(--main-color))` : undefined }}
-        >
-            {/* Back vertical */}
-            <line x1={x0 + dx} y1={y0 + dy} x2={x0 + dx} y2={y3 + dy} stroke={color} strokeWidth="0.6" strokeDasharray="2,2" />
-            {/* Back top horizontal */}
-            <line x1={x0 + dx} y1={y0 + dy} x2={x1 + dx} y2={y1 + dy} stroke={color} strokeWidth="0.6" strokeDasharray="2,2" />
-            {/* Back bottom */}
-            <line x1={x0 + dx} y1={y3 + dy} x2={x1 + dx} y2={y2 + dy} stroke={color} strokeWidth="0.6" strokeDasharray="2,2" />
-
-            {/* Top face */}
-            <polygon
-                points={`${x0},${y0} ${x0 + dx},${y0 + dy} ${x1 + dx},${y1 + dy} ${x1},${y1}`}
-                fill={selected ? 'rgba(var(--main-color-rgb, 249,115,22), 0.06)' : 'rgba(255,255,255,0.03)'}
-                stroke={color} strokeWidth="0.8"
-            />
-
-            {/* Right face */}
-            <polygon
-                points={`${x1},${y1} ${x1 + dx},${y1 + dy} ${x1 + dx},${y2 + dy} ${x1},${y2}`}
-                fill={selected ? 'rgba(var(--main-color-rgb, 249,115,22), 0.04)' : 'rgba(255,255,255,0.015)'}
-                stroke={color} strokeWidth="0.8"
-            />
-
-            {/* Front face */}
-            <rect x={x0} y={y0} width={dw} height={dh}
-                fill={selected ? 'rgba(var(--main-color-rgb, 249,115,22), 0.07)' : 'rgba(255,255,255,0.025)'}
-                stroke={color} strokeWidth="1"
-            />
-
-            {/* Cross braces on front */}
-            {type !== 'pallet' && (
-                <>
-                    <line x1={x0} y1={y0} x2={x1} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
-                    <line x1={x1} y1={y0} x2={x0} y2={y2} stroke={color} strokeWidth="0.4" opacity="0.4" />
-                </>
-            )}
-        </svg>
-    );
 };
 
 // ─── Volume helpers ─────────────────────────────────────────────────────

@@ -1,6 +1,44 @@
 # Changelog
 # 
-## [1.66.21] - 2026-04-06
+## [1.66.27] - 2026-04-06
+### Refined
+- **Payment Detail Panel Aesthetic**: Implemented vendor color-coded Tag IDs with dynamic text contrast logic (`getTextColorForBg`).
+- **Logistics UI Optimization**: Strategically hidden the "Tag ID" column for Logistics Crates to minimize redundancy, while maintaining layout alignment via `opacity-0`.
+
+## [1.66.26] - 2026-04-06
+### Added
+- **Asset Aggregation [Logistics]**: Implemented fingerprint-based grouping in `TrackingPaymentsView` to consolidate identical crates and items into single summarized rows.
+- **Quantified Wireframes**: Added vibrant quantity badging (`xN`) to isometric crate wireframes within the payment detail panel.
+- **Enhanced Financial Clarity**: Replaced individual item rows with consolidated entries featuring Unit Price and Line Totals for bulk logistics payments.
+- **Identity Summarization**: Integrated Tag ID summarization (e.g., `AN326... +14`) for aggregated asset groups.
+
+## [1.66.25] - 2026-04-06
+### Added
+- **Isometric Crate Wireframes**: Integrated scaled isometric wireframe visuals for logistics items (crates/pallets) in the Payment detail panels.
+- **Logistics Traceability Refinement**: Updated crate rows to display high-fidelity dimensions ($W \times L \times H$) and total item counts (e.g., `x15 items`) instead of generic placeholder text.
+- **Visual Parity**: Implemented glowing vibrant wireframes that match the "Studio" design standard and reference imagery.
+- **Refined Data Display**: Relocated technical IDs to a subtle mono-font placement under dimensions, removing them from the primary description block for a cleaner UI.
+
+## [1.66.24] - 2026-04-06
+### Added
+- **High-Fidelity Payment Traceability**: Re-engineered linked asset cards in `TrackingPaymentsView` to match the professional "Studio" list aesthetic. 
+- **Expanded Technical Specs**: Integrated `formatDimensionsImperial` and `formatWeightImperial` to display real-world measurements for all linked payment items.
+- **Enhanced Financial Diagnostics**: Added vertical columns for AQ Code, LD Code, Individual Price, and Line Totals (Price * Qty) to provide full financial transparency within the payment detail panel.
+- **Lookup Resolution Fix**: Resolved a critical issue where linked items with Supabase UUIDs were failing metadata resolution, ensuring all assets display their correct names and identity tags.
+
+## [1.66.23] - 2026-04-06
+### Added
+- **Enriched Payment Asset Metadata**: Enhanced linked item cards in the payment detail view with vendor-specific Tag IDs (barcodes), combined Shape-Type-Color attribute strings, and prominent quantity indicators.
+- **Color-Coded Identity**: Implemented high-contrast, vendor-colored pills for Tag IDs within the payment asset list.
+- **Micro-Layout Optimization**: Balanced the distribution of expanded item metadata to ensure clarity and scan-ability at all screen sizes.
+
+## [1.66.22] - 2026-04-06
+### Refined
+- **Payment Detail Panel Modernization**: Eliminated redundant metadata tags (Mtd, Ref, Hub) for a cleaner, high-density expanded view.
+- **Linked Assets Aesthetic Transformation**: Redesigned linked item cards into compact, borderless rows with simplified metadata, improving vertical space efficiency and visual clarity.
+- **Header Simplification**: Removed internal hub navigation buttons from the individual payment detail panels in favor of a focused, data-first presentation.
+- **Tailwind Utility Optimization**: Fixed legacy Tailwind linting warnings (`max-w-full`, `max-h-full`) in the finance view.
+
 ### Fixed
 - **Ghost Rendering Eradication**: Resolved a regression where numeric state variables were being accidentally rendered as "0" below item cards in Grid and Gallery views. Corrected using explicit boolean checks.
 ### Refined
