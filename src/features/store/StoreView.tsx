@@ -836,6 +836,13 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
+            {/* Navigation Controls (Floating Icons) */}
+            <div className="absolute top-6 right-6 md:top-10 md:right-10 z-100 flex items-center gap-8 pointer-events-auto">
+                <button onClick={onClose} className="text-white/60 hover:text-white bg-black/40 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/10 transition-all transform hover:scale-110 active:scale-90 shadow-xl">
+                    <X size={24} strokeWidth={1.5} />
+                </button>
+            </div>
+
             {/* Visual Media Canvas (Fullscreen Background) */}
             <div 
                 className={`absolute inset-0 md:bottom-0 md:pr-[620px] bg-black overflow-hidden flex items-center justify-center cursor-zoom-in group/canvas ${isDragging ? '' : 'transition-all duration-300 ease-out'}`}
@@ -858,13 +865,6 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                             )}
                         </div>
                     ))}
-                </div>
-
-                {/* Navigation Controls (Floating Icons) */}
-                <div className="absolute top-6 right-6 md:top-10 md:right-10 z-[100] flex items-center gap-8 pointer-events-auto">
-                    <button onClick={onClose} className="text-white/60 hover:text-white bg-black/40 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/10 transition-all transform hover:scale-110 active:scale-90 shadow-xl">
-                        <X size={24} strokeWidth={1.5} />
-                    </button>
                 </div>
 
                 <button 
