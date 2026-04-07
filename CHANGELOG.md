@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.68.10] - 2026-04-07
+### Changed
+- **Official Barcode Sync**: Exported `TAG ID` now correctly reflects the database-level barcode format (e.g., `EM32612HMF`).
+- **Payment Lifecycle Visibility**: Replaced "ADD DATE" with "PAY DATE" in vendor sheets, sourced directly from finance records.
+- **Data Integrity**: Cleaned up internal `bookBarcode` property naming across the codebase.
+
 ## [1.68.9] - 2026-04-07
 ### Enhanced
 - Expanded XLSX Vendor Sheets: Added `ADD DATE`, `AQ CODE`, `LD CODE`.

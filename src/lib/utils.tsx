@@ -787,7 +787,7 @@ export const normalizeInventoryData = (data: any): any => {
     is_hidden: data.is_hidden !== undefined ? data.is_hidden : false,
     hidden_reason: data.hidden_reason || '',
     dispersal_status: data.dispersal_status,
-    book_barcode: data.book_barcode || data.bookBardcode,
+    book_barcode: data.book_barcode || data.bookBarcode,
     book_aq_code: data.book_aq_code || data.bookAqCode
   };
 };
@@ -805,7 +805,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookRetail: '-',
       bookAqCode: '-',
       bookLandCode: '-',
-      bookBardcode: '-',
+      bookBarcode: '-',
     };
   }
 
@@ -831,7 +831,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookRetail:   Math.floor(retailPrice).toString(),
     bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
-    bookBardcode: newTagId,
+    bookBarcode: newTagId,
     vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
   };
 };

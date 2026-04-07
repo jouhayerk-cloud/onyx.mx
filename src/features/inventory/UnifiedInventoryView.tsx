@@ -330,7 +330,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             </div>
                             <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
-                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
+                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || 'N/A'}</span></div>
                         <div className="flex flex-col min-w-[120px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-(--text-color)/40">{weightStr || '—'}</span></div></div>
                         <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
                         <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
@@ -381,13 +381,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="px-1.5 py-0.5 rounded-none text-black text-[8px] font-black uppercase tracking-widest border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                                    {calculated.bookBardcode}
+                                                    {calculated.bookBarcode}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                             <Barcode 
-                                                value={calculated.bookBardcode || 'N/A'} 
+                                                value={calculated.bookBarcode || 'N/A'} 
                                                 format="CODE39" 
                                                 width={4} 
                                                 height={100} 
@@ -401,7 +401,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                     {/* Free-Floating QR - SVG Theme Colored */}
                                     <div className="flex-none p-4 relative group/qr scale-90 sm:scale-100">
                                         <QRCodeSVG 
-                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
+                                            value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
                                             size={200}
                                             level="H"
                                             includeMargin={false}
@@ -429,7 +429,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
+                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
                                     toast.success('Trace Link Copied');
                                 }}
                                 className="p-2 -m-2 text-(--main-color)/60 hover:text-(--main-color) transition-all flex items-center gap-2 group"
@@ -518,7 +518,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`);
+                                    navigator.clipboard.writeText(`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`);
                                     toast.success('Trace Link Copied');
                                 }}
                                 className="flex items-center gap-2 h-10 px-4 rounded-xl bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color) hover:text-black transition-all text-[10px] font-black uppercase tracking-widest"
@@ -542,13 +542,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                            {calculated.bookBardcode}
+                                            {calculated.bookBarcode}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-center p-1.5 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                     <Barcode 
-                                        value={calculated.bookBardcode || 'N/A'} 
+                                        value={calculated.bookBarcode || 'N/A'} 
                                         format="CODE39" 
                                         width={1.6} 
                                         height={50} 
@@ -562,7 +562,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             {/* Free-Floating Modal QR - SVG Theme Colored */}
                             <div className="flex-none p-4 relative group/modal-qr">
                                 <QRCodeSVG 
-                                    value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
+                                    value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBarcode}`}
                                     size={150}
                                     level="H"
                                     includeMargin={false}
@@ -645,7 +645,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                              <div className="flex items-center gap-2">
-                                <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                                <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || vendorPrefix}</div>
                                 <div className="flex gap-1">
                                      <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
                                      <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
@@ -748,7 +748,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     </>
                 )}
                 
-                <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || vendorPrefix}</div>
+                <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || vendorPrefix}</div>
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1">
                 <div className="flex items-start justify-between">
