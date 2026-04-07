@@ -933,7 +933,7 @@ export function MainHeader() {
             <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
                 <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-4">
                     <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
-                    <span className="text-[11px] font-black text-(--text-color) opacity-70 tracking-tight leading-none capitalize">
+                    <span className="text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
                         {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                             ? user.name.split(' ')[0]
                             : user?.email?.split('@')[0] || 'User'}
@@ -943,12 +943,12 @@ export function MainHeader() {
                 <div className="flex items-center relative h-full">
                     <button
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`w-12 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
+                        className={`w-14 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
                             isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
                         }`}
                         title="Studio Settings"
                     >
-                        <Settings size={18} strokeWidth={2} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
+                        <Settings size={24} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
                     </button>
 
                     {isSettingsOpen && createPortal(
