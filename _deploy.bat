@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.68.8 - High-Fidelity XLSX Export Restoration"
+git commit -m "v1.68.8 - High-Fidelity XLSX Export Restoration [Polished]"
 git push origin main
 
 echo [2/3] Building production bundle...

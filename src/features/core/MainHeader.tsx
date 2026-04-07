@@ -634,13 +634,13 @@ export function MainHeader() {
                 }
             });
 
-            summarySheet.addRow({ vendor: '── BY VENDOR ──' });
+            summarySheet.addRow({ vendor: '── BY VENDOR (Sorted by Count) ──' });
             Object.entries(vendorRollup)
                 .filter(([vid]) => {
                     const vUpper = vid.toUpperCase();
                     return vUpper !== 'OTHER' && vUpper !== 'CRATE' && vUpper !== 'CRATES';
                 })
-                .sort((a, b) => b[1].total - a[1].total)
+                .sort((a, b) => b[1].items - a[1].items)
                 .forEach(([vid, v]) => {
                 const vColor = getVendorColor(vid);
                 const contrastColor = getContrastColor(vColor);
@@ -848,7 +848,7 @@ export function MainHeader() {
                     const retailUsd = costUsd * 12;
 
                     const row = vSheet.addRow({
-                        tag_id: it.itemId || it.item_id || it.tag_id || item.label || '',
+                        tag_id: it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
                         description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
                         color_material: `${it.color || ''} ${it.material || ''}`.trim(),
                         sizes: `${it.lengthCm || it.length_cm || 0} x ${it.widthCm || it.width_cm || 0} x ${it.heightCm || it.height_cm || 0}`,
