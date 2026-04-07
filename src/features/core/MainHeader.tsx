@@ -64,7 +64,7 @@ import {
     TOP_BAR_SEARCH_ATOM
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, getStatusClass } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
@@ -72,7 +72,7 @@ import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
-import { getStatusClass } from '../../lib/utils';
+
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
@@ -812,16 +812,20 @@ export function MainHeader() {
                 const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
                 
                 vSheet.columns = [
-                    { header: 'TAG ID', key: 'tag_id', width: 22 },
-                    { header: 'SHAPE + DESCRIPTION', key: 'description', width: 45 },
+                    { header: '#', key: 'item_number', width: 8 },
+                    { header: 'ADD DATE', key: 'add_date', width: 12 },
+                    { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
+                    { header: 'AQ CODE', key: 'aq_code', width: 12 },
+                    { header: 'LD CODE', key: 'ld_code', width: 12 },
+                    { header: 'DESCRIPTION', key: 'description', width: 45 },
                     { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
-                    { header: 'SIZES (CM)', key: 'sizes', width: 25 },
-                    { header: 'WEIGHT (KG)', key: 'weight', width: 14, style: { numFmt: '#,##0.0' } },
+                    { header: 'SIZES (CM/IN)', key: 'sizes', width: 30 },
+                    { header: 'WEIGHT (KG/LB)', key: 'weight', width: 20 },
                     { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'STATUS', key: 'status', width: 15 },
-                    { header: 'PAY STATUS', key: 'pay_status', width: 15 }
+                    { header: 'PAY STATUS', key: 'pay_status', width: 18 }
                 ];
 
                 // Header styling
@@ -836,33 +840,58 @@ export function MainHeader() {
                     const it = item.data;
                     const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
                     
-                    // Logic from utils.tsx: calculateCodesAndPrices
                     const costUsd = costMxn / bookRate;
-                    const landedCostMxn = costMxn * 1.4; // Usually it's in MXN if it's mark-up
-                    const retailPriceUsd = (costMxn / bookRate) * 1.4 * 12; // costUsd * 1.4 * 12
-
-                    // Wait, let's use the exact multipliers from history
-                    // v1.45.0: "Landed Cost: Cost * 1.4 (MXN). Retail Pricing: Cost * 12 (USD Book Rate)."
-                    // Actually, looking at mainHeader logic, it's mostly MXN.
                     const landedMxn = costMxn * 1.4;
                     const retailUsd = costUsd * 12;
 
+                    const calculated = calculateCodesAndPrices(it, bookRate, '326');
+                    const payStatusClass = getStatusClass(it, partialPayIds, fullPayIds) || 'BLUE';
+                    const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
+                                         payStatusClass === 'YELLOW' ? 'FFFACC15' : 
+                                         payStatusClass === 'RED' ? 'FFEF4444' : 
+                                         payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
+                    const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
+                                        payStatusClass === 'YELLOW' ? 'REQUESTED' : 
+                                        payStatusClass === 'RED' ? 'PARTIAL' : 
+                                        payStatusClass === 'PURPLE' ? 'ACQUIRED' : 'NEW';
+
+                    let formattedDate = 'N/A';
+                    try {
+                        if (it.created_at) {
+                            const d = new Date(it.created_at);
+                            if (!isNaN(d.getTime())) {
+                                formattedDate = d.toISOString().split('T')[0];
+                            }
+                        }
+                    } catch (e) { console.error('Date error:', e); }
+
                     const row = vSheet.addRow({
+                        item_number: it.itemNumber || it.item_number || iIdx + 1,
+                        add_date: formattedDate,
                         tag_id: it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
+                        aq_code: calculated.bookAqCode || '-',
+                        ld_code: calculated.bookLandCode || '-',
                         description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
                         color_material: `${it.color || ''} ${it.material || ''}`.trim(),
-                        sizes: `${it.lengthCm || it.length_cm || 0} x ${it.widthCm || it.width_cm || 0} x ${it.heightCm || it.height_cm || 0}`,
-                        weight: parseFloat(it.weightKg || it.weight_kg || '0') || 0,
+                        sizes: formatDimensionsImperial(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
+                        weight: formatWeightImperial(it.weightKg || it.weight_kg),
                         cost_mxn: costMxn,
                         landed_mxn: landedMxn,
                         retail_usd: retailUsd,
                         status: it.status || 'Acquisition',
-                        pay_status: getStatusClass(it, partialPayIds, fullPayIds) || 'BLUE'
+                        pay_status: payStatusText
                     });
 
-                    // Tag ID highlighting
-                    row.getCell('tag_id').font = { bold: true };
-                    
+                    // Tag ID highlighting (Vendor Color)
+                    const tagCell = row.getCell('tag_id');
+                    tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                    tagCell.font = { bold: true, color: { argb: contrastColor } };
+
+                    // Pay Status highlighting
+                    const payCell = row.getCell('pay_status');
+                    payCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: payStatusColor } };
+                    payCell.font = { bold: true, color: { argb: getContrastColor(payStatusColor) } };
+
                     // Zebra
                     if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
                 });
