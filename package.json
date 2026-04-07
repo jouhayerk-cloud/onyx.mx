@@ -1,7 +1,7 @@
 {
   "name": "onyx-app",
   "private": true,
-  "version": "1.68.10",
+  "version": "1.68.11",
   "type": "module",
   "scripts": {
     "dev": "vite --port 1001 --host",
