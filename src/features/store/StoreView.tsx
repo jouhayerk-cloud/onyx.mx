@@ -861,8 +861,8 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                 </div>
 
                 {/* Navigation Controls (Floating Icons) */}
-                <div className="absolute top-10 left-10 z-20 flex items-center gap-8">
-                    <button onClick={onClose} className="text-white/60 hover:text-white bg-black/40 backdrop-blur-md p-4 rounded-full border border-white/10 transition-all transform hover:scale-110 active:scale-90">
+                <div className="absolute top-6 right-6 md:top-10 md:right-10 z-[100] flex items-center gap-8 pointer-events-auto">
+                    <button onClick={onClose} className="text-white/60 hover:text-white bg-black/40 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/10 transition-all transform hover:scale-110 active:scale-90 shadow-xl">
                         <X size={24} strokeWidth={1.5} />
                     </button>
                 </div>
