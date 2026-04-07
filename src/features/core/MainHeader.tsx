@@ -1015,19 +1015,21 @@ export function MainHeader() {
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-1 mx-2 relative">
-                        <button
-                            onClick={() => setIsBagOpen(!isBagOpen)}
-                            className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
-                        >
-                            <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
-                            {bagCount > 0 && (
-                                <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
-                                    {bagCount}
-                                </span>
-                            )}
-                        </button>
-                    </div>
+                    {activeView === 'store' && (
+                        <div className="flex items-center gap-1 mx-2 relative">
+                            <button
+                                onClick={() => setIsBagOpen(!isBagOpen)}
+                                className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
+                            >
+                                <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
+                                {bagCount > 0 && (
+                                    <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
+                                        {bagCount}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    )}
 
                     <div className="flex items-center relative h-full">
                         <button

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.69.3] - 2026-04-07
+### Changed
+- **Header Refinement**: The Acquisitions Shopping Bag is now conditionally rendered and only visible when the **STORE** module is active, ensuring a cleaner interface in administrative and logistical views.
+
 ## [1.69.2] - 2026-04-07
 ### Fixed
 - **Manifest Export Error**: Resolved a `ReferenceError: it is not defined` during XLSX export that occurred when calculating financial metrics for vendor sheets.
