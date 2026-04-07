@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.69.1 - XLSX QTY and TOTAL MXN columns"
+git commit -m "v1.69.2 - Manifest Export Fix"
 git push origin main
 
 echo [2/3] Building production bundle...
