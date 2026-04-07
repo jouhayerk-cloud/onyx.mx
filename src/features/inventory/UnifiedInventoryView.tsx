@@ -36,7 +36,8 @@ import {
     isInventorySelectionModeAtom,
     selectedInventoryIdsAtom,
     inventoryArtifactConfigAtom,
-    themeAtom
+    themeAtom,
+    storeShoppingBagAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
@@ -144,6 +145,20 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     const theme = useAtomValue(themeAtom);
     const qrColor = (theme === 'nacar' || theme === 'aqua') ? '#000000' : '#FFFFFF';
     
+    // Store Bag Implementation
+    const [bag, setBag] = useAtom(storeShoppingBagAtom);
+    const inBag = bag.some((b: any) => b.row === item.row);
+    const handleToggleBag = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (inBag) {
+            setBag(bag.filter((b: any) => b.row !== item.row));
+            toast.error('Removed from Store Bag', { icon: '🗑️' });
+        } else {
+            setBag([...bag, item]);
+            toast.success('Added to Store Bag', { style: { background: 'var(--main-color)', color: '#000' }, icon: '🛍️' });
+        }
+    };
+
     const handleToggleSelection = (id: string | number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
@@ -321,12 +336,16 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
                         <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
                         <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[11px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0 ml-auto items-end">
+                        <div className="flex flex-col min-w-[80px] shrink-0 ml-auto items-end pr-4">
                             <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
                                 {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
                             </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 border-l border-white/5 pl-4 ml-2">
+                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
+                            <button onClick={handleToggleBag} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : 'ADD TO BAG'}</button>
                         </div>
                     </div>
                 </div>
@@ -667,6 +686,10 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
                             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span>
                         </div>
+                        <div className="flex items-center gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
+                            <button onClick={handleToggleBag} className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : 'ADD TO BAG'}</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -753,6 +776,10 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span></div>
+                    <div className="flex items-center gap-1.5">
+                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-2 py-1 rounded text-[7px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
+                        <button onClick={handleToggleBag} className={`px-2 py-1 rounded text-[7px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_5px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : '+ BAG'}</button>
+                    </div>
                 </div>
             </div>
             {isSelectionMode && (

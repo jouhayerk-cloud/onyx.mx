@@ -338,7 +338,9 @@ export function StoreView() {
                                 <div key={item.row} className="h-full w-full snap-start shrink-0">
                                     <GalleryFullItem 
                                         item={item} 
-                                        onOpenDetails={() => setSelectedItem(item)} 
+                                        onOpenDetails={() => setSelectedItem(item)}
+                                        inBag={bag.some(b => b.row === item.row)}
+                                        onToggleBag={() => toggleBagItem(item)}
                                     />
                                 </div>
                             ))}
@@ -1027,7 +1029,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
 
 /* ─── Gallery Full Item ─── */
 
-const GalleryFullItem = ({ item, onOpenDetails }: { item: any; onOpenDetails: () => void }) => {
+const GalleryFullItem = ({ item, onOpenDetails, inBag, onToggleBag }: { item: any; onOpenDetails: () => void; inBag: boolean; onToggleBag: () => void }) => {
     const n = normalizeInventoryData(item.data);
     const mediaUrls = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -1041,7 +1043,7 @@ const GalleryFullItem = ({ item, onOpenDetails }: { item: any; onOpenDetails: ()
     const vColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
 
     return (
-        <div className="h-full w-full bg-black relative flex flex-col justify-center items-center overflow-hidden">
+        <div className="h-full w-full bg-black relative flex flex-col justify-center items-center overflow-hidden cursor-pointer" onClick={onOpenDetails}>
             {/* Immersive Background */}
             <div className="absolute inset-0 z-0">
                 {primaryMedia ? (
@@ -1069,15 +1071,6 @@ const GalleryFullItem = ({ item, onOpenDetails }: { item: any; onOpenDetails: ()
                         </div>
                         <h2 className="text-5xl font-black text-white uppercase italic tracking-tighter leading-none max-w-xl">{n.shape} {n.shortDescription}</h2>
                     </div>
-                    
-                    <div className="pointer-events-auto flex flex-col gap-4 animate-in slide-in-from-right duration-700">
-                        <button 
-                            onClick={onOpenDetails}
-                            className="w-16 h-16 flex items-center justify-center text-white/40 hover:text-white transition-all"
-                        >
-                            <Info size={28} strokeWidth={1.5} />
-                        </button>
-                    </div>
                 </div>
 
                 <div className="flex justify-between items-end">
@@ -1100,13 +1093,20 @@ const GalleryFullItem = ({ item, onOpenDetails }: { item: any; onOpenDetails: ()
                         </div>
                     </div>
 
-                    <div className="pointer-events-auto mb-4 animate-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+                    <div className="pointer-events-auto mb-4 flex items-center gap-4 animate-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
                         <button 
-                            onClick={onOpenDetails}
-                            className="flex items-center gap-6 text-white group/acq"
+                            onClick={(e) => { e.stopPropagation(); onOpenDetails(); }}
+                            className="flex items-center gap-4 text-black bg-white px-8 py-4 rounded-[24px] group/acq hover:scale-105 transition-all w-[240px] justify-between"
                         >
-                            <span className="text-xs font-black uppercase tracking-[0.5em] group-hover/acq:mr-2 transition-all">Acquire Artifact</span>
-                            <ArrowRight size={24} strokeWidth={2} className="group-hover/acq:text-(--main-color) transition-colors" />
+                            <span className="text-sm font-black uppercase tracking-[0.4em]">GET THIS!</span>
+                            <ArrowRight size={20} strokeWidth={2.5} className="group-hover/acq:translate-x-2 transition-transform" />
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
+                            className={`flex items-center gap-3 px-8 py-4 rounded-[24px] border border-white/10 backdrop-blur-md hover:scale-105 transition-all w-[240px] justify-between text-white ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_var(--main-color)]' : 'bg-black/40 hover:bg-white/10'}`}
+                        >
+                            <span className="text-sm font-black uppercase tracking-[0.4em]">{inBag ? 'IN BAG' : 'ADD TO BAG'}</span>
+                            {inBag ? <Check size={20} strokeWidth={2.5} /> : <ShoppingBag size={20} strokeWidth={2} />}
                         </button>
                     </div>
                 </div>

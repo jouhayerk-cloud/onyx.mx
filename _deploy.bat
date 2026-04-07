@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.68.1: Store Module Item Tags and Dimensional Formatting"
+git commit -m "v1.68.7: Inventory & Store Modernization"
 git push origin main
 
 echo [2/3] Building production bundle...
