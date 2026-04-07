@@ -8,7 +8,7 @@ import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, pay
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
+import { getTextColorForBg, calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, formatDimensionsImperial, formatWeightImperial } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { 
     Calendar, Box, Users, Archive, Cpu, DollarSign, Activity, Wallet, 
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CurrencyTag } from '@/components/CurrencyTag';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
+import { WireframeCrate } from '../../components/CrateVisuals';
 
 const fmtMXN = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 const fmtUSD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
@@ -1926,7 +1927,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                             {/* Card Icon */}
                                             <div className="shrink-0 w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center relative">
                                                 {destCfg ? (
-                                                    <img src={destCfg.icon} className="max-w-[100%] max-h-[100%] object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" />
+                                                    <img src={destCfg.icon} className="max-w-full max-h-full object-contain brightness-110 drop-shadow-[0_0_12px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform" />
                                                 ) : (
                                                     <Info size={12} className="text-(--text-color)/10" />
                                                 )}
@@ -1947,136 +1948,200 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
 
                                                 <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
 
-                                                {/* Detail Block 2: Method */}
-                                                <div className="shrink-0">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Mtd</span>
-                                                    <span className="text-[9px] sm:text-[11px] font-black text-(--text-color)/80 uppercase whitespace-nowrap">{r.payment_method || 'Wire'}</span>
-                                                </div>
-
-                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
-
-                                                {/* Detail Block 3: Reference */}
-                                                <div className="shrink-0">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Ref</span>
-                                                    <span className="text-[9px] sm:text-[11px] font-mono font-bold text-(--text-color)/40 whitespace-nowrap">#{r.id.slice(0,8).toUpperCase()}</span>
-                                                </div>
-
-                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
-
-                                                {/* Detail Block 4: Taxes/Fees */}
+                                                {/* Detail Block 2: Taxes/Fees */}
                                                 <div className="shrink-0 text-right">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Tax</span>
                                                     <span className="text-[9px] sm:text-[11px] font-mono font-bold text-red-500/60 whitespace-nowrap">
                                                         {currencyMode === 'MXN' ? fmtMXN(r.commission || 0) : fmtUSD((r.commission || 0) / (liveExchangeRate || exchangeRate))}
                                                     </span>
                                                 </div>
-
-                                                <div className="w-px h-8 bg-(--text-color)/5 shrink-0" />
-
-                                                {/* Detail Block 5: Global Artifact Hub Trigger */}
-                                                <div className="shrink-0">
-                                                    <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-widest block mb-1">Hub</span>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const rel = r.related_ids || r.related_inventory_ids || '';
-                                                            const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
-                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
-                                                        }}
-                                                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--main-color) hover:text-black hover:border-(--main-color) transition-all text-xs font-black uppercase tracking-tighter"
-                                                    >
-                                                        <Layers size={12} /> SYNC
-                                                    </button>
-                                                </div>
                                             </div>
 
                                             {/* Linked Assets Strip (Asset Hub) */}
                                             <div className="pt-2 border-t border-(--text-color)/5 mt-2">
-                                                <div className="flex items-center justify-between mb-3 px-1">
+                                                <div className="flex items-center justify-between mb-2 px-1">
                                                     <span className="text-[8px] sm:text-[9px] font-black text-(--text-color)/20 uppercase tracking-[0.3em] block">Linked Assets & Traceability</span>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const rel = r.related_ids || r.related_inventory_ids || '';
-                                                            const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
-                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${r.vendor_id || 'Transaction'}` });
-                                                        }}
-                                                        className="flex items-center gap-1.5 px-2 py-1 rounded bg-(--text-color)/5 border border-(--text-color)/10 hover:bg-(--text-color)/10 transition-all text-(--text-color)/40 hover:text-(--text-color)"
-                                                    >
-                                                        <LayoutGrid size={10} />
-                                                        <span className="text-[8px] font-black uppercase tracking-widest">Open Hub</span>
-                                                    </button>
                                                 </div>
                                                     {(() => {
                                                         const rel = r.related_ids || r.related_inventory_ids || '';
-                                                        const ids = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
+                                                        const rawIds = Array.isArray(rel) ? rel.map(id => String(id)) : (typeof rel === 'string' ? rel.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-                                                        if (ids.length === 0) return (
+                                                        if (rawIds.length === 0) return (
                                                             <div className="py-8 border border-dashed border-(--text-color)/10 rounded-xl flex items-center justify-center opacity-20">
                                                                 <span className="text-[10px] font-mono uppercase tracking-[0.2em]">No direct items linked</span>
                                                             </div>
                                                         );
+
+                                                        // Grouping Phase
+                                                        const grouped: Record<string, { 
+                                                            id: string; 
+                                                            ids: string[];
+                                                            invItem: any; 
+                                                            logCrate: any; 
+                                                            groupCount: number;
+                                                        }> = {};
+
+                                                        rawIds.forEach(id => {
+                                                            const invItem = inventory.find(i => String(i.row) === id || i.data.itemId === id || i.data.item_id === id || i.data.id === id);
+                                                            const logCrate = logisticsData.find(l => String(l.id) === id);
+
+                                                            // Uniqueness fingerprint
+                                                            let key = id;
+                                                            if (invItem) {
+                                                                key = `inv_${invItem.data.itemId || invItem.data.id}_${invItem.data.vendor_id || invItem.data.vendorId}`;
+                                                            } else if (logCrate) {
+                                                                key = `log_${logCrate.type}_${logCrate.width_cm}_${logCrate.length_cm}_${logCrate.height_cm}_${logCrate.vendor_id}`;
+                                                            }
+
+                                                            if (!grouped[key]) {
+                                                                grouped[key] = { id, ids: [id], invItem, logCrate, groupCount: 1 };
+                                                            } else {
+                                                                grouped[key].groupCount++;
+                                                                grouped[key].ids.push(id);
+                                                            }
+                                                        });
                                                         
                                                         return (
-                                                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                                                                {ids.map(id => {
-                                                                    const invItem = inventory.find(i => String(i.row) === id || i.data.itemId === id || i.data.item_id === id);
-                                                                    const logCrate = logisticsData.find(l => String(l.id) === id);
-                                                                    
+                                                            <div className="flex flex-col gap-2 overflow-x-auto no-scrollbar pb-2">
+                                                                {Object.values(grouped).map(({ id, ids, invItem, logCrate, groupCount }) => {
                                                                     if (!invItem && !logCrate) return (
-                                                                        <div key={id} className="w-48 h-20 shrink-0 bg-(--text-color)/5 border border-(--text-color)/10 rounded-xl flex items-center justify-center p-3 grayscale opacity-30">
+                                                                        <div key={id} className="h-10 shrink-0 flex items-center gap-3 px-3 grayscale opacity-30">
                                                                             <span className="text-[9px] font-mono uppercase truncate opacity-50">{id}</span>
                                                                         </div>
                                                                     );
 
-                                                                    const label = invItem?.data.name || invItem?.data.description || logCrate?.description || `Item ${id}`;
+                                                                    const norm = invItem ? normalizeInventoryData(invItem.data) : null;
+                                                                    const codes = norm ? calculateCodesAndPrices(norm, liveExchangeRate || exchangeRate, '326') : null;
+                                                                    
                                                                     const subcat = invItem?.data.category || logCrate?.type || 'Asset';
                                                                     const img = invItem?.imageUrl || (invItem?.data.mediaUrls ? invItem.data.mediaUrls.split(',')[0] : null);
                                                                     const priceNum = parseFloat(String(invItem?.data.price_mxn || invItem?.data.price || logCrate?.cost_mxn || '0'));
-                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || 'UNKNOWN';
+                                                                    const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || r.vendor_id || 'UNKNOWN';
                                                                     const vColor = vendors[vId as keyof typeof vendors]?.color || '#888';
+                                                                    
+                                                                    const baseTag = codes?.bookBardcode || id;
+                                                                    const tagId = groupCount > 1 ? `${baseTag.slice(0, 10)}... +${groupCount - 1}` : baseTag;
+                                                                    const shape = norm?.shape || (logCrate?.type === 'pallet' ? 'Pallet' : 'Crate');
+                                                                    const material = norm?.material || '';
+                                                                    const color = norm?.color || '';
+                                                                    
+                                                                    const packedItems = logCrate?.inventory_ids ? logCrate.inventory_ids.split(',').filter(Boolean).length : 0;
+                                                                    const unitQty = norm?.quantity || (logCrate ? (packedItems || 1) : 1);
+                                                                    const totalQty = unitQty * groupCount;
+                                                                    const totalLine = priceNum * (logCrate ? groupCount : totalQty); 
+
+                                                                    const dims = invItem 
+                                                                        ? formatDimensionsImperial(norm.widthCm, norm.heightCm, norm.lengthCm) 
+                                                                        : (logCrate ? `${logCrate.width_cm}×${logCrate.length_cm}×${logCrate.height_cm} CM` : '');
+                                                                    const weight = invItem ? formatWeightImperial(norm.weightKg) : '';
 
                                                                     return (
-                                                                        <div key={id} className="w-64 shrink-0 p-2.5 bg-(--text-color)/5 border border-(--text-color)/10 rounded-xl hover:bg-(--text-color)/10 transition-all group/item relative overflow-hidden flex items-center gap-3">
-                                                                            {/* Thumbnail */}
-                                                                            <div className="w-12 h-12 rounded-lg bg-black/40 border border-white/5 overflow-hidden shrink-0 flex items-center justify-center relative shadow-lg shadow-black/20">
-                                                                                {img ? (
-                                                                                    <img src={getCleanImageUrl(img) || ''} className="w-full h-full object-cover opacity-80 group-hover/item:opacity-100 transition-opacity" />
-                                                                                ) : (
-                                                                                    <Box size={16} className="text-white/10" />
-                                                                                )}
-                                                                                {img && isVideoFile(img) && (
-                                                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-white/40">
-                                                                                        <Video size={12} />
+                                                                        <div key={id} className="flex items-center gap-8 py-4 px-4 hover:bg-(--text-color)/5 border border-(--text-color)/5 rounded-xl transition-all group/item relative shrink-0 min-w-[1200px]">
+                                                                            {/* Thumbnail / Wireframe */}
+                                                                            <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden shrink-0 flex items-center justify-center relative">
+                                                                                {invItem ? (
+                                                                                    img ? (
+                                                                                        <img src={getCleanImageUrl(img) || ''} className="w-full h-full object-cover opacity-60 group-hover/item:opacity-100 transition-opacity" />
+                                                                                    ) : (
+                                                                                        <Box size={20} className="text-white/10" />
+                                                                                    )
+                                                                                ) : logCrate ? (
+                                                                                    <div className="opacity-80 group-hover/item:opacity-100 transition-opacity relative">
+                                                                                        <WireframeCrate 
+                                                                                            w={logCrate.width_cm} 
+                                                                                            l={logCrate.length_cm} 
+                                                                                            h={logCrate.height_cm} 
+                                                                                            type={logCrate.type}
+                                                                                            vibrant
+                                                                                            size={40}
+                                                                                        />
+                                                                                        {groupCount > 1 && (
+                                                                                            <div className="absolute -bottom-1 -right-1 bg-(--main-color) text-black text-[8px] font-black px-1 rounded-sm shadow-xl border border-black/20 flex items-center h-4">
+                                                                                                x{groupCount}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
+                                                                                ) : (
+                                                                                    <Box size={20} className="text-white/10" />
                                                                                 )}
                                                                             </div>
 
-                                                                            {/* Meta Stack */}
-                                                                            <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                                                                <div className="flex items-center justify-between gap-2 overflow-hidden">
-                                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-(--text-color)/40 truncate">{id}</span>
-                                                                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tight flex-none shadow-sm" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
-                                                                                        {vId}
-                                                                                    </span>
+                                                                            {/* Primary Info Block */}
+                                                                            <div className="flex flex-col min-w-[200px] max-w-[250px]">
+                                                                                <div className="flex items-baseline gap-2 mb-1">
+                                                                                    <span className="text-[13px] font-black text-(--text-color)/90 uppercase tracking-tight">{shape}</span>
+                                                                                    <span className="text-[10px] font-bold text-(--text-color)/40 uppercase tracking-widest">{subcat}</span>
+                                                                                    <span className="text-[12px] font-black text-(--main-color) ml-2">x{totalQty} {logCrate ? 'units' : ''}</span>
                                                                                 </div>
-                                                                                <p className="text-[11px] font-bold text-(--text-color) truncate uppercase leading-tight">{label}</p>
-                                                                                <div className="flex items-center justify-between">
-                                                                                    <span className="text-[9px] font-black text-sky-400/60 uppercase tracking-widest">
-                                                                                        {currencyMode === 'MXN' ? fmtMXN(priceNum) : fmtUSD(priceNum / (liveExchangeRate || exchangeRate))}
-                                                                                    </span>
-                                                                                    <span className="text-[7px] font-bold text-(--text-color)/20 uppercase tracking-widest">{subcat}</span>
+                                                                                <span className="text-[9px] font-bold text-(--text-color)/20 uppercase tracking-[0.2em] leading-none truncate">
+                                                                                    {invItem ? [color, material].filter(Boolean).join(' • ') : (logCrate?.description || 'LOGISTICS UNIT')}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Identity Hub Pill */}
+                                                                            <div className={`flex flex-col shrink-0 min-w-[80px] transition-opacity ${logCrate ? 'opacity-0 pointer-events-none' : ''}`}>
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Tag ID</span>
+                                                                                <span className="px-2 py-1 rounded-[6px] text-[9px] font-black uppercase tracking-tight shadow-lg" style={{ backgroundColor: vColor, color: getTextColorForBg(vColor) }}>
+                                                                                    {tagId}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Technical Spec Column */}
+                                                                            <div className="flex flex-col shrink-0 min-w-[200px]">
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Size / Weight</span>
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="text-[11px] font-black text-(--text-color)/60 uppercase leading-tight tracking-widest">{dims || 'N/A'}</span>
+                                                                                    {logCrate ? (
+                                                                                        <span className="text-[8px] font-bold text-(--text-color)/20 uppercase leading-none mt-1 font-mono tracking-tighter">
+                                                                                            {ids[0].toUpperCase()} {groupCount > 1 ? ` (+${groupCount - 1} MORE)` : ''}
+                                                                                        </span>
+                                                                                    ) : weight && (
+                                                                                        <span className="text-[9px] font-bold text-(--text-color)/30 uppercase leading-tight">{weight}</span>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
-                                                                            {/* Subtle hover indicator */}
-                                                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-(--main-color) transform translate-y-2 group-hover/item:translate-y-0 transition-transform opacity-30" />
+
+                                                                            {/* Financial Column: Price */}
+                                                                            <div className="flex flex-col shrink-0 min-w-[100px]">
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Unit Price</span>
+                                                                                <span className="text-[11px] font-black text-(--text-color)/70 uppercase tracking-widest leading-none">
+                                                                                    {fmtMXN(priceNum)}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Financial Column: Total */}
+                                                                            <div className="flex flex-col shrink-0 min-w-[120px]">
+                                                                                <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Line Total</span>
+                                                                                <span className="text-[12px] font-black text-(--main-color) uppercase tracking-widest leading-none">
+                                                                                    {fmtMXN(totalLine)}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Diagnostic Columns: AQ/LD Codes */}
+                                                                            <div className="flex items-center gap-8 ml-auto pr-4">
+                                                                                <div className="flex flex-col items-center">
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">AQ Code</span>
+                                                                                    <span className="text-[11px] font-black text-(--text-color)/60 font-mono">{codes?.bookAqCode || '—'}</span>
+                                                                                </div>
+                                                                                <div className="flex flex-col items-center">
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">LD Code</span>
+                                                                                    <span className="text-[11px] font-black text-(--main-color) font-mono opacity-80">{codes?.bookLandCode || '—'}</span>
+                                                                                </div>
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span className="text-[8px] font-black text-(--text-color)/10 uppercase tracking-widest leading-none mb-2">Status</span>
+                                                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20">
+                                                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+                                                                                        <span className="text-[8px] font-black text-[#22c55e] uppercase">Paid</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
                                                                         </div>
                                                                     );
                                                                 })}
                                                             </div>
-                                                            );
-                                                        })()}
-                                                    </div>
+                                                        );
+                                                    })()}
+                                            </div>
 
                                                     {/* Relocated Actions Footnote */}
                                                     <div className="mt-6 pt-4 border-t border-(--text-color)/5 flex items-center justify-between px-1">
