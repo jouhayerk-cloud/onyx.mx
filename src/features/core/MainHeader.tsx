@@ -644,10 +644,9 @@ export function MainHeader() {
                 .forEach(([vid, v]) => {
                 const vColor = getVendorColor(vid);
                 const contrastColor = getContrastColor(vColor);
-                const vConfig = vendors[vid as keyof typeof vendors];
                 
                 const row = summarySheet.addRow({
-                    vendor: vid,
+                    vendor: (vendors as any)[vid]?.name || vid,
                     items: v.items,
                     total_mxn: v.total,
                     total_usd: v.total / internetRate,
@@ -802,8 +801,76 @@ export function MainHeader() {
                 if (idx % 2 === 0) row.eachCell(cell => { if (!cell.fill?.type) cell.fill = EXCEL_STYLES.fills.zebra; });
             });
 
+            // 4. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
+            Object.entries(vendorGroups).forEach(([vid, items]) => {
+                // Determine sheet name (full vendor name if possible)
+                const vMeta = (vendors as any)[vid];
+                const sheetName = (vMeta?.name || vid).substring(0, 25);
+                const vendorColor = getVendorColor(vid);
+                const contrastColor = getContrastColor(vendorColor);
+
+                const vSheet = workbook.addWorksheet(sheetName, { properties: { tabColor: { argb: vendorColor } } });
+                
+                vSheet.columns = [
+                    { header: 'TAG ID', key: 'tag_id', width: 22 },
+                    { header: 'SHAPE + DESCRIPTION', key: 'description', width: 45 },
+                    { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
+                    { header: 'SIZES (CM)', key: 'sizes', width: 25 },
+                    { header: 'WEIGHT (KG)', key: 'weight', width: 14, style: { numFmt: '#,##0.0' } },
+                    { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'STATUS', key: 'status', width: 15 },
+                    { header: 'PAY STATUS', key: 'pay_status', width: 15 }
+                ];
+
+                // Header styling
+                vSheet.getRow(1).eachCell(cell => {
+                    cell.font = EXCEL_STYLES.fonts.header;
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
+                    cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: contrastColor } };
+                    cell.alignment = { horizontal: 'center' };
+                });
+
+                items.forEach((item: any, iIdx: number) => {
+                    const it = item.data;
+                    const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
+                    
+                    // Logic from utils.tsx: calculateCodesAndPrices
+                    const costUsd = costMxn / bookRate;
+                    const landedCostMxn = costMxn * 1.4; // Usually it's in MXN if it's mark-up
+                    const retailPriceUsd = (costMxn / bookRate) * 1.4 * 12; // costUsd * 1.4 * 12
+
+                    // Wait, let's use the exact multipliers from history
+                    // v1.45.0: "Landed Cost: Cost * 1.4 (MXN). Retail Pricing: Cost * 12 (USD Book Rate)."
+                    // Actually, looking at mainHeader logic, it's mostly MXN.
+                    const landedMxn = costMxn * 1.4;
+                    const retailUsd = costUsd * 12;
+
+                    const row = vSheet.addRow({
+                        tag_id: it.itemId || it.item_id || it.tag_id || item.label || '',
+                        description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
+                        color_material: `${it.color || ''} ${it.material || ''}`.trim(),
+                        sizes: `${it.lengthCm || it.length_cm || 0} x ${it.widthCm || it.width_cm || 0} x ${it.heightCm || it.height_cm || 0}`,
+                        weight: parseFloat(it.weightKg || it.weight_kg || '0') || 0,
+                        cost_mxn: costMxn,
+                        landed_mxn: landedMxn,
+                        retail_usd: retailUsd,
+                        status: it.status || 'Acquisition',
+                        pay_status: getStatusClass(it, partialPayIds, fullPayIds) || 'BLUE'
+                    });
+
+                    // Tag ID highlighting
+                    row.getCell('tag_id').font = { bold: true };
+                    
+                    // Zebra
+                    if (iIdx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
+                });
+            });
+
             const buffer = await workbook.xlsx.writeBuffer();
-            saveAs(new Blob([buffer]), `OnyxMaster_Project_Manifest_${new Date().toISOString().split('T')[0]}.xlsx`);
+            const dateStr = new Date().toLocaleDateString('es-MX').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${dateStr}.xlsx`);
             toast.success('Manifest Exported Successfully');
         } catch (error) {
             console.error('Export failed:', error);

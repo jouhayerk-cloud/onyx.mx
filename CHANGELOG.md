@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.68.8 (2026-04-07)
+- **High-Fidelity XLSX Export Restoration [Major]**: Restored the professional, multi-sheet Excel export functionality.
+    - **Correct Naming Convention**: Reverted the exported filename to `Onyx-mx_Book-326_DATE.xlsx` using the requested `DD-MM-YYYY` format.
+    - **Vendor-Specific Worksheets**: Re-implemented individual tabs for each vendor (e.g., "EMMANUEL DE LOS SANTOS", "ANGEL CABRERA") containing detailed inventory records.
+    - **Calculated Financials**: Reinstated the **Landed Cost (MXN)** (1.4x markup) and **Retail Pricing (USD)** (12x multiplier) columns.
+    - **Brand-Aware Styling**: Integrated vendor-specific colors into sheet tabs and headers, with zebra striping and Arial typography for maximum readability.
+
 ## v1.68.7 (2026-04-07)
 - **Inventory & Store Modernization [UX]**: Overhauled action buttons across all item panels.
     - **New Direct Actions**: Replaced "ACQUIRE ARTIFACT" with "GET THIS!" and added an interactive "ADD TO BAG" toggle.
