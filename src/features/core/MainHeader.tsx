@@ -536,15 +536,21 @@ export function MainHeader() {
 
             const partialPayIds = new Set<string>();
             const fullPayIds = new Set<string>();
+            const paymentDateMap = new Map<string, string>();
+
             financeDocs.forEach(d => {
+                const rel = d.related_ids || d.related_inventory_ids || '';
+                let ids: string[] = [];
+                if (Array.isArray(rel)) {
+                    ids = rel.map((id: any) => String(id));
+                } else if (typeof rel === 'string') {
+                    ids = rel.split(',').map(s => s.trim()).filter(Boolean);
+                }
+
                 if (d.status === 'Paid') {
-                    const rel = d.related_ids || d.related_inventory_ids || '';
-                    let ids: string[] = [];
-                    if (Array.isArray(rel)) {
-                        ids = rel.map((id: any) => String(id));
-                    } else if (typeof rel === 'string') {
-                        ids = rel.split(',').map(s => s.trim()).filter(Boolean);
-                    }
+                    const pDate = d.date || d.pay_date || d.created_at;
+                    if (pDate) ids.forEach(id => paymentDateMap.set(id, pDate));
+
                     if (d.description?.includes('%')) {
                         ids.forEach(id => partialPayIds.add(id));
                     } else {
@@ -813,7 +819,7 @@ export function MainHeader() {
                 
                 vSheet.columns = [
                     { header: '#', key: 'item_number', width: 8 },
-                    { header: 'ADD DATE', key: 'add_date', width: 12 },
+                    { header: 'PAY DATE', key: 'pay_date', width: 12 },
                     { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
                     { header: 'AQ CODE', key: 'aq_code', width: 12 },
                     { header: 'LD CODE', key: 'ld_code', width: 12 },
@@ -855,20 +861,21 @@ export function MainHeader() {
                                         payStatusClass === 'RED' ? 'PARTIAL' : 
                                         payStatusClass === 'PURPLE' ? 'ACQUIRED' : 'NEW';
 
-                    let formattedDate = 'N/A';
+                    let formattedPayDate = 'N/A';
                     try {
-                        if (it.created_at) {
-                            const d = new Date(it.created_at);
+                        const pDateVal = paymentDateMap.get(String(it.id)) || it.pay_date || it.payDate;
+                        if (pDateVal) {
+                            const d = new Date(pDateVal);
                             if (!isNaN(d.getTime())) {
-                                formattedDate = d.toISOString().split('T')[0];
+                                formattedPayDate = d.toISOString().split('T')[0];
                             }
                         }
                     } catch (e) { console.error('Date error:', e); }
 
                     const row = vSheet.addRow({
                         item_number: it.itemNumber || it.item_number || iIdx + 1,
-                        add_date: formattedDate,
-                        tag_id: it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
+                        pay_date: formattedPayDate,
+                        tag_id: calculated.bookBarcode || it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
                         aq_code: calculated.bookAqCode || '-',
                         ld_code: calculated.bookLandCode || '-',
                         description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
