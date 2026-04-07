@@ -247,6 +247,9 @@ export const isDummyModeAtom = atom<boolean>(false);
 export const workbookVersionAtom = atom<'825' | '326'>('825');
 export const workbookSearchTermAtom = atom('');
 export const storeSearchTermAtom = atom('');
+export const storeActiveVendorFilterAtom = atomWithStorage<string>('storeActiveVendorFilter', 'All');
+export const storeViewModeAtom = atomWithStorage<'grid' | 'gallery' | 'list'>('storeViewMode', 'grid');
+export const storeVendorOptionsAtom = atom<string[]>(['All']);
 
 export const filtersPanelOpenAtom = atom<boolean>(false);
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
