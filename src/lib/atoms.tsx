@@ -254,10 +254,12 @@ export const storeVendorOptionsAtom = atom((get) => {
   const detected = new Set<string>();
   inventory.forEach(item => {
     const d = item.data || {};
-    // Extract vendor prefix (priority: vendor_id > item prefix)
-    const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
-    const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
-    if (prefixId) detected.add(prefixId);
+    // Only detect vendors for available items
+    if (d.status === 'Available') {
+      const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+      const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+      if (prefixId) detected.add(prefixId);
+    }
   });
   return ['All', ...Array.from(detected).sort()];
 });
