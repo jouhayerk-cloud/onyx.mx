@@ -343,10 +343,8 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                 {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
                             </span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0 border-l border-white/5 pl-4 ml-2">
-                             <div className="w-10 h-10 flex items-center justify-center text-(--text-color)/20 hover:text-(--text-color) transition-all">
-                                 <ChevronRight size={20} />
-                             </div>
+                        <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
+                             {/* Expanded via row click */}
                         </div>
                     </div>
                 </div>
