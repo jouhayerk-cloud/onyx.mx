@@ -1,5 +1,16 @@
 # Changelog
 # 
+## [1.68.6] - 2026-04-07
+### Added
+- **Cinematic Full-Width Parallax**: The primary artifact image in the Store module now spans edge-to-edge behind the frosted details panel, utilizing dynamic `vh` scrolling logic for immersive parallax scaling.
+- **Precision Keyboard Dismissals**: Fully integrated the `Escape` key to intelligently dismiss upper-layer modals, fullscreen viewers, and the details panel natively for desktop users.
+- **UX Revisions**: Introduced a sleek, free-floating 'Return' button to the top-right of the fullscreen image viewer.
+
+### Refined
+- **Dynamic Bottom Bar**: Shrunk the initial open profile of the details panel from 65% to a zero-waste 45% profile to maximize media focus. Overhauled padding and gaps (`dPad`, `dGap`) globally.
+- **Consolidated Financial Core**: The "Curation & Global Estimate" bottom section block was pruned entirely, bringing the USD estimate directly alongside the MXN base price.
+- **Floating Controls Adjustment**: Safe-zoned the navigation `Close` button to the global top-right display border, clearing visual collision on mobile viewports.
+
 ## [1.66.27] - 2026-04-06
 ### Refined
 - **Payment Detail Panel Aesthetic**: Implemented vendor color-coded Tag IDs with dynamic text contrast logic (`getTextColorForBg`).
