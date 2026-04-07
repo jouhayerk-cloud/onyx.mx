@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.68.9] - 2026-04-07
+### Enhanced
+- Expanded XLSX Vendor Sheets: Added `ADD DATE`, `AQ CODE`, `LD CODE`.
+- Implementation of Imperial conversions (ft/in, lbs) alongside Metric (cm, kg) in Excel Manifest.
+- Refined Vendor formatting: Tag IDs and Payment Statuses now feature high-contrast color-coding.
+- Summary sheets now prioritized by item count for better operational oversight.
+
 ## v1.68.8 (2026-04-07)
 - **High-Fidelity XLSX Export Restoration [Major]**: Restored the professional, multi-sheet Excel export functionality.
     - **Correct Naming Convention**: Reverted the exported filename to `Onyx-mx_Book-326_DATE.xlsx` using the requested `DD-MM-YYYY` format.
