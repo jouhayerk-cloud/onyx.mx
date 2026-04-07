@@ -288,8 +288,8 @@ export function StoreView() {
                 {/* View Modes */}
                 <div className="flex-1 overflow-hidden relative">
                     {viewMode === 'grid' && (
-                        <div className="h-full overflow-y-auto custom-scrollbar scroll-smooth p-10">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xxl:grid-cols-5 gap-10 max-w-[2400px] mx-auto">
+                        <div className="h-full overflow-y-auto custom-scrollbar scroll-smooth p-4 md:p-10">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xxl:grid-cols-5 gap-4 md:gap-10 max-w-[2400px] mx-auto">
                                 {filteredItems.map((item, idx) => (
                                     <ArtifactCard 
                                         key={item.row} 
@@ -575,7 +575,7 @@ const ArtifactCard = ({ item, onClick, delay }: { item: any, onClick: () => void
     return (
         <button 
             onClick={onClick}
-            className="aspect-card bg-black/40 border border-white/5 relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-[32px]"
+            className="aspect-card bg-black/40 border border-white/5 relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-2xl"
             style={{ animationDelay: `${delay * 30}ms` }}
         >
             <div className="absolute top-4 left-4 z-10">
@@ -636,9 +636,9 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
     const unitPrice = Number(n.price_mxn || n.price || 0);
 
     return (
-        <div className="group flex items-center gap-8 py-4 px-6 hover:bg-white/5 transition-all animate-in fade-in slide-in-from-left duration-300 cursor-pointer w-full" onClick={onClick}>
+        <div className="group flex items-center gap-6 lg:gap-8 py-4 px-4 md:px-6 hover:bg-white/5 transition-all animate-in fade-in slide-in-from-left duration-300 cursor-pointer w-full" onClick={onClick}>
             {/* Thumbnail */}
-            <div className="w-20 h-20 lg:w-24 lg:h-24 shrink-0 rounded-lg overflow-hidden bg-black/40 relative group/thumb shadow-xl">
+            <div className="w-16 h-16 lg:w-24 lg:h-24 shrink-0 rounded-lg overflow-hidden bg-black/40 relative group/thumb shadow-xl">
                 {mainImg ? (
                     <img src={getCleanImageUrl(mainImg)} className="w-full h-full object-cover opacity-80 group-hover/thumb:opacity-100 transition-opacity" />
                 ) : (
@@ -646,10 +646,10 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 )}
             </div>
 
-            {/* Core Info - Full Justified Layout */}
-            <div className="flex-1 w-full flex flex-row justify-between items-center gap-6 min-w-0">
+            {/* Core Info - Scrollable Justified Layout on Mobile */}
+            <div className="flex-1 w-full flex flex-row overflow-x-auto no-scrollbar justify-between items-center gap-6 min-w-0 py-2">
                 {/* Artifact Identity */}
-                <div className="flex flex-col gap-1.5 w-[25%] shrink-0">
+                <div className="flex flex-col gap-1.5 w-[250px] md:w-[25%] shrink-0">
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendorColor, boxShadow: `0 0 10px ${vendorColor}` }} />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] italic" style={{ color: vendorColor }}>{shortId}</span>
@@ -662,7 +662,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 </div>
 
                 {/* Dimensional Data */}
-                <div className="flex flex-col gap-1.5 w-[20%] shrink-0">
+                <div className="flex flex-col gap-1.5 w-[200px] md:w-[20%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Dimensions & Mass</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-xs md:text-sm font-black text-white/80 tracking-widest uppercase">{n.widthCm}x{n.lengthCm}x{n.heightCm} <span className="opacity-40 text-[9px]">CM</span></span>
@@ -672,7 +672,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 </div>
 
                 {/* Valuation */}
-                <div className="flex flex-col gap-1.5 w-[15%] shrink-0">
+                <div className="flex flex-col gap-1.5 w-[120px] md:w-[15%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Unit Val.</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-sm md:text-base font-black text-(--main-color) font-mono italic">${(unitPrice / 1000).toFixed(1)}K <span className="text-[9px] opacity-40">MXN</span></span>
@@ -681,7 +681,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 </div>
 
                 {/* Inventory Overview */}
-                <div className="flex flex-col gap-1.5 w-[20%] shrink-0">
+                <div className="flex flex-col gap-1.5 w-[150px] md:w-[20%] shrink-0 pl-4 border-l border-white/5 md:border-0 md:pl-0">
                     <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Inventory Total</span>
                     <div className="flex flex-col leading-tight">
                         <span className="text-sm md:text-base font-black text-white uppercase italic">{qty} <span className="text-[9px] opacity-40 uppercase tracking-widest">Units</span></span>
@@ -690,7 +690,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 </div>
 
                 {/* Action Suite */}
-                <div className="flex justify-end items-center gap-4 shrink-0 flex-1">
+                <div className="flex justify-end items-center gap-4 shrink-0 px-6 md:px-0">
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${inBag ? 'bg-(--main-color) text-black rotate-12 shadow-xl shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:scale-110'}`}
@@ -713,7 +713,13 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
     const [showFullscreen, setShowFullscreen] = useState(false);
     const setGalleryMedia = useSetAtom(ActiveGalleryMediaAtom);
     const setGalleryIndex = useSetAtom(ActiveGalleryIndexAtom);
+    const [detailScrollY, setDetailScrollY] = useState(0);
+    const [pullOffset, setPullOffset] = useState(0);
+    const [startPullOffset, setStartPullOffset] = useState(0);
+    const [touchStartY, setTouchStartY] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
     const [showConfirmRemove, setShowConfirmRemove] = useState(false);
+    const detailContainerRef = useRef<HTMLDivElement>(null);
 
     const mediaList = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -728,6 +734,18 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
         setGalleryMedia(mediaList);
     }, [mediaList, setGalleryMedia]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                if (!showFullscreen && !showConfirmRemove) {
+                    onClose();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose, showFullscreen, showConfirmRemove]);
+
     const handleUpdateRating = (val: number) => {
         setRating(val);
         onUpdateRating(val);
@@ -741,14 +759,92 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
         }
     };
 
+    const handleDetailScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const st = e.currentTarget.scrollTop;
+        if (st >= 0) {
+            setDetailScrollY(st);
+        }
+        
+        // Momentum parallax past top auto-compacts details panel
+        if (st < -30 && pullOffset === 0) {
+            setPullOffset(400);
+        }
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStartY(e.touches[0].clientY);
+        setStartPullOffset(pullOffset);
+        setIsDragging(true);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - touchStartY;
+        
+        const isAtTop = (detailContainerRef.current?.scrollTop || 0) <= 0;
+
+        if (isAtTop && deltaY > 0) {
+            // Pulling down at top -> compact the panel
+            setPullOffset(Math.min(400, startPullOffset + deltaY));
+        } else if (startPullOffset > 0 && deltaY < 0) {
+            // Pulling up while compacted -> expand the panel
+            setPullOffset(Math.max(0, startPullOffset + deltaY));
+            if (detailContainerRef.current) {
+                detailContainerRef.current.scrollTop = 0; // Lock scroll while panel expands
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setIsDragging(false);
+        // Snap behavior: expand or compact based on threshold
+        if (pullOffset > 200 || (pullOffset > startPullOffset && pullOffset > 75)) {
+            setPullOffset(400);
+        } else {
+            setPullOffset(0);
+        }
+    };
+
+    const toggleCompaction = () => {
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            setPullOffset(prev => prev > 100 ? 0 : 400);
+        }
+    };
+
+
     const handleAcquire = () => {
         onAcquire(item);
     };
 
+    // Calculate dynamic styles for bidirectional immersion
+    const compaction = Math.min(1, pullOffset / 400); // 0.0 to 1.0 (visual shrink mode)
+    const scrollGrowth = Math.min(1, detailScrollY / 500) * 50; // 0 to 50% growth
+    const pullShrink = compaction * 20; // 0 to 20% shrink
+    const mobilePanelHeight = 45 + scrollGrowth - pullShrink; 
+    const totalParallaxScale = 1 + (scrollGrowth * 0.05) + (compaction * 0.4); // Max ~1.45x scale when shrunk
+    
+    // Parallax centering: Start at -25vh (pushed up above panel), move to 0vh (centered) when compacted. Push further up on scroll.
+    const totalParallaxYVh = -25 + (compaction * 25) - (scrollGrowth * 1.5);
+
+    // Dynamic style helpers for "data dense" mode
+    const dGap = (val: number) => typeof window !== 'undefined' && window.innerWidth < 768 ? Math.max(val * 0.1, val * (1 - compaction)) : val;
+    const dText = (val: number) => typeof window !== 'undefined' && window.innerWidth < 768 ? Math.max(val * 0.5, val * (1 - compaction * 0.45)) : val;
+    const dPad = (val: number) => typeof window !== 'undefined' && window.innerWidth < 768 ? Math.max(val * 0.1, val * (1 - compaction)) : val;
+
+
+
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
             {/* Visual Media Canvas (Fullscreen Background) */}
-            <div className="absolute inset-0 md:pr-[620px] bg-black overflow-hidden flex items-center justify-center">
+            <div 
+                className={`absolute inset-0 md:bottom-0 md:pr-[620px] bg-black overflow-hidden flex items-center justify-center cursor-zoom-in group/canvas ${isDragging ? '' : 'transition-all duration-300 ease-out'}`}
+                style={{ 
+                    bottom: '0',
+                    transform: typeof window !== 'undefined' && window.innerWidth < 768 ? `translateY(${totalParallaxYVh}vh) scale(${totalParallaxScale})` : 'none'
+                }}
+                onClick={() => { setGalleryIndex(activeMediaIndex); setShowFullscreen(true); }}
+            >
                 <div 
                     className="h-full w-full overflow-x-auto snap-x snap-mandatory no-scrollbar flex scroll-smooth" 
                     onScroll={handleScroll}
@@ -756,9 +852,9 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                     {mediaList.map((url, idx) => (
                         <div key={idx} className="h-full w-full snap-center shrink-0 flex items-center justify-center relative bg-black/20">
                             {isVideoFile(url) ? (
-                                <video src={url} className="h-full w-full object-contain" autoPlay muted loop />
+                                <video src={url} className="h-full w-full object-cover" autoPlay muted loop />
                             ) : (
-                                <img src={getCleanImageUrl(url)} className="h-full w-full object-contain" />
+                                <img src={getCleanImageUrl(url)} className="h-full w-full object-cover" />
                             )}
                         </div>
                     ))}
@@ -787,9 +883,30 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
             </div>
 
             {/* Cinematic Detail Panel (Glassmorphic) */}
-            <div className="absolute bottom-10 left-10 right-10 md:left-auto md:right-10 md:top-10 md:bottom-10 w-auto md:w-[580px] h-[calc(100vh-80px)] bg-black/40 backdrop-blur-3xl border border-white/5 rounded-[48px] shadow-2xl z-10 pointer-events-auto flex flex-col overflow-hidden animate-in slide-in-from-right duration-700">
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-10 md:p-14">
-                    <div className="flex flex-col gap-10 md:gap-14 relative">
+            <div 
+                className={`absolute bottom-0 md:bottom-10 left-0 right-0 md:left-auto md:right-10 md:top-10 w-full md:w-[580px] bg-black/40 backdrop-blur-3xl border-t md:border border-white/5 rounded-t-[32px] md:rounded-[32px] shadow-2xl z-10 pointer-events-auto flex flex-col overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-right ${isDragging ? '' : 'transition-all duration-500 cubic-bezier(0.33, 1, 0.68, 1)'}`}
+                style={{ 
+                    height: typeof window !== 'undefined' && window.innerWidth < 768 ? `${mobilePanelHeight}%` : 'calc(100vh - 80px)' 
+                }}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
+                {/* Drag Handle (Mobile Only) - Tap to Toggle */}
+                <div 
+                    className="md:hidden w-full flex justify-center py-4 shrink-0 active:bg-white/5 transition-colors cursor-pointer"
+                    onClick={toggleCompaction}
+                >
+                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                </div>
+
+                <div 
+                    ref={detailContainerRef}
+                    onScroll={handleDetailScroll}
+                    className="flex-1 overflow-y-auto custom-scrollbar"
+                    style={{ padding: `${dPad(24)}px ${dPad(24)}px` }}
+                >
+                    <div className="flex flex-col relative" style={{ gap: `${dGap(24)}px` }}>
                     {/* Add to Bag (Large floating top icon inside panel) */}
                     <div className="absolute top-0 right-0 z-20">
                         <button onClick={onToggleBag} className={`flex items-center justify-center transition-all transform hover:scale-110 active:scale-90 ${inBag ? 'text-black bg-(--main-color) shadow-[0_0_25px_rgba(var(--main-color-rgb),0.5)] rotate-12 p-5 rounded-full' : 'text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-5 rounded-full border border-white/5'}`}>
@@ -797,109 +914,96 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                         </button>
                     </div>
 
-                    {/* Identity Core */}
-                    <div className="flex flex-col gap-5 md:gap-6 pr-24">
-                        <h2 className="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-[0.9] uppercase">
+                    {/* Identity Core (Transform into Bottom Bar) */}
+                    <div className={`flex pr-20 transition-all ${compaction > 0.8 ? 'flex-row justify-between items-center' : 'flex-col'}`} style={{ gap: `${dGap(16)}px` }}>
+                        <h2 className="font-black text-white italic tracking-tighter leading-[1] uppercase" style={{ fontSize: `${dText(22)}px` }}>
                             {n.shape} {n.shortDescription}
                         </h2>
                         
-                        <div className="flex flex-col gap-2">
-                             <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.6em]">Artifact Valuation</span>
-                             <div className="flex items-baseline gap-4">
-                                <span className="text-4xl md:text-5xl font-black text-white font-mono tracking-tighter italic">
-                                    ${Number(n.price_mxn || n.price || 0).toLocaleString()}
-                                </span>
-                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">MXN</span>
-                             </div>
-                        </div>
+                            <div className="flex flex-col transition-all">
+                                 <div className="flex items-baseline gap-1.5 focus:outline-none">
+                                    <span className="font-black text-white font-mono tracking-tighter italic" style={{ fontSize: `${dText(22)}px` }}>
+                                        ${Number(n.price_mxn || n.price || 0).toLocaleString()}
+                                    </span>
+                                    {compaction < 0.6 && <span className="font-black text-white/20 uppercase tracking-[0.3em] mr-2" style={{ fontSize: `${dText(5.5)}px` }}>MXN</span>}
+                                    
+                                    <span className="font-black text-white/40 font-mono tracking-tighter italic" style={{ fontSize: `${dText(14)}px` }}>
+                                        ${(Number(n.price_mxn || n.price || 0) / (exchangeRate || 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </span>
+                                    {compaction < 0.6 && <span className="font-black text-white/10 uppercase tracking-[0.3em]" style={{ fontSize: `${dText(5.5)}px` }}>USD</span>}
+                                 </div>
+                            </div>
                     </div>
 
-                    {/* Specification Grid (Fragmented Minimalism) */}
-                    <div className="grid grid-cols-1 gap-14">
-                        {/* Dimensional Architecture (Technical Metrics) */}
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center gap-3 text-white/20">
-                                <Ruler size={14} />
-                                <span className="text-[8px] font-black uppercase tracking-[0.6em]">Scale & Volume</span>
-                            </div>
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-baseline gap-4">
-                                    <span className="text-3xl md:text-4xl font-black text-white italic tracking-tight uppercase leading-none">
+                    {/* Specification Grid & Advanced Reveal Content */}
+                    <div 
+                        className="grid grid-cols-1 transition-all duration-500 overflow-hidden" 
+                        style={{ 
+                            gap: `${dGap(32)}px`,
+                            opacity: 1 - compaction * 1.5,
+                            transform: `translateY(${compaction * 20}px) scale(${1 - compaction * 0.1})`,
+                            maxHeight: compaction > 0.8 ? '0px' : '500px'
+                        }}
+                    >
+                        {/* Dimensional Architecture */}
+                        <div className="flex flex-col" style={{ gap: `${dGap(6)}px` }}>
+                            <div className="flex flex-col" style={{ gap: `${dGap(6)}px` }}>
+                                <div className="flex items-baseline gap-3">
+                                    <span className="font-black text-white italic tracking-tight uppercase leading-none" style={{ fontSize: `${dText(18)}px` }}>
                                         {n.widthCm} x {n.lengthCm} x {n.heightCm} 
                                     </span>
-                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">CM</span>
                                 </div>
-                                <div className="flex items-baseline gap-4 text-white/40">
-                                    <span className="text-xl md:text-2xl font-black italic tracking-wide uppercase">
+                                <div className="flex items-baseline gap-3 text-white/30">
+                                    <span className="font-black italic tracking-wide uppercase" style={{ fontSize: `${dText(12)}px` }}>
                                         {cmToImperial(n.widthCm)} x {cmToImperial(n.lengthCm)} x {cmToImperial(n.heightCm)}
                                     </span>
-                                    <span className="text-[8px] font-black uppercase tracking-[0.4em]">Imperial Ratio</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Compositional Identity */}
-                        <div className="flex flex-col gap-6">
-                            <div className="flex items-center gap-3 text-white/20">
-                                <Layers size={14} />
-                                <span className="text-[8px] font-black uppercase tracking-[0.6em]">Compositional Data</span>
-                            </div>
-                            <div className="flex flex-wrap gap-14">
+                        <div className="flex flex-col" style={{ gap: `${dGap(10)}px` }}>
+                            <div className="flex flex-wrap" style={{ gap: `${dGap(32)}px` }}>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-white/10 uppercase tracking-widest mb-2">Chromatic</span>
-                                    <span className="text-xl font-black text-white/70 uppercase tracking-tight">{n.color}</span>
+                                    <span className="font-black text-white/50 uppercase tracking-tight" style={{ fontSize: `${dText(11)}px` }}>{n.color}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-white/10 uppercase tracking-widest mb-2">Elemental</span>
-                                    <span className="text-xl font-black text-white/70 uppercase tracking-tight">{n.material}</span>
+                                    <span className="font-black text-white/50 uppercase tracking-tight" style={{ fontSize: `${dText(11)}px` }}>{n.material}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[7px] font-black text-white/10 uppercase tracking-widest mb-2">Density</span>
-                                    <span className="text-xl font-black text-white/70 font-mono tracking-tight">{n.weightKg}KG</span>
+                                    <span className="font-black text-white/50 font-mono tracking-tight" style={{ fontSize: `${dText(11)}px` }}>{n.weightKg}KG</span>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Curation & Global Estimate */}
-                        <div className="flex flex-wrap gap-20 pt-12 border-t border-white/5">
-                            <div className="flex flex-col gap-3">
-                                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em]">Curation Index</span>
-                                <StarRating rating={rating} onChange={handleUpdateRating} size={22} />
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.4em]">Global USD Est.</span>
-                                <span className="text-2xl font-black text-white/60 font-mono italic">
-                                    ${(Number(n.price_mxn || n.price || 0) / (exchangeRate || 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                </span>
-                            </div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Immersive Acquisition Call */}
-                    <div className="mt-4 pt-6 flex flex-col gap-6">
+                {/* Immersive Acquisition Call */}
+                    <div className="flex flex-col" style={{ gap: `${dGap(16)}px`, marginTop: `${dPad(6)}px`, paddingTop: `${dPad(12)}px` }}>
                         <button 
                             onClick={handleAcquire}
-                            className="w-full py-8 md:py-10 bg-white text-black text-[14px] md:text-[16px] font-black uppercase tracking-[0.8em] rounded-[24px] hover:bg-(--main-color) hover:scale-[1.02] transition-all flex items-center justify-center gap-4 md:gap-6 group"
+                            className="w-full bg-white text-black font-black uppercase tracking-[0.8em] rounded-[24px] hover:bg-(--main-color) hover:scale-[1.02] transition-all flex items-center justify-center group"
+                            style={{ padding: `${dText(14)}px`, fontSize: `${dText(10)}px`, gap: `${dGap(12)}px` }}
                         >
-                            GET IT! <ArrowRight size={24} className="group-hover:translate-x-5 transition-transform" />
+                            GET IT! <ArrowRight size={dText(16)} className="group-hover:translate-x-5 transition-transform" />
                         </button>
 
                         {/* Admin Action Icons */}
-                        <div className="flex items-center justify-center gap-8 mt-2 opacity-60 hover:opacity-100 transition-opacity">
-                            <button onClick={() => onEditItem(n)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all transform hover:scale-110 active:scale-90">
-                                <Edit3 size={16} strokeWidth={2} /> Edit
+                        <div className="flex items-center justify-center gap-10 mt-2 opacity-30 hover:opacity-100 transition-opacity">
+                            <button onClick={() => onEditItem(n)} className="text-white/40 hover:text-white transition-all transform hover:scale-125 active:scale-90">
+                                <Edit3 size={18} strokeWidth={2} />
                             </button>
-                            <button onClick={() => setShowConfirmRemove(true)} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-500/60 hover:text-rose-500 transition-all transform hover:scale-110 active:scale-90">
-                                <Trash2 size={16} strokeWidth={2} /> Delete
+                            <button onClick={() => setShowConfirmRemove(true)} className="text-rose-500/40 hover:text-rose-500 transition-all transform hover:scale-125 active:scale-90">
+                                <Trash2 size={18} strokeWidth={2} />
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
             {/* Deletion Interface */}
             {showConfirmRemove && (
-                <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-3xl flex items-center justify-center p-8 md:p-12 text-center pointer-events-auto rounded-[48px]">
+                <div className="absolute inset-0 z-50 bg-black/95 backdrop-blur-3xl flex items-center justify-center p-8 md:p-12 text-center pointer-events-auto rounded-none md:rounded-[32px]">
                     <div className="flex flex-col gap-10 animate-in zoom-in duration-300">
                         <div className="flex flex-col gap-4">
                             <span className="text-rose-500 font-black uppercase tracking-[0.8em] text-[10px] md:text-[11px]">Secure Protocol Deletion</span>
@@ -908,11 +1012,12 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
                             <div className="flex flex-col gap-4">
                                 <button onClick={() => { onRemove(item); onClose(); }} className="w-full py-8 bg-rose-600 text-white text-[12px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all font-mono">Confirm Erasure</button>
                                 <button onClick={() => setShowConfirmRemove(false)} className="w-full py-6 bg-white/5 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Cancel Operation</button>
-                            </div>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
+
+
 
             {showFullscreen && <FullscreenImageViewer src={activeMediaUrl!} isVideo={activeIsVideo} rating={rating} onUpdateRating={(r: number) => handleUpdateRating(r)} onClose={() => setShowFullscreen(false)} />}
         </div>
@@ -1061,6 +1166,17 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
         setOffset({ x: 0, y: 0 });
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     return createPortal(
         <div 
             className="fixed inset-0 z-100000 bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden flex flex-col items-center justify-center"
@@ -1068,12 +1184,22 @@ const FullscreenImageViewer = ({ src, isVideo, rating, onUpdateRating, onClose }
             onPointerMove={handlePointerMove}
         >
             {/* Top Navigation / Progress */}
-            <div className="absolute top-10 left-1/2 -translate-x-1/2 flex items-center gap-6 z-50">
+            <div className="absolute top-8 left-6 md:top-10 md:left-10 z-50 pointer-events-auto">
+                <button 
+                    onClick={onClose} 
+                    className="flex items-center gap-2 md:gap-4 text-white/50 hover:text-white transition-all bg-black/40 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 rounded-full border border-white/5 active:scale-95"
+                >
+                    <ChevronLeft size={20} strokeWidth={2} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] hidden md:block">Return</span>
+                </button>
+            </div>
+
+            <div className="absolute top-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-50 pointer-events-none">
                 <div className="flex gap-2">
                     {mediaUrls.map((_, idx) => (
                         <div 
                             key={idx} 
-                            className={`w-1 h-1 rounded-full transition-all duration-500 ${idx === activeIndex ? 'bg-(--main-color) w-8' : 'bg-white/10'}`} 
+                            className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${idx === activeIndex ? 'bg-(--main-color) w-8' : 'bg-white/20'}`} 
                         />
                     ))}
                 </div>
