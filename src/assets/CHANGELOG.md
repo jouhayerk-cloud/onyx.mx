@@ -1,5 +1,12 @@
 # Changelog
 # 
+## [1.66.21] - 2026-04-06
+### Fixed
+- **Ghost Rendering Eradication**: Resolved a regression where numeric state variables were being accidentally rendered as "0" below item cards in Grid and Gallery views. Corrected using explicit boolean checks.
+### Refined
+- **Barcode & QR Rescaling**: Optimized the visual proportions of Identity Hub elements (Barcode and QR) to better suit high-density expanded layouts.
+- **Centered Identity Hub**: Implemented `max-w-md` and horizontal centering for the barcode panel in expanded details.
+
 ## [1.66.20] - 2026-04-06
 ### Added
 - **Inventory List View Refinement**: Item detail panels now auto-adjust to full screen width on large displays, utilizing a `max-w-[1600px]` constraint for a balanced visual experience.
