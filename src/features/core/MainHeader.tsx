@@ -898,11 +898,11 @@ export function MainHeader() {
                     <div className="flex items-center gap-1 mx-2 relative">
                         <button
                             onClick={() => setIsBagOpen(!isBagOpen)}
-                            className="w-12 h-12 flex items-center justify-center text-(--text-color) opacity-40 hover:opacity-100 hover:text-(--main-color) transition-all relative group/bag"
+                            className="w-16 h-16 flex items-center justify-center text-(--main-color) transition-all relative group/bag"
                         >
-                            <ShoppingBag size={22} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform" />
+                            <ShoppingBag size={36} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform drop-shadow-[0_0_8px_var(--main-color)]" />
                             {bagCount > 0 && (
-                                <span className="absolute top-2 right-2 w-4 h-4 bg-(--main-color) text-black text-[8px] font-black rounded-full flex items-center justify-center shadow-[0_0_10px_var(--main-color)] animate-in zoom-in duration-300">
+                                <span className="absolute top-1 right-1 w-6 h-6 bg-(--main-color) text-black text-[12px] font-black rounded-full flex items-center justify-center shadow-[0_0_15px_var(--main-color)] animate-in zoom-in duration-300">
                                     {bagCount}
                                 </span>
                             )}

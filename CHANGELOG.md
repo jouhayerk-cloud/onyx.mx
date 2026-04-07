@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.68.7 (2026-04-07)
+- **Inventory & Store Modernization [UX]**: Overhauled action buttons across all item panels.
+    - **New Direct Actions**: Replaced "ACQUIRE ARTIFACT" with "GET THIS!" and added an interactive "ADD TO BAG" toggle.
+    - **Cross-View Consistency**: Buttons are now present in List, Grid, and Gallery views within the Inventory module.
+    - **Gallery Interaction**: Removed the redundant info icon; clicking the panel now triggers the fullscreen detail view directly.
+- **Shopping Bag Enhancement [UI]**:
+    - **Visual Scale**: Significantly enlarged the main top bar bag icon (size 36) and set it to the active theme color.
+    - **Solid Activity Badge**: Implemented a solid-colored badge counter with a theme-aware background and glow effect for high visibility.
+
+## v1.68.6 (2026-04-07)
+- **Inventory Gallery Overhaul**: Removed redundant info icon and enabled full-panel click-to-expand functionality.
+- **UI Refinements**: Significantly enlarged the shopping bag icon and added a high-contrast activity badge.
+
 ## v1.66.33 (2026-04-07)
 - **Store Modernization [Major]**: Implemented a professional "Studio" high-density interface for artifact browsing.
 - **High-Density List View**: Introduced `ArtifactRow` for rapid data-centric auditing of Tag IDs, dimensions, and financial metrics.
