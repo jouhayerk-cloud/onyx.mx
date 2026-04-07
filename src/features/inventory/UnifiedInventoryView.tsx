@@ -344,8 +344,9 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             </span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 border-l border-white/5 pl-4 ml-2">
-                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
-                            <button onClick={handleToggleBag} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : 'ADD TO BAG'}</button>
+                             <div className="w-10 h-10 flex items-center justify-center text-(--text-color)/20 hover:text-(--text-color) transition-all">
+                                 <ChevronRight size={20} />
+                             </div>
                         </div>
                     </div>
                 </div>
@@ -686,10 +687,6 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
                             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
-                            <button onClick={handleToggleBag} className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : 'ADD TO BAG'}</button>
-                        </div>
                     </div>
                 </div>
                 
@@ -776,10 +773,6 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span></div>
-                    <div className="flex items-center gap-1.5">
-                        <button onClick={(e) => { e.stopPropagation(); onToggleExpand(); }} className="bg-white text-black px-2 py-1 rounded text-[7px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md">GET THIS!</button>
-                        <button onClick={handleToggleBag} className={`px-2 py-1 rounded text-[7px] font-black uppercase tracking-widest hover:scale-105 transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_5px_var(--main-color)]' : 'bg-transparent border-white/20 text-(--text-color)'}`}>{inBag ? 'IN BAG' : '+ BAG'}</button>
-                    </div>
                 </div>
             </div>
             {isSelectionMode && (
