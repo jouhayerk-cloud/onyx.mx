@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.66.33 (2026-04-07)
+- **Store Modernization [Major]**: Implemented a professional "Studio" high-density interface for artifact browsing.
+- **High-Density List View**: Introduced `ArtifactRow` for rapid data-centric auditing of Tag IDs, dimensions, and financial metrics.
+- **Immersive Gallery Mode**: Built a vertical-snapping fullscreen experience with horizontal swipe-to-navigate functionality.
+- **Dynamic View Toggles**: Integrated a 3-way toggle (Grid, Gallery, List) in the Top Bar with persistent state management.
+- **Global Filter Sync**: Migrated vendor-specific scrollable search filters to the main application header with color-coded branding.
+
 ## v1.66.16 (2026-04-06)
 - **Stability Finalization [Production]**: Hardened the 3-stage progressive disclosure handlers against event bubbling regressions.
 - **UX Polish**: Verified seamless transition between List, Grid, and Gallery views with persistent but safe expansion states.

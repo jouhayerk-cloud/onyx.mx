@@ -43,6 +43,9 @@ import {
     currencyModeAtom,
     logisticsDataAtom,
     storeSearchTermAtom,
+    storeActiveVendorFilterAtom,
+    storeViewModeAtom,
+    storeVendorOptionsAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
@@ -297,10 +300,13 @@ const InventoryBar: React.FC = () => {
 
 const StoreBar: React.FC = () => {
     const [search, setSearch] = useAtom(storeSearchTermAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(storeActiveVendorFilterAtom);
+    const vendorOptions = useAtomValue(storeVendorOptionsAtom);
+    const [viewMode, setViewMode] = useAtom(storeViewModeAtom);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (
-        <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
+        <div className={`flex flex-1 items-center gap-1 min-w-0 overflow-x-auto no-scrollbar ${isSearchOpen ? '' : 'sm:gap-2'}`}>
             <DeployableSearch 
                 value={search} 
                 onChange={setSearch} 
@@ -309,6 +315,44 @@ const StoreBar: React.FC = () => {
                 accentColor="var(--color-store)"
                 placeholder="FIND ON STORE..."
             />
+
+            {!isSearchOpen && (
+                <>
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                        {vendorOptions.map(v => {
+                            const vColor = vendors[v as keyof typeof vendors]?.color || 'var(--text-color)/10';
+                            const isActive = vendorFilter === v;
+                            return (
+                                <button
+                                    key={v}
+                                    onClick={() => setVendorFilter(v)}
+                                    className={`shrink-0 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border
+                                        ${isActive 
+                                            ? 'bg-(--color-store) border-(--color-store) text-black shadow-lg shadow-(--color-store)/20' 
+                                            : 'bg-white/5 border-white/5 text-(--text-color)/40 hover:text-(--text-color) hover:bg-white/10'}`}
+                                    style={isActive ? {} : { borderColor: v !== 'All' ? `${vColor}40` : '' }}
+                                >
+                                    {v}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="w-px h-5 bg-(--text-color)/5 mx-1 shrink-0" />
+
+                    <StudioAction 
+                        icon={viewMode === 'grid' ? LayoutGrid : viewMode === 'gallery' ? Layout : LayoutList}
+                        label={viewMode.toUpperCase()}
+                        active={true}
+                        onClick={() => {
+                            const modes: ('grid' | 'gallery' | 'list')[] = ['grid', 'gallery', 'list'];
+                            const nextIdx = (modes.indexOf(viewMode) + 1) % modes.length;
+                            setViewMode(modes[nextIdx]);
+                        }}
+                        color="var(--color-store)"
+                    />
+                </>
+            )}
         </div>
     );
 };
