@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.69.4] - 2026-04-07
+### Changed
+- **Inventory UI Refinement**: Removed the redundant chevron icon from the Inventory List rows, as the details panel toggle is already intuitively handled by clicking the row itself.
+
 ## [1.69.3] - 2026-04-07
 ### Changed
 - **Header Refinement**: The Acquisitions Shopping Bag is now conditionally rendered and only visible when the **STORE** module is active, ensuring a cleaner interface in administrative and logistical views.
