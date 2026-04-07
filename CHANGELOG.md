@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.69.1] - 2026-04-07
+### Enhanced
+- **XLSX Financial Visibility**: Added `QTY` and `TOTAL MXN` columns to the vendor sheets in the Overview export to provide comprehensive volume and total cost tracking.
+
 ## [1.69.0] - 2026-04-07
 ### Migrated
 - **Interaction Suite**: Moved "GET THIS!" and "ADD TO BAG" action buttons from the administrative Inventory (Overview) to the customer-facing Store views.
