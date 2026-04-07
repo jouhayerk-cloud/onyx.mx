@@ -829,7 +829,9 @@ export function MainHeader() {
                     { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
                     { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
                     { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
+                    { header: 'QTY', key: 'quantity', width: 8 },
                     { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'PAY STATUS', key: 'pay_status', width: 18 }
@@ -851,10 +853,11 @@ export function MainHeader() {
                 });
 
                 sortedItems.forEach((item: any, iIdx: number) => {
-                    const it = item.data;
+                    const qty = parseInt(it.quantity || '1', 10) || 1;
                     const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
                     
                     const costUsd = costMxn / bookRate;
+                    const totalMxn = costMxn * qty;
                     const landedMxn = costMxn * 1.4;
                     const retailUsd = costUsd * 12;
 
@@ -894,7 +897,9 @@ export function MainHeader() {
                         sizes_imperial: formatDimensionsImperialOnly(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
                         weight_metric: formatWeightMetricOnly(it.weightKg || it.weight_kg),
                         weight_imperial: formatWeightImperialOnly(it.weightKg || it.weight_kg),
+                        quantity: qty,
                         cost_mxn: costMxn,
+                        total_mxn: totalMxn,
                         landed_mxn: landedMxn,
                         retail_usd: retailUsd,
                         pay_status: payStatusText
