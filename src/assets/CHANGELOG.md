@@ -1,5 +1,15 @@
 # Changelog
 # 
+## [1.66.20] - 2026-04-06
+### Added
+- **Inventory List View Refinement**: Item detail panels now auto-adjust to full screen width on large displays, utilizing a `max-w-[1600px]` constraint for a balanced visual experience.
+- **Justified Data Layout**: Redesigned list row headers with justified column distribution and increased horizontal spacing (`gap-8`) for improved scan-ability on desktop.
+- **Ergonomic Status Filtering**: Relocated the Payment Status Filter to the far-left of the Inventory Info Panel, optimizing user flow for status-based management.
+### Refined
+- **Responsive Navigation**: Enabled horizontal scrolling for expanded card details on mobile devices, ensuring zero layout breakage on smaller viewports.
+- **Status Tag Visibility**: Standardized status tag placement to the far-right of every row header, providing a consistent visual anchor throughout the Inventory list.
+- **TopBar Micro-Aesthetics**: Successfully upscaled username (14px) and Settings icon (24px) for a more luxurious, high-impact navigation feel.
+
 ## [1.66.19] - 2026-04-06
 ### Added
 - **TopBar UI Modernization**: Upscaled the username font size from 11px to 14px and Settings icon from 18px to 24px for improved legibility and prominence.

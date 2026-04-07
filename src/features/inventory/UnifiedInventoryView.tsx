@@ -307,7 +307,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             </>
                         )}
                     </div>
-                    <div className="flex-1 flex items-center px-3 gap-3 min-w-0 overflow-x-auto no-scrollbar">
+                    <div className="flex-1 flex items-center px-4 gap-8 min-w-0 overflow-x-auto no-scrollbar relative pr-10 lg:pr-16">
                         <div className="flex flex-col shrink-0 min-w-[120px] py-1">
                             <div className="flex items-baseline gap-3">
                                 <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
@@ -315,14 +315,14 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             </div>
                             <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
-                        <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
-                        <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-(--text-color)/60 truncate max-w-[100px]">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-(--text-color)/40 truncate max-w-[100px]">{weightStr || '—'}</span></div></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
-                        <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[60px] shrink-0 border-r border-white/5 pr-3"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[11px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[72px] shrink-0 pl-3">
-                            <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Status</span>
+                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode || 'N/A'}</span></div>
+                        <div className="flex flex-col min-w-[120px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-(--text-color)/40">{weightStr || '—'}</span></div></div>
+                        <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
+                        <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
+                        <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
+                        <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[11px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
+                        <div className="flex flex-col min-w-[80px] shrink-0 ml-auto items-end">
+                            <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
                                 {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
@@ -331,7 +331,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     </div>
                 </div>
                 {isExpanded > 0 && (
-                    <div className="w-full px-4 md:px-10 pb-6 pt-4 bg-black/30 backdrop-blur-sm border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                    <div className="w-full px-4 md:px-10 pb-6 pt-4 bg-black/30 backdrop-blur-sm border-t border-white/5 animate-in slide-in-from-top-2 duration-300 overflow-x-auto custom-scrollbar min-w-0">
                         {/* List View Thumbnail Gallery */}
                         {mediaUrls.length > 0 && (
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 shrink-0 mb-6">
@@ -344,7 +344,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                 ))}
                             </div>
                         )}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-2 min-w-fit">
                             <div><p className={lbl}>Dimensions</p><p className="text-[11px] font-mono text-(--text-color)/70">{dimensionsStr || '—'}</p></div>
                             <div><p className={lbl}>Weight</p><p className="text-[11px] font-mono text-(--text-color)/70">{weightStr || '—'}</p></div>
                             <div><p className={lbl}>Landed USD</p><p className="text-sm font-black text-yellow-300 font-mono">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
@@ -353,7 +353,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         {/* Consolidated Artifact Identity Hub - List View */}
                         {isExpanded >= 2 && (
                             <div className="col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20">
+                                <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20 min-w-fit">
                                     {/* Barcode Panel - High Density White */}
                                     <div className="w-full bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
                                         <div className="flex items-center justify-between px-1">
@@ -1035,13 +1035,22 @@ export const UnifiedInventoryView = () => {
         return copy;
     });
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-4 mt-0 gap-0">
+        <div className="flex flex-col h-full overflow-hidden relative m-0 sm:m-4 mt-0 gap-0">
             {/* ── INFO PANEL ── */}
             <div className="z-40 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
                 {/* Row 1: Stats + Actions */}
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3 gap-3 overflow-x-auto no-scrollbar">
                     {/* Left: Stats */}
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-6 shrink-0">
+                        {/* Payment Status cycle button */}
+                        <button
+                            onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
+                            className="flex items-center gap-3 transition-all group py-1 pr-2"
+                            title="Cycle payment status filter">
+                            <div className={`w-3 h-3 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
+                            <span className="text-[10px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter}</span>
+                        </button>
+                        <div className="w-px h-8 bg-white/10 mx-1" />
                         <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
                         <div className="w-px h-6 bg-white/5" />
                         <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
@@ -1070,14 +1079,6 @@ export const UnifiedInventoryView = () => {
                                 <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:text-white ml-1">CLEAR</button>
                             </div>
                         )}
-                        {/* Payment Status cycle button */}
-                        <button
-                            onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
-                            className="flex items-center gap-2 transition-all group py-1"
-                            title="Cycle payment status filter">
-                            <div className={`w-2.5 h-2.5 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
-                            <span className="text-[9px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter}</span>
-                        </button>
                         <button
                             onClick={handleCopyShareLink}
                             className={`flex items-center gap-2 h-9 font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'text-(--main-color)' : 'text-white/30 hover:text-white'}`}>
@@ -1182,13 +1183,13 @@ export const UnifiedInventoryView = () => {
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto px-1 sm:px-6 py-4 md:py-6 custom-scrollbar">
                 <div className={
                     viewMode === 'grid' 
                         ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" 
                         : viewMode === 'gallery' 
                             ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20 auto-rows-max" 
-                            : "flex flex-col gap-3 pb-20"
+                            : "flex flex-col gap-3 pb-20 max-w-[1600px] mx-auto w-full"
                 }>
                     {isLoading && items.length === 0 ? (
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
