@@ -295,6 +295,8 @@ export function StoreView() {
                                         key={item.row} 
                                         item={item} 
                                         onClick={() => setSelectedItem(item)} 
+                                        onToggleBag={() => toggleBag(item)}
+                                        inBag={bag.some(b => b.row === item.row)}
                                         delay={idx % 20}
                                     />
                                 ))}
@@ -567,7 +569,7 @@ export function StoreView() {
 
 /* ─── Compact Elements ─── */
 
-const ArtifactCard = ({ item, onClick, delay }: { item: any, onClick: () => void, delay: number }) => {
+const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any, onClick: () => void, onToggleBag: () => void, inBag: boolean, delay: number }) => {
     const n = normalizeInventoryData(item.data);
     const rawUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
     const mainImg = n.generatedPngUrl || (rawUrls.length > 0 ? rawUrls[0] : '');
@@ -611,14 +613,19 @@ const ArtifactCard = ({ item, onClick, delay }: { item: any, onClick: () => void
                     <span className="text-[10px] lg:text-xs font-black text-white/40 uppercase tracking-widest">{n.material}</span>
                 </div>
                 {/* Dimensions & Mass */}
-                <div className="flex items-center gap-4 mt-2 justify-between border-t border-white/5 pt-3">
-                    <div className="flex flex-col text-left">
-                        <span className="text-[9px] font-black text-white/80 tracking-widest uppercase">{n.widthCm}x{n.lengthCm}x{n.heightCm} <span className="opacity-40 text-[7px]">CM</span></span>
-                        <span className="text-[8px] font-bold text-white/40 tracking-wider uppercase">{cmToImperial(n.widthCm)}x{cmToImperial(n.lengthCm)}x{cmToImperial(n.heightCm)} <span className="opacity-40 text-[7px]">IN</span></span>
-                    </div>
-                    <div className="text-right flex flex-col">
-                        <span className="text-[9px] font-black text-white/60 tracking-widest uppercase">{n.weightKg} <span className="opacity-40 text-[7px]">KG</span></span>
-                    </div>
+                <div className="flex items-center gap-2 mt-2 pt-4 border-t border-white/5">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onClick(); }} 
+                        className="flex-1 bg-white text-black py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
+                    >
+                        GET THIS!
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all border ${inBag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_10px_var(--main-color)]' : 'bg-transparent border-white/20 text-white/50'}`}
+                    >
+                        {inBag ? 'IN BAG' : 'ADD TO BAG'}
+                    </button>
                 </div>
             </div>
         </button>
@@ -692,7 +699,13 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
                 </div>
 
                 {/* Action Suite */}
-                <div className="flex justify-end items-center gap-4 shrink-0 px-6 md:px-0">
+                <div className="flex justify-end items-center gap-3 shrink-0 px-6 md:px-0">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onClick(); }} 
+                        className="bg-white text-black px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-md mr-2"
+                    >
+                        GET THIS!
+                    </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onToggleBag(); }}
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${inBag ? 'bg-(--main-color) text-black rotate-12 shadow-xl shadow-(--main-color)/20' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:scale-110'}`}

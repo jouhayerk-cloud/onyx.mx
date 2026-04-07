@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.69.0] - 2026-04-07
+### Migrated
+- **Interaction Suite**: Moved "GET THIS!" and "ADD TO BAG" action buttons from the administrative Inventory (Overview) to the customer-facing Store views.
+- **Store Enhancement**: Integrated direct action buttons into both Grid and List store views for faster artifact acquisition.
+- **Inventory De-Clutter**: Removed redundant purchase actions from the high-fidelity overview screens to focus on administrative metrics.
+
 ## [1.68.11] - 2026-04-07
 ### Changed
 - **XLSX Layout Refinement**: Split logistics data into four discrete columns: `SIZES (CM)`, `SIZES (IN)`, `WEIGHT (KG)`, and `WEIGHT (LB)`.
