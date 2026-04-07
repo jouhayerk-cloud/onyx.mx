@@ -355,7 +355,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <div className="col-span-full animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 w-full lg:px-20 min-w-fit">
                                     {/* Barcode Panel - High Density White */}
-                                    <div className="w-full bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
+                                    <div className="w-full max-w-md mx-auto bg-white rounded-none p-2 shadow-xl border border-black/10 flex flex-col gap-2 overflow-hidden relative group/hub hover:shadow-lg transition-all duration-500">
                                         <div className="flex items-center justify-between px-1">
                                             <div className="flex items-center gap-1">
                                                 <div className="w-1 h-1 rounded-none bg-black/20" />
@@ -370,8 +370,8 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                             <Barcode 
                                                 value={calculated.bookBardcode || 'N/A'} 
                                                 format="CODE39" 
-                                                width={5.8} 
-                                                height={140} 
+                                                width={4} 
+                                                height={100} 
                                                 displayValue={false}
                                                 margin={0}
                                             />
@@ -383,7 +383,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                     <div className="flex-none p-4 relative group/qr scale-90 sm:scale-100">
                                         <QRCodeSVG 
                                             value={`https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${calculated.bookBardcode}`}
-                                            size={280}
+                                            size={200}
                                             level="H"
                                             includeMargin={false}
                                             fgColor={qrColor}
@@ -440,7 +440,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     }
 
 
-    const FullscreenModal = isExpanded && viewMode !== 'list' && createPortal(
+    const FullscreenModal = !!isExpanded && viewMode !== 'list' && createPortal(
         <div className="fixed inset-0 z-90 bg-black/70 backdrop-blur-md flex items-center justify-center p-4" onClick={() => onToggleExpand()}>
             <div className="relative w-full max-w-6xl bg-[#0e0e0e] rounded-[40px] overflow-hidden border border-white/10 shadow-2xl flex flex-col max-h-[90vh]" onClick={e=>e.stopPropagation()}>
                 <div className="absolute top-6 right-6 z-10 flex gap-2">
