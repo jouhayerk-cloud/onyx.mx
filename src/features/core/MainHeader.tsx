@@ -46,6 +46,8 @@ import {
     storeActiveVendorFilterAtom,
     storeViewModeAtom,
     storeVendorOptionsAtom,
+    storeShoppingBagAtom,
+    isStoreBagOpenAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
     isInventoryVendorFilterOpenAtom,
@@ -58,14 +60,14 @@ import {
     paymentCategoryFilterAtom,
     isPaymentCategoryFilterOpenAtom,
     PaymentCategory,
-    paymentFilterBarModeAtom
+    paymentFilterBarModeAtom,
+    TOP_BAR_SEARCH_ATOM
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
-import { TOP_BAR_SEARCH_ATOM } from '../../lib/atoms';
 import ExcelJS from 'exceljs';
 import { getStatusColor, getCategoryColor, getVendorColor, getContrastColor, EXCEL_STYLES } from '../../lib/excelStyles';
 import { saveAs } from 'file-saver';
@@ -82,6 +84,7 @@ import {
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
+import { ShoppingBagDrawer } from '../store/ShoppingBagDrawer';
 
 declare const __APP_VERSION__: string;
 
@@ -136,10 +139,10 @@ const SubTabPills: React.FC<{
             const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
-                    className={`flex flex-col items-center justify-center p-1.5 px-4 min-w-[52px] transition-all hover:bg-white/5 active:scale-90 group/pill select-none
+                    className={`flex flex-col items-center justify-center p-1 transition-all active:scale-90 group/pill select-none
                         ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
                     style={active === t.id ? { color: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={18} strokeWidth={2} />}
+                    {TabIcon && <TabIcon size={20} strokeWidth={1.5} />}
                 </button>
             );
         })}
@@ -160,12 +163,12 @@ const StudioAction: React.FC<{
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className={`flex flex-col items-center justify-center p-1.5 px-3 min-w-[52px] transition-all hover:bg-white/5 active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
+        className={`flex items-center justify-center p-1 transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
             active ? 'text-(--main-color)' : 'text-(--text-color)/40 hover:text-(--text-color)'
         }`}
         style={active && color ? { color } : {}}
     >
-        <Icon size={24} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform" />
+        <Icon size={26} strokeWidth={1.5} className="group-hover/studio:scale-110 transition-transform" />
     </button>
 );
 
@@ -318,19 +321,23 @@ const StoreBar: React.FC = () => {
 
             {!isSearchOpen && (
                 <>
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-2 border-r border-white/5 mr-1">
                         {vendorOptions.map(v => {
-                            const vColor = vendors[v as keyof typeof vendors]?.color || 'var(--text-color)/10';
+                            const vColor = vendors[v as keyof typeof vendors]?.color || 'var(--text-color)';
                             const isActive = vendorFilter === v;
                             return (
                                 <button
                                     key={v}
                                     onClick={() => setVendorFilter(v)}
-                                    className={`shrink-0 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border
+                                    className={`shrink-0 px-3.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-[0.2em] transition-all border
                                         ${isActive 
-                                            ? 'bg-(--color-store) border-(--color-store) text-black shadow-lg shadow-(--color-store)/20' 
-                                            : 'bg-white/5 border-white/5 text-(--text-color)/40 hover:text-(--text-color) hover:bg-white/10'}`}
-                                    style={isActive ? {} : { borderColor: v !== 'All' ? `${vColor}40` : '' }}
+                                            ? 'text-black shadow-lg' 
+                                            : 'bg-white/3 border-white/3 text-(--text-color)/30 hover:text-(--text-color) hover:bg-white/10'}`}
+                                    style={{ 
+                                        borderColor: isActive ? vColor : (v !== 'All' ? `${vColor}40` : ''),
+                                        backgroundColor: isActive ? vColor : '',
+                                        color: isActive ? 'black' : (v !== 'All' ? vColor : '')
+                                    }}
                                 >
                                     {v}
                                 </button>
@@ -338,19 +345,19 @@ const StoreBar: React.FC = () => {
                         })}
                     </div>
 
-                    <div className="w-px h-5 bg-(--text-color)/5 mx-1 shrink-0" />
-
-                    <StudioAction 
-                        icon={viewMode === 'grid' ? LayoutGrid : viewMode === 'gallery' ? Layout : LayoutList}
-                        label={viewMode.toUpperCase()}
-                        active={true}
-                        onClick={() => {
-                            const modes: ('grid' | 'gallery' | 'list')[] = ['grid', 'gallery', 'list'];
-                            const nextIdx = (modes.indexOf(viewMode) + 1) % modes.length;
-                            setViewMode(modes[nextIdx]);
-                        }}
-                        color="var(--color-store)"
-                    />
+                    <div className="flex items-center gap-0.5 px-2">
+                        <StudioAction 
+                            icon={viewMode === 'grid' ? LayoutGrid : viewMode === 'gallery' ? Layout : LayoutList}
+                            label={viewMode.toUpperCase()}
+                            active={true}
+                            onClick={() => {
+                                const modes: ('grid' | 'gallery' | 'list')[] = ['grid', 'gallery', 'list'];
+                                const nextIdx = (modes.indexOf(viewMode) + 1) % modes.length;
+                                setViewMode(modes[nextIdx]);
+                            }}
+                            color="var(--color-store)"
+                        />
+                    </div>
                 </>
             )}
         </div>
@@ -503,6 +510,8 @@ export function MainHeader() {
     const [performanceMode, setPerformanceMode] = useAtom(performanceModeAtom);
     const [language, setLanguage] = useAtom(languageAtom);
     const [theme, setTheme] = useAtom(themeAtom);
+    const [isBagOpen, setIsBagOpen] = useAtom(isStoreBagOpenAtom);
+    const bagCount = useAtomValue(storeShoppingBagAtom).length;
     const [currencyMode, setCurrencyMode] = useAtom(currencyModeAtom);
 
     const inventory = useAtomValue(inventoryAtom);
@@ -511,6 +520,8 @@ export function MainHeader() {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const liveExchangeRateValue = useAtomValue(liveExchangeRateAtom);
     const [isExporting, setIsExporting] = useState(false);
+    const logout = useLogout();
+    const user = useAtomValue(userAtom);
 
     // Statuses that are store/catalog items — excluded from the export
     const EXCLUDED_STATUSES = new Set(['available', 'avaiable', 'catalog', 'store']);
@@ -634,8 +645,7 @@ export function MainHeader() {
                 const vColor = getVendorColor(vid);
                 const contrastColor = getContrastColor(vColor);
                 const vConfig = vendors[vid as keyof typeof vendors];
-                const sheetName = vConfig?.name ? vConfig.name.slice(0, 31) : vid.slice(0, 31);
-
+                
                 const row = summarySheet.addRow({
                     vendor: vid,
                     items: v.items,
@@ -792,270 +802,187 @@ export function MainHeader() {
                 if (idx % 2 === 0) row.eachCell(cell => { if (!cell.fill?.type) cell.fill = EXCEL_STYLES.fills.zebra; });
             });
 
-            // 4. INVENTORY SHEETS (Vendor Split)
-            Object.entries(vendorGroups).forEach(([vid, items]) => {
-                const vConfig = vendors[vid as keyof typeof vendors];
-                const sheetName = vConfig?.name ? vConfig.name.slice(0, 31) : vid.slice(0, 31);
-                const ws = workbook.addWorksheet(sheetName);
-                const vColor = getVendorColor(vid);
-
-                ws.columns = [
-                    { header: 'TAG ID', key: 'tag_id', width: 22 },
-                    { header: 'ITEM #', key: 'item_number', width: 10 },
-                    { header: 'STATUS', key: 'status', width: 12 },
-                    { header: 'PAY STATUS', key: 'pay_status', width: 12 },
-                    { header: 'SHAPE TYPE (DESC)', key: 'shape_type', width: 35 },
-                    { header: 'COLOR MAT.', key: 'color_mat', width: 20 },
-                    { header: 'WEIGHT', key: 'weight', width: 10 },
-                    { header: 'SIZES (L x W x H) CM', key: 'sizes', width: 25 },
-                    { header: 'SIZES (L x W x H) IN', key: 'sizes_in', width: 25 },
-                    { header: 'QTY', key: 'qty', width: 8 },
-                    { header: 'UNIT CST (MXN)', key: 'unit_mxn', width: 15, style: { numFmt: '#,##0.00' } },
-                    { header: 'TOTAL CST (MXN)', key: 'total_mxn', width: 15, style: { numFmt: '#,##0.00' } },
-                    { header: 'ACQ CODE', key: 'acq_code', width: 12 },
-                    { header: 'LND CODE', key: 'lnd_code', width: 12 },
-                    { header: 'ACQUISITION (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'LANDED (USD)', key: 'landed', width: 15, style: { numFmt: '#,##0.00' } },
-                    { header: 'RETAIL (USD)', key: 'retail', width: 15, style: { numFmt: '#,##0.00' } }
-                ];
-
-                ws.getRow(1).eachCell(cell => {
-                    cell.font = EXCEL_STYLES.fonts.header;
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
-                });
-
-                items.forEach((item, idx) => {
-                    const d = item.data as any;
-                    const norm = normalizeInventoryData(d);
-                    const computed = calculateCodesAndPrices(norm, bookRate, d.workbook || '326');
-                    
-                    const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds);
-                    const payStatus = payStatusClass === 'GREEN' ? 'Paid' : (payStatusClass === 'YELLOW' ? 'Requested' : (payStatusClass === 'RED' ? 'Partial' : 'Unpaid'));
-
-                    const sizes = [
-                        norm.lengthCm ? `L:${norm.lengthCm}` : '',
-                        norm.widthCm ? `W:${norm.widthCm}` : '',
-                        norm.heightCm ? `H:${norm.heightCm}` : '',
-                        norm.diameterCm ? `Ø:${norm.diameterCm}` : '',
-                        norm.interiorCm ? `Int:${norm.interiorCm}` : '',
-                        norm.dropCm ? `Drp:${norm.dropCm}` : ''
-                    ].filter(Boolean).join(' | ') || '-';
-
-                    const fmtIn = (cm: number|null|undefined) => cm ? (cm / 2.54).toFixed(1) : '';
-                    const sizes_in = [
-                        norm.lengthCm ? `L:${fmtIn(norm.lengthCm)}"` : '',
-                        norm.widthCm ? `W:${fmtIn(norm.widthCm)}"` : '',
-                        norm.heightCm ? `H:${fmtIn(norm.heightCm)}"` : '',
-                        norm.diameterCm ? `Ø:${fmtIn(norm.diameterCm)}"` : '',
-                        norm.interiorCm ? `Int:${fmtIn(norm.interiorCm)}"` : '',
-                        norm.dropCm ? `Drp:${fmtIn(norm.dropCm)}"` : ''
-                    ].filter(Boolean).join(' | ') || '-';
-
-                    const qty = parseFloat(String(d.quantity || '1')) || 1;
-                    const unit_mxn = parseFloat(String(norm.price || '0')) || 0;
-                    const total_mxn = unit_mxn * qty;
-                    const acq_usd = unit_mxn / bookRate;
-
-                    const row = ws.addRow({
-                        tag_id: computed.bookBardcode,
-                        item_number: d.item_number || d.itemNumber || '',
-                        status: d.status || '',
-                        pay_status: payStatus,
-                        shape_type: `${d.shape || ''} ${d.description || d.short_description || ''}`.trim(),
-                        color_mat: `${d.color || ''} ${d.material || ''}`.trim(),
-                        weight: d.weight_kg || d.weightKg || d.weight || '',
-                        sizes: sizes,
-                        sizes_in: sizes_in,
-                        qty: qty,
-                        unit_mxn: unit_mxn,
-                        total_mxn: total_mxn,
-                        acq_code: computed.bookAqCode,
-                        lnd_code: computed.bookLandCode,
-                        acq_usd: acq_usd,
-                        landed: parseFloat(computed.bookLanded) || 0,
-                        retail: parseFloat(computed.bookRetail) || 0
-                    });
-
-                    // Styling Inventory row
-                    row.getCell('tag_id').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColor } };
-                    row.getCell('tag_id').font = { bold: true, color: { argb: getContrastColor(vColor) } };
-                    
-                    const psColor = getStatusColor(payStatus);
-                    row.getCell('pay_status').font = { color: { argb: psColor }, bold: true };
-
-                    if (idx % 2 === 0) row.eachCell(c => { if (!c.fill?.type) c.fill = EXCEL_STYLES.fills.zebra; });
-                });
-            });
-
-            // FINALIZING AND DOWNLOADING
             const buffer = await workbook.xlsx.writeBuffer();
-            const ts = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
-            saveAs(new Blob([buffer]), `Onyx-mx_Book-326_${ts}.xlsx`);
-            toast.success('Styled Master Export Complete');
-        } catch (err: any) {
-            console.error(err);
-            toast.error(`Export failed: ${err.message}`);
+            saveAs(new Blob([buffer]), `OnyxMaster_Project_Manifest_${new Date().toISOString().split('T')[0]}.xlsx`);
+            toast.success('Manifest Exported Successfully');
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('Manifest Export Failed');
         } finally {
             setIsExporting(false);
         }
     };
 
-    const toggleSidebar = () => setSidebarState(cur => cur === 'hidden' ? 'expanded' : 'hidden');
-
-    const user = useAtomValue(userAtom);
-    const logout = useLogout();
-    const setInventoryVersion = useSetAtom(InventoryVersionAtom);
-    const t = useTranslation();
-
     const handleRefresh = () => {
-        toast.loading("Synchronizing Database...", { duration: 1500 });
-        setTimeout(() => window.location.reload(), 500);
+        window.location.reload();
+    };
+
+    const handleLogout = () => {
+        logout();
     };
 
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
-        <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
-            {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
-            <div className="flex items-center shrink-0">
-                {sidebarState === 'hidden' && (
-                    <button 
-                        onClick={() => {
-                            const isMobile = window.innerWidth <= 768;
-                            setSidebarState(isMobile ? 'compact' : 'expanded');
-                        }}
-                        className="p-1 px-2 -ml-2 rounded-xl hover:bg-white/5 active:scale-90 transition-all flex items-center gap-2 group/logo mr-4"
-                        title="Onyx.mx Menu"
-                    >
-                        <OnyxMiniLogo className="w-8 h-8 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-                    </button>
-                )}
-            </div>
-
-            {/* Dynamic Module Bar — Aligned Left & Horizontally Scrollable */}
-            <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-0">
-                    {activeView === 'inventory' && <InventoryBar />}
-                    {activeView === 'store' && <StoreBar />}
-                    {activeView === 'finance' && <FinanceBar />}
-                    {activeView === 'logistics' && <LogisticsBar />}
-                    {activeView === 'packing' && <PackingBar />}
-                    {activeView === 'upload' && <UploadBar />}
-                    {activeView === 'control' && <ControlBar />}
-                    {activeView === 'overview' && (
-                        <div className="flex items-center gap-1 sm:gap-4">
-                            <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
-                            <StudioAction 
-                                icon={DollarSign}
-                                label={currencyMode}
-                                active={true}
-                                onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
-                                color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
-                            />
-                            <StudioAction 
-                                icon={Download}
-                                label="EXPORT"
-                                onClick={handleMasterExportXLSX}
-                                disabled={isExporting}
-                                className={isExporting ? 'animate-bounce' : ''}
-                            />
-                        </div>
+        <>
+            <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
+                {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
+                <div className="flex items-center shrink-0">
+                    {sidebarState === 'hidden' && (
+                        <button 
+                            onClick={() => {
+                                const isMobile = window.innerWidth <= 768;
+                                setSidebarState(isMobile ? 'compact' : 'expanded');
+                            }}
+                            className="p-1 px-2 -ml-2 rounded-xl hover:bg-white/5 active:scale-90 transition-all flex items-center gap-2 group/logo mr-4"
+                            title="Onyx.mx Menu"
+                        >
+                            <OnyxMiniLogo className="w-8 h-8 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                        </button>
                     )}
-                    {activeView === 'dashboard' && (
-                        <>
-                            <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
-                            <div className="ml-auto pr-4">
-                                <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
+                </div>
+
+                {/* Dynamic Module Bar — Aligned Left & Horizontally Scrollable */}
+                <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar">
+                    <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-0">
+                        {activeView === 'inventory' && <InventoryBar />}
+                        {activeView === 'store' && <StoreBar />}
+                        {activeView === 'finance' && <FinanceBar />}
+                        {activeView === 'logistics' && <LogisticsBar />}
+                        {activeView === 'packing' && <PackingBar />}
+                        {activeView === 'upload' && <UploadBar />}
+                        {activeView === 'control' && <ControlBar />}
+                        {activeView === 'overview' && (
+                            <div className="flex items-center gap-1 sm:gap-4">
+                                <ModuleBadge icon="layout-dashboard" label="" color="var(--main-color)" />
+                                <StudioAction 
+                                    icon={DollarSign}
+                                    label={currencyMode}
+                                    active={true}
+                                    onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
+                                    color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
+                                />
+                                <StudioAction 
+                                    icon={Download}
+                                    label="EXPORT"
+                                    onClick={handleMasterExportXLSX}
+                                    disabled={isExporting}
+                                    className={isExporting ? 'animate-bounce' : ''}
+                                />
                             </div>
-                        </>
-                    )}
-                    {(activeView === 'create' || !activeView) && (
-                        <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
-                    )}
-                </div>
-
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
-                <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-4">
-                    <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
-                    <span className="text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
-                        {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
-                            ? user.name.split(' ')[0]
-                            : user?.email?.split('@')[0] || 'User'}
-                    </span>
-                </div>
-
-                <div className="flex items-center relative h-full">
-                    <button
-                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`w-14 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
-                            isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
-                        }`}
-                        title="Studio Settings"
-                    >
-                        <Settings size={24} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
-                    </button>
-
-                    {isSettingsOpen && createPortal(
-                        <>
-                            <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
-                            <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-(--text-color) opacity-30">Settings</span>
-                                        <div className="flex items-center gap-4">
-                                            <button 
-                                                onClick={() => setPerformanceMode(!performanceMode)} 
-                                                className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
-                                            >
-                                                <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
-                                            </button>
-                                            <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
-                                                <X size={14} strokeWidth={3} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <button 
-                                        onClick={handleRefresh} 
-                                        className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group"
-                                    >
-                                        <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
-                                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
-                                    </button>
-
-                                    <div className="flex flex-col gap-4">
-                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-white/5 pb-1 w-fit">Appearance</span>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {themes.map(th => (
-                                                <button key={th.name} onClick={() => setTheme(th.name)}
-                                                    className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
-                                                    style={{ 
-                                                        background: `url(${th.swatch})`,
-                                                        backgroundSize: 'cover',
-                                                        backgroundPosition: 'center'
-                                                    }} 
-                                                    title={th.name} 
-                                                >
-                                                    <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
-                                                        <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-auto">
-                                        <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
-                                            <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
-                                        </button>
-                                    </div>
+                        )}
+                        {activeView === 'dashboard' && (
+                            <>
+                                <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
+                                <div className="ml-auto pr-4">
+                                    <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
                                 </div>
+                            </>
+                        )}
+                        {(activeView === 'create' || !activeView) && (
+                            <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
+                    <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-4">
+                        <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
+                        <span className="text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
+                            {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
+                                ? user.name.split(' ')[0]
+                                : user?.email?.split('@')[0] || 'User'}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 mx-2 relative">
+                        <button
+                            onClick={() => setIsBagOpen(!isBagOpen)}
+                            className="w-12 h-12 flex items-center justify-center text-(--text-color) opacity-40 hover:opacity-100 hover:text-(--main-color) transition-all relative group/bag"
+                        >
+                            <ShoppingBag size={22} strokeWidth={1.5} className="group-hover/bag:scale-110 transition-transform" />
+                            {bagCount > 0 && (
+                                <span className="absolute top-2 right-2 w-4 h-4 bg-(--main-color) text-black text-[8px] font-black rounded-full flex items-center justify-center shadow-[0_0_10px_var(--main-color)] animate-in zoom-in duration-300">
+                                    {bagCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="flex items-center relative h-full">
+                        <button
+                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                            className={`w-14 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
+                                isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
+                            }`}
+                            title="Studio Settings"
+                        >
+                            <Settings size={24} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
+                        </button>
+
+                        {isSettingsOpen && createPortal(
+                            <>
+                                <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
+                                <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-(--text-color) opacity-30">Settings</span>
+                                            <div className="flex items-center gap-4">
+                                                <button 
+                                                    onClick={() => setPerformanceMode(!performanceMode)} 
+                                                    className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
+                                                >
+                                                    <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
+                                                </button>
+                                                <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
+                                                    <X size={14} strokeWidth={3} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            onClick={handleRefresh} 
+                                            className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group"
+                                        >
+                                            <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
+                                            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
+                                        </button>
+
+                                        <div className="flex flex-col gap-4">
+                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-white/5 pb-1 w-fit">Appearance</span>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {themes.map(th => (
+                                                    <button key={th.name} onClick={() => setTheme(th.name)}
+                                                        className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
+                                                        style={{ 
+                                                            background: `url(${th.swatch})`,
+                                                            backgroundSize: 'cover',
+                                                            backgroundPosition: 'center'
+                                                        }} 
+                                                        title={th.name} 
+                                                    >
+                                                        <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
+                                                            <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-auto">
+                                            <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
+                                                <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
+                                            </button>
+                                        </div>
+                                    </div>
                             </>,
                             document.body
                         )}
                     </div>
                 </div>
             </div>
-        </div>
+            <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />
+        </>
     );
 }
+

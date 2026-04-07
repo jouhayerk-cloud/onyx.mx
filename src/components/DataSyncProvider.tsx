@@ -57,9 +57,9 @@ export const DataSyncProvider: React.FC = () => {
                 }))
             ];
 
-            const storeStatuses = ['Available', 'Avaiable', 'Catalog'];
+            const storeStatuses = ['available', 'avaiable', 'catalog', 'store', 'market'];
             const wipItems = allRecords.filter(r => {
-                const status = (r.data.status || '').trim();
+                const status = (r.data.status || '').trim().toLowerCase();
                 const isStoreStatus = storeStatuses.includes(status);
                 const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
                 const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';
@@ -70,7 +70,7 @@ export const DataSyncProvider: React.FC = () => {
             });
 
             const storeItems = allRecords.filter(r => {
-                const status = (r.data.status || '').trim();
+                const status = (r.data.status || '').trim().toLowerCase();
                 const isStoreStatus = storeStatuses.includes(status);
                 const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
                 const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';

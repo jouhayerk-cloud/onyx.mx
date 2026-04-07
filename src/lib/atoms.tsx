@@ -249,7 +249,18 @@ export const workbookSearchTermAtom = atom('');
 export const storeSearchTermAtom = atom('');
 export const storeActiveVendorFilterAtom = atomWithStorage<string>('storeActiveVendorFilter', 'All');
 export const storeViewModeAtom = atomWithStorage<'grid' | 'gallery' | 'list'>('storeViewMode', 'grid');
-export const storeVendorOptionsAtom = atom<string[]>(['All']);
+export const storeVendorOptionsAtom = atom((get) => {
+  const inventory = get(storeInventoryAtom);
+  const detected = new Set<string>();
+  inventory.forEach(item => {
+    const d = item.data || {};
+    // Extract vendor prefix (priority: vendor_id > item prefix)
+    const rawId = d.vendor_id || d.vendorId || item.label || d.itemId || d.item_id || d.tag_id || '';
+    const prefixId = (typeof rawId === 'string' && rawId.length >= 2) ? rawId.substring(0, 2).toUpperCase() : '';
+    if (prefixId) detected.add(prefixId);
+  });
+  return ['All', ...Array.from(detected).sort()];
+});
 
 export const filtersPanelOpenAtom = atom<boolean>(false);
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
