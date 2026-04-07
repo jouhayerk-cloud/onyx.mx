@@ -853,6 +853,7 @@ export function MainHeader() {
                 });
 
                 sortedItems.forEach((item: any, iIdx: number) => {
+                    const it = item.data;
                     const qty = parseInt(it.quantity || '1', 10) || 1;
                     const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
                     

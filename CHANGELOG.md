@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.69.2] - 2026-04-07
+### Fixed
+- **Manifest Export Error**: Resolved a `ReferenceError: it is not defined` during XLSX export that occurred when calculating financial metrics for vendor sheets.
+
 ## [1.69.1] - 2026-04-07
 ### Enhanced
 - **XLSX Financial Visibility**: Added `QTY` and `TOTAL MXN` columns to the vendor sheets in the Overview export to provide comprehensive volume and total cost tracking.
