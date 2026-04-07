@@ -840,11 +840,16 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
  * Logistics Volume & Unit Calculators
  */
 
-export const formatWeightImperial = (kg: any): string => {
+export const formatWeightMetricOnly = (kg: any): string => {
+  const val = parseFloat(kg);
+  return (val && !isNaN(val)) ? `${val}kg` : '';
+};
+
+export const formatWeightImperialOnly = (kg: any): string => {
   const val = parseFloat(kg);
   if (!val || isNaN(val)) return '';
   const lbs = (val * 2.20462).toFixed(1);
-  return `${val}kg (${lbs} lbs)`;
+  return `${lbs} lbs`;
 };
 
 export const formatCmToFeetIn = (cm: any): string => {
@@ -856,6 +861,25 @@ export const formatCmToFeetIn = (cm: any): string => {
   // If it's something like 0' 11", just return 11"
   if (feet === 0) return `${inches}"`;
   return `${feet}' ${inches}"`;
+};
+
+export const formatDimensionsMetricOnly = (w: any, h: any, l: any): string => {
+  const parts = [w, h, l].filter(p => p !== undefined && p !== null && p !== '');
+  return parts.length > 0 ? parts.join('x') + 'cm' : '';
+};
+
+export const formatDimensionsImperialOnly = (w: any, h: any, l: any): string => {
+  const parts = [w, h, l].filter(p => p !== undefined && p !== null && p !== '');
+  if (parts.length === 0) return '';
+  const imperial = parts.map(p => formatCmToFeetIn(p)).join(' x ');
+  return imperial;
+};
+
+export const formatWeightImperial = (kg: any): string => {
+  const val = parseFloat(kg);
+  if (!val || isNaN(val)) return '';
+  const lbs = (val * 2.20462).toFixed(1);
+  return `${val}kg (${lbs} lbs)`;
 };
 
 export const formatDimensionsImperial = (w: any, h: any, l: any): string => {

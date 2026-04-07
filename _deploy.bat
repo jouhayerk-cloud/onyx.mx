@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.68.10 - Official Barcode Sync & Payment Date Integration"
+git commit -m "v1.68.11 - XLSX Export Refinement & Sorting"
 git push origin main
 
 echo [2/3] Building production bundle...

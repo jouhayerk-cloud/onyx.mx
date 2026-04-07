@@ -64,7 +64,7 @@ import {
     TOP_BAR_SEARCH_ATOM
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, getStatusClass } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { useTranslation, useLogout } from '../../lib/hooks';
 import { CameraView } from '../../lib/Types';
@@ -825,12 +825,13 @@ export function MainHeader() {
                     { header: 'LD CODE', key: 'ld_code', width: 12 },
                     { header: 'DESCRIPTION', key: 'description', width: 45 },
                     { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
-                    { header: 'SIZES (CM/IN)', key: 'sizes', width: 30 },
-                    { header: 'WEIGHT (KG/LB)', key: 'weight', width: 20 },
+                    { header: 'SIZES (CM)', key: 'sizes_metric', width: 20 },
+                    { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
+                    { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
+                    { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
                     { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0.00' } },
                     { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'STATUS', key: 'status', width: 15 },
                     { header: 'PAY STATUS', key: 'pay_status', width: 18 }
                 ];
 
@@ -842,7 +843,14 @@ export function MainHeader() {
                     cell.alignment = { horizontal: 'center' };
                 });
 
-                items.forEach((item: any, iIdx: number) => {
+                // Sort items by item_number (numerical)
+                const sortedItems = [...items].sort((a: any, b: any) => {
+                    const numA = parseInt(a.data.itemNumber || a.data.item_number || '0', 10);
+                    const numB = parseInt(b.data.itemNumber || b.data.item_number || '0', 10);
+                    return numA - numB;
+                });
+
+                sortedItems.forEach((item: any, iIdx: number) => {
                     const it = item.data;
                     const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
                     
@@ -872,20 +880,23 @@ export function MainHeader() {
                         }
                     } catch (e) { console.error('Date error:', e); }
 
+                    const itemNum = it.itemNumber || it.item_number || iIdx + 1;
+
                     const row = vSheet.addRow({
-                        item_number: it.itemNumber || it.item_number || iIdx + 1,
+                        item_number: itemNum,
                         pay_date: formattedPayDate,
                         tag_id: calculated.bookBarcode || it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
                         aq_code: calculated.bookAqCode || '-',
                         ld_code: calculated.bookLandCode || '-',
                         description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
                         color_material: `${it.color || ''} ${it.material || ''}`.trim(),
-                        sizes: formatDimensionsImperial(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
-                        weight: formatWeightImperial(it.weightKg || it.weight_kg),
+                        sizes_metric: formatDimensionsMetricOnly(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
+                        sizes_imperial: formatDimensionsImperialOnly(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
+                        weight_metric: formatWeightMetricOnly(it.weightKg || it.weight_kg),
+                        weight_imperial: formatWeightImperialOnly(it.weightKg || it.weight_kg),
                         cost_mxn: costMxn,
                         landed_mxn: landedMxn,
                         retail_usd: retailUsd,
-                        status: it.status || 'Acquisition',
                         pay_status: payStatusText
                     });
 

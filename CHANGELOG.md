@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.68.11] - 2026-04-07
+### Changed
+- **XLSX Layout Refinement**: Split logistics data into four discrete columns: `SIZES (CM)`, `SIZES (IN)`, `WEIGHT (KG)`, and `WEIGHT (LB)`.
+- **Operational Cleanup**: Removed the redundant and legacy 'STATUS' column in vendor sheets.
+- **Ordered Manifests**: Implemented automatic numerical sorting by Item Number (#) for all vendor workbooks.
+
 ## [1.68.10] - 2026-04-07
 ### Changed
 - **Official Barcode Sync**: Exported `TAG ID` now correctly reflects the database-level barcode format (e.g., `EM32612HMF`).
