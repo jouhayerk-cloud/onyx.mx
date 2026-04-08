@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import { uploadItemDataAtom, userAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
+import { Database, RefreshCw, AlertTriangle, Activity, PieChart, Users, ChevronRight, History } from 'lucide-react';
 
 interface InventoryStats {
     total: number;
@@ -14,35 +15,45 @@ interface InventoryStats {
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl py-4 px-5 flex flex-col gap-1">
-            <p className="text-[11px] uppercase font-bold tracking-widest text-white/50">{label}</p>
-            <p className={`text-4xl font-black tabular-nums mt-1 ${color || 'text-white'}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
-            {sub && <p className="text-sm text-(--text-color-secondary)">{sub}</p>}
+        <div className="group flex flex-col gap-1 transition-all">
+            <p className="text-[10px] uppercase font-black tracking-[0.3em] text-white/10 group-hover:text-white/30 transition-all">{label}</p>
+            <div className="flex items-baseline gap-3">
+                <p className={`text-4xl font-black tabular-nums tracking-tighter ${color || 'text-white'}`}>
+                    {typeof value === 'number' ? value.toLocaleString() : value}
+                </p>
+                {sub && <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{sub}</p>}
+            </div>
+            <div className="h-px w-8 bg-white/5 group-hover:w-full group-hover:bg-(--main-color)/20 transition-all duration-700 mt-1" />
         </div>
     );
 }
 
-function BreakdownBar({ data, title }: { data: Record<string, number>; title: string }) {
+function BreakdownBar({ data, title, icon: Icon }: { data: Record<string, number>; title: string; icon: any }) {
     const total = Object.values(data).reduce((a, b) => a + b, 0);
     const sorted = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 8);
     if (sorted.length === 0) return null;
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-2xl py-4 px-5 flex flex-col gap-4">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">{title}</p>
-            <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+                <Icon size={12} className="text-(--main-color)/40" />
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">{title}</p>
+            </div>
+            <div className="flex flex-col gap-4">
                 {sorted.map(([key, count]) => {
                     const pct = total > 0 ? (count / total) * 100 : 0;
                     return (
-                        <div key={key} className="flex items-center gap-3">
-                            <span className="text-sm text-white/80 w-28 truncate shrink-0">{key || '—'}</span>
-                            <div className="flex-1 bg-white/5 rounded-full h-1.5 overflow-hidden">
+                        <div key={key} className="group relative flex flex-col gap-1.5 transition-all">
+                            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-tight">
+                                <span className={`${key ? 'text-white/60' : 'text-white/20'} group-hover:text-white transition-all`}>{key || 'UNDEFINED'}</span>
+                                <span className="text-white/20 group-hover:text-(--main-color) font-mono transition-all">{count}</span>
+                            </div>
+                            <div className="w-full bg-white/2 h-[2px] relative overflow-hidden">
                                 <div
-                                    className="h-full rounded-full bg-(--main-color) transition-all duration-500"
+                                    className="absolute inset-y-0 left-0 bg-(--main-color)/40 group-hover:bg-(--main-color) transition-all duration-1000"
                                     style={{ width: `${pct}%` }}
                                 />
                             </div>
-                            <span className="text-sm font-mono text-white/60 w-12 text-right shrink-0">{count}</span>
                         </div>
                     );
                 })}
@@ -75,7 +86,6 @@ export function DatabaseStatsPanel() {
             const byStatus: Record<string, number> = {};
             const byVendor: Record<string, number> = {};
             const byCategory: Record<string, number> = {};
-            const recentlyAdded: { item_id: string; name: string; created_at: string }[] = [];
 
             for (const row of rows) {
                 const status = row.status || 'Unknown';
@@ -92,7 +102,7 @@ export function DatabaseStatsPanel() {
                 byStatus,
                 byVendor,
                 byCategory,
-                recentlyAdded: recentlyAdded.slice(0, 5),
+                recentlyAdded: [],
             });
             setLastRefreshed(new Date());
         } catch (err: any) {
@@ -124,7 +134,7 @@ export function DatabaseStatsPanel() {
     }, []);
 
     const handleAuthorize = async (id: string, source: string) => {
-        if (!confirm("Hard delete this item permanently from " + source + "?")) return;
+        if (!confirm("Expunge this record from core storage permanently?")) return;
         setIsActing(id);
         try {
             const { error } = await supabase.from(source).delete().eq('id', id);
@@ -132,7 +142,6 @@ export function DatabaseStatsPanel() {
             fetchDelRequests();
             fetchStats();
         } catch (err: any) { alert(err.message); }
-        setIsActing(id + 'done'); // simple way to clear acting state
         setTimeout(() => setIsActing(null), 500);
     };
 
@@ -148,7 +157,7 @@ export function DatabaseStatsPanel() {
     };
 
     const handleSetBook = () => {
-        const newV = prompt("Enter Book Version (e.g. v326):", itemData.workbook || 'v326');
+        const newV = prompt("Sync Override - WorkBook ID:", itemData.workbook || 'v326');
         if (newV) {
             setItemData(prev => ({ ...prev, workbook: newV }));
         }
@@ -157,16 +166,21 @@ export function DatabaseStatsPanel() {
     useEffect(() => { fetchStats(); fetchDelRequests(); }, [fetchStats, fetchDelRequests]);
 
     if (loading) return (
-        <div className="flex items-center justify-center h-40 text-(--text-color-secondary)">
-            <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-(--main-color) border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Loading database stats…</span>
+        <div className="flex items-center justify-center h-64 opacity-20 scale-90">
+            <div className="flex flex-col items-center gap-6">
+                <Database size={40} className="animate-pulse text-(--main-color)" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">Querying Nexus...</span>
             </div>
         </div>
     );
 
     if (error) return (
-        <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{error}</p>
+        <div className="p-10 border border-red-500/20 bg-red-500/5 rounded-2xl">
+            <p className="text-red-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2 flex items-center gap-3">
+                <AlertTriangle size={14} /> Critical Data Exception
+            </p>
+            <p className="text-white/40 text-xs font-mono">{error}</p>
+        </div>
     );
 
     if (!stats) return null;
@@ -175,158 +189,130 @@ export function DatabaseStatsPanel() {
     const vendorCount = Object.keys(stats.byVendor).length;
 
     return (
-        <div className="flex flex-col gap-4">
-            {/* Toolbar */}
+        <div className="flex flex-col gap-20">
+            {/* Minimalist Sub-Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <p className="text-sm text-(--text-color-secondary)">
-                        {lastRefreshed && lastRefreshed.toLocaleTimeString()}
-                    </p>
+                <div className="flex items-center gap-8">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">Nexus Metadata</span>
+                        <div className="flex items-center gap-3">
+                            <History size={12} className="text-white/20" />
+                            <span className="text-[11px] font-black text-white uppercase tracking-tighter">
+                                Last Sync: {lastRefreshed?.toLocaleTimeString()}
+                            </span>
+                        </div>
+                    </div>
                     {isDev && (
-                        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/40">
-                            Current Book: <span className="text-(--main-color)">{itemData.workbook || 'v326'}</span>
+                        <div className="flex flex-col">
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-1">Workbook Index</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-black text-(--main-color) uppercase tracking-tighter">{itemData.workbook || 'V000'}</span>
+                                <button onClick={handleSetBook} className="text-white/10 hover:text-white transition-all"><ChevronRight size={12} /></button>
+                            </div>
                         </div>
                     )}
                 </div>
-                <div className="flex gap-2">
-                    {isDev && (
-                        <button onClick={handleSetBook} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-(--main-color)/30 bg-(--main-color)/10 text-(--main-color) hover:bg-(--main-color)/20 transition-all">
-                            <svg className="w-4 h-4"><use href="#edit" /></svg>
-                            SET BOOK
-                        </button>
-                    )}
-                    <button onClick={() => { fetchStats(); fetchDelRequests(); }} className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/5 transition-all text-(--text-color-secondary) hover:text-white">
-                        <svg className="w-4 h-4"><use href="#refresh" /></svg>
-                        SYNC
-                    </button>
-                </div>
-            </div>
-
-            {/* Summary KPIs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard label="Total" value={stats.total} color="text-white" />
-                <StatCard label="Active" value={activeCount} color="text-green-400" sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}%` : undefined} />
-                <StatCard label="Vendors" value={vendorCount} color="text-(--main-color)" />
-                <StatCard label="Cats" value={Object.keys(stats.byCategory).length} />
-            </div>
-
-            {/* Deletion Requests Table */}
-            {delRequests.length > 0 && (
-                <div className="bg-orange-500/5 border border-orange-500/20 rounded-2xl p-5 flex flex-col gap-4 mt-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-xs uppercase font-bold tracking-widest text-orange-400 flex items-center gap-2">
-                            DEL REQ ({delRequests.length})
-                        </h3>
+                <button 
+                    onClick={() => { fetchStats(); fetchDelRequests(); }}
+                    className="flex items-center gap-3 group"
+                >
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20 group-hover:text-white transition-all">Re-Sync Nexus</span>
+                    <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center group-hover:border-(--main-color)/40 transition-all duration-700">
+                        <RefreshCw size={12} className={`text-white/20 group-hover:text-(--main-color) transition-all ${loading && 'animate-spin'}`} />
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-[11px]">
-                            <thead>
-                                <tr className="border-b border-white/5 text-white/30 uppercase tracking-tighter">
-                                    <th className="pb-2 font-black">ID</th>
-                                    <th className="pb-2 font-black">Shape</th>
-                                    <th className="pb-2 font-black">Table</th>
-                                    <th className="pb-2 font-black text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {delRequests.map(req => (
-                                    <tr key={req.id} className="hover:bg-white/5">
-                                        <td className="py-2 text-white/80 font-mono">{req.item_id || req.itemId}</td>
-                                        <td className="py-2 text-white/60">{req.shape}</td>
-                                        <td className="py-2 text-white/40 uppercase text-[9px] font-black">{req.source}</td>
-                                        <td className="py-2 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => handleRestore(req.id, req.source)}
-                                                    className="bg-green-500/20 text-green-300 border border-green-500/30 px-2 py-1 rounded text-[10px] hover:bg-green-500/40"
-                                                    disabled={!!isActing}
-                                                >
-                                                    BACK
-                                                </button>
-                                                <button
-                                                    onClick={() => handleAuthorize(req.id, req.source)}
-                                                    className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-1 rounded text-[10px] hover:bg-red-600 hover:text-white"
-                                                    disabled={!!isActing}
-                                                >
-                                                    {isActing === req.id ? 'DEL…' : 'DELETE'}
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                </button>
+            </div>
+
+            {/* Frameless KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
+                <StatCard label="Infrastructure Store" value={stats.total} />
+                <StatCard label="Availability Rate" value={activeCount} sub={stats.total > 0 ? `${Math.round(activeCount / stats.total * 100)}%` : undefined} color="text-green-500/80" />
+                <StatCard label="Vendor Nodes" value={vendorCount} color="text-(--main-color)" />
+                <StatCard label="Classification Types" value={Object.keys(stats.byCategory).length} />
+            </div>
+
+            {/* Pending expungements */}
+            {delRequests.length > 0 && (
+                <div className="animate-in slide-in-from-left-4 duration-1000">
+                    <div className="flex items-center gap-4 mb-8">
+                        <AlertTriangle size={14} className="text-orange-500" />
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-orange-500/80">Quarantined records for deletion</h3>
+                        <div className="h-px grow bg-linear-to-r from-orange-500/20 to-transparent" />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {delRequests.map(req => (
+                            <div key={req.id} className="group relative flex items-center justify-between py-4 border-b border-white/3 hover:border-orange-500/30 transition-all">
+                                <div className="flex flex-col gap-1 min-w-0 pr-10">
+                                    <span className="text-[10px] font-black text-white/70 uppercase tracking-tighter truncate">{req.item_id || req.itemId}</span>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">{req.source} / {req.shape || 'Unknown'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 opacity-30 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
+                                    <button 
+                                        onClick={() => handleRestore(req.id, req.source)}
+                                        className="text-[9px] font-black uppercase tracking-widest text-green-500/50 hover:text-green-400 px-3 py-1 border border-green-500/20 rounded-full hover:bg-green-500/5 transition-all"
+                                    >Restore</button>
+                                    <button 
+                                        onClick={() => handleAuthorize(req.id, req.source)}
+                                        className="text-[9px] font-black uppercase tracking-widest text-red-500/50 hover:text-red-400 px-3 py-1 border border-red-500/20 rounded-full hover:bg-red-500/5 transition-all"
+                                    >Authorize Purge</button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
 
-            {/* Breakdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <BreakdownBar data={stats.byStatus} title="By Status" />
-                <BreakdownBar data={stats.byVendor} title="By Vendor" />
+            {/* Distribution Matrices */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-24">
+                <BreakdownBar data={stats.byStatus} title="Status Distribution" icon={Activity} />
+                <BreakdownBar data={stats.byVendor} title="Node Distribution" icon={Users} />
+                <BreakdownBar data={stats.byCategory} title="Morphology Grid" icon={PieChart} />
             </div>
-            <BreakdownBar data={stats.byCategory} title="By Category" />
 
-            {/* Developer Actions */}
-            <div className="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3 pb-8">
-                <h3 className="text-xs uppercase font-bold tracking-widest text-(--main-color) flex items-center gap-2">
-                    <svg className="w-4 h-4"><use href="#shield" /></svg> Danger Zone
-                </h3>
-                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <p className="text-sm font-bold text-red-400">Clear Cloud</p>
-                        <p className="text-xs text-(--text-color-secondary) mt-1">
-                            PERMANENTLY delete all records from Supabase.
-                        </p>
-                    </div>
-                    <button
-                        onClick={async () => {
-                            if (!confirm("Are you SURE you want to DELETE ALL ITEMS from the cloud database?")) return;
-                            if (!confirm("FINAL WARNING: This will erase all inventory data. Proceed?")) return;
-                            try {
-                                const { error } = await supabase.from('inventory').delete().neq('item_id', 'FORCE_DELETE_ALL');
-                                if (error) throw error;
-                                alert("Cloud database cleared.");
-                                fetchStats();
-                            } catch (err: any) {
-                                alert("Failed to clear cloud database: " + err.message);
-                            }
-                        }}
-                        className="button hover:bg-red-600! bg-red-500/20! text-red-300! border border-red-500/50 whitespace-nowrap py-2!"
-                    >
-                        Wipe Cloud
-                    </button>
-                </div>
+            {/* Danger Zone: Extreme Override */}
+            {isDev && (
+                <div className="mt-20 pt-20 border-t border-white/3">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-500/40 mb-12 flex items-center gap-4">
+                        <AlertTriangle size={14} /> System Core Override
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <div className="group flex flex-col gap-6 p-8 border border-white/3 rounded-3xl hover:border-red-500/30 transition-all duration-700">
+                            <div>
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">Expunge Nexus Cloud</h4>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">Permanently terminate all satellite inventory nodes strictly from central cloud storage. Non-reversible procedure.</p>
+                            </div>
+                            <button 
+                                onClick={async () => {
+                                    if (!confirm("EXPUNGE CLOUD?")) return;
+                                    try {
+                                        const { error } = await supabase.from('inventory').delete().neq('item_id', 'FORCE');
+                                        if (error) throw error;
+                                        fetchStats();
+                                    } catch (err: any) { alert(err.message); }
+                                }}
+                                className="w-full bg-red-500/5 border border-red-500/10 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.4em] text-red-500/60 hover:bg-red-500 hover:text-black transition-all duration-500"
+                            >Wipe Satellite Data</button>
+                        </div>
 
-                <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <p className="text-sm font-bold text-red-400">Nuke Cache</p>
-                        <p className="text-xs text-(--text-color-secondary) mt-1">
-                            Destroy local IndexedDB. Force rebuild from Cloud.
-                        </p>
+                        <div className="group flex flex-col gap-6 p-8 border border-white/3 rounded-3xl hover:border-red-500/30 transition-all duration-700">
+                            <div>
+                                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-white mb-2">Local Nexus Nuke</h4>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 leading-relaxed">Invalidate all local cached data streams. Forces an immediate core restart and primary nexus re-sync.</p>
+                            </div>
+                            <button 
+                                onClick={async () => {
+                                    const dbs = await window.indexedDB.databases();
+                                    await Promise.all(dbs.filter((d: any) => d.name?.startsWith('onyxdb')).map((d: any) => window.indexedDB.deleteDatabase(d.name!)));
+                                    window.location.reload();
+                                }}
+                                className="w-full bg-red-500/5 border border-red-500/10 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.4em] text-red-500/60 hover:bg-red-500 hover:text-black transition-all duration-500"
+                            >Initiate Terminal Wipe</button>
+                        </div>
                     </div>
-                    <button
-                        onClick={async () => {
-                            if (!confirm("Are you SURE you want to drop all local database tables? This will trigger an immediate system restart.")) return;
-                            try {
-                                const dbs = await window.indexedDB.databases();
-                                await Promise.all(
-                                    dbs.filter((d: any) => d.name?.startsWith('onyxdb'))
-                                        .map((d: any) => new Promise<void>(resolve => {
-                                            const req = window.indexedDB.deleteDatabase(d.name!);
-                                            req.onsuccess = () => resolve();
-                                            req.onerror = () => resolve();
-                                        }))
-                                );
-                            } catch (_) { } // Firefox lacks .databases() handling
-                            window.location.reload();
-                        }}
-                        className="button hover:bg-red-600! bg-red-500/20! text-red-300! border border-red-500/50 whitespace-nowrap py-2!"
-                    >
-                        NUKE
-                    </button>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAtom } from 'jotai/react';
 import { inventoryAtom, storeInventoryAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
-import { Search, Filter, Save, X, Check, Edit2, AlertCircle, Loader2, Shield } from 'lucide-react';
+import { Search, Filter, Save, X, Edit2, AlertCircle, Loader2, Shield, Hash, Layers, DollarSign } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface DBItem {
@@ -40,7 +40,7 @@ export function DataBaseArtifact() {
             const data = { ...(item?.data || item) };
             const id = data?.id || item?.id || item?.row;
             if (data && id !== undefined && id !== null) {
-                data.id = String(id); // Ensure id is in the data object
+                data.id = String(id);
                 unique.set(data.id, data);
             }
         });
@@ -93,14 +93,8 @@ export function DataBaseArtifact() {
     const handleSave = async (id: string) => {
         setIsSaving(id);
         try {
-            // Remove helper fields before saving
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { id: itemId, ...updateData } = editValues as DBItem;
-            
-            // Filter out internal RxDB/Supabase metadata like created_at, updated_at if necessary
-            // For now just update the changed fields
             const cleanUpdate: any = {};
-            // Only update fields that typically change in this view
             ['item_id', 'status', 'pay_req', 'material', 'description', 'price_mxn'].forEach(key => {
                 if (updateData[key] !== undefined) cleanUpdate[key] = updateData[key];
             });
@@ -112,11 +106,11 @@ export function DataBaseArtifact() {
 
             if (error) throw error;
             
-            toast.success("Item updated successfully");
+            toast.success("Artifact Synchronized");
             setEditingId(null);
             setEditValues({});
         } catch (err: any) {
-            toast.error(err.message || "Failed to update item");
+            toast.error(err.message || "Sync Failed");
         } finally {
             setIsSaving(null);
         }
@@ -127,189 +121,188 @@ export function DataBaseArtifact() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-black/20 rounded-3xl border border-white/10 overflow-hidden glass-panel shadow-2xl">
-            {/* Header / Toolbar */}
-            <div className="p-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 bg-white/5">
-                <div className="flex items-center gap-4 flex-1 min-w-[250px]">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                        <input 
-                            type="text"
-                            placeholder="Master Search..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:border-(--main-color)/50 transition-all placeholder:text-white/10"
-                        />
+        <div className="flex flex-col gap-8 animate-in fade-in duration-1000">
+            {/* Header: Frameless HUD Controls */}
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                    <Layers size={14} className="text-(--main-color)/40" />
+                    <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-white/30">Master Index Override</h2>
+                    <div className="h-px grow bg-linear-to-r from-white/5 to-transparent" />
+                    <div className="flex items-center gap-2 px-3 py-1 bg-(--main-color)/5 border border-(--main-color)/10 rounded-full">
+                        <div className="w-1 h-1 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_8px_rgba(var(--main-color-rgb),0.5)]" />
+                        <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest">{filteredItems.length} RECORDED UNITS</span>
                     </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                        <select 
-                            value={vendorFilter}
-                            onChange={(e) => setVendorFilter(e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] uppercase font-black tracking-widest text-white/50 focus:outline-none hover:bg-white/10 transition-all cursor-pointer"
-                        >
-                            {vendors.map(v => <option key={v} value={v} className="bg-neutral-900 text-white">{v}</option>)}
-                        </select>
+
+                <div className="flex flex-wrap items-center justify-between gap-12">
+                    <div className="flex items-center gap-4 grow max-w-xl group">
+                        <Search size={14} className="text-white/10 group-focus-within:text-(--main-color) transition-all" />
+                        <input 
+                            type="text"
+                            placeholder="QUERY ARTIFACTS..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="bg-transparent border-b border-white/5 py-2 text-xs text-white focus:outline-none focus:border-(--main-color)/40 transition-all placeholder:text-white/5 uppercase tracking-tighter w-full"
+                        />
                     </div>
-                    <select 
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] uppercase font-black tracking-widest text-white/50 focus:outline-none hover:bg-white/10 transition-all cursor-pointer"
-                    >
-                        {statuses.map(s => <option key={s} value={s} className="bg-neutral-900 text-white">{s}</option>)}
-                    </select>
                     
-                    <div className="h-6 w-px bg-white/10 mx-2" />
-                    
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-(--main-color)/10 border border-(--main-color)/20 rounded-full shrink-0">
-                        <div className="w-1 h-1 rounded-full bg-(--main-color) animate-pulse" />
-                        <span className="text-[9px] font-black text-(--main-color) uppercase tracking-[0.2em]">{filteredItems.length} REC</span>
+                    <div className="flex items-center gap-8">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10">Filter / Vendor</span>
+                            <select 
+                                value={vendorFilter}
+                                onChange={(e) => setVendorFilter(e.target.value)}
+                                className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-(--main-color) transition-all cursor-pointer focus:ring-0"
+                            >
+                                {vendors.map(v => <option key={v} value={v} className="bg-neutral-900 text-white">{v.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10">Filter / Status</span>
+                            <select 
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-(--main-color) transition-all cursor-pointer focus:ring-0"
+                            >
+                                {statuses.map(s => <option key={s} value={s} className="bg-neutral-900 text-white">{s.toUpperCase()}</option>)}
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Table Area */}
-            <div className="flex-1 overflow-auto relative custom-scrollbar">
-                <table className="w-full border-collapse text-left min-w-[900px]">
-                    <thead className="sticky top-0 z-20 bg-black/40 backdrop-blur-xl border-b border-white/10 shadow-sm">
-                        <tr className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">
-                            <th className="px-6 py-4">Item ID</th>
-                            <th className="px-4 py-4">Status</th>
-                            <th className="px-4 py-4">Pay Req</th>
-                            <th className="px-4 py-4">Material</th>
-                            <th className="px-4 py-4">Description</th>
-                            <th className="px-4 py-4">Price MXN</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
+            {/* Frameless Table Area */}
+            <div className="overflow-x-auto custom-scrollbar pt-4">
+                <table className="w-full border-collapse text-left min-w-[1000px]">
+                    <thead>
+                        <tr className="text-[8px] font-black uppercase tracking-[0.3em] text-white/10 border-b border-white/3">
+                            <th className="px-4 py-4"><div className="flex items-center gap-2"><Hash size={10} /> UNIT ID</div></th>
+                            <th className="px-4 py-4">DEPLOYMENT STATUS</th>
+                            <th className="px-4 py-4">PAYMENT PROTOCOL</th>
+                            <th className="px-4 py-4">MORPHOLOGY</th>
+                            <th className="px-4 py-4">SPECIFICATION</th>
+                            <th className="px-4 py-4"><div className="flex items-center gap-2"><DollarSign size={10} /> VALUATION</div></th>
+                            <th className="px-4 py-4 text-right">OVERRIDE</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-white/2">
                         {filteredItems.map(item => {
                             const isEditing = editingId === item.id;
                             const isCurrentSaving = isSaving === item.id;
                             
                             return (
-                                <tr key={item.id} className={`group hover:bg-white/3 transition-colors ${isEditing ? 'bg-white/5' : ''}`}>
-                                    {/* Item ID */}
-                                    <td className="px-6 py-4">
+                                <tr key={item.id} className={`group transition-all duration-500 ${isEditing ? 'bg-white/2' : 'hover:bg-white/1'}`}>
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <input 
                                                 type="text"
                                                 value={editValues.item_id || ''}
                                                 onChange={(e) => handleFieldChange('item_id', e.target.value)}
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-(--main-color) font-mono"
+                                                className="bg-transparent border-b border-(--main-color)/40 py-1 text-[11px] w-full text-(--main-color) font-black focus:outline-none uppercase tracking-tighter"
                                             />
                                         ) : (
-                                            <span className="text-xs font-mono font-bold text-white/50 group-hover:text-white transition-colors uppercase">{item.item_id}</span>
+                                            <span className="text-[11px] font-black text-white/40 group-hover:text-white transition-all uppercase tracking-tight">{item.item_id}</span>
                                         )}
                                     </td>
 
-                                    {/* Status */}
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <select 
                                                 value={editValues.status || ''}
                                                 onChange={(e) => handleFieldChange('status', e.target.value)}
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-white/70"
+                                                className="bg-transparent border-none p-0 text-[10px] font-black uppercase tracking-tight text-white/60 focus:ring-0 cursor-pointer"
                                             >
-                                                {statuses.filter(s => s !== 'All').map(s => <option key={s} value={s} className="bg-neutral-900 text-white">{s}</option>)}
+                                                {statuses.filter(s => s !== 'All').map(s => <option key={s} value={s} className="bg-neutral-900 text-white">{s.toUpperCase()}</option>)}
                                             </select>
                                         ) : (
-                                            <div className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full w-fit border ${
-                                                item.status === 'Available' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                item.status === 'Requested' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                                'bg-green-500/10 text-green-400 border-green-500/20'
+                                            <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
+                                                item.status === 'Available' ? 'bg-blue-500/5 text-blue-500/50 border-blue-500/10' :
+                                                item.status === 'Requested' ? 'bg-yellow-500/5 text-yellow-500/50 border-yellow-500/10' :
+                                                'bg-green-500/5 text-green-500/50 border-green-500/10'
                                             }`}>
                                                 {item.status}
-                                            </div>
+                                            </span>
                                         )}
                                     </td>
 
-                                    {/* Pay Req */}
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <input 
                                                 type="text"
                                                 value={editValues.pay_req || ''}
                                                 onChange={(e) => handleFieldChange('pay_req', e.target.value)}
-                                                placeholder="None"
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-white/70 placeholder:text-white/10"
+                                                className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className={`text-[10px] font-mono ${item.pay_req ? 'text-yellow-400/70' : 'text-white/10'}`}>
-                                                {item.pay_req || '—'}
+                                            <span className={`text-[10px] font-mono leading-none ${item.pay_req ? 'text-yellow-500/40' : 'text-white/5'}`}>
+                                                {item.pay_req || 'NULL_SIGNAL'}
                                             </span>
                                         )}
                                     </td>
 
-                                    {/* Material */}
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <input 
                                                 type="text"
                                                 value={editValues.material || ''}
                                                 onChange={(e) => handleFieldChange('material', e.target.value)}
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-white/70"
+                                                className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-xs text-white/40">{item.material || '—'}</span>
+                                            <span className="text-[10px] font-black text-white/20 uppercase truncate max-w-[120px] block">{item.material || 'UNDEFINED'}</span>
                                         )}
                                     </td>
 
-                                    {/* Description */}
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <input 
                                                 type="text"
                                                 value={editValues.description || ''}
                                                 onChange={(e) => handleFieldChange('description', e.target.value)}
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-white/70"
+                                                className="bg-transparent border-b border-white/10 py-1 text-[10px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-xs text-white/30 truncate block max-w-xs">{item.description || item.short_description || 'No description'}</span>
+                                            <span className="text-[10px] text-white/10 font-bold uppercase truncate block max-w-xs group-hover:text-white/30 transition-all">{item.description || item.short_description || 'NO_METADATA_EXTRACTED'}</span>
                                         )}
                                     </td>
 
-                                    {/* Price */}
-                                    <td className="px-4 py-4">
+                                    <td className="px-4 py-5">
                                         {isEditing ? (
                                             <input 
                                                 type="number"
                                                 value={editValues.price_mxn || ''}
                                                 onChange={(e) => handleFieldChange('price_mxn', Number(e.target.value))}
-                                                className="bg-black/40 border border-white/20 rounded px-2 py-1 text-xs w-full text-white/70"
+                                                className="bg-transparent border-b border-white/10 py-1 text-[11px] w-full text-white/60 focus:outline-none focus:border-(--main-color)/40"
                                             />
                                         ) : (
-                                            <span className="text-xs font-mono text-white/40">${Number(item.price_mxn || 0).toLocaleString()}</span>
+                                            <span className="text-[11px] font-mono text-white/20 font-bold tracking-tighter group-hover:text-(--main-color)/50 transition-all">${Number(item.price_mxn || 0).toLocaleString()}</span>
                                         )}
                                     </td>
 
-                                    {/* Actions */}
-                                    <td className="px-6 py-4 text-right">
+                                    <td className="px-4 py-5 text-right">
                                         {isEditing ? (
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end gap-3 scale-90">
                                                 <button 
                                                     onClick={handleCancelEdit}
                                                     disabled={isCurrentSaving}
-                                                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-all disabled:opacity-50"
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
                                                 >
                                                     <X size={14} />
                                                 </button>
                                                 <button 
                                                     onClick={() => handleSave(item.id)}
                                                     disabled={isCurrentSaving}
-                                                    className="p-1.5 rounded-lg bg-(--main-color) text-black hover:bg-(--main-color)/80 shadow-lg shadow-(--main-color)/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[28px]"
+                                                    className="w-8 h-8 rounded-full bg-(--main-color) text-black flex items-center justify-center hover:scale-110 active:scale-90 transition-all shadow-[0_0_15px_rgba(var(--main-color-rgb),0.3)]"
                                                 >
-                                                    {isCurrentSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={14} />}
+                                                    {isCurrentSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                                 </button>
                                             </div>
                                         ) : (
                                             <button 
                                                 onClick={() => handleStartEdit(item)}
-                                                className="p-1.5 rounded-lg hover:bg-white/10 text-white/20 hover:text-(--main-color) transition-all opacity-0 group-hover:opacity-100"
+                                                className="w-8 h-8 rounded-full flex items-center justify-center text-white/0 group-hover:text-white/20 hover:text-(--main-color) hover:bg-white/5 transition-all"
                                             >
-                                                <Edit2 size={13} />
+                                                <Edit2 size={12} />
                                             </button>
                                         )}
                                     </td>
@@ -320,23 +313,23 @@ export function DataBaseArtifact() {
                 </table>
                 
                 {filteredItems.length === 0 && (
-                    <div className="flex flex-col items-center justify-center p-20 text-white/20 gap-4">
-                        <AlertCircle size={32} strokeWidth={1} />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">No database records found</p>
+                    <div className="flex flex-col items-center justify-center py-32 text-white/5 gap-4">
+                        <AlertCircle size={48} strokeWidth={1} />
+                        <p className="text-[11px] font-black uppercase tracking-[0.5em]">Nexus Result Set: Null</p>
                     </div>
                 )}
             </div>
             
-            {/* Footer */}
-            <div className="p-3 bg-white/5 border-t border-white/10 flex items-center justify-between text-[8px] text-white/20 font-black uppercase tracking-[0.2em]">
-                <div className="flex items-center gap-4 pl-3">
-                    <span>Vendor Prefix Filter: True</span>
-                    <div className="w-[3px] h-[3px] rounded-full bg-white/10" />
-                    <span>Cross-Table Join: {allItems.length} Units</span>
+            {/* Minimalist Sub-Footer */}
+            <div className="flex items-center justify-between text-[8px] text-white/5 font-black uppercase tracking-[0.3em] mt-8 pt-8 border-t border-white/2">
+                <div className="flex items-center gap-6">
+                    <span>Vendor Logic: Active</span>
+                    <div className="w-1 h-1 rounded-full bg-white/5" />
+                    <span>Join Index: {allItems.length} Units</span>
                 </div>
-                <div className="flex items-center gap-2 pr-3">
-                    <Shield size={10} className="text-(--main-color) opacity-50" />
-                    <span>Authorized Development Shell</span>
+                <div className="flex items-center gap-3">
+                    <Shield size={10} className="text-(--main-color) opacity-20" />
+                    <span>Terminal Override Shell v1.70.0</span>
                 </div>
             </div>
         </div>
