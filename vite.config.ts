@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: '/onyx.mx/',
+    assetsInclude: ['**/*.usdz', '**/*.glb'],
     server: {
       port: 1001,
       host: '0.0.0.0',

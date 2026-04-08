@@ -29,8 +29,9 @@ import React, { useEffect, useState } from 'react';
 import {
     Shield, Upload, Store, CreditCard, Truck, Package, MapPin,
     ChevronRight, ArrowLeft, Zap, Globe, LogOut, Settings, BarChart3, LayoutDashboard, Pipette, Search, Layers, ShoppingBag,
-    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign
+    Barcode, Box, Label, Shell, Album, Cuboid, Tag, BadgeDollarSign, Rotate3d
 } from 'lucide-react';
+
 
 import { MainHeader } from './MainHeader';
 import { Content } from '../../components/Content';
@@ -56,6 +57,8 @@ import { AboutModal } from '../../components/AboutModal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
+import { ThreeDAppView } from '../threed/ThreeDView';
+
 
 declare const __APP_VERSION__: string;
 
@@ -261,8 +264,10 @@ export function MainAppView() {
             case 'finance': return <FinanceView />;
             case 'store': return <StoreView />;
             case 'process': return <ProcessView />;
+            case 'threed': return <ThreeDAppView />;
             case 'viewer':
                 return <ViewerView onOpenArtifact={(id) => { setUniversalView('tag'); setTagId(id); }} />;
+
             default:
                 return <InventoryView />;
         }
@@ -340,6 +345,15 @@ export function MainAppView() {
                                     <span className="sidebar-list-item-text">Viewer</span>
                                 </div>
                                 <span className="sidebar-compact-tooltip">Viewer</span>
+                            </li>
+                        )}
+                        {user?.role === 'Developer' && (
+                            <li className={`sidebar-list-item ${activeView === 'threed' ? 'active' : ''}`} onClick={() => { setActiveView('threed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Rotate3d size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">3D and AR</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">3D and AR</span>
                             </li>
                         )}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (

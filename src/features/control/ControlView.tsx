@@ -31,7 +31,7 @@ export function ControlView() {
                             <h1 className="text-[16px] font-black uppercase tracking-[0.5em] text-white">Control</h1>
                             <div className="px-2 py-0.5 rounded bg-(--main-color) text-black text-[8px] font-black tracking-widest uppercase">System Core</div>
                         </div>
-                        <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Developer & Administrator Override Hub</p>
+                        <p className="text-[9px] font-black text-neutral-500 uppercase tracking-[0.3em]">Developer & Administrator Override Hub</p>
                     </div>
                 </div>
 
@@ -44,11 +44,11 @@ export function ControlView() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`relative group flex flex-col gap-1 transition-all duration-500 ${isActive ? 'opacity-100' : 'opacity-30 hover:opacity-60'}`}
+                                className={`relative group flex flex-col gap-1 transition-all duration-500 ${isActive ? '' : 'hover:scale-105'}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon size={14} className={isActive ? 'text-(--main-color)' : 'text-white'} />
-                                    <span className={`text-[10px] font-black uppercase tracking-[0.25em] ${isActive ? 'text-white' : 'text-white/70'}`}>
+                                    <Icon size={14} className={isActive ? 'text-(--main-color)' : 'text-neutral-500'} />
+                                    <span className={`text-[10px] font-black uppercase tracking-[0.25em] ${isActive ? 'text-white' : 'text-neutral-500'}`}>
                                         {tab.label}
                                     </span>
                                 </div>
