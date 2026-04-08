@@ -165,13 +165,13 @@ export function UserRegistryPanel() {
             {/* Minimal Header */}
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-6">
-                    <h2 className="text-[14px] font-black uppercase tracking-[0.4em] text-white/90 flex items-center gap-4">
+                    <h2 className="text-[14px] font-black uppercase tracking-[0.4em] text-white flex items-center gap-4">
                         Registry
-                        <span className="text-[10px] font-mono text-(--main-color) bg-(--main-color)/5 px-3 py-1 rounded-full border border-(--main-color)/20 tracking-normal leading-none">{users.length}</span>
+                        <span className="text-[10px] font-mono text-(--main-color) bg-neutral-900 px-3 py-1 rounded-full border border-(--main-color)/30 tracking-normal leading-none">{users.length}</span>
                     </h2>
                     <button 
                         onClick={() => fetchUsers()} 
-                        className={`p-2 rounded-full hover:bg-white/5 text-white/20 hover:text-(--main-color) transition-all ${loading ? 'animate-spin text-(--main-color)' : ''}`}
+                        className={`p-2 rounded-full hover:bg-white/10 text-neutral-500 hover:text-(--main-color) transition-all ${loading ? 'animate-spin text-(--main-color)' : ''}`}
                         title="SYNC REGISTRY"
                     >
                         <History size={14} className={loading ? 'animate-spin' : ''} />
@@ -182,10 +182,10 @@ export function UserRegistryPanel() {
                     onClick={() => setShowAddForm(!showAddForm)}
                     className="flex items-center gap-3 group"
                 >
-                    <div className="w-8 h-8 rounded-full border border-white/5 flex items-center justify-center group-hover:border-(--main-color)/40 group-hover:bg-(--main-color)/5 transition-all duration-500">
-                        <UserPlus size={14} className="text-white/30 group-hover:text-(--main-color) transition-all transform group-hover:rotate-12" />
+                    <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center group-hover:border-(--main-color)/40 group-hover:bg-(--main-color)/5 transition-all duration-500">
+                        <UserPlus size={14} className="text-neutral-500 group-hover:text-(--main-color) transition-all transform group-hover:rotate-12" />
                     </div>
-                    <span className="text-[9px] font-black tracking-[0.3em] text-white/20 group-hover:text-white transition-all uppercase">Enrollment</span>
+                    <span className="text-[9px] font-black tracking-[0.3em] text-neutral-500 group-hover:text-white transition-all uppercase">Enrollment</span>
                 </button>
             </div>
 
@@ -193,14 +193,14 @@ export function UserRegistryPanel() {
             {showAddForm && (
                 <form onSubmit={handleAdd} className="animate-in fade-in slide-in-from-top-4 duration-700 max-w-2xl">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="h-px grow bg-gradient-to-r from-(--main-color)/40 to-transparent" />
-                        <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-(--main-color)/60">Identity Provisioning</h3>
-                        <div className="h-px w-16 bg-(--main-color)/10" />
+                        <div className="h-px grow bg-gradient-to-r from-(--main-color) to-transparent" />
+                        <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-(--main-color)">Identity Provisioning</h3>
+                        <div className="h-px w-16 bg-(--main-color)/30" />
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-white/10">Protocol Address</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Protocol Address</label>
                             <input 
                                 type="email" required value={newEmail} 
                                 onChange={e => setNewEmail(e.target.value)} 
@@ -209,7 +209,7 @@ export function UserRegistryPanel() {
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-white/10">Access Tier</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Access Tier</label>
                             <select 
                                 value={newRole} 
                                 onChange={e => setNewRole(e.target.value as UserRole)} 
@@ -221,7 +221,7 @@ export function UserRegistryPanel() {
                             </select>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-white/10">Display handle</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Display handle</label>
                             <input 
                                 type="text" value={newName} 
                                 onChange={e => setNewName(e.target.value)} 
@@ -230,7 +230,7 @@ export function UserRegistryPanel() {
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-white/10">Internal observations</label>
+                            <label className="text-[8px] uppercase font-black tracking-[0.25em] text-neutral-500">Internal observations</label>
                             <input 
                                 type="text" value={newNotes} 
                                 onChange={e => setNewNotes(e.target.value)} 
@@ -240,7 +240,7 @@ export function UserRegistryPanel() {
                         </div>
                     </div>
                     <div className="flex gap-8 justify-end mt-12">
-                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.3em] text-white/10 hover:text-white transition-all uppercase">Abort</button>
+                        <button type="button" onClick={() => setShowAddForm(false)} className="text-[9px] font-black tracking-[0.3em] text-neutral-500 hover:text-white transition-all uppercase">Abort</button>
                         <button 
                             type="submit" disabled={submitting} 
                             className="bg-(--main-color) text-black px-10 py-2.5 rounded-full text-[10px] font-black tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(var(--main-color-rgb),0.2)] uppercase"
@@ -269,27 +269,27 @@ export function UserRegistryPanel() {
                         const isOnline = Date.now() - lastActive < 10 * 60 * 1000;
                         
                         return (
-                            <div key={user.id} className={`group relative flex flex-col gap-4 transition-all duration-700 ${!user.is_active ? 'opacity-10 grayscale blur-[1px]' : 'opacity-70 hover:opacity-100'}`}>
+                            <div key={user.id} className={`group relative flex flex-col gap-4 transition-all duration-700 ${!user.is_active ? 'opacity-20 grayscale' : ''}`}>
                                 {/* HUD Actions: Free Floating at Bottom */}
                                 <div className="mt-auto pt-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-2 group-hover:translate-y-0">
                                     <div className="flex gap-4">
                                         <button 
                                             onClick={() => { setEditingUserId(editingUserId === user.id ? null : user.id); setEditName(user.display_name || ''); }}
-                                            className="text-white/20 hover:text-(--main-color) transition-all"
+                                            className="text-neutral-500 hover:text-(--main-color) transition-all"
                                             title="Modify Designation"
                                         >
                                             <SquarePen size={14} />
                                         </button>
                                         <button 
                                             onClick={() => handleToggleActive(user)}
-                                            className={`transition-all ${user.is_active ? 'text-green-500/20 hover:text-red-500' : 'text-red-500/20 hover:text-green-500'}`}
+                                            className={`transition-all ${user.is_active ? 'text-green-500/50 hover:text-red-500' : 'text-red-500/50 hover:text-green-500'}`}
                                             title={user.is_active ? 'Decommission' : 'Restore'}
                                         >
                                             <Shield size={14} />
                                         </button>
                                         <button 
                                             onClick={() => sendInvite(user)}
-                                            className="text-white/20 hover:text-blue-400 transition-all"
+                                            className="text-neutral-500 hover:text-blue-400 transition-all"
                                             title="Dispatch Creds"
                                         >
                                             <Mail size={14} />
@@ -297,7 +297,7 @@ export function UserRegistryPanel() {
                                     </div>
                                     <button 
                                         onClick={() => handleDelete(user.id)}
-                                        className="text-red-500/10 hover:text-red-500 transition-all"
+                                        className="text-red-500/40 hover:text-red-500 transition-all"
                                         title="Purge"
                                     >
                                         <Trash2 size={14} />
@@ -331,18 +331,18 @@ export function UserRegistryPanel() {
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <h4 className="text-[12px] font-black text-white/90 truncate tracking-tight uppercase leading-none mb-1.5">
+                                                <h4 className="text-[12px] font-black text-white truncate tracking-tight uppercase leading-none mb-1.5">
                                                     {user.display_name || 'UNIDENTIFIED UNIT'}
                                                 </h4>
                                             )}
-                                            <p className="text-[9px] font-mono text-white/20 truncate tracking-widest uppercase">{user.email}</p>
+                                            <p className="text-[9px] font-mono text-neutral-500 truncate tracking-widest uppercase">{user.email}</p>
                                         </div>
                                     </div>
 
                                     {/* HUD Data Matrix */}
                                     <div className="space-y-4 pt-1">
                                         <div className="flex flex-col gap-1">
-                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10">Hierarchy Control</span>
+                                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Hierarchy Control</span>
                                             <select 
                                                 value={user.role} 
                                                 onChange={(e) => handleUpdateRole(user.id, e.target.value as UserRole)}
@@ -356,16 +356,16 @@ export function UserRegistryPanel() {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10">Last Sync</span>
-                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">
+                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Last Sync</span>
+                                                <span className="text-[9px] font-black text-neutral-500 uppercase tracking-tighter">
                                                     {user.last_submit_at ? new Date(user.last_submit_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'NONE'}
                                                 </span>
                                             </div>
                                             <div className="flex flex-col gap-1 items-end text-right">
-                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/10">Log History</span>
+                                                <span className="text-[7px] font-black uppercase tracking-[0.3em] text-neutral-600">Log History</span>
                                                 <div className="flex items-center gap-1.5 justify-end">
-                                                    <Activity size={10} className="text-white/10" />
-                                                    <span className="text-[9px] font-mono text-white/30 font-bold">{user.total_submits || 0}</span>
+                                                    <Activity size={10} className="text-neutral-600" />
+                                                    <span className="text-[9px] font-mono text-neutral-500 font-bold">{user.total_submits || 0}</span>
                                                 </div>
                                             </div>
                                         </div>

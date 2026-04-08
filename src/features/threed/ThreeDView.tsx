@@ -258,17 +258,20 @@ const createCanoeMesh = (itemData: InventoryItemData): THREE.Mesh => {
     
     const material = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
-        roughness: 0.05,
+        roughness: 0.15, // Polished Onyx
         metalness: 0.0,
-        transmission: 0.95,
-        thickness: 0.2,
-        ior: 1.5,
+        transmission: 0.75, // Translucent Onyx
+        thickness: 1.5, // Physical volume depth
+        ior: 1.50, // Index of Refraction for Onyx/Calcite
+        attenuationDistance: 0.5, // Density of light absorption
+        attenuationColor: new THREE.Color('#fff4d6'), // Honey warm absorption
         clearcoat: 1.0,
         clearcoatRoughness: 0.1,
         transparent: true,
         opacity: 1.0,
         side: THREE.DoubleSide,
         envMapIntensity: 1.2,
+        emissiveIntensity: 0.0, // Default off, boosted when map present
     });
     
     const finalMesh = new THREE.Mesh(geometry, material);
@@ -333,8 +336,8 @@ const DetailRow = ({ label, value }: { label: string, value: any }) => {
     if (!value) return null;
     return (
         <div>
-            <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">{label}</p>
-            <p className="text-sm text-[var(--text-color-primary)]">{value}</p>
+            <p className="text-xs font-bold uppercase text-(--text-color-secondary)">{label}</p>
+            <p className="text-sm text-(--text-color-primary)">{value}</p>
         </div>
     );
 };
@@ -345,7 +348,7 @@ const ItemDetailsDisplay = () => {
     if (!itemData) {
         return (
             <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-[var(--text-color-secondary)]">No item selected.</p>
+                <p className="text-sm text-(--text-color-secondary)">No item selected.</p>
             </div>
         );
     }
@@ -353,9 +356,9 @@ const ItemDetailsDisplay = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-[var(--border-color)]">
+            <div className="p-4 border-b border-(--border-color)">
                  <h2 className="font-bold text-lg">{itemData.shape || 'Item Details'}</h2>
-                 <p className="text-sm text-[var(--text-color-secondary)]">{itemData.material}</p>
+                 <p className="text-sm text-(--text-color-secondary)">{itemData.material}</p>
             </div>
             <div className="grow overflow-y-auto p-4 space-y-4">
                 <ItemImage imageUrl={itemData.generatedPngUrl || null} />
@@ -368,7 +371,7 @@ const ItemDetailsDisplay = () => {
                 <DetailRow label="Price" value={itemData.price ? `$${itemData.price} MXN` : null} />
                 <DetailRow label="Quantity" value={itemData.quantity} />
                 {itemData.color && <div className="flex items-center gap-2">
-                     <p className="text-xs font-bold uppercase text-[var(--text-color-secondary)]">Color</p>
+                     <p className="text-xs font-bold uppercase text-(--text-color-secondary)">Color</p>
                      <div className="w-10 h-5 rounded" style={{background: itemData.color}}></div>
                 </div>}
             </div>
@@ -480,14 +483,21 @@ export const ThreeDCanvas: React.FC<{ cameraYOffset?: number }> = ({ cameraYOffs
 
                     if (texture) {
                         currentMesh.material.color.set(0xffffff);
+                        // Transmission adjustment for textured items
                         if(itemData.shape?.toLowerCase().includes('canoe')) {
-                            currentMesh.material.transmission = 0.85; // slightly less transmission with texture
+                            currentMesh.material.transmission = 0.75; 
+                        }
+                        
+                        // Internal Glow logic (Emissive Map)
+                        // If we have a dedicated emissive URL, load it.
+                        // We check for a naming convention: albedoUrl + '_emissive' or similar.
+                        // For now, if itemData.usdzUrl exists, we assume there's a corresponding emissive.
+                        if (itemData.usdzUrl) {
+                            currentMesh.material.emissive.set('#ffaa55'); // Warm onyx glow
+                            currentMesh.material.emissiveIntensity = 0.5;
                         }
                     } else {
                         currentMesh.material.color.set(new THREE.Color(itemData.color || 0xffffff));
-                         if(itemData.shape?.toLowerCase().includes('canoe')) {
-                            currentMesh.material.transmission = 0.95; // full transmission for solid color
-                        }
                     }
                     currentMesh.material.needsUpdate = true;
                 }
@@ -602,6 +612,21 @@ export function ThreeDViewer() {
       <div className="w-full h-full relative">
         <ThreeDCanvas cameraYOffset={cameraYOffset} />
       </div>
+
+      {itemData?.usdzUrl && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+           <a 
+             rel="ar" 
+             href={itemData.usdzUrl}
+             className="button bg-indigo-600! hover:bg-indigo-500! p-4! px-8! flex items-center gap-3 shadow-2xl animate-pulse"
+           >
+             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+               <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
+             </svg>
+             <span className="font-bold uppercase tracking-widest">View in Room (AR)</span>
+           </a>
+        </div>
+      )}
     </div>
   );
 }
@@ -619,8 +644,23 @@ export function ThreeDWorkspace() {
     return (
         <div className="fixed inset-0 bg-black/80 z-40 backdrop-blur-sm">
             {/* 3D Canvas Area - takes full space */}
-            <div className="w-full h-full">
+            <div className="w-full h-full relative">
                 <ThreeDCanvas cameraYOffset={cameraYOffset} />
+                
+                {itemData?.usdzUrl && (
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+                        <a 
+                            rel="ar" 
+                            href={itemData.usdzUrl}
+                            className="button bg-indigo-600! hover:bg-indigo-500! p-4! px-8! flex items-center gap-3 shadow-2xl animate-pulse"
+                        >
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
+                            </svg>
+                            <span className="font-bold uppercase tracking-widest text-white">View in Room (AR)</span>
+                        </a>
+                    </div>
+                )}
             </div>
 
             {/* Inventory Panel - Absolute positioned overlay */}
@@ -659,7 +699,7 @@ export function ThreeDWorkspace() {
             <div className="absolute top-4 left-4 z-50">
                  <button
                     onClick={() => setIsInventoryOpen(!isInventoryOpen)}
-                    className="button !p-2.5 !min-h-0"
+                    className="button p-2.5! min-h-0!"
                     title={isInventoryOpen ? 'Hide Inventory' : 'Show Inventory'}
                 >
                     <svg className="w-5 h-5 transform -scale-x-100"><use href="#layout-sidebar-right"></use></svg>
@@ -670,19 +710,113 @@ export function ThreeDWorkspace() {
             <div className="absolute top-4 right-4 flex gap-2 z-50">
                  <button
                     onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-                    className="button !p-2.5 !min-h-0"
+                    className="button p-2.5! min-h-0!"
                     title={isDetailsOpen ? 'Hide Details' : 'Show Details'}
                 >
                     <svg className="w-5 h-5"><use href="#layout-sidebar-right"></use></svg>
                 </button>
                 <button
                     onClick={() => setIsOpen(false)}
-                    className="button !p-2.5 !min-h-0 !bg-red-500/50 hover:!bg-red-500"
+                    className="button p-2.5! min-h-0! bg-red-500/50! hover:bg-red-500!"
                     title="Close Showroom"
                 >
                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                    </svg>
+                </button>
+            </div>
+        </div>
+    );
+}
+
+export function ThreeDAppView() {
+    const [isInventoryOpen, setIsInventoryOpen] = useAtom(is3DWorkspaceInventoryOpenAtom);
+    const [isDetailsOpen, setIsDetailsOpen] = useAtom(is3DWorkspaceDetailsOpenAtom);
+    const [cameraYOffset, setCameraYOffset] = useState(0);
+    const itemData = useAtomValue(SelectedItemDataAtom);
+    
+    // Auto-open inventory if nothing is selected
+    useEffect(() => {
+         if (!itemData) setIsInventoryOpen(true);
+    }, [itemData, setIsInventoryOpen]);
+
+    const handleItemSelect = (item: InventoryItem, dataUrl: string) => {
+        setIsInventoryOpen(false);
+    };
+
+    return (
+        <div className="w-full h-full relative bg-black/50 overflow-hidden flex flex-col min-h-0">
+            {/* 3D Canvas Area - takes full space */}
+            <div className="w-full h-full relative grow min-h-0">
+                <ThreeDCanvas cameraYOffset={cameraYOffset} />
+                
+                {itemData?.usdzUrl && (
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+                        <a 
+                            rel="ar" 
+                            href={itemData.usdzUrl}
+                            className="button bg-indigo-600! hover:bg-indigo-500! p-4! px-8! flex items-center gap-3 shadow-2xl animate-pulse"
+                        >
+                            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.8L19.4 8 12 11.2 4.6 8 12 4.8zM4 15.2V9.3L11 12.8v5.9L4 15.2zm16 0L13 18.7v-5.9l7-3.5v5.9z"/>
+                            </svg>
+                            <span className="font-bold uppercase tracking-widest text-white">View in Room (AR)</span>
+                        </a>
+                    </div>
+                )}
+            </div>
+
+            {/* Inventory Panel - Absolute positioned overlay */}
+            <div className={`absolute top-0 left-0 h-full transition-transform duration-300 ease-in-out ${isInventoryOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="w-[280px] h-full">
+                    <MarketInventoryView onItemSelect={handleItemSelect} />
+                </div>
+            </div>
+
+            {/* Details Panel - Absolute positioned overlay */}
+            <div className={`absolute top-0 right-0 h-full transition-transform duration-300 ease-in-out ${isDetailsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="w-[420px] h-full glass-panel border-r-0!">
+                    <ItemDetailsDisplay />
+                </div>
+            </div>
+
+            {/* Top-Center Controls: Camera Height */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-panel p-2 px-4 w-full max-w-sm z-50">
+                <div className="flex items-center gap-3">
+                    <label htmlFor="app-height-slider" className="text-sm font-semibold whitespace-nowrap">Camera Height</label>
+                    <input 
+                        id="app-height-slider"
+                        type="range" 
+                        min="-2" 
+                        max="2" 
+                        step="0.1" 
+                        value={cameraYOffset} 
+                        onChange={(e) => setCameraYOffset(parseFloat(e.target.value))}
+                        className="w-full"
+                    />
+                    <span className="text-sm font-mono w-16 text-center">{cameraYOffset.toFixed(2)}</span>
+                </div>
+            </div>
+            
+            {/* Top-Left Controls: Inventory Toggle */}
+            <div className="absolute top-4 left-4 z-50">
+                 <button
+                    onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+                    className="button p-2.5! min-h-0!"
+                    title={isInventoryOpen ? 'Hide Inventory' : 'Show Inventory'}
+                >
+                    <svg className="w-5 h-5 transform -scale-x-100"><use href="#layout-sidebar-right"></use></svg>
+                </button>
+            </div>
+
+            {/* Top-Right Controls: Details Toggle */}
+            <div className="absolute top-4 right-4 flex gap-2 z-50">
+                 <button
+                    onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+                    className="button p-2.5! min-h-0!"
+                    title={isDetailsOpen ? 'Hide Details' : 'Show Details'}
+                >
+                    <svg className="w-5 h-5"><use href="#layout-sidebar-right"></use></svg>
                 </button>
             </div>
         </div>

@@ -106,6 +106,8 @@ export interface InventoryItemData {
   pay_req?: boolean | string;
   dispersal_status?: 'Requested' | 'Sent' | 'Dispersed';
   payment_ids?: string;
+  usdzUrl?: string;
+  glbUrl?: string;
 }
 
 export interface InventoryItem {

@@ -154,7 +154,7 @@ export function StoreView() {
     };
 
     const handleRemoveFromStore = async (item: any) => {
-        const tableName = item.table_name || 'inventory_v2';
+        const tableName = item.table_name || 'inventory';
         const { error } = await supabase.from(tableName).delete().eq('id', item.id);
         if (error) {
             toast.error(`Remove failed: ${error.message}`);
@@ -167,7 +167,7 @@ export function StoreView() {
     const handleAcquireItem = async (item: any) => {
         const tid = toast.loading("Updating status...");
         try {
-            const tableName = item.table_name || 'inventory_v2';
+            const tableName = item.table_name || 'inventory';
             const { error } = await supabase.from(tableName).update({ 
                 status: 'Acquired',
                 updated_at: new Date().toISOString()
@@ -185,7 +185,7 @@ export function StoreView() {
         const tid = toast.loading(`Processing ${bag.length} acquisitions...`);
         try {
             for (const item of bag) {
-                const tableName = item.table_name || 'inventory_v2';
+                const tableName = item.table_name || 'inventory';
                 const { error } = await supabase.from(tableName).update({ 
                     status: 'Acquired',
                     updated_at: new Date().toISOString()
@@ -203,7 +203,7 @@ export function StoreView() {
     const handleUpdateRating = async (item: any, rating: number) => {
         if (!item?.id) return;
         try {
-            const tableName = item.table_name || 'inventory_v2';
+            const tableName = item.table_name || 'inventory';
             const { error } = await supabase.from(tableName).update({ rating }).eq('id', item.id);
             if (error) throw error;
         } catch (err: any) {
@@ -258,12 +258,11 @@ export function StoreView() {
                 height_cm: parseFloat(editData.heightCm) || null,
                 length_cm: parseFloat(editData.lengthCm) || null,
                 media_urls: news,
-                vendor_id: editData.vendorId,
                 updated_at: new Date().toISOString()
             };
             
             setSavingProgress(90);
-            const tableName = selectedItem.table_name || 'inventory_v2';
+            const tableName = selectedItem.table_name || 'inventory';
             const { error } = await supabase.from(tableName).update(payload).eq('id', selectedItem.id);
             if (error) throw error; 
             
