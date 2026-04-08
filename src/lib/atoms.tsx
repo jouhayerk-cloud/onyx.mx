@@ -18,7 +18,7 @@ import {
   UploadedFile,
 } from './Types';
 
-export type UserRole = 'Developer' | 'Admin' | 'Client' | 'Vendor';
+export type UserRole = 'Developer' | 'Admin' | 'ClientBoss' | 'ClientAccounting' | 'ClientViewer' | 'Vendor';
 
 export type User = {
   id: string;

@@ -853,17 +853,17 @@ export function MainHeader() {
                 });
 
                 sortedItems.forEach((item: any, iIdx: number) => {
-                    const it = item.data;
-                    const qty = parseInt(it.quantity || '1', 10) || 1;
-                    const costMxn = parseFloat(it.price || it.acquisition_price_mxn || '0') || 0;
+                    const itemData = item.data;
+                    const qty = parseInt(itemData.quantity || '1', 10) || 1;
+                    const costMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
                     
                     const costUsd = costMxn / bookRate;
                     const totalMxn = costMxn * qty;
                     const landedMxn = costMxn * 1.4;
                     const retailUsd = costUsd * 12;
 
-                    const calculated = calculateCodesAndPrices(it, bookRate, '326');
-                    const payStatusClass = getStatusClass(it, partialPayIds, fullPayIds) || 'BLUE';
+                    const calculated = calculateCodesAndPrices(itemData, bookRate, '326');
+                    const payStatusClass = getStatusClass(itemData, partialPayIds, fullPayIds) || 'BLUE';
                     const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
                                          payStatusClass === 'YELLOW' ? 'FFFACC15' : 
                                          payStatusClass === 'RED' ? 'FFEF4444' : 
@@ -875,7 +875,7 @@ export function MainHeader() {
 
                     let formattedPayDate = 'N/A';
                     try {
-                        const pDateVal = paymentDateMap.get(String(it.id)) || it.pay_date || it.payDate;
+                        const pDateVal = paymentDateMap.get(String(itemData.id)) || itemData.pay_date || itemData.payDate;
                         if (pDateVal) {
                             const d = new Date(pDateVal);
                             if (!isNaN(d.getTime())) {
@@ -884,20 +884,20 @@ export function MainHeader() {
                         }
                     } catch (e) { console.error('Date error:', e); }
 
-                    const itemNum = it.itemNumber || it.item_number || iIdx + 1;
+                    const itemNum = itemData.itemNumber || itemData.item_number || iIdx + 1;
 
                     const row = vSheet.addRow({
                         item_number: itemNum,
                         pay_date: formattedPayDate,
-                        tag_id: calculated.bookBarcode || it.book_barcode || it.itemId || it.item_id || it.tag_id || item.label || '',
+                        tag_id: calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '',
                         aq_code: calculated.bookAqCode || '-',
                         ld_code: calculated.bookLandCode || '-',
-                        description: `${it.shape || ''} ${it.shortDescription || it.description || ''}`.trim(),
-                        color_material: `${it.color || ''} ${it.material || ''}`.trim(),
-                        sizes_metric: formatDimensionsMetricOnly(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
-                        sizes_imperial: formatDimensionsImperialOnly(it.widthCm || it.width_cm, it.heightCm || it.height_cm, it.lengthCm || it.length_cm),
-                        weight_metric: formatWeightMetricOnly(it.weightKg || it.weight_kg),
-                        weight_imperial: formatWeightImperialOnly(it.weightKg || it.weight_kg),
+                        description: `${itemData.shape || ''} ${itemData.shortDescription || itemData.description || ''}`.trim(),
+                        color_material: `${itemData.color || ''} ${itemData.material || ''}`.trim(),
+                        sizes_metric: formatDimensionsMetricOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
+                        sizes_imperial: formatDimensionsImperialOnly(itemData.widthCm || itemData.width_cm, itemData.heightCm || itemData.height_cm, itemData.lengthCm || itemData.length_cm),
+                        weight_metric: formatWeightMetricOnly(itemData.weightKg || itemData.weight_kg),
+                        weight_imperial: formatWeightImperialOnly(itemData.weightKg || itemData.weight_kg),
                         quantity: qty,
                         cost_mxn: costMxn,
                         total_mxn: totalMxn,
