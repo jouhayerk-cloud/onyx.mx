@@ -3,6 +3,7 @@ import { useAtomValue, useSetAtom } from 'jotai/react';
 import { uploadTabAtom, isUploadWizardOpenAtom } from '../../lib/atoms';
 import { UploadEntryForm } from './UploadEntryForm';
 import { UploadAIPanel } from './UploadAIPanel';
+import { Plus } from 'lucide-react';
 
 export function UploadView() {
     const tab = useAtomValue(uploadTabAtom);
@@ -19,32 +20,27 @@ export function UploadView() {
 
     return (
         <div className="flex flex-col h-full overflow-hidden custom-scrollbar">
-            <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-8 max-w-4xl mx-auto w-full">
+            <div className="flex-1 overflow-y-auto py-8 flex flex-col gap-10 w-full px-6 md:px-12">
 
                 {/* ── Add Entry Section ── */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-3 ml-2">
-                        <div className="w-8 h-8 rounded-lg bg-(--main-color)/20 flex items-center justify-center text-(--main-color)">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-                        </div>
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--text-color-secondary)">Guided Workflow</h2>
+                {!isFormDeployed && (
+                    <div className="flex flex-col gap-4 animate-in fade-in fill-mode-both duration-300">
+                        <button
+                            onClick={() => setIsWizardOpen(true)}
+                            className="group relative w-full overflow-hidden rounded-[32px] bg-(--main-color) border border-(--main-color) p-1 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-[0_20px_60px_rgba(var(--main-color-rgb),0.4)]"
+                        >
+                            <div className="flex items-center justify-between px-8 py-10 bg-linear-to-br from-white/20 to-transparent rounded-[28px]">
+                                <div className="text-left">
+                                    <h3 className="text-4xl font-black text-black uppercase tracking-tighter mb-1 transition-all group-hover:tracking-tighter origin-left">Add New +</h3>
+                                    <p className="text-[10px] text-black/60 font-black uppercase tracking-[0.4em]">Initialize Immersive Entry Workflow</p>
+                                </div>
+                                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md group-hover:bg-white/40 group-hover:scale-110 transition-all text-black">
+                                    <Plus size={32} strokeWidth={3} />
+                                </div>
+                            </div>
+                        </button>
                     </div>
-
-                    <button
-                        onClick={() => setIsWizardOpen(true)}
-                        className="group relative w-full overflow-hidden rounded-[24px] bg-(--glass-bg) border border-(--border-color) p-1 transition-all hover:border-(--main-color)/50 hover:bg-(--main-color)/5 active:scale-[0.98]"
-                    >
-                        <div className="flex items-center justify-between px-6 py-6 bg-linear-to-br from-(--glass-bg) to-transparent rounded-[20px]">
-                            <div className="text-left">
-                                <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter mb-1 group-hover:text-(--main-color) transition-colors">NEW ITEM</h3>
-                                <p className="text-[9px] text-(--text-color-secondary) font-bold uppercase tracking-[0.3em]">Step-by-step guided entry</p>
-                            </div>
-                            <div className="w-12 h-12 rounded-full bg-(--glass-bg) flex items-center justify-center border border-(--border-color) group-hover:bg-(--main-color) group-hover:text-black transition-all">
-                                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg>
-                            </div>
-                        </div>
-                    </button>
-                </div>
+                )}
 
                 <div className="h-px bg-(--border-color) w-full" />
 
