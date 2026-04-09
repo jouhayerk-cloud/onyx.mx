@@ -18,6 +18,8 @@ import {
     userAtom,
     inventoryViewModeAtom,
     filteredInventoryCountAtom,
+    filteredInventoryTotalQtyAtom,
+    filteredInventoryTotalValueAtom,
     filteredInventoryIdsAtom,
     activeVendorsAtom,
     inventoryVendorFilterAtom,
@@ -654,6 +656,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                  {norm.shape || 'OBJECT'} 
                                  <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-[0.25em] ml-2">{norm.shortDescription}</span>
                              </h3>
+                             <div className="text-[10px] text-(--text-color)/40 uppercase tracking-widest font-black mt-1">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col items-end ml-4 shrink-0">
                             <span className="text-[9px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">TOTAL MXN</span>
@@ -800,7 +803,11 @@ export const UnifiedInventoryView = () => {
     const [vendorFilter, setVendorFilter] = useAtom(inventoryVendorFilterAtom); const [categoryFilter, setCategoryFilter] = useAtom(inventoryCategoryFilterAtom);
     const [isCategoryOpen, setIsCategoryOpen] = useAtom(isInventoryCategoryFilterOpenAtom); const [materialFilter, setMaterialFilter] = useAtom(inventoryMaterialFilterAtom);
     const [isMaterialOpen, setIsMaterialOpen] = useAtom(isInventoryMaterialFilterOpenAtom); const [isSortMenuOpen, setIsSortMenuOpen] = useAtom(isInventorySortMenuOpenAtom);
-    const user = useAtomValue(userAtom); const setFilteredCount = useSetAtom(filteredInventoryCountAtom); const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
+    const user = useAtomValue(userAtom); 
+    const setFilteredCount = useSetAtom(filteredInventoryCountAtom); 
+    const setFilteredTotalQty = useSetAtom(filteredInventoryTotalQtyAtom);
+    const setFilteredTotalValue = useSetAtom(filteredInventoryTotalValueAtom);
+    const setFilteredIds = useSetAtom(filteredInventoryIdsAtom);
     const [editData, setEditData] = useState<any>(null); const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
     const [savingProgress, setSavingProgress] = useState(0);
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
@@ -1023,15 +1030,17 @@ export const UnifiedInventoryView = () => {
         return Array.from(normalized.values()).sort();
     }, [items]);
     
+    const totalCount = useMemo(() => filteredItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [filteredItems]);
+    const totalValueMXN = useMemo(() => filteredItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [filteredItems]);
+
     useEffect(() => {
         setGlobalActiveVendors(activeVendors);
         setFilteredCount(filteredItems.length);
+        setFilteredTotalQty(totalCount);
+        setFilteredTotalValue(totalValueMXN);
         setFilteredIds(filteredItems.map(i => i.row ?? i.data?.id ?? i.data?.itemId ?? '').filter(Boolean));
         setIsLoading(items.length === 0);
-    }, [activeVendors, filteredItems, items.length]);
-
-    const totalCount = useMemo(() => filteredItems.reduce((acc, i) => acc + (parseInt(i.data.quantity) || 1), 0), [filteredItems]);
-    const totalValueMXN = useMemo(() => filteredItems.reduce((acc, i) => acc + ((parseInt(i.data.price) || 0) * (parseInt(i.data.quantity) || 1)), 0), [filteredItems]);
+    }, [activeVendors, filteredItems, items.length, totalCount, totalValueMXN]);
 
     // Ken Burns Logic
     const bgMediaUrls = useMemo(() => items.flatMap(i => (i.data as any)._allMedia || []).filter(u => !isVideoFile(u)).map(u => getCleanImageUrl(u)).slice(0, 20), [items]);
@@ -1068,12 +1077,6 @@ export const UnifiedInventoryView = () => {
                             <div className={`w-3 h-3 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
                             <span className="text-[10px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter}</span>
                         </button>
-                        <div className="w-px h-8 bg-white/10 mx-1" />
-                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Types</div><div className="text-xl font-bold text-white leading-none">{filteredItems.length.toLocaleString()}</div></div>
-                        <div className="w-px h-6 bg-white/5" />
-                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Count</div><div className="text-xl font-bold text-[#6BCEBB] leading-none">{totalCount.toLocaleString()}</div></div>
-                        <div className="w-px h-6 bg-white/5" />
-                        <div className="flex flex-col"><div className={lbl + " mb-0"}>Total {showFinancials ? 'MXN' : ''}</div><div className="text-xl font-bold text-(--main-color) leading-none">{showFinancials ? `$${totalValueMXN.toLocaleString()}` : '***'}</div></div>
                     </div>
 
                     {/* Center: Sort By pills (always visible) */}
