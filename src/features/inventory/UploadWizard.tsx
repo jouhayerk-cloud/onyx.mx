@@ -160,6 +160,7 @@ export const UploadWizard: React.FC = () => {
         if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Item Number'); return false; }
         setSaving(true);
         setSavingProgress(10);
+        const tid = toast.loading('Syncing Artifact...');
         
         try {
             if (isDummyMode) {
@@ -167,7 +168,7 @@ export const UploadWizard: React.FC = () => {
                     await new Promise(r => setTimeout(r, 300));
                     setSavingProgress(i);
                 }
-                toast.success('✓ Item saved! (Demo Mode)', { icon: '🧪' });
+                toast.success('✓ Item saved! (Demo Mode)', { id: tid, icon: '🧪' });
                 return true;
             }
 
@@ -192,7 +193,7 @@ export const UploadWizard: React.FC = () => {
             const payload = {
                 id: crypto.randomUUID(),
                 item_id: finalItemId,
-                vendor_id: state.vendorId, // CRITICAL: Explicitly add vendor_id
+                vendor_id: state.vendorId,
                 item_number: state.itemNumber,
                 status: state.status,
                 quantity: parseInt(state.quantity) || 1,
@@ -217,11 +218,11 @@ export const UploadWizard: React.FC = () => {
             await supabase.from('inventory').insert(payload);
             if (db) await db.inventory.insert(payload);
             setSavingProgress(100);
-            toast.success('✓ Item saved!');
+            toast.success('Artifact Synced', { id: tid });
             return true;
         } catch (err: any) {
             console.error('Wizard save error:', err);
-            toast.error(err.message || 'Upload Failed');
+            toast.error(err.message || 'Upload Failed', { id: tid });
             return false;
         } finally {
             setTimeout(() => {
@@ -539,15 +540,11 @@ export const UploadWizard: React.FC = () => {
                                 <div className="flex flex-col gap-3">
                                     <button onClick={handleSaveNext} disabled={saving}
                                         className="w-full py-5 mt-2 bg-(--main-color) text-black rounded-[24px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4 shrink-0">
-                                        {saving ? (
-                                            <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
-                                        ) : (
-                                            <>SAVE & CONTINUE <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg></>
-                                        )}
+                                        {saving ? 'SYNCING ARTIFACT...' : (<>SAVE & CONTINUE <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg></>)}
                                     </button>
                                     <button onClick={handleSaveExit} disabled={saving}
                                         className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-(--text-color-secondary) hover:text-(--text-color) rounded-[24px] text-[11px] font-black tracking-[0.3em] transition-all uppercase disabled:opacity-50 shrink-0">
-                                        SAVE &amp; EXIT
+                                        {saving ? 'SAVING...' : 'SAVE & EXIT'}
                                     </button>
                                 </div>
                             </div>
@@ -555,9 +552,9 @@ export const UploadWizard: React.FC = () => {
                     )}
 
                 </div>
-                {/* Save Progress Overlay */}
+                {/* Save Progress Overlay - Aligned with Edit Form */}
                 {saving && (
-                    <div className="absolute inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300 rounded-[40px]">
+                    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
                         <div className="w-[320px] p-10 rounded-[40px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
                             <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
                             
@@ -577,7 +574,7 @@ export const UploadWizard: React.FC = () => {
                                 </div>
                                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
                                     <div 
-                                        className="h-full bg-(--main-color) transition-all duration-500 ease-out"
+                                        className="h-full bg-linear-to-r from-(--main-color)/50 to-(--main-color) transition-all duration-500 ease-out"
                                         style={{ width: `${savingProgress}%` }}
                                     />
                                 </div>
