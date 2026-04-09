@@ -1,4 +1,4 @@
-
+// Force HMR refresh for navigation modernization
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -61,6 +61,7 @@ import {
     isPaymentCategoryFilterOpenAtom,
     PaymentCategory,
     paymentFilterBarModeAtom,
+    processActiveTabAtom,
     TOP_BAR_SEARCH_ATOM
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
@@ -76,11 +77,14 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
 import {
-    Store, CreditCard, Truck, Upload, Shield, Search, RefreshCw,
-    LogOut, LayoutDashboard, LayoutGrid, List, Bookmark, Sun, Moon, Layers,
-    Camera, Play, Wallet, Landmark, X, Settings, Zap, Globe, DollarSign,
-    OctagonX, Octagon, CheckCircle, Tag, MapPin, LayoutList, Download, Filter,
-    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout, ShoppingBag
+    ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout, ShoppingBag,
+    CreditCard, Truck, Upload, Shield, Search, RefreshCw, LogOut, LayoutGrid, 
+    LayoutDashboard, List, Bookmark, Sun, Moon, Layers, Camera, Zap, Settings, 
+    Download, DownloadCloud, Filter, ArrowUpRight, Check, X, ChevronRight, 
+    ChevronLeft, Plus, Trash2, Grid, FileText, Database, Calendar, DollarSign, 
+    Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
+    Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
+    Target, Library, FolderKanban
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -125,6 +129,8 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'bank': Landmark,
     'wallet': Wallet,
     'truck': Truck,
+    'package': Package,
+    'map-pin': MapPin,
 };
 
 
@@ -475,6 +481,42 @@ const PackingBar: React.FC = () => {
                 accentColor="var(--main-color)"
                 placeholder="FIND INVENTORY..."
             />
+        </div>
+    );
+};
+
+const ProcessBar: React.FC = () => {
+    const [activeTab, setActiveTab] = useAtom(processActiveTabAtom);
+    
+    return (
+        <div className="flex items-center gap-6 px-4 animate-in fade-in duration-500">
+            <button 
+                onClick={() => setActiveTab('workspace')}
+                className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
+                    ${activeTab === 'workspace' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
+                title="Engine Workspace"
+            >
+                <Target size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                {activeTab === 'workspace' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
+            </button>
+            <button 
+                onClick={() => setActiveTab('vault')}
+                className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
+                    ${activeTab === 'vault' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
+                title="Inventory Vault"
+            >
+                <Library size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                {activeTab === 'vault' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
+            </button>
+            <button 
+                onClick={() => setActiveTab('batch')}
+                className={`flex items-center justify-center p-1 transition-all active:scale-90 group relative
+                    ${activeTab === 'batch' ? 'text-amber-400' : 'text-white/30 hover:text-white'}`}
+                title="Batch Telemetry"
+            >
+                <FolderKanban size={24} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                {activeTab === 'batch' && <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-amber-400 animate-pulse" />}
+            </button>
         </div>
     );
 };
@@ -971,6 +1013,7 @@ export function MainHeader() {
                         {activeView === 'logistics' && <LogisticsBar />}
                         {activeView === 'packing' && <PackingBar />}
                         {activeView === 'upload' && <UploadBar />}
+                        {activeView === 'process' && <ProcessBar />}
                         {activeView === 'control' && <ControlBar />}
                         {activeView === 'overview' && (
                             <div className="flex items-center gap-1 sm:gap-4">

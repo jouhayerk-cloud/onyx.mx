@@ -197,7 +197,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     if (filteredItems.length === 0) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />
             
             {showViewer && (
@@ -212,7 +212,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
             <div className="relative w-full max-w-7xl h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl flex flex-col overflow-hidden">
                 
                 {/* Modern Header */}
-                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/[0.02]">
+                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/2">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
                             <Package size={24} className="text-white/40" />
@@ -259,13 +259,13 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
                                         const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+                                        const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
 
                                         return (
                                             <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
                                                 className="flex items-center px-6 py-4 rounded-3xl bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
                                                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 mr-6 shrink-0">
-                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || mediaUrlsArr[0])} className="w-full h-full object-cover" />
+                                                    <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-cover" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="text-sm font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
@@ -295,13 +295,13 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
                                         const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+                                        const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
 
                                         return (
                                             <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
                                                 className="flex flex-col rounded-[32px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
                                                 <div className="aspect-square relative flex items-center justify-center bg-black/20 p-6">
-                                                    <img src={getCleanImageUrl(norm.generatedPngUrl || mediaUrlsArr[0])} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
+                                                    <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700" />
                                                     <div className="absolute top-4 left-4 z-10">
                                                         <div className="px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest backdrop-blur-md bg-black/60 border border-white/10" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</div>
                                                     </div>
@@ -332,7 +332,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const vendorPrefix = String(norm?.itemId || '').split('-')[0] || '';
                                         const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
                                         const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                                        const displayUrlsArr = [norm.generatedPngUrl || mediaUrlsArr[0], ...mediaUrlsArr.slice(norm.generatedPngUrl ? 0 : 1)].filter(Boolean).slice(0, 60);
+                                        const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
                                         const mediaCount = displayUrlsArr.length;
                                         const isLarge = mediaCount >= 1 && mediaCount < 10;
                                         const isFull = mediaCount >= 10;
@@ -437,7 +437,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                         </div>
                                                     );
                                                 })()}
-                                                <div className="p-8 flex flex-col gap-1 inline-flex w-full">
+                                                <div className="p-8 flex flex-col gap-1 w-full">
                                                     <div className="flex items-center justify-between">
                                                         <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                                         <span className="text-lg font-mono font-black text-white/40">${Math.ceil(norm.price || 0).toLocaleString()}</span>
@@ -471,7 +471,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] px-4">Traceability Audit</h4>
                             <div className="grid gap-3">
                                 {aggregateFinancials.uniquePayments.map((p, idx) => (
-                                    <div key={p.id || idx} className="flex items-center justify-between p-6 px-8 rounded-3xl bg-white/[0.01] border border-white/5 hover:border-white/10 transition-all">
+                                    <div key={p.id || idx} className="flex items-center justify-between p-6 px-8 rounded-3xl bg-white/1 border border-white/5 hover:border-white/10 transition-all">
                                         <div className="flex flex-col gap-1">
                                             <span className="text-xs font-bold text-white/80">{p.date ? new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending'}</span>
                                             <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">{p.voucher_id || 'System Ledger'}</span>
@@ -494,7 +494,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 </div>
 
                 {/* Footer Totals */}
-                <div className="px-10 py-8 bg-white/[0.01] border-t border-white/5 flex items-center justify-between shrink-0">
+                <div className="px-10 py-8 bg-white/1 border-t border-white/5 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-16">
                         <div className="flex flex-col">
                             <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Asset Inventory Value</span>

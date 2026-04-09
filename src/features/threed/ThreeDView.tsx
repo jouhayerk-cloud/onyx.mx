@@ -9,7 +9,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import { is3DViewerOpenAtom, is3DWorkspaceDetailsOpenAtom, is3DWorkspaceInventoryOpenAtom, is3DWorkspaceOpenAtom, SelectedItemDataAtom } from '../../lib/atoms';
+import { is3DViewerOpenAtom, is3DWorkspaceDetailsOpenAtom, is3DWorkspaceInventoryOpenAtom, is3DWorkspaceOpenAtom, SelectedItemDataAtom, SelectedItemRowAtom, inventoryAtom, exchangeRateAtom } from '../../lib/atoms';
 import { SCRIPT_URL } from '../../lib/consts';
 import { InventoryItem, InventoryItemData, Crate, CameraView } from '../../lib/Types';
 import { MarketInventoryView } from '../catalog/MarketInventoryView';
@@ -729,24 +729,114 @@ export function ThreeDWorkspace() {
     );
 }
 
+function ThreeDCatalogGrid({ onSelect }: { onSelect: (item: InventoryItem) => void }) {
+    const inventory = useAtomValue(inventoryAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
+    
+    const validItems = inventory.filter(item => {
+        const d = item.data;
+        const s = (d.status || '').toUpperCase();
+        const isStatusValid = s === 'AVAILABLE' || s === 'ACQUIRED';
+        const has3DData = d.usdzUrl || d.glbUrl || d.spatial_masks || d.spatialMasks || d.generatedPngUrl;
+        // Also allowing things with generatedPngUrl temporarily if we expand 3D to generic 2D->3D
+        return isStatusValid && has3DData;
+    });
+
+    return (
+        <div className="w-full h-full bg-black/50 overflow-y-auto p-8 relative">
+            <h1 className="text-2xl font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-4">3D & AR Artifact Catalog</h1>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {validItems.length === 0 ? (
+                    <div className="col-span-full flex items-center justify-center h-64 text-white/40 uppercase tracking-widest font-black text-sm">
+                        No 3D Models Configured
+                    </div>
+                ) : (
+                    validItems.map((item) => (
+                        <button 
+                            key={item.id || item.row}
+                            onClick={() => onSelect(item)}
+                            className="bg-white/5 border border-white/10 hover:border-(--main-color) hover:bg-white/10 rounded-xl p-4 flex flex-col items-center gap-4 transition-all duration-300 text-left"
+                        >
+                            <div className="w-full aspect-square bg-black/30 rounded-lg flex items-center justify-center p-4 relative overflow-hidden">
+                                {item.data.generatedPngUrl && (
+                                    <img src={item.data.generatedPngUrl} className="w-full h-full object-contain drop-shadow-2xl" alt={item.data.shape} />
+                                )}
+                                {(item.data.usdzUrl || item.data.glbUrl) && (
+                                    <div className="absolute top-2 right-2 bg-indigo-500/80 backdrop-blur text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full">
+                                        AR Ready
+                                    </div>
+                                )}
+                            </div>
+                            <div className="w-full flex justify-between items-start">
+                                <div>
+                                    <h3 className="font-bold text-sm tracking-wide">{item.data.shape}</h3>
+                                    <span className="font-mono text-xs text-white/50">{item.data.itemId}</span>
+                                </div>
+                                {item.data.price && (
+                                    <div className="font-mono text-green-400 font-bold text-sm">
+                                        ${(parseFloat(String(item.data.price)) / exchangeRate).toFixed(2)}
+                                    </div>
+                                )}
+                            </div>
+                        </button>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function ThreeDAppView() {
     const [isInventoryOpen, setIsInventoryOpen] = useAtom(is3DWorkspaceInventoryOpenAtom);
     const [isDetailsOpen, setIsDetailsOpen] = useAtom(is3DWorkspaceDetailsOpenAtom);
     const [cameraYOffset, setCameraYOffset] = useState(0);
     const itemData = useAtomValue(SelectedItemDataAtom);
     
+    const [activeTab, setActiveTab] = useState<'catalog' | 'showroom'>('catalog');
+    const setItemRow = useSetAtom(SelectedItemRowAtom);
+    const setItemData = useSetAtom(SelectedItemDataAtom);
+
     // Auto-open inventory if nothing is selected
     useEffect(() => {
-         if (!itemData) setIsInventoryOpen(true);
-    }, [itemData, setIsInventoryOpen]);
+         if (!itemData && activeTab === 'showroom') setIsInventoryOpen(true);
+    }, [itemData, setIsInventoryOpen, activeTab]);
 
-    const handleItemSelect = (item: InventoryItem, dataUrl: string) => {
+    const handleItemSelect = (item: InventoryItem, dataUrl?: string) => {
         setIsInventoryOpen(false);
+    };
+
+    const handleCatalogSelect = (item: InventoryItem) => {
+        setItemRow(item.row);
+        setItemData(item.data);
+        setActiveTab('showroom');
     };
 
     return (
         <div className="w-full h-full relative bg-black/50 overflow-hidden flex flex-col min-h-0">
-            {/* 3D Canvas Area - takes full space */}
+            {/* Header Tabs Navigation */}
+            <div className="w-full h-12 bg-black/40 border-b border-white/5 shrink-0 flex items-center px-4 gap-2 z-50">
+                <button 
+                    onClick={() => setActiveTab('catalog')}
+                    className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'catalog' ? 'bg-(--main-color) text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                >
+                    3D Catalog
+                </button>
+                <button 
+                    onClick={() => setActiveTab('showroom')}
+                    className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'showroom' ? 'bg-(--main-color) text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'}`}
+                >
+                    Showroom
+                </button>
+            </div>
+
+            {/* Active View Router */}
+            {activeTab === 'catalog' ? (
+                <div className="flex-1 min-h-0 relative">
+                    <ThreeDCatalogGrid onSelect={handleCatalogSelect} />
+                </div>
+            ) : (
+                <div className="flex-1 min-h-0 relative">
+                    {/* 3D Canvas Area - takes full space */}
             <div className="w-full h-full relative grow min-h-0">
                 <ThreeDCanvas cameraYOffset={cameraYOffset} />
                 
@@ -819,6 +909,8 @@ export function ThreeDAppView() {
                     <svg className="w-5 h-5"><use href="#layout-sidebar-right"></use></svg>
                 </button>
             </div>
+        </div>
+        )}
         </div>
     );
 }
