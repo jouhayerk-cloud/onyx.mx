@@ -3,6 +3,7 @@
 import { segmentationColors, SCRIPT_URL, vendors } from './consts';
 import type { BoundingBoxMaskType } from './Types';
 import type { UserRole } from './atoms';
+import heic2any from 'heic2any';
 
 export function resolveUserRole(email: string): UserRole {
   const adminEmails = ['martha@jouhayek.com'];
@@ -253,20 +254,57 @@ export function getSvgPathFromStroke(stroke: number[][]) {
 }
 
 export function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (!src) {
       reject(new Error('Image source is null or empty.'));
       return;
     }
+
+    let finalSrc = src;
+
+    // HEIC/HEIF Support
+    if (src.toLowerCase().includes('.heic') || src.toLowerCase().includes('.heif')) {
+      try {
+        console.log(`[Engine] HEIC Detected: Converting ${src.split('/').pop()} to compatible JPEG...`);
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const converted = await heic2any({
+          blob,
+          toType: 'image/jpeg',
+          quality: 0.8
+        });
+        const resultBlob = Array.isArray(converted) ? converted[0] : converted;
+        finalSrc = URL.createObjectURL(resultBlob);
+        console.log(`[Engine] Conversion Complete.`);
+      } catch (heicErr: any) {
+        console.error("HEIC conversion failed:", heicErr);
+      }
+    }
+
+    if (!finalSrc || (finalSrc.startsWith('data:image') && finalSrc.length < 128)) {
+      return reject(new Error("Invalid or truncated image data provided to engine."));
+    }
+
     const img = new Image();
     img.crossOrigin = 'Anonymous'; // Allow loading from other domains for canvas
-    img.onload = () => resolve(img);
-    img.onerror = (e) => {
-      const errorMsg = `Failed to load image resource.`;
-      console.error(errorMsg, e, src ? src.substring(0, 100) : 'null src'); // Log for debugging
-      reject(new Error(errorMsg)); // Reject with a proper Error object
+
+    // Safety Timeout: Prevent browser hang on malformed data URLs/Network issues
+    const timeoutId = setTimeout(() => {
+      img.src = '';
+      reject(new Error("Image load timed out (10s limit)"));
+    }, 10000);
+
+    img.onload = () => {
+      clearTimeout(timeoutId);
+      resolve(img);
     };
-    img.src = src;
+    img.onerror = (e) => {
+      clearTimeout(timeoutId);
+      const errorMsg = `Failed to load image resource.`;
+      console.error(errorMsg, e, finalSrc ? finalSrc.substring(0, 100) : 'null src');
+      reject(new Error(errorMsg));
+    };
+    img.src = finalSrc;
   });
 }
 

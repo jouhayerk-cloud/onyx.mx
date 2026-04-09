@@ -571,14 +571,14 @@ export function StoreView() {
 const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any, onClick: () => void, onToggleBag: () => void, inBag: boolean, delay: number }) => {
     const n = normalizeInventoryData(item.data);
     const rawUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-    const mainImg = n.generatedPngUrl || (rawUrls.length > 0 ? rawUrls[0] : '');
+    const mainImg = (rawUrls.length > 0 ? rawUrls[0] : '') || n.generatedPngUrl;
     const vPrefix = n.itemId?.split('-')[0];
     const vColor = vendors[vPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
 
     return (
-        <button 
+        <div 
             onClick={onClick}
-            className="aspect-card bg-black/40 border border-white/5 relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-2xl"
+            className="aspect-card bg-black/40 border border-white/5 relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-2xl cursor-pointer"
             style={{ animationDelay: `${delay * 30}ms` }}
         >
             <div className="absolute top-4 left-4 z-10">
@@ -627,7 +627,7 @@ const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any,
                     </button>
                 </div>
             </div>
-        </button>
+        </div>
     );
 };
 
@@ -637,7 +637,7 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
     const shortId = n.itemId ? `${vendorPrefix}-${String(n.itemNumber || 0).padStart(2, '0')}` : '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
     const rawUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-    const mainImg = n.generatedPngUrl || (rawUrls.length > 0 ? rawUrls[0] : '');
+    const mainImg = (rawUrls.length > 0 ? rawUrls[0] : '') || n.generatedPngUrl;
     
     // Quantity calculation
     const qty = Math.max(1, Number(n.quantity || n.currentStockLevel || 1));
@@ -737,8 +737,8 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
 
     const mediaList = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-        const main = n.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
-        return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
+        const main = (raw.length > 0 ? raw[0] : null) || n.generatedPngUrl;
+        return [main, ...raw.filter(u => u !== main && u !== n.generatedPngUrl), n.generatedPngUrl].filter(Boolean) as string[];
     }, [n.generatedPngUrl, n.mediaUrls]);
 
     const activeMediaUrl = mediaList[activeMediaIndex] || '';
@@ -1045,8 +1045,8 @@ const GalleryFullItem = ({ item, onOpenDetails, inBag, onToggleBag }: { item: an
     const n = normalizeInventoryData(item.data);
     const mediaUrls = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-        const main = n.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
-        return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
+        const main = (raw.length > 0 ? raw[0] : null) || n.generatedPngUrl;
+        return [main, ...raw.filter(u => u !== main && u !== n.generatedPngUrl), n.generatedPngUrl].filter(Boolean) as string[];
     }, [n.generatedPngUrl, n.mediaUrls]);
 
     const primaryMedia = mediaUrls[0] || '';

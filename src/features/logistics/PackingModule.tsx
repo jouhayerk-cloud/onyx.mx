@@ -133,7 +133,7 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
         const retailStr = String(c.bookRetail || '0').padStart(4, '0');
         return {
-            "TAG ID": c.bookBardcode || '',
+            "TAG ID": c.bookBarcode || '',
             "DESCRIPTION": `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim().toUpperCase() || 'ONYX PIECE',
             "MATERIAL COLOR": `${d.material || 'ONYX'} ${d.color || ''}`.trim().toUpperCase(),
             "SIZES": `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`,
@@ -141,7 +141,7 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
             "QUANTITY": d.quantity || 1,
             "LANDED CODE": c.bookLandCode,
             "ACQ CODE": c.bookAqCode,
-            "QR URL": `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBardcode}`
+            "QR URL": `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBarcode}`
         };
     });
 
@@ -211,7 +211,7 @@ export const PackingModule: React.FC = () => {
                         normData.itemId, normData.itemNumber, normData.color, normData.material,
                         normData.shape, normData.shortDescription, normData.description,
                         normData.widthCm, normData.heightCm, normData.lengthCm, normData.weightKg,
-                        codes.bookAqCode, codes.bookLandCode, codes.bookBardcode,
+                        codes.bookAqCode, codes.bookLandCode, codes.bookBarcode,
                         normData.status, normData.workbook,
                     ].map(v => String(v || '').toLowerCase());
                     const haystack = fields.join(' ');
@@ -220,7 +220,7 @@ export const PackingModule: React.FC = () => {
                 }
 
                 if (vendorFilter) {
-                    const vendorCode = String(codes.bookBardcode || '').substring(0, 2);
+                    const vendorCode = String(codes.bookBarcode || '').substring(0, 2);
                     if (vendorCode !== vendorFilter) return false;
                 }
 
@@ -236,7 +236,7 @@ export const PackingModule: React.FC = () => {
         const vendorSet = new Set<string>();
         inventory.forEach(item => {
             const codes = calculateCodesAndPrices(normalizeInventoryData(item.data), exchangeRate, workbookPrefix);
-            const code = String(codes.bookBardcode || '').substring(0, 2);
+            const code = String(codes.bookBarcode || '').substring(0, 2);
             if (code && (vendors as any)[code]) vendorSet.add(code);
         });
         return Array.from(vendorSet).sort();
@@ -303,8 +303,8 @@ export const PackingModule: React.FC = () => {
                 const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
                 const retailStr = String(c.bookRetail || '0').padStart(4, '0');
                 const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
-                const qrUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBardcode}`;
-                return [c.bookBardcode, desc, matColor, sizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
+                const qrUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBarcode}`;
+                return [c.bookBarcode, desc, matColor, sizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
             });
 
             await exportToXLSX(`Packing_List_${new Date().toISOString().split('T')[0]}`, [{
@@ -700,9 +700,9 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                 <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {/* Tag ID */}
                 <div className="absolute top-2 left-2 z-10">
-                    {item.codes.bookBardcode && (
+                    {item.codes.bookBarcode && (
                         <div className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black shadow-lg" style={{ backgroundColor: vendorColor }}>
-                            {item.codes.bookBardcode}
+                            {item.codes.bookBarcode}
                         </div>
                     )}
                 </div>
@@ -819,12 +819,12 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         <div className="flex items-center gap-2">
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
                                 style={{ backgroundColor: vendorColor }}>
-                                {item.codes.bookBardcode || 'N/A'}
+                                {item.codes.bookBarcode || 'N/A'}
                             </span>
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`);
+                                    navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBarcode}`);
                                     toast.success('Trace Link Copied');
                                 }}
                                 className="p-1 -m-1 text-white/20 hover:text-(--main-color) transition-all opacity-0 group-hover/tag:opacity-100"
@@ -904,13 +904,13 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="px-2 py-0.5 rounded-none text-black text-[9px] font-black uppercase tracking-widest shadow-sm border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                            {item.codes.bookBardcode}
+                                            {item.codes.bookBarcode}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-center p-1 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
                                     <Barcode 
-                                        value={item.codes.bookBardcode || 'N/A'} 
+                                        value={item.codes.bookBarcode || 'N/A'} 
                                         format="CODE39" 
                                         width={2.0} 
                                         height={60} 
@@ -924,7 +924,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                             {/* Free-Floating QR - Theme Colored */}
                             <div className="flex-none p-2 relative group/qr">
                                 <QRCodeSVG 
-                                    value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBardcode}`}
+                                    value={`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBarcode}`}
                                     size={140}
                                     level="H"
                                     includeMargin={false}
