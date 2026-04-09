@@ -2,12 +2,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom } from '../../lib/atoms';
+import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom, sidebarStateAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL, isVideoFile } from '../../lib/utils';
-import { CloudUpload, Check, Trash2, Video, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ArrowRight, Video, Plus, Database, Store, Hash, Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UploadedFile } from '../../lib/Types';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
@@ -61,9 +61,11 @@ const INITIAL_STATE: WizardState = {
 
 export const UploadWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isUploadWizardOpenAtom);
+    const sidebarState = useAtomValue(sidebarStateAtom);
     const user = useAtomValue(userAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
+    // ... [existing state] ...
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
@@ -75,6 +77,15 @@ export const UploadWizard: React.FC = () => {
     const isOpenRef = useRef(isOpen);
 
     const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
+
+    // Sidebar integration for the free-floating look
+    const leftOffset = useMemo(() => {
+        if (!isOpen) return '0';
+        if (window.innerWidth <= 768) return '0'; // Mobile always full
+        if (sidebarState === 'expanded') return '280px';
+        if (sidebarState === 'compact') return '80px';
+        return '0';
+    }, [sidebarState, isOpen]);
 
     useEffect(() => {
         if (isOpen && !isOpenRef.current) {
@@ -257,28 +268,28 @@ export const UploadWizard: React.FC = () => {
     if (!isOpen) return null;
 
     const renderProgress = () => (
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-1.5">
             {[1, 2, 3, 4, 5].map(s => (
-                <div key={s} className={`h-1 rounded-full transition-all duration-500 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-4 bg-white/10'}`} />
+                <div key={s} className={`h-1 rounded-full transition-all duration-700 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-3 bg-white/5'}`} />
             ))}
         </div>
     );
 
     const renderBackButton = (prevStep: number) => (
-        <button onClick={() => setStep(prevStep)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-8 flex items-center gap-3 group transition-all">
-            <span className="group-hover:-translate-x-1 transition-transform">←</span> BACK
+        <button onClick={() => setStep(prevStep)} className="text-[14px] md:text-[18px] font-black text-white/5 hover:text-(--main-color) uppercase tracking-[0.5em] mb-8 flex items-center gap-4 group transition-all duration-500">
+            <span className="group-hover:-translate-x-2 transition-transform duration-500">←</span> BACK
         </button>
     );
 
     const renderTagSelector = (field: keyof WizardState, fieldSuggestions: string[]) => {
         const query = (state[field] as string || '').toLowerCase();
-        const filtered = fieldSuggestions.filter(tag => tag.toLowerCase().includes(query)).slice(0, 12);
+        const filtered = fieldSuggestions.filter(tag => tag.toLowerCase().includes(query)).slice(0, 15);
         if (filtered.length === 0) return null;
         return (
-            <div className="flex flex-wrap gap-2 mt-3 animate-in fade-in duration-200">
+            <div className="flex flex-wrap gap-3 mt-6 animate-in fade-in duration-300">
                 {filtered.map(tag => (
                     <button key={tag} onClick={() => set(field, tag)}
-                        className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${state[field] === tag ? 'bg-(--main-color) text-black shadow-sm' : 'bg-(--glass-bg) text-(--text-color-secondary) hover:text-(--text-color) border border-(--border-color)'}`}>
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-[0.2em] transition-all border ${state[field] === tag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_5px_20px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/3 text-(--text-color-secondary) hover:text-(--text-color) border-white/5 hover:border-white/20'}`}>
                         {tag.toUpperCase()}
                     </button>
                 ))}
@@ -287,22 +298,24 @@ export const UploadWizard: React.FC = () => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={() => setIsOpen(false)}>
-            <div className="bg-(--c1) border border-(--border-color) rounded-[40px] w-full max-w-[640px] max-h-[90dvh] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200 flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex flex-col pointer-events-none overflow-hidden" style={{ left: leftOffset }}>
+            <div className="absolute inset-0 bg-[#050505]/40 backdrop-blur-[60px] pointer-events-auto" onClick={() => setIsOpen(false)} />
+            
+            <div className="relative flex-1 flex flex-col pointer-events-auto overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-700 ease-out app-content" onClick={e => e.stopPropagation()}>
 
-                {/* Header */}
-                <div className="px-8 pt-8 pb-4 flex justify-between items-start shrink-0">
-                    <div>
+                {/* Immensive Header */}
+                <div className="px-8 md:px-16 pt-10 pb-6 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-12">
                         {renderProgress()}
                         {!isAdmin && (
-                            <div className="flex items-center gap-2 mb-4 bg-(--glass-bg) px-3 py-1.5 rounded-full border border-(--border-color)">
-                                <span className="w-2 h-2 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                                <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-widest">USER MODE: UPLOAD WIZARD</span>
+                            <div className="flex items-center gap-3 bg-white/3 px-5 py-2 rounded-full border border-white/5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]" />
+                                <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">IMMERSIVE UPLOAD MODE</span>
                             </div>
                         )}
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="w-10 h-10 rounded-full bg-(--glass-bg) border border-(--border-color) flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) transition-all shrink-0">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <button onClick={() => setIsOpen(false)} className="w-16 h-16 rounded-full bg-white/3 border border-white/5 flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) hover:bg-white/10 transition-all group shrink-0">
+                        <X size={24} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
                     </button>
                 </div>
 
@@ -310,242 +323,255 @@ export const UploadWizard: React.FC = () => {
 
                     {/* Step 1: Entry Status */}
                     {step === 1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-4xl font-black text-(--text-color) mb-1 leading-tight tracking-tighter uppercase">ENTRY<br />STATUS</h2>
-                            <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-6 uppercase tracking-[0.3em] font-bold">Initial destination classification</p>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700 flex flex-col justify-center min-h-[40vh]">
+                            <div className="flex flex-1 flex-col justify-center bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
+                                <div className="flex items-center gap-4 mb-4 opacity-50">
+                                    <Database size={24} className="text-(--main-color)" />
+                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">CLASSIFY ARTIFACT</h2>
+                                </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
-                                    <button key={status} onClick={() => { set('status', status); setStep(2); }}
-                                        className="flex items-center justify-between p-7 rounded-[32px] bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color)/50 hover:bg-(--main-color)/10 transition-all group">
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-12 h-12 rounded-2xl border-2 border-(--border-color) flex items-center justify-center group-hover:scale-110 transition-transform bg-(--glass-bg)">
-                                                {status === 'Available' ? (
-                                                    <svg className="w-6 h-6 text-(--text-color-secondary) group-hover:text-(--main-color)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                                                ) : status === 'Production' ? (
-                                                    <svg className="w-6 h-6 text-(--text-color-secondary) group-hover:text-(--main-color)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91 a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
-                                                ) : (
-                                                    <svg className="w-6 h-6 text-(--text-color-secondary) group-hover:text-(--main-color)" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                                )}
-                                            </div>
-                                            <div className="text-left">
-                                                <span className="text-sm font-black text-(--text-color) uppercase tracking-widest block">{status}</span>
-                                                <span className="text-[9px] text-(--text-color-secondary) font-bold uppercase tracking-tight">
-                                                    {status === 'Available' ? 'Standard inventory listing' : status === 'Production' ? 'Custom manufacturing line' : 'Global bulk acquisition'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <svg className="w-4 h-4 text-(--main-color) opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                    </button>
-                                ))}
+                                <div className="flex flex-col gap-6">
+                                    {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
+                                        <button key={status} onClick={() => { set('status', status); setStep(2); }}
+                                            className="flex items-center gap-6 group text-left">
+                                            <span className="text-[24px] md:text-[40px] font-black text-(--text-color) group-hover:text-(--main-color) transition-all duration-500 uppercase leading-none tracking-tighter">
+                                                {status}
+                                            </span>
+                                            <div className="h-px flex-1 bg-white/5 group-hover:bg-(--main-color)/20 transition-all" />
+                                            <span className="text-[9px] font-black text-white/20 group-hover:text-white/40 uppercase tracking-[0.4em] transition-all">
+                                                {status === 'Available' ? 'Inventory' : status === 'Production' ? 'Mfg' : 'Bulk'}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
 
                     {/* Step 2: Vendor */}
                     {step === 2 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">VENDORS</h2>
-                            {renderBackButton(1)}
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
+                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
+                                <div className="flex items-center gap-4 mb-4 opacity-50">
+                                    <Store size={24} className="text-(--main-color)" />
+                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">VENDORS</h2>
+                                </div>
+                                {renderBackButton(1)}
 
-                            <div className="flex overflow-x-auto gap-1 py-6 px-1 custom-scrollbar no-scrollbar scroll-smooth">
-                                {Object.entries(vendors)
-                                    .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
-                                    .map(([id, cfg]) => (
-                                        <button key={id} onClick={() => { set('vendorId', id); setStep(3); }}
-                                            className="shrink-0 flex flex-col items-center gap-2 group">
-                                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xs shadow-lg border-2 border-black/5 group-hover:border-black/10 group-hover:scale-105 group-hover:-translate-y-1 transition-all duration-300 group-active:scale-95"
-                                                style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
-                                                {id}
-                                            </div>
-                                            <span className="text-[8px] font-black text-(--text-color-secondary) uppercase tracking-widest group-hover:text-(--text-color) transition-colors">{id}</span>
-                                        </button>
-                                    ))}
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 py-4">
+                                    {Object.entries(vendors)
+                                        .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
+                                        .map(([id, cfg]) => (
+                                            <button key={id} onClick={() => { set('vendorId', id); setStep(3); }}
+                                                className="group flex flex-col items-start gap-2 transition-all">
+                                                <div className="w-full aspect-square rounded-[20px] flex items-center justify-center font-black text-2xl shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:-translate-y-1 group-active:scale-95"
+                                                    style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
+                                                    {id}
+                                                </div>
+                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] group-hover:text-white group-hover:tracking-[0.5em] transition-all duration-500">{cfg.name || id}</span>
+                                            </button>
+                                        ))}
+                                </div>
                             </div>
-                            <p className="text-center text-[9px] text-(--text-color-secondary) opacity-70 font-bold uppercase tracking-[0.4em] mt-8">Scroll horizontally to browse vendors</p>
                         </div>
                     )}
 
                     {/* Step 3: Quantity & Media */}
                     {step === 3 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">QUANTITY</h2>
-                            {isAdmin && renderBackButton(2)}
-                            {!isAdmin && <p className="text-[11px] text-(--text-color-secondary) opacity-70 mb-8 uppercase tracking-[0.3em] font-bold">Step 1: Units and visual evidence</p>}
-
-                            <div className="flex flex-col gap-6">
-                                <div className="p-5 rounded-3xl border border-(--main-color)/20 bg-(--main-color)/5 shadow-inner">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[10px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em]">New Item Number</span>
-                                        <span className="text-xl font-mono font-black text-(--main-color)">{state.itemNumber}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black uppercase text-(--text-color-secondary) tracking-[0.2em]">Vendor Existing Units</span>
-                                        <span className="text-sm font-mono font-black text-(--text-color-secondary)">{state.existingCount}</span>
-                                    </div>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
+                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
+                                <div className="flex items-center gap-4 mb-4 opacity-50">
+                                    <Hash size={24} className="text-(--main-color)" />
+                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">UNITS</h2>
                                 </div>
+                                {isAdmin && renderBackButton(2)}
 
-                                <div className="space-y-4">
-                                    <label className="text-[10px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-[0.3em] block ml-1">UNITS TO ADD</label>
-                                    <input type="text" value={state.quantity} 
-                                        placeholder="1"
-                                        onChange={e => set('quantity', e.target.value.replace(/[^0-9]/g, ''))}
-                                        className="w-full h-14 px-8 text-3xl font-black bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) focus:border-(--main-color)/50 transition-all outline-none" />
-                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 py-4">
+                                    <div className="flex flex-col gap-8">
+                                        <div className="flex flex-col gap-3">
+                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">Artifact ID</label>
+                                            <span className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-none">{state.vendorId}-{state.itemNumber}</span>
+                                        </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-end ml-1">
-                                        <label className="text-[10px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-[0.3em]">MEDIA TYPE</label>
-                                        <div className="flex gap-2">
-                                            {(['Product', 'Lot'] as MediaType[]).map(t => (
-                                                <button key={t} onClick={() => set('mediaType', t)}
-                                                    className={`px-3 py-1 rounded-lg text-[9px] font-black tracking-widest transition-all ${state.mediaType === t ? 'bg-(--main-color) text-black shadow-md' : 'bg-(--glass-bg) text-(--text-color-secondary) border border-(--border-color) hover:text-(--text-color)'}`}>
-                                                    {t.toUpperCase()}
-                                                </button>
-                                            ))}
+                                        <div className="flex flex-col gap-3">
+                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">Units to Add</label>
+                                            <input 
+                                                autoFocus
+                                                type="text" 
+                                                value={state.quantity} 
+                                                placeholder="00"
+                                                onChange={e => set('quantity', e.target.value.replace(/[^0-9]/g, ''))}
+                                                className="bg-transparent border-none text-[60px] md:text-[80px] font-black text-(--main-color) outline-none placeholder:opacity-5 leading-none tracking-tighter w-full" 
+                                            />
                                         </div>
                                     </div>
-                                    <div className="relative group/media cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
-                                        <div className="w-full min-h-[160px] p-6 rounded-[32px] border-2 border-dashed border-white/10 bg-white/[0.02] flex flex-col items-center justify-center gap-4 hover:bg-white/[0.05] hover:border-(--main-color)/30 transition-all group">
-                                            <div className="flex flex-wrap justify-center gap-4 w-full">
+
+                                    <div className="flex flex-col gap-6">
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
+                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">Evidence Type</label>
+                                            <div className="flex gap-6">
+                                                {(['Product', 'Lot'] as MediaType[]).map(t => (
+                                                    <button key={t} onClick={() => set('mediaType', t)}
+                                                        className={`text-[11px] font-black tracking-[0.3em] transition-all uppercase ${state.mediaType === t ? 'text-(--main-color)' : 'text-white/20 hover:text-white/50'}`}>
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="relative cursor-pointer group/attach" onClick={() => fileInputRef.current?.click()}>
+                                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                <div className="aspect-square rounded-[24px] border-2 border-dashed border-(--main-color)/20 flex flex-col items-center justify-center gap-4 hover:border-(--main-color)/60 hover:bg-(--main-color)/5 transition-all bg-(--main-color)/2 relative overflow-hidden group-active/attach:scale-95 duration-500">
+                                                    <div className="absolute inset-0 bg-radial from-(--main-color)/5 to-transparent opacity-0 group-hover/attach:opacity-100 transition-opacity" />
+                                                    <div className="w-12 h-12 rounded-full bg-(--main-color)/10 flex items-center justify-center animate-pulse">
+                                                        <Upload size={24} className="text-(--main-color)" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">Attach Capture</span>
+                                                </div>
+
                                                 {state.mediaList.map((m, i) => (
-                                                    <div key={i} className="w-24 h-24 rounded-2xl overflow-hidden border border-white/20 relative group/thumb shadow-xl bg-black/40">
+                                                    <div key={i} className="aspect-square rounded-[24px] overflow-hidden relative group/thumb shadow-xl bg-black border border-white/10">
                                                         {m.type === 'video' ? (
-                                                            <div className="w-full h-full flex items-center justify-center bg-black/60"><Video size={20} className="text-white/40" /></div>
+                                                            <div className="w-full h-full flex items-center justify-center overflow-hidden"><Video size={24} className="text-white/20" /></div>
                                                         ) : (
-                                                            <img src={m.preview || ''} className="w-full h-full object-cover" />
+                                                            <img src={m.preview || ''} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                                                         )}
                                                         <button type="button" onClick={(e) => { e.stopPropagation(); removeMedia(i); }} 
-                                                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/80 text-white opacity-0 group-hover/thumb:opacity-100 transition-all flex items-center justify-center text-xs shadow-lg hover:bg-red-600">
+                                                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/80 text-white opacity-0 group-hover/thumb:opacity-100 transition-all flex items-center justify-center text-lg shadow-lg backdrop-blur-md">
                                                             &times;
                                                         </button>
+                                                        {i === 0 && (
+                                                            <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-black text-white/60 uppercase tracking-widest border border-white/10">Primary</div>
+                                                        )}
                                                     </div>
                                                 ))}
-                                                <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-(--main-color)/50 transition-all bg-white/[0.02]">
-                                                    <Plus size={20} className="text-white/20" />
-                                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em]">Add More</span>
-                                                </div>
                                             </div>
-                                            {state.mediaList.length === 0 && <span className="text-[9px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">Click to upload photos</span>}
+                                        </div>
+                                        
+                                        <div className="mt-8">
+                                            <button onClick={() => setStep(4)} className="w-full md:w-auto h-16 md:h-auto px-10 rounded-[20px] md:rounded-none bg-(--main-color)/5 md:bg-transparent text-[32px] md:text-[50px] font-black text-white/20 hover:text-(--main-color) transition-all uppercase tracking-tighter leading-none flex items-center justify-center md:justify-start gap-4 group">
+                                                PROCEED <ArrowRight size={32} className="group-hover:translate-x-3 transition-transform duration-500" />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-
-                                <button onClick={() => setStep(4)} className="w-full py-4 mt-2 bg-(--glass-bg) hover:bg-(--main-color) hover:text-black text-(--text-color) border border-(--border-color) hover:border-(--main-color) rounded-[24px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0 shrink-0">
-                                    CONTINUE →
-                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* Step 4: Attributes */}
                     {step === 4 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">DNA</h2>
-                            {renderBackButton(3)}
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
+                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
+                                <div className="flex items-center gap-4 mb-4 opacity-50">
+                                    <Dna size={24} className="text-(--main-color)" />
+                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">CORE DNA</h2>
+                                </div>
+                                {renderBackButton(3)}
 
-                            <div className="flex flex-col gap-6 overflow-y-auto max-h-[450px] pr-2 custom-scrollbar">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block ml-1">SHAPE</label>
-                                        <input value={state.shape} onChange={e => set('shape', e.target.value)}
-                                            className="w-full h-12 px-4 bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="e.g. Round" />
-                                        {renderTagSelector('shape', suggestions.shape || [])}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block ml-1">MATERIAL</label>
-                                        <input value={state.material} onChange={e => set('material', e.target.value)}
-                                            className="w-full h-12 px-4 bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="e.g. Amethyst" />
-                                        {renderTagSelector('material', suggestions.material || [])}
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 py-4">
+                                    {[
+                                        { label: 'Artifact Shape', key: 'shape', sugg: suggestions.shape },
+                                        { label: 'Artifact Material', key: 'material', sugg: suggestions.material },
+                                        { label: 'Artifact Color', key: 'color', sugg: suggestions.color },
+                                        { label: 'Artifact Type', key: 'type', sugg: suggestions.type },
+                                    ].map(field => (
+                                        <div key={field.key} className="flex flex-col gap-3">
+                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">{field.label}</label>
+                                            <input 
+                                                value={(state as any)[field.key]} 
+                                                onChange={e => set(field.key as any, e.target.value)}
+                                                placeholder="UNSPECIFIED"
+                                                className="bg-transparent border-none text-2xl md:text-5xl font-black text-white outline-none placeholder:opacity-5 uppercase tracking-tighter w-full leading-none" 
+                                            />
+                                            {renderTagSelector(field.key as any, field.sugg || [])}
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block ml-1">COLOR</label>
-                                        <input value={state.color} onChange={e => set('color', e.target.value)}
-                                            className="w-full h-12 px-4 bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="e.g. Purple" />
-                                        {renderTagSelector('color', suggestions.color || [])}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block ml-1">TYPE</label>
-                                        <input value={state.type} onChange={e => set('type', e.target.value)}
-                                            className="w-full h-12 px-4 bg-(--glass-bg) border border-(--border-color) rounded-2xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="e.g. Slice" />
-                                        {renderTagSelector('type', suggestions.type || [])}
-                                    </div>
+                                <div className="mt-8 pt-8 border-t border-white/5">
+                                    <button onClick={() => setStep(5)} className="text-[32px] md:text-[50px] font-black text-white/10 hover:text-(--main-color) transition-all uppercase tracking-tighter leading-none flex items-center gap-4 group">
+                                        METRICS <ArrowRight size={32} className="group-hover:translate-x-3 transition-transform duration-500" />
+                                    </button>
                                 </div>
-
-                                <button onClick={() => setStep(5)} className="w-full py-4 mt-2 bg-(--glass-bg) border border-(--border-color) hover:border-(--main-color) hover:bg-(--main-color) hover:text-black text-(--text-color) rounded-[24px] text-[12px] font-black tracking-[0.3em] transition-all uppercase shadow-xl hover:-translate-y-[2px] active:translate-y-0 shrink-0">
-                                    EXTENDED SPECS →
-                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* Step 5: Dimensions & Save */}
                     {step === 5 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                            <h2 className="text-5xl font-black text-(--text-color) mb-2 uppercase tracking-tighter">FINALIZE</h2>
-                            {renderBackButton(4)}
-
-                            <div className="flex flex-col gap-5 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
-                                <div className="grid grid-cols-4 gap-3">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block">KG</label>
-                                        <input type="number" value={state.weightKg} onChange={e => set('weightKg', e.target.value)}
-                                            className="w-full h-12 px-3 bg-(--glass-bg) border border-(--border-color) rounded-xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="0.0" />
-                                        {renderTagSelector('weightKg', suggestions.weightKg || [])}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block">W (CM)</label>
-                                        <input type="number" value={state.widthCm} onChange={e => set('widthCm', e.target.value)}
-                                            className="w-full h-12 px-3 bg-(--glass-bg) border border-(--border-color) rounded-xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="0" />
-                                        {renderTagSelector('widthCm', suggestions.widthCm || [])}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block">H (CM)</label>
-                                        <input type="number" value={state.heightCm} onChange={e => set('heightCm', e.target.value)}
-                                            className="w-full h-12 px-3 bg-(--glass-bg) border border-(--border-color) rounded-xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="0" />
-                                        {renderTagSelector('heightCm', suggestions.heightCm || [])}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block">D (CM)</label>
-                                        <input type="number" value={state.lengthCm} onChange={e => set('lengthCm', e.target.value)}
-                                            className="w-full h-12 px-3 bg-(--glass-bg) border border-(--border-color) rounded-xl text-(--text-color) text-xs outline-none focus:border-(--main-color)/50" placeholder="0" />
-                                        {renderTagSelector('lengthCm', suggestions.lengthCm || [])}
-                                    </div>
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
+                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
+                                <div className="flex items-center gap-4 mb-4 opacity-50">
+                                    <Ruler size={24} className="text-(--main-color)" />
+                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">METRICS</h2>
                                 </div>
+                                {renderBackButton(4)}
 
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-end ml-1">
-                                        <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block">UNIT PRICE (MXN)</label>
-                                        {state.price && exchangeRate && (
-                                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-widest">
-                                                ≈ {formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')} USD
-                                            </span>
-                                        )}
+                                <div className="flex flex-col gap-12 py-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                                        {[
+                                            { l: 'MASS (KG)', k: 'weightKg', s: suggestions.weightKg },
+                                            { l: 'WIDTH (CM)', k: 'widthCm', s: suggestions.widthCm },
+                                            { l: 'HEIGHT (CM)', k: 'heightCm', s: suggestions.heightCm },
+                                            { l: 'DEPTH (CM)', k: 'lengthCm', s: suggestions.lengthCm },
+                                        ].map(f => (
+                                            <div key={f.k} className="flex flex-col gap-3">
+                                                <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">{f.l}</label>
+                                                <input 
+                                                    type="number" 
+                                                    value={(state as any)[f.k]} 
+                                                    onChange={e => set(f.k as any, e.target.value)}
+                                                    placeholder="0.0"
+                                                    className="bg-transparent border-none text-2xl md:text-5xl font-black text-white outline-none placeholder:opacity-5 w-full leading-none" 
+                                                />
+                                                {renderTagSelector(f.k as any, f.s || [])}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <input type="number" value={state.price} onChange={e => set('price', e.target.value)}
-                                        className="w-full h-16 px-6 text-2xl font-mono font-black bg-(--glass-bg) border border-(--border-color) rounded-[28px] text-(--text-color) focus:border-(--main-color)/50 outline-none" placeholder="0.00" />
-                                    {renderTagSelector('price', suggestions.price || [])}
-                                </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-[9px] text-(--text-color-secondary) opacity-40 font-black uppercase tracking-widest block ml-1">FINAL NOTES</label>
-                                    <textarea value={state.notes} onChange={e => set('notes', e.target.value)}
-                                        className="w-full h-20 px-6 py-4 bg-(--glass-bg) border border-(--border-color) rounded-[24px] text-(--text-color) text-[11px] outline-none focus:border-(--main-color)/50 resize-none" placeholder="Special requirements, lot details..." />
-                                </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-16 py-8 border-y border-white/5">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex justify-between items-baseline">
+                                                <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">VALUATION (MXN)</label>
+                                                {state.price && exchangeRate && (
+                                                    <span className="text-[11px] font-black text-(--main-color) uppercase tracking-[0.2em] animate-pulse">
+                                                        ≈ {formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')} USD
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <input 
+                                                type="number" 
+                                                value={state.price} 
+                                                onChange={e => set('price', e.target.value)}
+                                                placeholder="0,000.00"
+                                                className="bg-transparent border-none text-[40px] md:text-[70px] font-black text-white outline-none placeholder:opacity-5 w-full tracking-tighter leading-none" 
+                                            />
+                                            {renderTagSelector('price', suggestions.price || [])}
+                                        </div>
 
-                                <div className="flex flex-col gap-3">
-                                    <button onClick={handleSaveNext} disabled={saving}
-                                        className="w-full py-5 mt-2 bg-(--main-color) text-black rounded-[24px] text-[14px] font-black tracking-[0.4em] transition-all uppercase hover:scale-[1.02] active:scale-[0.98] shadow-[0_20px_40px_rgba(0,0,0,0.4)] disabled:opacity-50 flex items-center justify-center gap-4 shrink-0">
-                                        {saving ? 'SYNCING ARTIFACT...' : (<>SAVE & CONTINUE <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z" /></svg></>)}
-                                    </button>
-                                    <button onClick={handleSaveExit} disabled={saving}
-                                        className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-(--text-color-secondary) hover:text-(--text-color) rounded-[24px] text-[11px] font-black tracking-[0.3em] transition-all uppercase disabled:opacity-50 shrink-0">
-                                        {saving ? 'SAVING...' : 'SAVE & EXIT'}
-                                    </button>
+                                        <div className="flex flex-col gap-4">
+                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">ARTIFACT REGISTRY NOTES</label>
+                                            <textarea 
+                                                value={state.notes} 
+                                                onChange={e => set('notes', e.target.value)}
+                                                placeholder="ADDITIONAL TECHNICAL SPECIFICATIONS OR LOGISTICS DATA..."
+                                                className="bg-transparent border-none text-lg md:text-xl font-bold text-white/40 outline-none placeholder:opacity-5 uppercase w-full resize-none h-24 scrollbar-hide" 
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col md:flex-row gap-12 pt-4 items-baseline">
+                                        <button onClick={handleSaveNext} disabled={saving}
+                                            className="text-[32px] md:text-[55px] font-black text-(--main-color) hover:text-white transition-all uppercase tracking-tighter leading-none disabled:opacity-30">
+                                            {saving ? 'SYNCING...' : 'SYNC ARTIFACT'}
+                                        </button>
+                                        <button onClick={handleSaveExit} disabled={saving}
+                                            className="text-[14px] md:text-[18px] font-black text-white/10 hover:text-red-500 transition-all uppercase tracking-[0.5em] disabled:opacity-30">
+                                            {saving ? '...' : 'SAVE & EXIT'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
