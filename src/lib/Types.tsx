@@ -93,7 +93,7 @@ export interface InventoryItemData {
   sentDate?: string;
   bookLanded?: string;
   bookRetail?: string;
-  bookBardcode?: string;
+  bookBarcode?: string;
   bookAqCode?: string;
   box_land_code?: string;
   crate_id?: string;

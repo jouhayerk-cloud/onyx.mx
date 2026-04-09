@@ -2019,7 +2019,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                                                     const vId = invItem?.data.vendor_id || invItem?.data.vendorId || logCrate?.vendor_id || r.vendor_id || 'UNKNOWN';
                                                                     const vColor = vendors[vId as keyof typeof vendors]?.color || '#888';
                                                                     
-                                                                    const baseTag = codes?.bookBardcode || id;
+                                                                    const baseTag = codes?.bookBarcode || id;
                                                                     const tagId = groupCount > 1 ? `${baseTag.slice(0, 10)}... +${groupCount - 1}` : baseTag;
                                                                     const shape = norm?.shape || (logCrate?.type === 'pallet' ? 'Pallet' : 'Crate');
                                                                     const material = norm?.material || '';
