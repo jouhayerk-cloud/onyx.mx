@@ -30,6 +30,8 @@ import {
     InventoryVersionAtom,
     inventoryViewModeAtom,
     filteredInventoryCountAtom,
+    filteredInventoryTotalQtyAtom,
+    filteredInventoryTotalValueAtom,
     filteredInventoryIdsAtom,
     inventoryArtifactConfigAtom,
     financeDataAtom,
@@ -257,10 +259,41 @@ const ShippingStats: React.FC = () => {
 };
 
 
+const InventoryStats: React.FC = () => {
+    const typesCount = useAtomValue(filteredInventoryCountAtom);
+    const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
+    const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
+    const showFinancials = useAtomValue(showFinancialsAtom);
+
+    const lbl = "text-[9px] font-black uppercase tracking-[0.2em] opacity-30 leading-none mb-1";
+    const val = "text-[15px] font-black leading-none tracking-tighter";
+
+    return (
+        <div className="flex items-center gap-5 px-5 border-l border-white/5 animate-in fade-in slide-in-from-right-4 duration-500 shrink-0">
+            <div className="flex flex-col">
+                <span className={lbl}>Types</span>
+                <span className={`${val} text-white/80`}>{typesCount.toLocaleString()}</span>
+            </div>
+            <div className="w-px h-6 bg-white/5" />
+            <div className="flex flex-col">
+                <span className={lbl}>Count</span>
+                <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
+            </div>
+            <div className="w-px h-6 bg-white/5" />
+            <div className="flex flex-col min-w-[80px]">
+                <span className={lbl}>Total {showFinancials ? 'MXN' : ''}</span>
+                <span className={`${val} text-(--main-color)`}>
+                    {showFinancials ? `$${totalValue.toLocaleString()}` : '***'}
+                </span>
+            </div>
+        </div>
+    );
+};
+
+
 const InventoryBar: React.FC = () => {
     const [search, setSearch] = useAtom(inventorySearchTermAtom);
     const [isFiltersOpen, setIsFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom);
-    const [isSortOpen, setIsSortOpen] = useAtom(isInventorySortMenuOpenAtom);
     const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -269,8 +302,8 @@ const InventoryBar: React.FC = () => {
     const viewLabel = viewMode === 'list' ? 'LIST' : viewMode === 'grid' ? 'GRID' : 'GALLERY';
 
     return (
-        <>
-            <div className={`flex flex-1 items-center gap-1 min-w-0 overflow-x-auto no-scrollbar ${isSearchOpen ? '' : 'sm:gap-2'}`}>
+        <div className="flex items-center w-full gap-2 overflow-x-auto no-scrollbar">
+            <div className={`flex items-center gap-1 min-w-0 ${isSearchOpen ? '' : 'sm:gap-2'}`}>
                 <DeployableSearch 
                     value={search} 
                     onChange={setSearch} 
@@ -302,7 +335,15 @@ const InventoryBar: React.FC = () => {
                     </div>
                 )}
             </div>
-        </>
+            
+            {!isSearchOpen && (
+                <>
+                    <div className="flex-1 min-w-[20px]" />
+                    <InventoryStats />
+                    <div className="flex-1 min-w-[20px]" />
+                </>
+            )}
+        </div>
     );
 };
 
