@@ -191,67 +191,68 @@ const ViewerCard: React.FC<{
             </div>
 
             {/* Metadata */}
-            <div className="p-5 flex flex-col gap-4">
+            <div className="p-6 flex flex-col gap-5">
                 {/* Header row */}
                 <div className="flex justify-between items-start gap-3">
-                    <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 min-w-0 flex-1">
                         {/* Barcodes */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <div className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0"
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0"
                                 style={{ background: vendorColor + '22', border: `1px solid ${vendorColor}44`, color: vendorColor }}>
                                 {codes.bookBardcode || codes.bookBarcode || '—'}
                             </div>
-                            <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/8 text-[8px] font-black text-white/30 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
-                            <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/8 text-[8px] font-black text-white/30 uppercase tracking-widest">{codes.bookLandCode || '—'}</div>
+                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/30 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
+                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/30 uppercase tracking-widest">{codes.bookLandCode || '—'}</div>
                         </div>
                         {/* Name + shape */}
-                        <div className="flex items-baseline gap-2 mt-0.5">
-                            <h3 className="text-base font-black text-white uppercase tracking-tight leading-none group-hover:text-[#b8860b] transition-colors truncate">
+                        <div className="flex items-baseline gap-2 mt-1">
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none group-hover:text-[#b8860b] transition-colors truncate">
                                 {itemName}
                             </h3>
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] shrink-0">{typeLabel !== itemName ? typeLabel : ''}</span>
+                            <span className="text-xs font-black text-white/20 uppercase tracking-[0.2em] shrink-0">{typeLabel !== itemName ? typeLabel : ''}</span>
                         </div>
                     </div>
                     {/* QTY */}
                     <div className="shrink-0 flex flex-col items-end">
-                        <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">QTY</span>
-                        <span className="text-lg font-black text-white/60 leading-none">{norm.quantity || 1}</span>
+                        <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">QTY</span>
+                        <span className="text-2xl font-black text-white/60 leading-none">{norm.quantity || 1}</span>
                     </div>
                 </div>
 
                 {/* USD Retail Price */}
-                <div className="flex items-center justify-between py-3 border-t border-b border-white/5">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.25em]">USD Retail</span>
-                        <span className="text-xl font-black text-white font-mono">{retailUsd}</span>
+                <div className="flex items-center justify-between py-4 border-t border-b border-white/5">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">USD Retail</span>
+                        <span className="text-3xl font-black text-white font-mono">{retailUsd}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.25em]">Images</span>
-                        <span className="text-sm font-black text-white/40 font-mono">{item.images.length}</span>
+                    <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">Images</span>
+                        <span className="text-lg font-black text-white/40 font-mono">{item.images.length}</span>
                     </div>
                 </div>
 
                 {/* Specs */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span>
-                        <span className="text-[10px] font-mono font-bold text-white/50 leading-tight">
+                <div className="grid grid-cols-2 gap-5">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span>
+                        <span className="text-sm font-mono font-bold text-white/50 leading-tight">
                             {dimensionsCmStr ? `${dimensionsCmStr}cm` : '—'}
                         </span>
                         {dimensionsInchStr && (
-                            <span className="text-[9px] text-white/20">{dimensionsInchStr}</span>
+                            <span className="text-xs text-white/20">{dimensionsInchStr}</span>
                         )}
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
-                        <span className="text-[10px] font-mono font-bold text-white/50 leading-tight">{weightKg || '—'}</span>
-                        {weightLbs && <span className="text-[9px] text-white/20">{weightLbs}</span>}
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
+                        <span className="text-sm font-mono font-bold text-white/50 leading-tight">{weightKg || '—'}</span>
+                        {weightLbs && <span className="text-xs text-white/20">{weightLbs}</span>}
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function loadImgToDataUrl(url: string, size = 512): Promise<string | null> {
