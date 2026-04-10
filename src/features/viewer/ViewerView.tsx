@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAtom } from 'jotai';
 import { viewerSearchQueryAtom, exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
 import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
@@ -6,7 +7,8 @@ import { getCleanImageUrl } from '../../lib/utils';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import {
     Maximize2, Loader2, Search, Package, X,
-    ChevronLeft, ChevronRight, FileDown
+    ChevronLeft, ChevronRight, FileDown,
+    CloudUpload, Check as CheckIcon, FileText as FileTextIcon
 } from 'lucide-react';
 import gsap from 'gsap';
 
@@ -322,12 +324,15 @@ function drawHeaderCompact(doc: any, item: ResolvedArtifact, M: number, PW: numb
     doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
     return hY + 12;
 }
-async function exportCatalogPdf(results: ResolvedArtifact[]) {
+async function exportCatalogPdf(results: ResolvedArtifact[], onProgress?: (p: number, s: string) => void) {
+    onProgress?.(0, 'Initializing Engine...');
     if (!(window as any).jspdf) {
+        onProgress?.(2, 'Downloading dependencies...');
         await new Promise<void>((resolve, reject) => {
             const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = () => resolve(); s.onerror = () => reject(new Error('jsPDF load failed')); document.head.appendChild(s);
         });
     }
+    onProgress?.(5, 'Preparing Catalog...');
     const { jsPDF } = (window as any).jspdf; const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
@@ -347,11 +352,16 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
     };
     
     const HW = (PW - M * 2 - 4) / 2; const HG = 4;
+    const totalItems = results.length;
+    let processedCount = 0;
+
     for (let i = 0; i < simple.length; i += 2) {
         doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
         doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
         for (let slot = 0; slot < 2; slot++) {
             const item = simple[i + slot]; if (!item) break;
+            processedCount++;
+            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
             const norm = item.data; const codes = item.codes; const sx = M + slot * (HW + HG);
             doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(codes.bookBardcode || codes.bookBarcode || '—', sx + 2, M + 6);
             const shape = norm.shape || '';
@@ -373,8 +383,8 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
             doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
             
             doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-            const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7');
-            const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \xd7 ');
+            const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
+            const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
             if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
             if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
 
@@ -387,6 +397,8 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
     
     for (let i = 0; i < rich.length; i++) {
         const item = rich[i]; const imgs = item.images; const n = imgs.length;
+        processedCount++;
+        onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
         const CHUNK = 12; // 4 columns x 3 rows
         const totalPagesForItem = Math.ceil(n / CHUNK);
         
@@ -423,9 +435,10 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
             }
         }
     }
+    onProgress?.(95, 'Finalizing Catalogue...');
     doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
+    onProgress?.(100, 'Catalogue Downloaded');
 }
-
 
 // ── Main Viewer Module ────────────────────────────────────────────────────────
 export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = ({ onOpenArtifact }) => {
@@ -436,6 +449,8 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
     const [loading, setLoading] = useState(false);
     const [isInitial, setIsInitial] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [exportProgress, setExportProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
     const [viewerItem, setViewerItem] = useState<ResolvedArtifact | null>(null);
     const [viewerIdx, setViewerIdx] = useState(0);
 
@@ -452,8 +467,22 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
 
     const handleExportPdf = async () => {
         if (!results.length || exporting) return;
-        setExporting(true); try { await exportCatalogPdf(results); } catch (e) { console.error('PDF export failed:', e); } finally { setExporting(false); }
+        setExporting(true); 
+        setExportProgress(0);
+        setExportStatus('Starting Export...');
+        try { 
+            await exportCatalogPdf(results, (p, s) => {
+                setExportProgress(p);
+                setExportStatus(s);
+            }); 
+            // Briefly show 100% before closing
+            setTimeout(() => setExporting(false), 800);
+        } catch (e) { 
+            console.error('PDF export failed:', e); 
+            setExporting(false);
+        }
     };
+
 
     return (
         <div className="h-full flex flex-col bg-[#050505] text-white selection:bg-white/20 overflow-hidden relative font-sans">
@@ -473,7 +502,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                     <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-8 pb-32">
                         {results.length > 0 ? (
                             <>
-                                <div className="flex items-center justify-between mb-8"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{results.length} Artifact{results.length !== 1 ? 's' : ''}</span><button onClick={handleExportPdf} disabled={exporting} className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">{exporting ? <Loader2 size={20} className="animate-spin" /> : <FileDown size={20} />}{exporting ? 'Generating...' : 'Export PDF Catalog'}</button></div>
+                                <div className="flex items-center justify-between mb-8"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{results.length} Artifact{results.length !== 1 ? 's' : ''}</span><button onClick={handleExportPdf} className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all shadow-lg active:scale-95"><FileDown size={20} />Export PDF Catalog</button></div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max">
                                     {results.map((item, idx) => {
                                         const n = item.images.length;
@@ -485,6 +514,48 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                     </div>
                 </div>
             )}
+            
+            {exporting && createPortal(
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300 pointer-events-auto">
+                    <div className="w-[360px] p-10 rounded-[48px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#b8860b]/5 to-transparent opacity-50" />
+                        
+                        <div className="relative">
+                            <div className="w-20 h-20 rounded-3xl bg-[#b8860b]/10 flex items-center justify-center border border-[#b8860b]/20 animate-pulse">
+                                <CloudUpload size={40} className="text-[#b8860b]" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#050505] transition-all duration-500" style={{ transform: exportProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                <CheckIcon size={14} className="text-white font-bold" />
+                            </div>
+                        </div>
+
+                        <div className="w-full space-y-4 relative">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Exporting</span>
+                                <span className="text-sm font-mono font-black text-[#b8860b]">{exportProgress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-[#b8860b]/50 to-[#b8860b] transition-all duration-500 ease-out"
+                                    style={{ width: `${exportProgress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                                {exportStatus}
+                            </p>
+                            {exportProgress === 100 && (
+                                <p className="text-[9px] font-bold text-green-500/60 uppercase tracking-widest text-center">
+                                    Ready for download
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
             <style dangerouslySetInnerHTML={{ __html: `
                 :root { color-scheme: dark; }
                 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
