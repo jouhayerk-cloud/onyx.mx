@@ -307,15 +307,15 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
     doc.setFillColor(20, 20, 20);
     doc.rect(0, 0, 4, PAGE_H, 'F');
 
-    doc.setFontSize(52);
+    doc.setFontSize(48);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 15, 15);
-    doc.text('ONYX', M + 4, 90);
+    doc.text('Art of Decor', M + 4, 88);
 
-    doc.setFontSize(11);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(140, 140, 140);
-    doc.text('ARTIFACT CATALOG', M + 4, 102);
+    doc.setTextColor(130, 100, 15);
+    doc.text('Catalog', M + 4, 102);
 
     // Thin separator
     doc.setDrawColor(220, 220, 220);
@@ -324,7 +324,7 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
 
     doc.setFontSize(9);
     doc.setTextColor(160, 160, 160);
-    doc.text(`${results.length} Items  ·  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
+    doc.text(`${results.length} Items  \u00b7  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
 
     // ── Item Pages (1 item per page) ──────────────────────────────────────────
     for (let i = 0; i < results.length; i++) {
@@ -596,12 +596,12 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                                     <button
                                         onClick={handleExportPdf}
                                         disabled={exporting}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                     >
                                         {exporting ? (
-                                            <Loader2 size={12} className="animate-spin" />
+                                            <Loader2 size={20} className="animate-spin" />
                                         ) : (
-                                            <FileDown size={12} />
+                                            <FileDown size={20} />
                                         )}
                                         {exporting ? 'Generating...' : 'Export PDF Catalog'}
                                     </button>
