@@ -308,6 +308,9 @@
                 const weight = norm.weightKg ? `${norm.weightKg}kg` : '';
                 const weightImp = toImp(norm.weightKg, 'lbs');
                 const detailStr = [norm.color, norm.material].filter(Boolean).join(' · ');
+                const combinedName = (norm.shape && norm.shortDescription && norm.shape !== norm.shortDescription) 
+                    ? `${norm.shape} - ${norm.shortDescription}` 
+                    : (norm.shape || norm.shortDescription || 'Artifact');
 
                 return html`
                     <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
@@ -347,13 +350,18 @@
                                                 ${detailStr}
                                             </span>
                                         `}
-                                        <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/20 tracking-widest uppercase">
-                                            ${codes.bookAqCode}
-                                        </span>
+                                        <div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                                            <span class="text-[7px] font-black text-white/20 uppercase">AQ</span>
+                                            <span class="text-[9px] font-black text-white/30 tracking-widest uppercase">${codes.bookAqCode}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                                            <span class="text-[7px] font-black text-white/20 uppercase">LD</span>
+                                            <span class="text-[9px] font-black text-white/30 tracking-widest uppercase">${codes.bookLandCode}</span>
+                                        </div>
                                     </div>
 
                                     <h3 class="text-lg font-black text-white uppercase truncate group-hover:text-[#b8860b] transition-colors">
-                                        ${norm.shortDescription || norm.shape || 'Artifact'}
+                                        ${combinedName}
                                     </h3>
                                 </div>
                                 <div class="flex flex-col items-end shrink-0">
