@@ -200,6 +200,8 @@ const ImageGrid: React.FC<{ images: string[]; onOpenViewer: (idx: number) => voi
 // ── Viewer Card ───────────────────────────────────────────────────────────────
 const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) => void }> = ({ item, onOpenFull }) => {
     const norm = item.data; const codes = item.codes;
+    const vendorColor = (codes as any).vendorColor || '#b8860b';
+    const retailUsd = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
     const shape = norm.shape || '';
     const type = norm.shortDescription || '';
     const combinedName = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
