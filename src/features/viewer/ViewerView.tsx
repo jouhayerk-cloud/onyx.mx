@@ -253,10 +253,35 @@ const ViewerCard: React.FC<{
     );
 };
 
-// ── PDF Export ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+async function loadImgToDataUrl(url: string, size = 512): Promise<string | null> {
+    try {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const el = new Image();
+            el.crossOrigin = 'anonymous';
+            el.onload = () => resolve(el);
+            el.onerror = reject;
+            el.src = url;
+            setTimeout(() => reject(new Error('timeout')), 6000);
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#f8f8f8';
+        ctx.fillRect(0, 0, size, size);
+        const scale = Math.min(size / img.width, size / img.height);
+        const dw = img.width * scale;
+        const dh = img.height * scale;
+        ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+        return canvas.toDataURL('image/jpeg', 0.85);
+    } catch {
+        return null;
+    }
+}
+
+// ── PDF Export — White Catalog Layout ─────────────────────────────────────────
 async function exportCatalogPdf(results: ResolvedArtifact[]) {
-    // Load jsPDF from CDN dynamically
-    if (!window.jspdf) {
+    if (!(window as any).jspdf) {
         await new Promise<void>((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -267,145 +292,191 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
     }
 
     const { jsPDF } = (window as any).jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
     const PAGE_W = 210;
     const PAGE_H = 297;
-    const MARGIN = 14;
-    const COL_W = (PAGE_W - MARGIN * 3) / 2;
-    const CARD_H = 120;
-    const IMG_SIZE = 60;
+    const M = 14;  // margin
 
-    // Cover Page
-    doc.setFillColor(5, 5, 5);
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // ── Cover Page ────────────────────────────────────────────────────────────
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(28);
+
+    // Left accent bar
+    doc.setFillColor(20, 20, 20);
+    doc.rect(0, 0, 4, PAGE_H, 'F');
+
+    doc.setFontSize(52);
     doc.setFont('helvetica', 'bold');
-    doc.text('ONYX', MARGIN, 60);
-    doc.setFontSize(10);
+    doc.setTextColor(15, 15, 15);
+    doc.text('ONYX', M + 4, 90);
+
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150, 130, 70);
-    doc.text('ARTIFACT CATALOG', MARGIN, 72);
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(8);
-    doc.text(`${results.length} Items  ·  Generated ${new Date().toLocaleDateString()}`, MARGIN, 84);
+    doc.setTextColor(140, 140, 140);
+    doc.text('ARTIFACT CATALOG', M + 4, 102);
 
-    doc.addPage();
-    doc.setFillColor(5, 5, 5);
-    doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+    // Thin separator
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(M + 4, 110, PAGE_W - M, 110);
 
-    let x = MARGIN;
-    let y = MARGIN;
-    let col = 0;
+    doc.setFontSize(9);
+    doc.setTextColor(160, 160, 160);
+    doc.text(`${results.length} Items  ·  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
 
+    // ── Item Pages (1 item per page) ──────────────────────────────────────────
     for (let i = 0; i < results.length; i++) {
+        doc.addPage();
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+
         const item = results[i];
         const norm = item.data;
         const codes = item.codes;
 
-        if (y + CARD_H > PAGE_H - MARGIN) {
-            doc.addPage();
-            doc.setFillColor(5, 5, 5);
-            doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-            y = MARGIN;
-            col = 0;
-            x = MARGIN;
-        }
+        // Left accent bar (thin)
+        doc.setFillColor(20, 20, 20);
+        doc.rect(0, 0, 4, PAGE_H, 'F');
 
-        // Card background
-        doc.setFillColor(15, 12, 12);
-        doc.setDrawColor(40, 35, 20);
-        doc.roundedRect(x, y, COL_W, CARD_H, 3, 3, 'FD');
-
-        // Image
-        if (item.images.length > 0) {
-            try {
-                const imgUrl = getCleanImageUrl(item.images[0]);
-                const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-                    const el = new Image();
-                    el.crossOrigin = 'anonymous';
-                    el.onload = () => resolve(el);
-                    el.onerror = reject;
-                    el.src = imgUrl;
-                    setTimeout(() => reject(new Error('timeout')), 5000);
-                });
-                const canvas = document.createElement('canvas');
-                canvas.width = 256; canvas.height = 256;
-                const ctx = canvas.getContext('2d')!;
-                ctx.fillStyle = '#080808';
-                ctx.fillRect(0, 0, 256, 256);
-                const scale = Math.min(256 / img.width, 256 / img.height);
-                const dw = img.width * scale;
-                const dh = img.height * scale;
-                ctx.drawImage(img, (256 - dw) / 2, (256 - dh) / 2, dw, dh);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                doc.addImage(dataUrl, 'JPEG', x + 3, y + 3, IMG_SIZE, IMG_SIZE);
-            } catch {
-                // skip image if load fails
-            }
-        }
-
-        const tx = x + IMG_SIZE + 7;
-        const tw = COL_W - IMG_SIZE - 10;
-
-        // Barcode
+        // Page number footer
         doc.setFontSize(7);
-        doc.setTextColor(184, 134, 11);
-        doc.setFont('helvetica', 'bold');
-        doc.text(codes.bookBardcode || codes.bookBarcode || '—', tx, y + 9, { maxWidth: tw });
-
-        // Name
-        doc.setFontSize(9);
-        doc.setTextColor(240, 240, 240);
-        doc.text((norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase(), tx, y + 16, { maxWidth: tw });
-
-        // USD Retail
-        const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—';
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'bold');
-        doc.text(retail, tx, y + 27, { maxWidth: tw });
-
-        doc.setFontSize(7);
-        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'normal');
+        doc.setTextColor(200, 200, 200);
+        doc.text(`${i + 1} / ${results.length}`, PAGE_W - M, PAGE_H - 8, { align: 'right' });
+        doc.text('ONYX.MX', M + 4, PAGE_H - 8);
 
-        // Dimensions
-        const dims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
-        if (dims) doc.text(`${dims}cm`, tx, y + 35, { maxWidth: tw });
+        // ── Header ───────────────────────────────────────────────────────────
+        const hY = 18;
 
-        // Weight
-        if (norm.weightKg) doc.text(`${norm.weightKg}kg`, tx, y + 41, { maxWidth: tw });
-
-        // QTY
-        doc.text(`QTY: ${norm.quantity || 1}`, tx, y + 47, { maxWidth: tw });
+        // Barcode badge
+        const barcode = codes.bookBardcode || codes.bookBarcode || '—';
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(130, 100, 15);
+        doc.text(barcode, M + 4, hY);
 
         // AQ / LD codes
-        doc.setTextColor(80, 80, 80);
-        doc.text(`AQ: ${codes.bookAqCode || '—'}  LD: ${codes.bookLandCode || '—'}`, tx, y + 54, { maxWidth: tw });
-
-        // Image count
-        if (item.images.length > 1) {
-            doc.setTextColor(60, 90, 60);
-            doc.text(`${item.images.length} images`, tx, y + 60, { maxWidth: tw });
+        const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
+        if (aqld) {
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(180, 180, 180);
+            doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY);
         }
 
-        // Advance grid
-        col++;
-        if (col === 2) {
-            col = 0;
-            x = MARGIN;
-            y += CARD_H + 6;
+        // Item Name
+        const itemName = (norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase();
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 15, 15);
+        doc.text(itemName, M + 4, hY + 10, { maxWidth: PAGE_W - M * 2 - 10 });
+
+        // Separator
+        doc.setDrawColor(235, 235, 235);
+        doc.setLineWidth(0.3);
+        doc.line(M + 4, hY + 15, PAGE_W - M, hY + 15);
+
+        // ── Specs Row ─────────────────────────────────────────────────────────
+        const specY = hY + 22;
+        const specCols = [
+            { label: 'USD RETAIL', value: codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—', accent: true },
+            { label: 'QTY', value: String(norm.quantity || 1) },
+            { label: 'DIMENSIONS', value: [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '') || '—' },
+            { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg} kg` : '—' },
+        ];
+
+        const colW = (PAGE_W - M * 2 - 4) / specCols.length;
+        specCols.forEach((col, ci) => {
+            const cx = M + 4 + ci * colW;
+            doc.setFontSize(6.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(170, 170, 170);
+            doc.text(col.label, cx, specY);
+
+            doc.setFontSize(col.accent ? 13 : 10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30);
+            doc.text(col.value, cx, specY + 8);
+        });
+
+        // Separator
+        doc.setDrawColor(235, 235, 235);
+        doc.line(M + 4, specY + 13, PAGE_W - M, specY + 13);
+
+        // ── Image Grid ───────────────────────────────────────────────────────
+        const imgAreaY = specY + 17;
+        const imgAreaH = PAGE_H - imgAreaY - 18; // leave footer space
+        const imgAreaW = PAGE_W - M * 2 - 4;
+
+        const images = item.images;
+        const n = images.length;
+
+        if (n === 0) {
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(200, 200, 200);
+            doc.text('No images', M + 4 + imgAreaW / 2, imgAreaY + imgAreaH / 2, { align: 'center' });
         } else {
-            x = MARGIN * 2 + COL_W;
+            // Determine grid columns and rows
+            let cols: number, rows: number;
+            if (n === 1)       { cols = 1; rows = 1; }
+            else if (n <= 2)   { cols = 2; rows = 1; }
+            else if (n <= 4)   { cols = 2; rows = 2; }
+            else if (n <= 6)   { cols = 3; rows = 2; }
+            else if (n <= 9)   { cols = 3; rows = 3; }
+            else if (n <= 12)  { cols = 4; rows = 3; }
+            else               { cols = 4; rows = 4; }
+
+            const GAP = 2;
+            const cellW = (imgAreaW - GAP * (cols - 1)) / cols;
+            const cellH = (imgAreaH - GAP * (rows - 1)) / rows;
+
+            const displayCount = Math.min(n, cols * rows);
+
+            for (let j = 0; j < displayCount; j++) {
+                const col = j % cols;
+                const row = Math.floor(j / cols);
+                const cx = M + 4 + col * (cellW + GAP);
+                const cy = imgAreaY + row * (cellH + GAP);
+
+                // Cell background
+                doc.setFillColor(248, 248, 248);
+                doc.rect(cx, cy, cellW, cellH, 'F');
+
+                // Load and draw image
+                const dataUrl = await loadImgToDataUrl(getCleanImageUrl(images[j]), 512);
+                if (dataUrl) {
+                    doc.addImage(dataUrl, 'JPEG', cx, cy, cellW, cellH);
+                }
+
+                // Overflow overlay on last cell
+                if (j === displayCount - 1 && n > displayCount) {
+                    const remaining = n - displayCount;
+                    doc.setFillColor(0, 0, 0);
+                    // semi-transparent overlay via a rect with low opacity isn't natively supported in jsPDF,
+                    // so draw a solid overlay
+                    doc.setFillColor(20, 20, 20);
+                    doc.rect(cx, cy, cellW, cellH, 'F');
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(255, 255, 255);
+                    doc.text(`+${remaining}`, cx + cellW / 2, cy + cellH / 2 + 2, { align: 'center' });
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(180, 180, 180);
+                    doc.text('MORE', cx + cellW / 2, cy + cellH / 2 + 7, { align: 'center' });
+                }
+            }
         }
     }
 
     doc.save(`Onyx_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+
 // ── Main Viewer Module ────────────────────────────────────────────────────────
+
 export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = ({ onOpenArtifact }) => {
     const [query, setQuery] = useAtom(viewerSearchQueryAtom);
     const [exchangeRate] = useAtom(exchangeRateAtom);
