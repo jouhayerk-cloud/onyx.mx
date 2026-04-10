@@ -112,7 +112,7 @@
             };
         };
 
-        const calculateCodes = (data, exchangeRate = 20) => {
+        const calculateCodes = (data, exchangeRate = 17) => {
             const norm = normalizeData(data);
             const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
             if (costMxn === 0) return { bookBarcode: '-', bookRetail: '-', bookAqCode: '-', bookLandCode: '-' };
@@ -122,8 +122,9 @@
             const retailPrice = Math.round((landedCost * 12) * 100) / 100;
 
             const vendorPrefix = String(norm.itemId || '').split('-')[0].toUpperCase() || 'SU';
+            const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
             const cypher = numberToCypher(Math.floor(landedCost));
-            const barcode = `${vendorPrefix}${norm.workbook || '326'}${norm.itemNumber || '1'}${cypher}`;
+            const barcode = `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
 
             return {
                 bookBarcode: barcode,
@@ -133,6 +134,7 @@
                 vendorColor: '#b8860b' // fallback
             };
         };
+
 
         // --- Components ---
 
@@ -343,27 +345,31 @@
                 try {
                     // Helper for resolving a single ID (Barcodes/Tags)
                     const resolveId = async (id) => {
-                        // 1. Exact Barcode
-                        const { data: exact } = await client.from('inventory').select('*').eq('book_barcode', id).not('status', 'ilike', 'Available%').maybeSingle();
+                        const tid = id.trim();
+                        if (!tid) return null;
+
+                        // 1. Exact Barcode (Case-Insensitive)
+                        const { data: exact } = await client.from('inventory').select('*').ilike('book_barcode', tid).not('status', 'ilike', 'Available%').maybeSingle();
                         if (exact) return { data: exact, images: resolveImages(exact) };
                         
                         // 2. Pattern (SU...)
-                        const match = id.match(/^([A-Z]{2})v?([0-9]{3})([0-9]+)([A-Z]+)$/i);
+                        const match = tid.match(/^([A-Z]{2})v?([0-9]{3})([0-9]+)([A-Z]+)$/i);
                         if (match) {
                            const { data: byNum } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).not('status', 'ilike', 'Available%').maybeSingle();
                            if (byNum) return { data: byNum, images: resolveImages(byNum) };
                         }
 
                         // 3. Legacy ID
-                        const { data: legacy } = await client.from('inventory').select('*').eq('item_id', id).not('status', 'ilike', 'Available%').maybeSingle();
+                        const { data: legacy } = await client.from('inventory').select('*').ilike('item_id', tid).not('status', 'ilike', 'Available%').maybeSingle();
                         if (legacy) return { data: legacy, images: resolveImages(legacy) };
 
-                        // 4. Production Table Fallback (Crucial for parity)
-                        const { data: prod } = await client.from('production').select('*').eq('tag_id', id).maybeSingle();
+                        // 4. Production Table Fallback (Case-Insensitive)
+                        const { data: prod } = await client.from('production').select('*').ilike('tag_id', tid).not('status', 'ilike', 'Available%').maybeSingle();
                         if (prod) return { data: prod, images: resolveImages(prod) };
 
                         return null;
                     };
+
 
 
                     // Try to resolve all parts as IDs first (Parallel)
