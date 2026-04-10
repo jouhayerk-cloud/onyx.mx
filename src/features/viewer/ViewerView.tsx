@@ -159,9 +159,10 @@ const ViewerCard: React.FC<{
 }> = ({ item, onOpenFull }) => {
     const norm = item.data;
     const codes = item.codes;
+    const vendorPrefix = (codes.bookBardcode || codes.bookBarcode || '').substring(0, 2).toUpperCase();
+    const vendorColor = (codes as any).vendorColor || '#b8860b';
 
     // USD Retail: costMXN * 1.4 (landed) * 12 (retail markup) / exchangeRate
-    // bookRetail from codes already computes this; display it directly
     const retailUsd = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
 
     const typeLabel = norm.shape || norm.shortDescription || 'Artifact';
@@ -196,7 +197,8 @@ const ViewerCard: React.FC<{
                     <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                         {/* Barcodes */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                            <div className="px-2 py-0.5 rounded bg-[#b8860b]/20 border border-[#b8860b]/30 text-[9px] font-black text-[#b8860b] uppercase tracking-wider shrink-0">
+                            <div className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0"
+                                style={{ background: vendorColor + '22', border: `1px solid ${vendorColor}44`, color: vendorColor }}>
                                 {codes.bookBardcode || codes.bookBarcode || '—'}
                             </div>
                             <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/8 text-[8px] font-black text-white/30 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
@@ -476,14 +478,6 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                     {isInitial && results.length === 0 && (
                         <div className="flex flex-col items-center gap-8">
                             <OnyxLogo width={56} height={56} className="opacity-80 hover:opacity-100 transition-opacity" />
-                            <div className="flex flex-col items-center text-center gap-3">
-                                <h1 className="text-5xl sm:text-7xl font-black uppercase tracking-tighter text-white">
-                                    Onyx Viewer
-                                </h1>
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">
-                                    Artifact Gallery · v1.68.0
-                                </p>
-                            </div>
                         </div>
                     )}
 
