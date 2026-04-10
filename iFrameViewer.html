@@ -253,10 +253,22 @@
             return html`
                 <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
                     <div class="relative w-full aspect-square overflow-hidden bg-white/5">
-                        <div class="grid gap-px h-full ${gridCols}">
+                        <div class="grid gap-px h-full ${
+                            item.images.length === 2 ? 'grid-cols-2' : 
+                            item.images.length === 3 ? 'grid-cols-3' : 
+                            item.images.length <= 6 ? 'grid-cols-3' : 'grid-cols-4'
+                        }">
                             ${item.images.slice(0, 16).map((url, i) => html`
-                                <div key=${i} class="relative overflow-hidden cursor-zoom-in" onClick=${() => onOpenViewer(i)}>
+                                <div key=${i} class="relative overflow-hidden cursor-zoom-in group/img" onClick=${() => onOpenViewer(i)}>
                                     <img src=${getCleanImageUrl(url)} class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+                                    ${i === 15 && item.images.length > 16 && html`
+                                        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+                                            <div class="flex flex-col items-center">
+                                                <span class="text-xl font-black text-white">+${item.images.length - 16}</span>
+                                                <span class="text-[8px] font-black text-white/40 uppercase tracking-widest mt-0.5">More</span>
+                                            </div>
+                                        </div>
+                                    `}
                                 </div>
                             `)}
                         </div>
@@ -266,6 +278,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="p-6 flex flex-col gap-4">
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -584,10 +597,10 @@
                             ${!searching && results.length === 0 && html`
                                 <div class="flex flex-col items-center gap-10 animate-fade-up">
                                     <${OnyxLogo} width="80" height="80" className="opacity-80 hover:opacity-100 transition-opacity" />
-                                    <h1 class="text-xs font-black uppercase tracking-[0.5em] text-white/20">Onyx Artifact Viewer</h1>
                                 </div>
                             `}
                             <div class="relative group max-w-2xl mx-auto w-full">
+
                                 <div class="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/10 group-focus-within:text-[#b8860b] transition-colors">
                                     <${LucideIcon} name="search" size="24" />
                                 </div>
