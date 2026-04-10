@@ -354,13 +354,30 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
             const item = simple[i + slot]; if (!item) break;
             const norm = item.data; const codes = item.codes; const sx = M + slot * (HW + HG);
             doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(codes.bookBardcode || codes.bookBarcode || '—', sx + 2, M + 6);
-            doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text((norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
-            doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 17, sx + HW - 2, M + 17);
-            doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 22);
-            doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 29);
-            doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(140, 140, 140);
-            const dims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7');
-            if (dims) doc.text(`${dims}cm`, sx + 2, M + 34); if (norm.weightKg) doc.text(`${norm.weightKg} kg`, sx + 2, M + 39);
+            const shape = norm.shape || '';
+            const desc = norm.shortDescription || '';
+            const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Stone Piece');
+            doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
+            
+            const color = item.data.color || item.data.Color || '';
+            const material = item.data.material || item.data.Material || '';
+            const detailStr = [color, material].filter(Boolean).join(' · ');
+            if (detailStr) {
+                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+                doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
+            }
+
+            doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
+            
+            doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 25);
+            doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
+            
+            doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+            const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7');
+            const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \xd7 ');
+            if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
+            if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
+
             const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
             if (imgs.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
             else if (imgs.length === 1) { const d = await loadImgData(getCleanImageUrl(imgs[0])); if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); } }
