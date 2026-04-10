@@ -254,10 +254,12 @@
                 <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
                     <div class="relative w-full aspect-square overflow-hidden bg-white/5">
                         <div class="grid gap-px h-full ${
+                            item.images.length === 1 ? 'grid-cols-1' :
                             item.images.length === 2 ? 'grid-cols-2' : 
                             item.images.length === 3 ? 'grid-cols-3' : 
                             item.images.length <= 6 ? 'grid-cols-3' : 'grid-cols-4'
                         }">
+
                             ${item.images.slice(0, 16).map((url, i) => html`
                                 <div key=${i} class="relative overflow-hidden cursor-zoom-in group/img" onClick=${() => onOpenViewer(i)}>
                                     <img src=${getCleanImageUrl(url)} class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
@@ -356,8 +358,13 @@
                         const { data: legacy } = await client.from('inventory').select('*').eq('item_id', id).not('status', 'ilike', 'Available%').maybeSingle();
                         if (legacy) return { data: legacy, images: resolveImages(legacy) };
 
+                        // 4. Production Table Fallback (Crucial for parity)
+                        const { data: prod } = await client.from('production').select('*').eq('tag_id', id).maybeSingle();
+                        if (prod) return { data: prod, images: resolveImages(prod) };
+
                         return null;
                     };
+
 
                     // Try to resolve all parts as IDs first (Parallel)
                     const resolvedItems = (await Promise.all(terms.map(resolveId))).filter(Boolean);
