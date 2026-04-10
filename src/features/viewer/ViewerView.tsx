@@ -301,7 +301,7 @@ function drawHeader(doc: any, item: ResolvedArtifact, M: number, PW: number, sta
         { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
         { label: 'QTY',        value: String(norm.quantity || 1), x: M + 38 },
         { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
-        { label: 'WEIGHT',     value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 145 }
+        { label: 'WEIGHT',     value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 155 }
     ];
     
     cols.forEach((col) => {
