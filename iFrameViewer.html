@@ -1,100 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="./favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Onyx.mx | Artifact Viewer</title>
-    <meta name="theme-color" content="#0a0a0a" />
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background: #050505;
-        font-family: system-ui, -apple-system, sans-serif;
-      }
-      #root {
-        min-height: 100dvh;
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      .loading-splash {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1.5rem;
-        z-index: 100;
-        background: #050505;
-      }
-      .logo {
-        width: 64px;
-        height: 64px;
-        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.05));
-        animation: onyx-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      .label {
-        font-size: 9px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.6em;
-        color: rgba(255, 255, 255, 0.15);
-        margin-left: 0.6em;
-        margin-top: 0.5rem;
-      }
-      @keyframes onyx-pulse {
-        0%, 100% { opacity: 0.1; transform: scale(0.92) translateY(0); }
-        50% { opacity: 0.4; transform: scale(1) translateY(-2px); }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root">
-      <div class="loading-splash">
-        <svg class="logo" viewBox="0 0 26 26" fill="white">
-            <path d="M13 0L26 26H22L13 8L4 26H0L13 0Z" />
-        </svg>
-        <div class="label">Initializing Onyx.mx Search Suite</div>
-      </div>
-    </div>
-    <script type="module" src="./src/main.tsx"></script>
-    <script>
-      // Force Viewer mode if no specific artifact is targeted
+<!doctype html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Onyx | Artifact Viewer</title>
+  
+  <!-- Fonts & Aesthetics -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+  
+  <!-- Icons & PWA -->
+  <link rel="icon" href="/favicon.svg?v=1.75.1" />
+  <link rel="icon" type="image/png" href="/favicon.png?v=1.75.1" />
+  <link rel="manifest" href="/manifest.webmanifest?v=1.75.1" />
+  <meta name="theme-color" content="#0d0b0a" />
+  
+  <!-- Global Styles -->
+  <link rel="stylesheet" href="/index.css">
+
+  <style>
+    body, html { margin: 0; padding: 0; background: #060505; color: white; overflow: hidden; }
+    #root { height: 100vh; width: 100vw; }
+  </style>
+
+  <script type="text/javascript">
+    // STANDALONE VIEWER ENFORCEMENT
+    // Ensures that the React app knows it should render in 'viewer' mode
+    (function() {
       const params = new URLSearchParams(window.location.search);
-      if (!params.get('tagid') && !params.get('tagID') && !params.get('viewer')) {
+      if (!params.has('viewer') && !window.location.hash.includes('viewer')) {
         params.set('viewer', 'true');
-        window.history.replaceState(null, '', '?' + params.toString() + window.location.hash);
+        const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash;
+        window.history.replaceState(null, '', newUrl);
       }
-    </script>
-      <!-- Diagnostic Load Monitor -->
-    <script>
-      const bundle = document.getElementById('main-bundle');
-      if (bundle) {
-        bundle.onerror = () => {
-          const label = document.querySelector('.label');
-          if (label) {
-            label.innerHTML = 'Resource Error: Initialization assets could not be resolved.';
-            label.style.color = '#ff4444';
-            label.style.fontSize = '14px';
-            label.style.fontWeight = 'bold';
-          }
-          console.error("Studio Initialization Failure: Bundle 404 or CSP Block.");
-        };
-        
-        // Timeout watchdog: If nothing happens in 10s, show troubleshooting
-        setTimeout(() => {
-          const label = document.querySelector('.label');
-          if (label && label.innerHTML.includes('INITIALIZING')) {
-            label.innerHTML = 'Still initializing... check internet or domain configuration.';
-            label.style.opacity = '0.6';
-          }
-        }, 10000);
-      }
-    </script>
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <!-- SVG Filters (Synced with index.html) -->
+  <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
+    <filter id="liquid-glass">
+      <feTurbulence type="fractalNoise" baseFrequency="0.01 0.04" numOctaves="3" seed="0" />
+      <feDisplacementMap in="SourceGraphic" scale="20" />
+    </filter>
+  </svg>
+
+  <!-- Vite Entry Point -->
+  <script type="module" src="/src/main.tsx"></script>
 </body>
+
 </html>
