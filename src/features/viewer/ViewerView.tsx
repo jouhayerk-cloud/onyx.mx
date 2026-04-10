@@ -249,25 +249,69 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
     if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
     doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
 }
+    doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
+}
+
+const toImp = (val: any, type: 'in'|'lbs'|'ft' = 'in') => {
+    const v = parseFloat(val); if (!v || isNaN(v)) return '';
+    if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
+    const totalInches = v * 0.393701;
+    if (type === 'ft') {
+        const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
+        return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
+    }
+    const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
+    let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
+    return `${whole}${f}"`;
+};
+
 function drawHeader(doc: any, item: ResolvedArtifact, M: number, PW: number, startY: number): number {
     const norm = item.data; const codes = item.codes; const hY = startY + 4;
     const barcode = codes.bookBardcode || codes.bookBarcode || '—';
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
+    
     const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
-    if (aqld) { doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
-    const name = (norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase();
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(name, M + 4, hY + 9, { maxWidth: PW - M * 2 - 10 });
-    doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 14, PW - M, hY + 14);
-    const specY = hY + 21; const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
-    const dims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7') + (norm.lengthCm ? 'cm' : '');
-    const cols = [{ label: 'USD RETAIL', value: retail, accent: true }, { label: 'QTY', value: String(norm.quantity || 1) }, { label: 'DIMENSIONS', value: dims || '—' }, { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg} kg` : '—' }];
+    if (aqld) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
+    
+    // Shape + Type (Description)
+    const shape = norm.shape || '';
+    const type = norm.shortDescription || '';
+    const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M * 2 - 10 });
+    
+    // Color + Material
+    const color = item.data.color || item.data.Color || '';
+    const material = item.data.material || item.data.Material || '';
+    const detailStr = [color, material].filter(Boolean).join(' · ');
+    if (detailStr) {
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+        doc.text(detailStr.toUpperCase(), M + 4, hY + 16);
+    }
+
+    doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
+    
+    const specY = hY + 28;
+    const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
+    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
+    const weightImp = toImp(norm.weightKg, 'lbs');
+
+    const cols = [
+        { label: 'USD RETAIL', value: retail, accent: true },
+        { label: 'QTY', value: String(norm.quantity || 1) },
+        { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—' },
+        { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—' }
+    ];
+    
     const colW = (PW - M * 2 - 4) / cols.length;
     cols.forEach((col, ci) => {
-        const cx = M + 4 + ci * colW; doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
-        doc.setFontSize(col.accent ? 11 : 9); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 7);
+        const cx = M + 4 + ci * colW;
+        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
+        doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
     });
-    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 12, PW - M, specY + 12);
-    return specY + 16;
+    
+    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
+    return specY + 20;
 }
 function drawHeaderCompact(doc: any, item: ResolvedArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
 

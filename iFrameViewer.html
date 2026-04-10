@@ -324,30 +324,63 @@
                 setLoading(true); setSearching(true);
                 const queryParts = q.split(/[\s,]+/).filter(Boolean);
                 try {
-                    const resolved = await Promise.all(queryParts.map(async id => {
-                        let { data } = await client.from('inventory').select('*').eq('book_barcode', id).maybeSingle();
-                        if (!data) {
-                           const match = id.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
-                           if (match) {
-                               const { data: parsed } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).maybeSingle();
-                               data = parsed;
-                           }
+                    let allResults = [];
+                    for (const term of queryParts) {
+                        // 1. Try exact barcode
+                        let { data: exact } = await client.from('inventory').select('*').eq('book_barcode', term).maybeSingle();
+                        if (exact) {
+                            allResults.push(exact);
+                            continue;
                         }
-                        if (!data) {
-                            const { data: idData } = await client.from('inventory').select('*').eq('id', id).maybeSingle();
-                            data = idData;
+
+                        // 2. Try SU... pattern
+                        const match = term.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
+                        if (match) {
+                            const { data: parsed } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).maybeSingle();
+                            if (parsed) {
+                                allResults.push(parsed);
+                                continue;
+                            }
                         }
-                        if (!data) return null;
-                        
+
+                        // 3. Try Exact ID
+                        const { data: byId } = await client.from('inventory').select('*').eq('id', term).maybeSingle();
+                        if (byId) {
+                            allResults.push(byId);
+                            continue;
+                        }
+
+                        // 4. Broader Filter (Fuzzy)
+                        const { data: fuzzy } = await client.from('inventory').select('*')
+                            .or(`short_description.ilike.%${term}%,shape.ilike.%${term}%,material.ilike.%${term}%,color.ilike.%${term}%,workbook.ilike.%${term}%`)
+                            .limit(50);
+                        if (fuzzy && fuzzy.length > 0) {
+                            allResults = [...allResults, ...fuzzy];
+                        }
+                    }
+
+                    // Resolve with images
+                    const resolved = allResults.map(data => {
                         const urls = [];
                         if (data.generated_png_url) urls.push(data.generated_png_url);
                         if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
                         if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
                         return { data, images: Array.from(new Set(urls.filter(Boolean))) };
-                    }));
-                    setResults(resolved.filter(Boolean));
+                    });
+
+                    // Unique by ID
+                    const unique = [];
+                    const seen = new Set();
+                    for (const r of resolved) {
+                        if (!seen.has(r.data.id)) {
+                            seen.add(r.data.id);
+                            unique.push(r);
+                        }
+                    }
+                    setResults(unique);
                 } catch (e) { console.error(e); } finally { setLoading(false); }
             };
+
 
 
             useEffect(() => {
@@ -385,37 +418,67 @@
                 const codes = calculateCodes(item.data);
                 const hY = startY + 4;
                 const barcode = codes.bookBarcode || '—';
-                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
+                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
                 
                 const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
-                if (aqld) { doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
+                if (aqld) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
                 
-                const name = (norm.shortDescription || norm.shape || 'Artifact').toUpperCase();
-                doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(name, M + 4, hY + 9, { maxWidth: PW - M * 2 - 10 });
+                // Shape + Type (Description)
+                const shape = norm.shape || '';
+                const type = norm.shortDescription || '';
+                const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+                doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M * 2 - 10 });
                 
-                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 14, PW - M, hY + 14);
+                // Color + Material
+                const color = item.data.color || '';
+                const material = item.data.material || '';
+                const detailStr = [color, material].filter(Boolean).join(' · ');
+                if (detailStr) {
+                    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+                    doc.text(detailStr.toUpperCase(), M + 4, hY + 16);
+                }
+
+                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
                 
-                const specY = hY + 21;
+                const specY = hY + 28;
                 const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
-                const dims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7') + (norm.lengthCm ? 'cm' : '');
                 
+                // Units Converter
+                const toImp = (val, type = 'in') => {
+                    const v = parseFloat(val); if (!v || isNaN(v)) return '';
+                    if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
+                    const totalInches = v * 0.393701;
+                    if (type === 'ft') {
+                        const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
+                        return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
+                    }
+                    const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
+                    let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
+                    return `${whole}${f}"`;
+                };
+
+                const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+                const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
+                const weightImp = toImp(norm.weightKg, 'lbs');
+
                 const cols = [
                     { label: 'USD RETAIL', value: retail, accent: true },
                     { label: 'QTY', value: String(norm.quantity || 1) },
-                    { label: 'DIMENSIONS', value: dims || '—' },
-                    { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg} kg` : '—' }
+                    { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—' },
+                    { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—' }
                 ];
                 
                 const colW = (PW - M * 2 - 4) / cols.length;
                 cols.forEach((col, ci) => {
                     const cx = M + 4 + ci * colW;
-                    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
-                    doc.setFontSize(col.accent ? 11 : 9); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 7);
+                    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
+                    doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
                 });
                 
-                doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 12, PW - M, specY + 12);
-                return specY + 16;
+                doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
+                return specY + 20;
             };
+
 
             const drawHeaderCompact = (doc, item, M, PW, startY, pageNum, totalPages) => {
                 const norm = normalizeData(item.data);
