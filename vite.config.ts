@@ -10,7 +10,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: '/onyx.mx/',
+    base: 'https://jouhayerk-cloud.github.io/onyx.mx/',
     assetsInclude: ['**/*.usdz', '**/*.glb'],
     server: {
       port: 1001,

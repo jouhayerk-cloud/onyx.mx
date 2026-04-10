@@ -6,26 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Onyx | Artifact Viewer</title>
   
-  <!-- Base URL for Remote Asset Resolution (Critical for Google Sites) -->
-  <base href="https://jouhayerk-cloud.github.io/onyx.mx/">
-
-  <!-- Fonts & Aesthetics (Absolute URLs) -->
+  <!-- Modern Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
   
-  <!-- Icons & PWA (Absolute URLs) -->
-  <link rel="icon" href="https://jouhayerk-cloud.github.io/onyx.mx/favicon.svg?v=1.75.1" />
-  <link rel="icon" type="image/png" href="https://jouhayerk-cloud.github.io/onyx.mx/favicon.png?v=1.75.1" />
+  <link rel="icon" href="/favicon.svg?v=1.75.1" />
+  <link rel="icon" type="image/png" href="/favicon.png?v=1.75.1" />
+  <meta name="theme-color" content="#0d0b0a" />
   
-  <!-- Global Styles (Absolute URL to Modernized Bundle) -->
-  <link rel="stylesheet" href="https://jouhayerk-cloud.github.io/onyx.mx/assets/main-DeigUQfo.css">
+  <link rel="stylesheet" href="/index.css">
 
   <style>
     body, html { margin: 0; padding: 0; background: #060505; color: white; overflow: hidden; width: 100vw; height: 100vh; }
     #root { height: 100%; width: 100%; }
-    
-    /* Ensure the viewer fills the Google Sites sandbox iframe */
     #root > div { height: 100% !important; overflow-y: auto !important; }
   </style>
 
@@ -33,19 +27,11 @@
     // STANDALONE VIEWER ENFORCEMENT & SANDBOX ADAPTATION
     (function() {
       const params = new URLSearchParams(window.location.search);
-      // Force viewer mode
       if (!params.has('viewer') && !window.location.hash.includes('viewer')) {
         params.set('viewer', 'true');
         const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash;
         window.history.replaceState(null, '', newUrl);
       }
-      
-      // Fix for Google Sites sandbox preventing cross-origin navigation or communication
-      window.addEventListener('error', function(e) {
-        if (e.message.indexOf('cross-origin') !== -1) {
-          console.warn('Sandbox policy restriction detected. Some features like external artifact links may require direct browser access.');
-        }
-      });
     })();
   </script>
 </head>
@@ -53,7 +39,7 @@
 <body>
   <div id="root"></div>
 
-  <!-- SVG Filters (Synced with index.html for high-fidelity effects) -->
+  <!-- SVG Filters (Synced with index.html) -->
   <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
     <filter id="liquid-glass">
       <feTurbulence type="fractalNoise" baseFrequency="0.01 0.04" numOctaves="3" seed="0" />
@@ -61,8 +47,8 @@
     </filter>
   </svg>
 
-  <!-- Vite Production Entry Point (Absolute URL to v1.71.2 Bundle) -->
-  <script type="module" crossorigin src="https://jouhayerk-cloud.github.io/onyx.mx/assets/main-D2pm_9ZR.js"></script>
+  <!-- Vite Entry Point (Vite will transform this to an absolute URL during build) -->
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 
 </html>
