@@ -342,18 +342,18 @@
                     // Helper for resolving a single ID (Barcodes/Tags)
                     const resolveId = async (id) => {
                         // 1. Exact Barcode
-                        const { data: exact } = await client.from('inventory').select('*').eq('book_barcode', id).eq('status', 'acquired').maybeSingle();
+                        const { data: exact } = await client.from('inventory').select('*').eq('book_barcode', id).not('status', 'ilike', 'Available%').maybeSingle();
                         if (exact) return { data: exact, images: resolveImages(exact) };
                         
                         // 2. Pattern (SU...)
                         const match = id.match(/^([A-Z]{2})v?([0-9]{3})([0-9]+)([A-Z]+)$/i);
                         if (match) {
-                           const { data: byNum } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).eq('status', 'acquired').maybeSingle();
+                           const { data: byNum } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).not('status', 'ilike', 'Available%').maybeSingle();
                            if (byNum) return { data: byNum, images: resolveImages(byNum) };
                         }
 
                         // 3. Legacy ID
-                        const { data: legacy } = await client.from('inventory').select('*').eq('item_id', id).eq('status', 'acquired').maybeSingle();
+                        const { data: legacy } = await client.from('inventory').select('*').eq('item_id', id).not('status', 'ilike', 'Available%').maybeSingle();
                         if (legacy) return { data: legacy, images: resolveImages(legacy) };
 
                         return null;
@@ -368,7 +368,7 @@
                         // Fuzzy search fallback if no direct ID matches found
                         const firstTerm = terms[0];
                         let { data: items } = await client.from('inventory').select('*')
-                            .eq('status', 'acquired')
+                            .not('status', 'ilike', 'Available%')
                             .or(`short_description.ilike.%${firstTerm}%,shape.ilike.%${firstTerm}%,material.ilike.%${firstTerm}%,color.ilike.%${firstTerm}%,workbook.ilike.%${firstTerm}%`)
                             .limit(250);
                         
@@ -384,6 +384,7 @@
                             setResults([]);
                         }
                     }
+
                 } catch (e) {
                     console.error('Search error:', e);
                 } finally {
