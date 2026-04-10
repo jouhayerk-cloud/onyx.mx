@@ -131,7 +131,6 @@
         const calculateCodes = (data, exchangeRate = 17) => {
             const norm = normalizeData(data);
             const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
-            if (costMxn === 0) return { bookBarcode: '-', bookRetail: '-', bookAqCode: '-', bookLandCode: '-' };
 
             const costUsd = Math.round((costMxn / exchangeRate) * 100) / 100;
             const landedCost = Math.round((costUsd * 1.4) * 100) / 100;
@@ -166,16 +165,30 @@
             const vendorPrefix = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k)) || 'SU';
             const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
             const cypher = numberToCypher(Math.floor(landedCost));
-            const barcode = `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
+            const barcode = costMxn === 0 ? '-' : `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
 
             return {
                 bookBarcode: barcode,
-                bookRetail: Math.floor(retailPrice).toString(),
-                bookAqCode: numberToCypher(Math.floor(costUsd)),
-                bookLandCode: cypher,
+                bookRetail: costMxn === 0 ? '-' : Math.floor(retailPrice).toString(),
+                bookAqCode: costMxn === 0 ? '-' : numberToCypher(Math.floor(costUsd)),
+                bookLandCode: costMxn === 0 ? '-' : cypher,
                 vendorColor: vendors[vendorPrefix]?.color || '#b8860b'
             };
         };
+
+        const toImp = (val, type = 'in') => {
+            const v = parseFloat(val); if (!v || isNaN(v)) return '';
+            if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
+            const totalInches = v * 0.393701;
+            if (type === 'ft') {
+                const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
+                return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
+            }
+            const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
+            let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
+            return `${whole}${f}"`;
+        };
+
 
 
 
@@ -535,23 +548,10 @@
                 const specY = hY + 28;
                 const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
 
-                // Units Converter
-                const toImp = (val, type = 'in') => {
-                    const v = parseFloat(val); if (!v || isNaN(v)) return '';
-                    if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
-                    const totalInches = v * 0.393701;
-                    if (type === 'ft') {
-                        const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
-                        return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
-                    }
-                    const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
-                    let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
-                    return `${whole}${f}"`;
-                };
-
                 const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
                 const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
                 const weightImp = toImp(norm.weightKg, 'lbs');
+
 
                 const cols = [
                     { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
