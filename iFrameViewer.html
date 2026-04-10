@@ -1,54 +1,563 @@
-<!doctype html>
-<html lang="en" class="dark">
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Onyx | Artifact Viewer</title>
-  
-  <!-- Modern Typography -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Outfit:wght@100..900&display=swap" rel="stylesheet">
-  
-  <link rel="icon" href="/favicon.svg?v=1.75.1" />
-  <link rel="icon" type="image/png" href="/favicon.png?v=1.75.1" />
-  <meta name="theme-color" content="#0d0b0a" />
-  
-  <link rel="stylesheet" href="/index.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Onyx Artifact Viewer</title>
+    <!-- Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        
+        :root {
+            --main-color: #8da388;
+            --secondary-color: #b8860b;
+        }
 
-  <style>
-    body, html { margin: 0; padding: 0; background: #060505; color: white; overflow: hidden; width: 100vw; height: 100vh; }
-    #root { height: 100%; width: 100%; }
-    #root > div { height: 100% !important; overflow-y: auto !important; }
-  </style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            color: white;
+            margin: 0;
+            overflow-y: auto;
+            min-height: 100vh;
+        }
 
-  <script type="text/javascript">
-    // STANDALONE VIEWER ENFORCEMENT & SANDBOX ADAPTATION
-    (function() {
-      const params = new URLSearchParams(window.location.search);
-      if (!params.has('viewer') && !window.location.hash.includes('viewer')) {
-        params.set('viewer', 'true');
-        const newUrl = window.location.pathname + '?' + params.toString() + window.location.hash;
-        window.history.replaceState(null, '', newUrl);
-      }
-    })();
-  </script>
+        .studio-glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .image-viewer-bg {
+            background: radial-gradient(circle at center, rgba(30, 30, 35, 0.8) 0%, rgba(5, 5, 5, 1) 100%);
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-up {
+            animation: fadeUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+    </style>
 </head>
-
 <body>
-  <div id="root"></div>
+    <div id="root"></div>
 
-  <!-- SVG Filters (Synced with index.html) -->
-  <svg style="position: absolute; width: 0; height: 0; overflow: hidden;">
-    <filter id="liquid-glass">
-      <feTurbulence type="fractalNoise" baseFrequency="0.01 0.04" numOctaves="3" seed="0" />
-      <feDisplacementMap in="SourceGraphic" scale="20" />
-    </filter>
-  </svg>
+    <!-- SVG Filters for Studio Aesthetic -->
+    <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="liquid-glass">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="liquid" />
+                <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
+            </filter>
+        </defs>
+    </svg>
 
-  <!-- Vite Entry Point (Vite will transform this to an absolute URL during build) -->
-  <script type="module" src="/src/main.tsx"></script>
+    <script>
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+        const html = htm.bind(React.createElement);
+        const { createClient } = supabase;
+
+        // --- Config ---
+        const SUPABASE_URL = 'https://yircifkayqpuydfdqzlm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpcmNpZmtheXFwdXlkZmRxemxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODE4NzgsImV4cCI6MjA4NzQ1Nzg3OH0.AAo7z8J4798J25Wu-7EDI78zC2OY6k7C8pdGKBo07b8';
+        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- Utils ---
+        const getCleanImageUrl = (url) => {
+            if (!url) return null;
+            let clean = String(url).split('&tag=')[0].trim();
+            const driveMatch = clean.match(/\/d\/([a-zA-Z0-9_-]{10,})/) || clean.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+            if (driveMatch && clean.includes('drive.google.com')) {
+                return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+            }
+            return clean;
+        };
+
+        const numberToCypher = (num) => {
+            const key = 'DOXHELFANM';
+            return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)]).join('');
+        };
+
+        const normalizeData = (data) => {
+            if (!data) return {};
+            return {
+                ...data,
+                itemId: data.itemId || data.item_id,
+                itemNumber: data.itemNumber || data.item_number,
+                price: data.price || data.price_mxn,
+                shortDescription: data.shortDescription || data.short_description,
+                widthCm: data.widthCm || data.width_cm,
+                heightCm: data.heightCm || data.height_cm,
+                lengthCm: data.lengthCm || data.length_cm,
+                weightKg: data.weightKg || data.weight_kg,
+                generatedImageUrls: data.generatedImageUrls || data.generated_image_urls,
+                mediaUrls: data.mediaUrls || data.media_urls,
+                book_barcode: data.book_barcode || data.bookBarcode
+            };
+        };
+
+        const calculateCodes = (data, exchangeRate = 20) => {
+            const norm = normalizeData(data);
+            const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
+            if (costMxn === 0) return { bookBarcode: '-', bookRetail: '-', bookAqCode: '-', bookLandCode: '-' };
+            
+            const costUsd = Math.round((costMxn / exchangeRate) * 100) / 100;
+            const landedCost = Math.round((costUsd * 1.4) * 100) / 100;
+            const retailPrice = Math.round((landedCost * 12) * 100) / 100;
+
+            const vendorPrefix = String(norm.itemId || '').split('-')[0].toUpperCase() || 'SU';
+            const cypher = numberToCypher(Math.floor(landedCost));
+            const barcode = `${vendorPrefix}${norm.workbook || '326'}${norm.itemNumber || '1'}${cypher}`;
+
+            return {
+                bookBarcode: barcode,
+                bookRetail: Math.floor(retailPrice).toString(),
+                bookAqCode: numberToCypher(Math.floor(costUsd)),
+                bookLandCode: cypher,
+                vendorColor: '#b8860b' // fallback
+            };
+        };
+
+        // --- Components ---
+
+        const LucideIcon = ({ name, size = 20, className = "" }) => {
+            // Simple SVG map for standalone
+            const icons = {
+                'search': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+                'maximize': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`,
+                'x': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+                'file-down': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>`,
+                'loader': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin ${className}"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>`
+            };
+            return icons[name] || null;
+        };
+
+        const OnyxLogo = ({ width = 56, height = 56, className = "" }) => html`
+            <svg width=${width} height=${height} viewBox="0 0 2513 2928" fill="none" xmlns="http://www.w3.org/2000/svg" class=${className}>
+                <path d="M2512.48,774.267l0,1189.92c0,66.364 -40.709,97.088 -90.85,68.568l-1040.29,-591.699c-50.142,-28.52 -90.851,-105.553 -90.851,-171.916l-0,-1189.92c-0,-66.363 40.709,-97.087 90.851,-68.568l1040.29,591.699c50.141,28.52 90.85,105.553 90.85,171.916Z" fill="var(--main-color)" fill-opacity="0.2" />
+                <path d="M1351.61,1573.19l1108.94,612.947c61.847,34.184 69.553,85.23 17.199,113.918l-1109.95,608.22c-52.355,28.688 -145.071,24.226 -206.918,-9.959l-1108.94,-612.947c-61.847,-34.185 -69.553,-85.23 -17.199,-113.919l1109.95,-608.219c52.355,-28.689 145.072,-24.226 206.918,9.959Z" fill="var(--secondary-color)" fill-opacity="0.3" />
+                <path d="M0,767.537l0,1196.23c0,66.716 40.925,97.603 91.332,68.932l1014.25,-576.886c50.408,-28.671 91.332,-106.113 91.332,-172.828l0,-1196.23c0,-66.715 -40.924,-97.602 -91.332,-68.931l-1014.25,576.886c-50.407,28.671 -91.332,106.112 -91.332,172.827Z" fill="var(--main-color)" fill-opacity="0.5" />
+                <path d="M1224.31,1442.91l-0,925.882l823.072,-450.156l-0,-925.881l-823.072,450.155Z" fill="currentColor" fill-opacity="0.75" />
+                <path d="M427.258,1014.63l797.051,430.639l823.072,-450.156l-797.051,-430.639l-823.072,450.156Z" fill="currentColor" fill-opacity="0.9" />
+            </svg>`;
+
+        const FullscreenViewer = ({ images, initialIdx, onClose }) => {
+            const [idx, setIdx] = useState(initialIdx);
+            const imgRef = useRef(null);
+            const state = useRef({ scale: 1, x: 0, y: 0, touchStart: { x: 0, y: 0, dist: 0 }, isZoomed: false });
+
+            useEffect(() => {
+                resetTransform(false);
+            }, [idx]);
+
+            const updateTransform = (animate = true) => {
+                if (!imgRef.current) return;
+                gsap.to(imgRef.current, {
+                    scale: state.current.scale,
+                    x: state.current.x,
+                    y: state.current.y,
+                    duration: animate ? 0.35 : 0,
+                    ease: 'power3.out',
+                    overwrite: 'auto'
+                });
+                state.current.isZoomed = state.current.scale > 1.1;
+            };
+
+            const resetTransform = (animate = true) => {
+                state.current.scale = 1; state.current.x = 0; state.current.y = 0;
+                updateTransform(animate);
+            };
+
+            const handleNav = (dir) => {
+                if (state.current.isZoomed) return;
+                const next = (idx + dir + images.length) % images.length;
+                gsap.to(imgRef.current, { opacity: 0, x: -dir * 100, scale: 0.95, duration: 0.25, onComplete: () => { setIdx(next); } });
+            };
+
+            const onTouchStart = (e) => {
+                const touches = e.touches;
+                if (touches.length === 2) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    state.current.touchStart.dist = Math.sqrt(dx*dx + dy*dy);
+                    state.current.lastScale = state.current.scale;
+                }
+            };
+
+            const onTouchMove = (e) => {
+                const touches = e.touches;
+                if (touches.length === 2) {
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const factor = dist / state.current.touchStart.dist;
+                    state.current.scale = Math.max(1, Math.min(6, state.current.lastScale * factor));
+                    updateTransform(false);
+                }
+            };
+
+            return html`
+                <div class="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center overflow-hidden" 
+                     onClick=${onClose} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove}>
+                    <div class="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-6 z-10 bg-gradient-to-b from-black/80 to-transparent">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Artifact</span>
+                            <span class="text-xs font-black text-white/80 tabular-nums">${idx + 1} / ${images.length}</span>
+                        </div>
+                        <button onClick=${onClose} class="w-12 h-12 flex items-center justify-center text-white/40 hover:text-white rounded-full studio-glass active:scale-90">
+                            <${LucideIcon} name="x" size="20" />
+                        </button>
+                    </div>
+                    <div class="relative w-full h-full flex items-center justify-center" onClick=${e => e.stopPropagation()}>
+                        <img ref=${imgRef} src=${getCleanImageUrl(images[idx])} 
+                             class="max-w-[90%] max-h-[90%] object-contain select-none shadow-2xl rounded-lg will-change-transform" 
+                             draggable="false" />
+                    </div>
+                    ${images.length > 1 && html`
+                        <div class="absolute bottom-0 inset-x-0 flex gap-2.5 px-6 py-8 justify-center overflow-x-auto no-scrollbar" onClick=${e => e.stopPropagation()}>
+                            ${images.map((src, i) => html`
+                                <div key=${i} onClick=${() => setIdx(i)} 
+                                     class="w-14 h-14 rounded-xl overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${i === idx ? 'border-[#b8860b] scale-110' : 'border-transparent opacity-30'}">
+                                    <img src=${getCleanImageUrl(src)} class="w-full h-full object-cover" />
+                                </div>
+                            `)}
+                        </div>
+                    `}
+                </div>`;
+        };
+
+        const ViewerCard = ({ item, onOpenViewer }) => {
+            const norm = normalizeData(item.data);
+            const codes = calculateCodes(item.data);
+            const gridCols = item.images.length <= 3 ? (item.images.length === 2 ? 'grid-cols-2' : 'grid-cols-3') : 'grid-cols-4';
+            
+            const dimensions = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
+            const weight = norm.weightKg ? `${norm.weightKg}kg` : '';
+
+            return html`
+                <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
+                    <div class="relative w-full aspect-square overflow-hidden bg-white/5">
+                        <div class="grid gap-px h-full ${gridCols}">
+                            ${item.images.slice(0, 16).map((url, i) => html`
+                                <div key=${i} class="relative overflow-hidden cursor-zoom-in" onClick=${() => onOpenViewer(i)}>
+                                    <img src=${getCleanImageUrl(url)} class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+                                </div>
+                            `)}
+                        </div>
+                        <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10">
+                                <${LucideIcon} name="maximize" size="12" className="text-white/60" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 flex flex-col gap-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider text-[#b8860b] bg-[#b8860b]/10 border border-[#b8860b]/20">
+                                        ${codes.bookBarcode}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/30 tracking-widest uppercase">
+                                        ${codes.bookAqCode}
+                                    </span>
+                                </div>
+                                <h3 class="text-lg font-black text-white uppercase truncate group-hover:text-[#b8860b] transition-colors">
+                                    ${norm.shortDescription || norm.shape || 'Artifact'}
+                                </h3>
+                            </div>
+                            <div class="flex flex-col items-end shrink-0">
+                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Qty</span>
+                                <span class="text-xl font-black text-white/60">${norm.quantity || 1}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between py-3 border-y border-white/5">
+                            <div class="flex flex-col">
+                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Retail</span>
+                                <span class="text-2xl font-black text-white font-mono">$${codes.bookRetail}</span>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Images</span>
+                                <span class="text-sm font-black text-white/30">${item.images.length}</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-1">
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Dims</span>
+                                <span class="text-[10px] font-bold text-white/50 truncate">${dimensions ? `${dimensions}cm` : '—'}</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5 items-end">
+                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
+                                <span class="text-[10px] font-bold text-white/50">${weight || '—'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+
+        const App = () => {
+            const [query, setQuery] = useState('');
+            const [results, setResults] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [searching, setSearching] = useState(false);
+            const [viewer, setViewer] = useState(null);
+            const [exporting, setExporting] = useState(false);
+
+            const performSearch = async (q) => {
+                if (!q.trim()) return;
+                setLoading(true); setSearching(true);
+                const queryParts = q.split(/[\s,]+/).filter(Boolean);
+                try {
+                    const resolved = await Promise.all(queryParts.map(async id => {
+                        let { data } = await client.from('inventory').select('*').eq('book_barcode', id).maybeSingle();
+                        if (!data) {
+                           const match = id.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
+                           if (match) {
+                               const { data: parsed } = await client.from('inventory').select('*').eq('item_number', parseInt(match[3], 10)).maybeSingle();
+                               data = parsed;
+                           }
+                        }
+                        if (!data) {
+                            const { data: idData } = await client.from('inventory').select('*').eq('id', id).maybeSingle();
+                            data = idData;
+                        }
+                        if (!data) return null;
+                        
+                        const urls = [];
+                        if (data.generated_png_url) urls.push(data.generated_png_url);
+                        if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
+                        if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
+                        return { data, images: Array.from(new Set(urls.filter(Boolean))) };
+                    }));
+                    setResults(resolved.filter(Boolean));
+                } catch (e) { console.error(e); } finally { setLoading(false); }
+            };
+
+
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const q = urlParams.get('q') || urlParams.get('id');
+                if (q) { setQuery(q); performSearch(q); }
+            }, []);
+
+            // --- PDF Export Logic (Parity with ViewerView) ---
+            const loadImgData = async (url, maxSize = 900) => {
+                try {
+                    const img = await new Promise((resolve, reject) => {
+                        const el = new Image(); el.crossOrigin = 'anonymous'; 
+                        el.onload = () => resolve(el); el.onerror = reject; 
+                        el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
+                    });
+                    const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                    const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
+                    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    return { dataUrl: canvas.toDataURL('image/jpeg', 0.88), w, h };
+                } catch (e) { console.error('Image load failed', url, e); return null; }
+            };
+
+            const drawContain = (doc, img, cx, cy, cw, ch) => {
+                doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
+                const ir = img.w / img.h; const cr = cw / ch;
+                let dw, dh;
+                if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
+                doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
+            };
+
+            const drawHeader = (doc, item, M, PW, startY) => {
+                const norm = normalizeData(item.data);
+                const codes = calculateCodes(item.data);
+                const hY = startY + 4;
+                const barcode = codes.bookBarcode || '—';
+                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
+                
+                const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
+                if (aqld) { doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
+                
+                const name = (norm.shortDescription || norm.shape || 'Artifact').toUpperCase();
+                doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(name, M + 4, hY + 9, { maxWidth: PW - M * 2 - 10 });
+                
+                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 14, PW - M, hY + 14);
+                
+                const specY = hY + 21;
+                const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
+                const dims = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\xd7') + (norm.lengthCm ? 'cm' : '');
+                
+                const cols = [
+                    { label: 'USD RETAIL', value: retail, accent: true },
+                    { label: 'QTY', value: String(norm.quantity || 1) },
+                    { label: 'DIMENSIONS', value: dims || '—' },
+                    { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg} kg` : '—' }
+                ];
+                
+                const colW = (PW - M * 2 - 4) / cols.length;
+                cols.forEach((col, ci) => {
+                    const cx = M + 4 + ci * colW;
+                    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
+                    doc.setFontSize(col.accent ? 11 : 9); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 7);
+                });
+                
+                doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 12, PW - M, specY + 12);
+                return specY + 16;
+            };
+
+            const drawHeaderCompact = (doc, item, M, PW, startY, pageNum, totalPages) => {
+                const norm = normalizeData(item.data);
+                const codes = calculateCodes(item.data);
+                const hY = startY + 4;
+                doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
+                doc.text(`${codes.bookBarcode || '—'}  ·  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
+                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+                doc.text((norm.shortDescription || norm.shape || 'Artifact').toUpperCase(), M + 4, hY + 6);
+                doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
+                return hY + 12;
+            };
+
+            const exportPdf = async () => {
+                if (!results.length || exporting) return;
+                setExporting(true);
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const PW = 210, PH = 297, M = 12;
+                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                    
+                    // Cover Page
+                    doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
+                    doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
+                    doc.setFontSize(20); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text('Catalog', M + 4, 102);
+                    doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
+                    doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  ·  ${new Date().toLocaleDateString()}`, M + 4, 118);
+
+                    const itemsWithCodes = results.map(r => ({ ...r, codes: calculateCodes(r.data) }));
+                    const simple = itemsWithCodes.filter(r => r.images.length <= 2);
+                    const rich = itemsWithCodes.filter(r => r.images.length > 2);
+                    let globalPageNum = 0;
+
+                    const footer = (d) => {
+                        globalPageNum++;
+                        d.setFontSize(7); d.setFont('helvetica', 'normal'); d.setTextColor(200, 200, 200);
+                        d.text('Art of Decor', M + 4, PH - 8);
+                        d.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' });
+                    };
+
+                    // Process Simple Items (2 per page)
+                    const HW = (PW - M * 2 - 4) / 2; const HG = 4;
+                    for (let i = 0; i < simple.length; i += 2) {
+                        doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                        doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
+                        for (let slot = 0; slot < 2; slot++) {
+                            const item = simple[i + slot]; if (!item) break;
+                            const sx = M + slot * (HW + HG);
+                            const top = drawHeader(doc, item, sx - M, sx + HW, M); // Adapted for slot
+                            // simplified drawHeader call for slots
+                            const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4;
+                            if (item.images.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
+                            else if (item.images.length === 1) { 
+                                const d = await loadImgData(getCleanImageUrl(item.images[0])); 
+                                if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH);
+                            } else {
+                                const cellH = (imgH - 2) / 2;
+                                for (let j = 0; j < 2; j++) {
+                                    const d = await loadImgData(getCleanImageUrl(item.images[j]));
+                                    if (d) drawContain(doc, d, sx + 2, imgTop + j * (cellH + 2), imgW, cellH);
+                                }
+                            }
+                        }
+                    }
+
+                    // Process Rich Items (Full page grid)
+                    for (const item of rich) {
+                        const imgs = item.images; const n = imgs.length;
+                        const CHUNK = 12; const totalPagesForItem = Math.ceil(n / CHUNK);
+                        for (let p = 0; p < totalPagesForItem; p++) {
+                            doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                            const imgTop = (p === 0) ? drawHeader(doc, item, M, PW, M) : drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
+                            const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4;
+                            const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
+                            let cols = 2, rows = 1;
+                            const numInChunk = currentChunk.length;
+                            if (numInChunk <= 4) { cols = 2; rows = Math.ceil(numInChunk / 2); }
+                            else if (numInChunk <= 6) { cols = 3; rows = 2; }
+                            else if (numInChunk <= 9) { cols = 3; rows = 3; }
+                            else { cols = 4; rows = 3; }
+                            const GAP = 2; const cellW = (imgW - GAP * (cols - 1)) / cols; const cellH = (imgH - GAP * (rows - 1)) / rows;
+                            for (let j = 0; j < numInChunk; j++) {
+                                const cx = M + 4 + (j % cols) * (cellW + GAP);
+                                const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
+                                const d = await loadImgData(getCleanImageUrl(currentChunk[j]));
+                                if (d) drawContain(doc, d, cx, cy, cellW, cellH);
+                            }
+                        }
+                    }
+
+                    doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
+                } catch (e) { console.error('PDF export failed', e); }
+                finally { setExporting(false); }
+            };
+
+
+            return html`
+                <div class="min-h-screen flex flex-col relative">
+                    ${viewer && html`<${FullscreenViewer} images=${viewer.item.images} initialIdx=${viewer.idx} onClose=${() => setViewer(null)} />`}
+                    
+                    <div class="shrink-0 pt-16 pb-8 flex flex-col items-center transition-all duration-700 ${!searching && results.length === 0 ? 'h-full justify-center' : ''}">
+                        <div class="max-w-4xl w-full px-6 flex flex-col gap-12">
+                            ${!searching && results.length === 0 && html`
+                                <div class="flex flex-col items-center gap-10 animate-fade-up">
+                                    <${OnyxLogo} width="80" height="80" className="opacity-80 hover:opacity-100 transition-opacity" />
+                                    <h1 class="text-xs font-black uppercase tracking-[0.5em] text-white/20">Onyx Artifact Viewer</h1>
+                                </div>
+                            `}
+                            <div class="relative group max-w-2xl mx-auto w-full">
+                                <div class="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/10 group-focus-within:text-[#b8860b] transition-colors">
+                                    <${LucideIcon} name="search" size="24" />
+                                </div>
+                                <input type="text" value=${query} onChange=${e => setQuery(e.target.value)} 
+                                       onKeyDown=${e => e.key === 'Enter' && performSearch(query)}
+                                       placeholder="INPUT BARCODES..."
+                                       class="w-full bg-white/[0.02] border border-white/8 rounded-full font-black uppercase tracking-widest py-8 pl-18 pr-18 focus:outline-none focus:border-[#b8860b]/30 focus:bg-white/5 transition-all text-xl placeholder:text-white/5" />
+                                ${loading && html`<div class="absolute inset-y-0 right-8 flex items-center"><${LucideIcon} name="loader" size="20" className="text-[#b8860b]/40" /></div>`}
+                            </div>
+                        </div>
+                    </div>
+
+
+                    ${searching && html`
+                        <div class="flex-1 custom-scrollbar">
+                           <div class="max-w-[1400px] mx-auto w-full px-6 pb-24">
+                                <div class="flex items-center justify-between mb-8 opacity-60">
+                                    <span class="text-[10px] font-black uppercase tracking-widest">${results.length} Results</span>
+                                    <button onClick=${exportPdf} class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#b8860b] hover:text-white transition-colors">
+                                        <${LucideIcon} name="file-down" size="14" /> ${exporting ? 'Exporting...' : 'Export PDF'}
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    ${results.map((item, i) => html`<${ViewerCard} key=${i} item=${item} onOpenViewer=${(idx) => setViewer({ item, idx })} />`)}
+                                </div>
+                           </div>
+                        </div>
+                    `}
+                </div>`;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
 </body>
-
 </html>
