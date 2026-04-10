@@ -30,7 +30,7 @@ export const userAtom = atomWithStorage<User | null>('userSession', null);
 export const languageAtom = atomWithStorage<'en' | 'es'>('appLanguage', 'en');
 export const themeAtom = atomWithStorage<string>('appTheme', 'talan');
 export const performanceModeAtom = atomWithStorage<boolean>('performanceMode_v2', true);
-export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 18.0);
+export const exchangeRateAtom = atomWithStorage<number>('exchangeRate', 17.0);
 export type CurrencyMode = 'MXN' | 'USD';
 export const currencyModeAtom = atomWithStorage<CurrencyMode>('currencyMode', 'MXN');
 
