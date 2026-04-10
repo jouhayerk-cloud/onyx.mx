@@ -296,18 +296,18 @@ function drawHeader(doc: any, item: ResolvedArtifact, M: number, PW: number, sta
     const weightImp = toImp(norm.weightKg, 'lbs');
 
     const cols = [
-        { label: 'USD RETAIL', value: retail, accent: true },
-        { label: 'QTY', value: String(norm.quantity || 1) },
-        { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—' },
-        { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—' }
+        { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
+        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 38 },
+        { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
+        { label: 'WEIGHT',     value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 145 }
     ];
     
-    const colW = (PW - M * 2 - 4) / cols.length;
-    cols.forEach((col, ci) => {
-        const cx = M + 4 + ci * colW;
+    cols.forEach((col) => {
+        const cx = col.x;
         doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
         doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
     });
+
     
     doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
     return specY + 20;
