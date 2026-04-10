@@ -24,8 +24,9 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
         const { data: directData } = await supabase.from('inventory')
             .select('*')
             .eq('book_barcode', tagId)
-            .eq('status', 'acquired')
+            .not('status', 'ilike', 'Available%')
             .maybeSingle();
+
 
         
         if (directData) { 
@@ -38,7 +39,8 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
                 const { data: parsedData } = await supabase.from('inventory').select('*')
                     .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
                     .eq('item_number', parseInt(itemNumStr, 10))
-                    .eq('status', 'acquired');
+                    .not('status', 'ilike', 'Available%');
+
 
                 
                 if (parsedData && parsedData.length > 0) {
@@ -66,8 +68,9 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
             const { data: legacyData } = await supabase.from('inventory')
                 .select('*')
                 .eq('item_id', tagId)
-                .eq('status', 'acquired')
+                .not('status', 'ilike', 'Available%')
                 .maybeSingle();
+
 
             if (legacyData) {
                 fetched = { data: legacyData };
