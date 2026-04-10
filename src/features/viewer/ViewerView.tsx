@@ -203,6 +203,7 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
     const vendorColor = (codes as any).vendorColor || '#b8860b';
     const retailUsd = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
     const typeLabel = norm.shape || norm.shortDescription || 'Artifact';
+    const itemName = norm.shortDescription || norm.shape || 'Artifact';
     const color = norm.color || (norm as any).Color || '';
     const material = norm.material || (norm as any).Material || '';
     const detailStr = [color, material].filter(Boolean).join(' · ');
