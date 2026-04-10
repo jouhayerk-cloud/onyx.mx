@@ -24,7 +24,9 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
         const { data: directData } = await supabase.from('inventory')
             .select('*')
             .eq('book_barcode', tagId)
+            .eq('status', 'acquired')
             .maybeSingle();
+
         
         if (directData) { 
             fetched = { data: directData }; 
@@ -35,7 +37,9 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
                 const [_, vendorPrefix, wbStr, itemNumStr] = match;
                 const { data: parsedData } = await supabase.from('inventory').select('*')
                     .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
-                    .eq('item_number', parseInt(itemNumStr, 10));
+                    .eq('item_number', parseInt(itemNumStr, 10))
+                    .eq('status', 'acquired');
+
                 
                 if (parsedData && parsedData.length > 0) {
                     const found = parsedData.find(d => 
@@ -62,7 +66,9 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
             const { data: legacyData } = await supabase.from('inventory')
                 .select('*')
                 .eq('item_id', tagId)
+                .eq('status', 'acquired')
                 .maybeSingle();
+
             if (legacyData) {
                 fetched = { data: legacyData };
             }
