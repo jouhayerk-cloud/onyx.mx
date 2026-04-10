@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom } from 'jotai';
 import { viewerSearchQueryAtom, exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
-import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
+import { searchArtifacts, ResolvedArtifact } from '../../lib/artifactUtils';
 import { getCleanImageUrl } from '../../lib/utils';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import {
@@ -458,8 +458,8 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
         if (!q.trim()) { setResults([]); setIsInitial(true); return; }
         setIsInitial(false); setLoading(true);
         try {
-            const resolved = await Promise.all(q.split(/\s+/).filter(Boolean).map(id => resolveArtifact(id, { exchangeRate, workbookPrefix: wbPrefix })));
-            setResults(resolved.filter((r): r is ResolvedArtifact => r !== null));
+            const results = await searchArtifacts(q, { exchangeRate, workbookPrefix: wbPrefix });
+            setResults(results);
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }, [exchangeRate, wbPrefix]);
 

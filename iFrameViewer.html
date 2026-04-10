@@ -201,7 +201,9 @@
                 'maximize': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`,
                 'x': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
                 'file-down': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>`,
-                'loader': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin ${className}"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>`
+                'loader': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin ${className}"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>`,
+                'cloud-upload': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>`,
+                'check': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M20 6 9 17l-5-5"/></svg>`
             };
             return icons[name] || null;
         };
@@ -392,6 +394,8 @@
             const [searching, setSearching] = useState(false);
             const [viewer, setViewer] = useState(null);
             const [exporting, setExporting] = useState(false);
+            const [exportProgress, setExportProgress] = useState(0);
+            const [exportStatus, setExportStatus] = useState('');
 
             const performSearch = async (q) => {
                 const searchStr = q.trim();
@@ -587,6 +591,8 @@
             const exportPdf = async () => {
                 if (!results.length || exporting) return;
                 setExporting(true);
+                setExportProgress(0);
+                setExportStatus('Initializing Engine...');
                 try {
                     const { jsPDF } = window.jspdf;
                     const PW = 210, PH = 297, M = 12;
@@ -611,6 +617,9 @@
                         d.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' });
                     };
 
+                    const totalItems = results.length;
+                    let processedCount = 0;
+
                     // Process Simple Items (2 per page)
                     const HW = (PW - M * 2 - 4) / 2; const HG = 4;
                     for (let i = 0; i < simple.length; i += 2) {
@@ -618,6 +627,9 @@
                         doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
                         for (let slot = 0; slot < 2; slot++) {
                             const item = simple[i + slot]; if (!item) break;
+                            processedCount++;
+                            setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
+                            setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
                             const sx = M + slot * (HW + HG);
                             const norm = normalizeData(item.data);
                             const codes = item.codes;
@@ -637,8 +649,6 @@
                                 doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
                                 doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
                             }
-
-
 
                             doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
 
@@ -669,6 +679,9 @@
 
                     // Process Rich Items (Full page grid)
                     for (const item of rich) {
+                        processedCount++;
+                        setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
+                        setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
                         const imgs = item.images; const n = imgs.length;
                         const CHUNK = 12; const totalPagesForItem = Math.ceil(n / CHUNK);
                         for (let p = 0; p < totalPagesForItem; p++) {
@@ -692,9 +705,16 @@
                         }
                     }
 
+                    setExportStatus('Finalizing Catalogue...');
+                    setExportProgress(95);
                     doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
-                } catch (e) { console.error('PDF export failed', e); }
-                finally { setExporting(false); }
+                    setExportStatus('Catalogue Downloaded');
+                    setExportProgress(100);
+                    setTimeout(() => setExporting(false), 800);
+                } catch (e) {
+                    console.error('PDF export failed', e);
+                    setExporting(false);
+                }
             };
 
 
@@ -730,13 +750,45 @@
                                 <div class="flex items-center justify-between mb-8 opacity-60">
                                     <span class="text-[10px] font-black uppercase tracking-widest">${results.length} Results</span>
                                     <button onClick=${exportPdf} class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#b8860b] hover:text-white transition-colors">
-                                        <${LucideIcon} name="file-down" size="14" /> ${exporting ? 'Exporting...' : 'Export PDF'}
+                                        <${LucideIcon} name="file-down" size="14" /> Export PDF
                                     </button>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     ${results.map((item, i) => html`<${ViewerCard} key=${i} item=${item} onOpenViewer=${(idx) => setViewer({ item, idx })} />`)}
                                 </div>
                            </div>
+                        </div>
+                    `}
+
+                    ${exporting && html`
+                        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-fade-in">
+                            <div class="w-[360px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden">
+                                <div class="absolute inset-0 bg-gradient-to-b from-[#b8860b]/5 to-transparent opacity-50"></div>
+                                
+                                <div class="relative">
+                                    <div class="w-20 h-20 rounded-3xl bg-[#b8860b]/10 flex items-center justify-center border border-[#b8860b]/20 animate-pulse">
+                                        <${LucideIcon} name="cloud-upload" size="40" className="text-[#b8860b]" />
+                                    </div>
+                                    <div class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#050505] transition-all duration-500" style=${{ transform: exportProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                        <${LucideIcon} name="check" size="14" className="text-white" />
+                                    </div>
+                                </div>
+
+                                <div class="w-full space-y-4 relative">
+                                    <div class="flex justify-between items-end">
+                                        <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Generating</span>
+                                        <span class="text-sm font-mono font-black text-[#b8860b]">${exportProgress}%</span>
+                                    </div>
+                                    <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                        <div class="h-full bg-gradient-to-r from-[#b8860b]/50 to-[#b8860b] transition-all duration-500 ease-out"
+                                             style=${{ width: `${exportProgress}%` }}></div>
+                                    </div>
+                                </div>
+
+                                <p class="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                                    ${exportStatus}
+                                </p>
+                            </div>
                         </div>
                     `}
                 </div>`;
