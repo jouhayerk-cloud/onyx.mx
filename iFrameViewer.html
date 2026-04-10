@@ -85,717 +85,676 @@
     </svg>
 
     <script>
-        const { useState, useEffect, useCallback, useRef, useMemo } = React;
-        const html = htm.bind(React.createElement);
-        const { createClient } = supabase;
-
-        // --- Config ---
-        const SUPABASE_URL = 'https://yircifkayqpuydfdqzlm.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpcmNpZmtheXFwdXlkZmRxemxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODE4NzgsImV4cCI6MjA4NzQ1Nzg3OH0.AAo7z8J4798J25Wu-7EDI78zC2OY6k7C8pdGKBo07b8';
-        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // --- Utils ---
-        const getCleanImageUrl = (url) => {
-            if (!url) return null;
-            let clean = String(url).split('&tag=')[0].trim();
-            const driveMatch = clean.match(/\/d\/([a-zA-Z0-9_-]{10,})/) || clean.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
-            if (driveMatch && clean.includes('drive.google.com')) {
-                return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+        // Safety check for Google Sites / CDN race conditions
+        const initViewer = () => {
+            if (!window.React || !window.htm || !window.supabase) {
+                console.warn('Onyx Viewer: Waiting for dependencies...');
+                setTimeout(initViewer, 200);
+                return;
             }
-            return clean;
-        };
 
-        const numberToCypher = (num) => {
-            const key = 'DOXHELFANM';
-            return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)]).join('');
-        };
+            const { useState, useEffect, useCallback, useRef, useMemo } = React;
+            const html = htm.bind(React.createElement);
+            const { createClient } = supabase;
 
-        const normalizeData = (data) => {
-            if (!data) return {};
-            return {
-                ...data,
-                itemId: data.itemId || data.item_id,
-                itemNumber: data.itemNumber || data.item_number,
-                price: data.price || data.price_mxn,
-                shortDescription: data.shortDescription || data.short_description,
-                widthCm: data.widthCm || data.width_cm,
-                heightCm: data.heightCm || data.height_cm,
-                lengthCm: data.lengthCm || data.length_cm,
-                weightKg: data.weightKg || data.weight_kg,
-                generatedImageUrls: data.generatedImageUrls || data.generated_image_urls,
-                mediaUrls: data.mediaUrls || data.media_urls,
-                book_barcode: data.book_barcode || data.bookBarcode
-            };
-        };
+            // --- Config ---
+            const SUPABASE_URL = 'https://yircifkayqpuydfdqzlm.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpcmNpZmtheXFwdXlkZmRxemxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODE4NzgsImV4cCI6MjA4NzQ1Nzg3OH0.AAo7z8J4798J25Wu-7EDI78zC2OY6k7C8pdGKBo07b8';
+            const client = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const calculateCodes = (data, exchangeRate = 17) => {
-            const norm = normalizeData(data);
-            const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
-
-            const costUsd = Math.round((costMxn / exchangeRate) * 100) / 100;
-            const landedCost = Math.round((costUsd * 1.4) * 100) / 100;
-            const retailPrice = Math.round((landedCost * 12) * 100) / 100;
-
-            const vendors = {
-                R: { name: 'RAMSES', color: '#737104' },
-                M: { name: 'MARTHA', color: '#4f2068' },
-                W: { name: 'WAYNE', color: '#e67e22' },
-                C: { name: 'CHAD', color: '#d35400' },
-                JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
-                EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
-                CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
-                AN: { name: 'ANGEL CABRERA', color: '#FFED00' },
-                SU: { name: 'SUZANA', color: '#B19CD9' },
-                TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
-                DH: { name: 'DELFINO HERNANDEZ', color: '#8DC63F' },
-                ML: { name: 'MARIA LUISA', color: '#F9A17A' },
-                GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
-                FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
-                ET: { name: 'EDUARDO TELLEZ', color: '#636466' },
-                AM: { name: 'ALEJANDRO MEZA', color: '#800020' },
-                BT: { name: 'BERNARDO', color: '#603913' },
-                RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
-                GS: { name: 'GIFT STORE', color: '#D11C7E' },
-                CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
-                GM: { name: 'GEMA MARTIN', color: '#E6194B' },
-                MM: { name: 'MARGARITA MEZA', color: '#911EB4' }
-            };
-
-            const rawId = String(norm.itemId || norm.tagId || norm.tag_id || '').toUpperCase();
-            const vendorPrefix = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k)) || 'SU';
-            const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
-            const cypher = numberToCypher(Math.floor(landedCost));
-            const barcode = costMxn === 0 ? '-' : `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
-
-            return {
-                bookBarcode: barcode,
-                bookRetail: costMxn === 0 ? '-' : Math.floor(retailPrice).toString(),
-                bookAqCode: costMxn === 0 ? '-' : numberToCypher(Math.floor(costUsd)),
-                bookLandCode: costMxn === 0 ? '-' : cypher,
-                vendorColor: vendors[vendorPrefix]?.color || '#b8860b'
-            };
-        };
-
-        const toImp = (val, type = 'in') => {
-            const v = parseFloat(val); if (!v || isNaN(v)) return '';
-            if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
-            const totalInches = v * 0.393701;
-            if (type === 'ft') {
-                const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
-                return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
-            }
-            const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
-            let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
-            return `${whole}${f}"`;
-        };
-
-
-
-
-        // --- Components ---
-
-        const LucideIcon = ({ name, size = 20, className = "" }) => {
-            // Simple SVG map for standalone
-            const icons = {
-                'search': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
-                'maximize': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`,
-                'x': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
-                'file-down': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>`,
-                'loader': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin ${className}"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>`,
-                'cloud-upload': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>`,
-                'check': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M20 6 9 17l-5-5"/></svg>`
-            };
-            return icons[name] || null;
-        };
-
-        const OnyxLogo = ({ width = 56, height = 56, className = "" }) => html`
-            <svg width=${width} height=${height} viewBox="0 0 2513 2928" fill="none" xmlns="http://www.w3.org/2000/svg" class=${className}>
-                <path d="M2512.48,774.267l0,1189.92c0,66.364 -40.709,97.088 -90.85,68.568l-1040.29,-591.699c-50.142,-28.52 -90.851,-105.553 -90.851,-171.916l-0,-1189.92c-0,-66.363 40.709,-97.087 90.851,-68.568l1040.29,591.699c50.141,28.52 90.85,105.553 90.85,171.916Z" fill="var(--main-color)" fill-opacity="0.2" />
-                <path d="M1351.61,1573.19l1108.94,612.947c61.847,34.184 69.553,85.23 17.199,113.918l-1109.95,608.22c-52.355,28.688 -145.071,24.226 -206.918,-9.959l-1108.94,-612.947c-61.847,-34.185 -69.553,-85.23 -17.199,-113.919l1109.95,-608.219c52.355,-28.689 145.072,-24.226 206.918,9.959Z" fill="var(--secondary-color)" fill-opacity="0.3" />
-                <path d="M0,767.537l0,1196.23c0,66.716 40.925,97.603 91.332,68.932l1014.25,-576.886c50.408,-28.671 91.332,-106.113 91.332,-172.828l0,-1196.23c0,-66.715 -40.924,-97.602 -91.332,-68.931l-1014.25,576.886c-50.407,28.671 -91.332,106.112 -91.332,172.827Z" fill="var(--main-color)" fill-opacity="0.5" />
-                <path d="M1224.31,1442.91l-0,925.882l823.072,-450.156l-0,-925.881l-823.072,450.155Z" fill="currentColor" fill-opacity="0.75" />
-                <path d="M427.258,1014.63l797.051,430.639l823.072,-450.156l-797.051,-430.639l-823.072,450.156Z" fill="currentColor" fill-opacity="0.9" />
-            </svg>`;
-
-        const FullscreenViewer = ({ images, initialIdx, onClose }) => {
-            const [idx, setIdx] = useState(initialIdx);
-            const imgRef = useRef(null);
-            const state = useRef({ scale: 1, x: 0, y: 0, touchStart: { x: 0, y: 0, dist: 0 }, isZoomed: false });
-
-            useEffect(() => {
-                resetTransform(false);
-            }, [idx]);
-
-            const updateTransform = (animate = true) => {
-                if (!imgRef.current) return;
-                gsap.to(imgRef.current, {
-                    scale: state.current.scale,
-                    x: state.current.x,
-                    y: state.current.y,
-                    duration: animate ? 0.35 : 0,
-                    ease: 'power3.out',
-                    overwrite: 'auto'
-                });
-                state.current.isZoomed = state.current.scale > 1.1;
-            };
-
-            const resetTransform = (animate = true) => {
-                state.current.scale = 1; state.current.x = 0; state.current.y = 0;
-                updateTransform(animate);
-            };
-
-            const handleNav = (dir) => {
-                if (state.current.isZoomed) return;
-                const next = (idx + dir + images.length) % images.length;
-                gsap.to(imgRef.current, { opacity: 0, x: -dir * 100, scale: 0.95, duration: 0.25, onComplete: () => { setIdx(next); } });
-            };
-
-            const onTouchStart = (e) => {
-                const touches = e.touches;
-                if (touches.length === 2) {
-                    const dx = touches[0].clientX - touches[1].clientX;
-                    const dy = touches[0].clientY - touches[1].clientY;
-                    state.current.touchStart.dist = Math.sqrt(dx * dx + dy * dy);
-                    state.current.lastScale = state.current.scale;
+            // --- Utils ---
+            const getCleanImageUrl = (url) => {
+                if (!url) return null;
+                let clean = String(url).split('&tag=')[0].trim();
+                const driveMatch = clean.match(/\/d\/([a-zA-Z0-9_-]{10,})/) || clean.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+                if (driveMatch && clean.includes('drive.google.com')) {
+                    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
                 }
+                return clean;
             };
 
-            const onTouchMove = (e) => {
-                const touches = e.touches;
-                if (touches.length === 2) {
-                    const dx = touches[0].clientX - touches[1].clientX;
-                    const dy = touches[0].clientY - touches[1].clientY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const factor = dist / state.current.touchStart.dist;
-                    state.current.scale = Math.max(1, Math.min(6, state.current.lastScale * factor));
-                    updateTransform(false);
+            const numberToCypher = (num) => {
+                const key = 'DOXHELFANM';
+                return String(Math.floor(num)).split('').map(d => key[parseInt(d, 10)]).join('');
+            };
+
+            const normalizeData = (data) => {
+                if (!data) return {};
+                return {
+                    ...data,
+                    itemId: data.itemId || data.item_id,
+                    itemNumber: data.itemNumber || data.item_number,
+                    price: data.price || data.price_mxn,
+                    shortDescription: data.shortDescription || data.short_description,
+                    widthCm: data.widthCm || data.width_cm,
+                    heightCm: data.heightCm || data.height_cm,
+                    lengthCm: data.lengthCm || data.length_cm,
+                    weightKg: data.weightKg || data.weight_kg,
+                    generatedImageUrls: data.generatedImageUrls || data.generated_image_urls,
+                    mediaUrls: data.mediaUrls || data.media_urls,
+                    book_barcode: data.book_barcode || data.bookBarcode
+                };
+            };
+
+            const calculateCodes = (data, exchangeRate = 17) => {
+                const norm = normalizeData(data);
+                const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
+
+                const costUsd = Math.round((costMxn / exchangeRate) * 100) / 100;
+                const landedCost = Math.round((costUsd * 1.4) * 100) / 100;
+                const retailPrice = Math.round((landedCost * 12) * 100) / 100;
+
+                const vendors = {
+                    R: { name: 'RAMSES', color: '#737104' },
+                    M: { name: 'MARTHA', color: '#4f2068' },
+                    W: { name: 'WAYNE', color: '#e67e22' },
+                    C: { name: 'CHAD', color: '#d35400' },
+                    JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
+                    EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
+                    CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
+                    AN: { name: 'ANGEL CABRERA', color: '#FFED00' },
+                    SU: { name: 'SUZANA', color: '#B19CD9' },
+                    TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
+                    DH: { name: 'DELFINO HERNANDEZ', color: '#8DC63F' },
+                    ML: { name: 'MARIA LUISA', color: '#F9A17A' },
+                    GE: { name: 'GERARDO DE GANTE', color: '#F7941D' },
+                    FR: { name: 'FOUNTAIN ROCK', color: '#F36F21' },
+                    ET: { name: 'EDUARDO TELLEZ', color: '#636466' },
+                    AM: { name: 'ALEJANDRO MEZA', color: '#800020' },
+                    BT: { name: 'BERNARDO', color: '#603913' },
+                    RF: { name: 'ROBERTO FLORITA', color: '#00A591' },
+                    GS: { name: 'GIFT STORE', color: '#D11C7E' },
+                    CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
+                    GM: { name: 'GEMA MARTIN', color: '#E6194B' },
+                    MM: { name: 'MARGARITA MEZA', color: '#911EB4' }
+                };
+
+                const rawId = String(norm.itemId || norm.tagId || norm.tag_id || '').toUpperCase();
+                const vendorPrefix = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k)) || 'SU';
+                const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
+                const cypher = numberToCypher(Math.floor(landedCost));
+                const barcode = costMxn === 0 ? '-' : `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
+
+                return {
+                    bookBarcode: barcode,
+                    bookRetail: costMxn === 0 ? '-' : Math.floor(retailPrice).toString(),
+                    bookAqCode: costMxn === 0 ? '-' : numberToCypher(Math.floor(costUsd)),
+                    bookLandCode: costMxn === 0 ? '-' : cypher,
+                    vendorColor: vendors[vendorPrefix]?.color || '#b8860b'
+                };
+            };
+
+            const toImp = (val, type = 'in') => {
+                const v = parseFloat(val); if (!v || isNaN(v)) return '';
+                if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
+                const totalInches = v * 0.393701;
+                if (type === 'ft') {
+                    const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
+                    return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
                 }
+                const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
+                let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
+                return `${whole}${f}"`;
             };
 
-            return html`
-                <div class="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center overflow-hidden" 
-                     onClick=${onClose} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove}>
-                    <div class="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-6 z-10 bg-gradient-to-b from-black/80 to-transparent">
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Artifact</span>
-                            <span class="text-xs font-black text-white/80 tabular-nums">${idx + 1} / ${images.length}</span>
-                        </div>
-                        <button onClick=${onClose} class="w-12 h-12 flex items-center justify-center text-white/40 hover:text-white rounded-full studio-glass active:scale-90">
-                            <${LucideIcon} name="x" size="20" />
-                        </button>
-                    </div>
-                    <div class="relative w-full h-full flex items-center justify-center" onClick=${e => e.stopPropagation()}>
-                        <img ref=${imgRef} src=${getCleanImageUrl(images[idx])} 
-                             class="max-w-[90%] max-h-[90%] object-contain select-none shadow-2xl rounded-lg will-change-transform" 
-                             draggable="false" />
-                    </div>
-                    ${images.length > 1 && html`
-                        <div class="absolute bottom-0 inset-x-0 flex gap-2.5 px-6 py-8 justify-center overflow-x-auto no-scrollbar" onClick=${e => e.stopPropagation()}>
-                            ${images.map((src, i) => html`
-                                <div key=${i} onClick=${() => setIdx(i)} 
-                                     class="w-14 h-14 rounded-xl overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${i === idx ? 'border-[#b8860b] scale-110' : 'border-transparent opacity-30'}">
-                                    <img src=${getCleanImageUrl(src)} class="w-full h-full object-cover" />
-                                </div>
-                            `)}
-                        </div>
-                    `}
-                </div>`;
-        };
+            // --- Components ---
 
-        const ViewerCard = ({ item, onOpenViewer }) => {
-            const norm = normalizeData(item.data);
-            const codes = calculateCodes(item.data);
-            const gridCols = item.images.length <= 3 ? (item.images.length === 2 ? 'grid-cols-2' : 'grid-cols-3') : 'grid-cols-4';
+            const LucideIcon = ({ name, size = 20, className = "" }) => {
+                const icons = {
+                    'search': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+                    'maximize': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>`,
+                    'x': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`,
+                    'file-down': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>`,
+                    'loader': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin ${className}"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m7.8 16.2-2.9 2.9"/><path d="M2 12h4"/><path d="m7.8 7.8-2.9-2.9"/></svg>`,
+                    'cloud-upload': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>`,
+                    'check': html`<svg xmlns="http://www.w3.org/2000/svg" width=${size} height=${size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class=${className}><path d="M20 6 9 17l-5-5"/></svg>`
+                };
+                return icons[name] || null;
+            };
 
-            const dimensions = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
-            const weight = norm.weightKg ? `${norm.weightKg}kg` : '';
+            const OnyxLogo = ({ width = 56, height = 56, className = "" }) => html`
+                <svg width=${width} height=${height} viewBox="0 0 2513 2928" fill="none" xmlns="http://www.w3.org/2000/svg" class=${className}>
+                    <path d="M2512.48,774.267l0,1189.92c0,66.364 -40.709,97.088 -90.85,68.568l-1040.29,-591.699c-50.142,-28.52 -90.851,-105.553 -90.851,-171.916l-0,-1189.92c-0,-66.363 40.709,-97.087 90.851,-68.568l1040.29,591.699c50.141,28.52 90.85,105.553 90.85,171.916Z" fill="var(--main-color)" fill-opacity="0.2" />
+                    <path d="M1351.61,1573.19l1108.94,612.947c61.847,34.184 69.553,85.23 17.199,113.918l-1109.95,608.22c-52.355,28.688 -145.071,24.226 -206.918,-9.959l-1108.94,-612.947c-61.847,-34.185 -69.553,-85.23 -17.199,-113.919l1109.95,-608.219c52.355,-28.689 145.072,-24.226 206.918,9.959Z" fill="var(--secondary-color)" fill-opacity="0.3" />
+                    <path d="M0,767.537l0,1196.23c0,66.716 40.925,97.603 91.332,68.932l1014.25,-576.886c50.408,-28.671 91.332,-106.113 91.332,-172.828l0,-1196.23c0,-66.715 -40.924,-97.602 -91.332,-68.931l-1014.25,576.886c-50.407,28.671 -91.332,106.112 -91.332,172.827Z" fill="var(--main-color)" fill-opacity="0.5" />
+                    <path d="M1224.31,1442.91l-0,925.882l823.072,-450.156l-0,-925.881l-823.072,450.155Z" fill="currentColor" fill-opacity="0.75" />
+                    <path d="M427.258,1014.63l797.051,430.639l823.072,-450.156l-797.051,-430.639l-823.072,450.156Z" fill="currentColor" fill-opacity="0.9" />
+                </svg>`;
 
-            return html`
-                <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
-                    <div class="relative w-full aspect-square overflow-hidden bg-white/5">
-                        <div class="grid gap-px h-full ${item.images.length === 1 ? 'grid-cols-1' :
-                    item.images.length === 2 ? 'grid-cols-2' :
-                        item.images.length === 3 ? 'grid-cols-3' :
-                            item.images.length <= 6 ? 'grid-cols-3' : 'grid-cols-4'
-                }">
+            const FullscreenViewer = ({ images, initialIdx, onClose }) => {
+                const [idx, setIdx] = useState(initialIdx);
+                const imgRef = useRef(null);
+                const state = useRef({ scale: 1, x: 0, y: 0, touchStart: { x: 0, y: 0, dist: 0 }, isZoomed: false });
 
-                            ${item.images.slice(0, 16).map((url, i) => html`
-                                <div key=${i} class="relative overflow-hidden cursor-zoom-in group/img" onClick=${() => onOpenViewer(i)}>
-                                    <img src=${getCleanImageUrl(url)} class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
-                                    ${i === 15 && item.images.length > 16 && html`
-                                        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-                                            <div class="flex flex-col items-center">
-                                                <span class="text-xl font-black text-white">+${item.images.length - 16}</span>
-                                                <span class="text-[8px] font-black text-white/40 uppercase tracking-widest mt-0.5">More</span>
-                                            </div>
-                                        </div>
-                                    `}
-                                </div>
-                            `)}
-                        </div>
-                        <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10">
-                                <${LucideIcon} name="maximize" size="12" className="text-white/60" />
-                            </div>
-                        </div>
-                    </div>
+                useEffect(() => {
+                    resetTransform(false);
+                }, [idx]);
 
-                    <div class="p-6 flex flex-col gap-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex flex-col gap-1.5 flex-1 min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border" 
-                                          style=${{ color: codes.vendorColor, backgroundColor: `${codes.vendorColor}1A`, borderColor: `${codes.vendorColor}33` }}>
-                                        ${codes.bookBarcode}
-                                    </span>
-                                    <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/30 tracking-widest uppercase">
-                                        ${codes.bookAqCode}
-                                    </span>
-                                </div>
+                const updateTransform = (animate = true) => {
+                    if (!imgRef.current) return;
+                    gsap.to(imgRef.current, {
+                        scale: state.current.scale,
+                        x: state.current.x,
+                        y: state.current.y,
+                        duration: animate ? 0.35 : 0,
+                        ease: 'power3.out',
+                        overwrite: 'auto'
+                    });
+                    state.current.isZoomed = state.current.scale > 1.1;
+                };
 
-                                <h3 class="text-lg font-black text-white uppercase truncate group-hover:text-[#b8860b] transition-colors">
-                                    ${norm.shortDescription || norm.shape || 'Artifact'}
-                                </h3>
-                            </div>
-                            <div class="flex flex-col items-end shrink-0">
-                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Qty</span>
-                                <span class="text-xl font-black text-white/60">${norm.quantity || 1}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-y border-white/5">
+                const resetTransform = (animate = true) => {
+                    state.current.scale = 1; state.current.x = 0; state.current.y = 0;
+                    updateTransform(animate);
+                };
+
+                const onTouchStart = (e) => {
+                    const touches = e.touches;
+                    if (touches.length === 2) {
+                        const dx = touches[0].clientX - touches[1].clientX;
+                        const dy = touches[0].clientY - touches[1].clientY;
+                        state.current.touchStart.dist = Math.sqrt(dx * dx + dy * dy);
+                        state.current.lastScale = state.current.scale;
+                    }
+                };
+
+                const onTouchMove = (e) => {
+                    const touches = e.touches;
+                    if (touches.length === 2) {
+                        const dx = touches[0].clientX - touches[1].clientX;
+                        const dy = touches[0].clientY - touches[1].clientY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const factor = dist / state.current.touchStart.dist;
+                        state.current.scale = Math.max(1, Math.min(6, state.current.lastScale * factor));
+                        updateTransform(false);
+                    }
+                };
+
+                return html`
+                    <div class="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center overflow-hidden" 
+                         onClick=${onClose} onTouchStart=${onTouchStart} onTouchMove=${onTouchMove}>
+                        <div class="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-6 z-10 bg-gradient-to-b from-black/80 to-transparent">
                             <div class="flex flex-col">
-                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Retail</span>
-                                <span class="text-2xl font-black text-white font-mono">$${codes.bookRetail}</span>
+                                <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.4em]">Artifact</span>
+                                <span class="text-xs font-black text-white/80 tabular-nums">${idx + 1} / ${images.length}</span>
                             </div>
-                            <div class="flex flex-col items-end">
-                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Images</span>
-                                <span class="text-sm font-black text-white/30">${item.images.length}</span>
+                            <button onClick=${onClose} class="w-12 h-12 flex items-center justify-center text-white/40 hover:text-white rounded-full studio-glass active:scale-90">
+                                <${LucideIcon} name="x" size="20" />
+                            </button>
+                        </div>
+                        <div class="relative w-full h-full flex items-center justify-center" onClick=${e => e.stopPropagation()}>
+                            <img ref=${imgRef} src=${getCleanImageUrl(images[idx])} 
+                                 class="max-w-[90%] max-h-[90%] object-contain select-none shadow-2xl rounded-lg will-change-transform" 
+                                 draggable="false" />
+                        </div>
+                        ${images.length > 1 && html`
+                            <div class="absolute bottom-0 inset-x-0 flex gap-2.5 px-6 py-8 justify-center overflow-x-auto no-scrollbar" onClick=${e => e.stopPropagation()}>
+                                ${images.map((src, i) => html`
+                                    <div key=${i} onClick=${() => setIdx(i)} 
+                                         class="w-14 h-14 rounded-xl overflow-hidden shrink-0 cursor-pointer transition-all border-2 ${i === idx ? 'border-[#b8860b] scale-110' : 'border-transparent opacity-30'}">
+                                        <img src=${getCleanImageUrl(src)} class="w-full h-full object-cover" />
+                                    </div>
+                                `)}
+                            </div>
+                        `}
+                    </div>`;
+            };
+
+            const ViewerCard = ({ item, onOpenViewer }) => {
+                const norm = normalizeData(item.data);
+                const codes = calculateCodes(item.data);
+                const dimensions = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
+                const weight = norm.weightKg ? `${norm.weightKg}kg` : '';
+
+                return html`
+                    <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
+                        <div class="relative w-full aspect-square overflow-hidden bg-white/5">
+                            <div class="grid gap-px h-full ${item.images.length === 1 ? 'grid-cols-1' : item.images.length === 2 ? 'grid-cols-2' : item.images.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}">
+                                ${item.images.slice(0, 16).map((url, i) => html`
+                                    <div key=${i} class="relative overflow-hidden cursor-zoom-in group/img" onClick=${() => onOpenViewer(i)}>
+                                        <img src=${getCleanImageUrl(url)} class="w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+                                        ${i === 15 && item.images.length > 16 && html`
+                                            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+                                                <div class="flex flex-col items-center">
+                                                    <span class="text-xl font-black text-white">+${item.images.length - 16}</span>
+                                                    <span class="text-[8px] font-black text-white/40 uppercase tracking-widest mt-0.5">More</span>
+                                                </div>
+                                            </div>
+                                        `}
+                                    </div>
+                                `)}
+                            </div>
+                            <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10">
+                                    <${LucideIcon} name="maximize" size="12" className="text-white/60" />
+                                </div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-4 mt-1">
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Dims</span>
-                                <span class="text-[10px] font-bold text-white/50 truncate">${dimensions ? `${dimensions}cm` : '—'}</span>
+
+                        <div class="p-6 flex flex-col gap-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border" 
+                                              style=${{ color: codes.vendorColor, backgroundColor: `${codes.vendorColor}1A`, borderColor: `${codes.vendorColor}33` }}>
+                                            ${codes.bookBarcode}
+                                        </span>
+                                        <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/30 tracking-widest uppercase">
+                                            ${codes.bookAqCode}
+                                        </span>
+                                    </div>
+
+                                    <h3 class="text-lg font-black text-white uppercase truncate group-hover:text-[#b8860b] transition-colors">
+                                        ${norm.shortDescription || norm.shape || 'Artifact'}
+                                    </h3>
+                                </div>
+                                <div class="flex flex-col items-end shrink-0">
+                                    <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Qty</span>
+                                    <span class="text-xl font-black text-white/60">${norm.quantity || 1}</span>
+                                </div>
                             </div>
-                            <div class="flex flex-col gap-0.5 items-end">
-                                <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
-                                <span class="text-[10px] font-bold text-white/50">${weight || '—'}</span>
+                            <div class="flex items-center justify-between py-3 border-y border-white/5">
+                                <div class="flex flex-col">
+                                    <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Retail</span>
+                                    <span class="text-2xl font-black text-white font-mono">$${codes.bookRetail}</span>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Images</span>
+                                    <span class="text-sm font-black text-white/30">${item.images.length}</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-1">
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Dims</span>
+                                    <span class="text-[10px] font-bold text-white/50 truncate">${dimensions ? `${dimensions}cm` : '—'}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 items-end">
+                                    <span class="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
+                                    <span class="text-[10px] font-bold text-white/50">${weight || '—'}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>`;
-        };
+                    </div>`;
+            };
 
+            const App = () => {
+                const [query, setQuery] = useState('');
+                const [results, setResults] = useState([]);
+                const [loading, setLoading] = useState(false);
+                const [searching, setSearching] = useState(false);
+                const [viewer, setViewer] = useState(null);
+                const [exporting, setExporting] = useState(false);
+                const [exportProgress, setExportProgress] = useState(0);
+                const [exportStatus, setExportStatus] = useState('');
 
-        const App = () => {
-            const [query, setQuery] = useState('');
-            const [results, setResults] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [searching, setSearching] = useState(false);
-            const [viewer, setViewer] = useState(null);
-            const [exporting, setExporting] = useState(false);
-            const [exportProgress, setExportProgress] = useState(0);
-            const [exportStatus, setExportStatus] = useState('');
+                const performSearch = async (q) => {
+                    const searchStr = q.trim();
+                    if (!searchStr) return;
+                    setLoading(true); setSearching(true);
+                    const terms = searchStr.split(/[\s,]+/).filter(Boolean);
 
-            const performSearch = async (q) => {
-                const searchStr = q.trim();
-                if (!searchStr) return;
-                setLoading(true); setSearching(true);
-                const terms = searchStr.split(/[\s,]+/).filter(Boolean);
+                    try {
+                        const resolveId = async (tagId) => {
+                            const tid = typeof tagId === 'string' ? tagId.trim() : '';
+                            if (!tid) return null;
 
-                try {
-                    // Helper for resolving a single ID (Barcodes/Tags)
-                    // CLONED: Official resolveArtifact logic from Studio (artifactUtils.ts)
-                    const resolveId = async (tagId) => {
-                        const tid = typeof tagId === 'string' ? tagId.trim() : '';
-                        if (!tid) return null;
+                            const { data: exact } = await client.from('inventory')
+                                .select('*')
+                                .or(`book_barcode.eq."${tid}",item_id.eq."${tid}",id.eq."${tid}"`)
+                                .maybeSingle();
 
-                        // 1. Exact Barcode (Case-Insensitive)
-                        const { data: exact } = await client.from('inventory').select('*').ilike('book_barcode', tid).not('status', 'ilike', 'Available%').maybeSingle();
-                        if (exact) return { data: exact, images: resolveImages(exact) };
+                            if (exact) return { data: exact, images: resolveImages(exact) };
 
-                        // 2. Fallback: Parse barcode style (SU + 326 + 15 + EE)
-                        const match = tid.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
-                        if (match) {
-                            const [_, vendorPrefix, wbStr, itemNumStr] = match;
-                            const { data: parsedData } = await client.from('inventory').select('*')
-                                .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
-                                .eq('item_number', parseInt(itemNumStr, 10))
-                                .not('status', 'ilike', 'Available%');
+                            const match = tid.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
+                            if (match) {
+                                const [_, vendorPrefix, wbStr, itemNumStr] = match;
+                                const { data: parsedData } = await client.from('inventory').select('*')
+                                    .or(`workbook.eq.${wbStr},workbook.eq.V${wbStr},workbook.eq.v${wbStr}`)
+                                    .eq('item_number', parseInt(itemNumStr, 10))
+                                    .not('status', 'ilike', 'Available%');
 
-                            if (parsedData && parsedData.length > 0) {
-                                const found = parsedData.find(d =>
-                                    String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
-                                ) || parsedData[0];
-                                return { data: found, images: resolveImages(found) };
+                                if (parsedData && parsedData.length > 0) {
+                                    const found = parsedData.find(d =>
+                                        String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
+                                    ) || parsedData[0];
+                                    return { data: found, images: resolveImages(found) };
+                                }
                             }
-                        }
 
-                        // 3. Fallback: Production table (Match Studio logic: NO status filter here)
-                        const { data: prod } = await client.from('production').select('*').ilike('tag_id', tid).maybeSingle();
-                        if (prod) return { data: prod, images: resolveImages(prod) };
+                            const { data: prod } = await client.from('production').select('*').ilike('tag_id', tid).maybeSingle();
+                            if (prod) return { data: prod, images: resolveImages(prod) };
 
-                        // 4. Last resort: Try as item_id (legacy SU-...)
-                        const { data: legacy } = await client.from('inventory').select('*').ilike('item_id', tid).not('status', 'ilike', 'Available%').maybeSingle();
-                        if (legacy) return { data: legacy, images: resolveImages(legacy) };
+                            const { data: legacy } = await client.from('inventory').select('*').ilike('item_id', tid).maybeSingle();
+                            if (legacy) return { data: legacy, images: resolveImages(legacy) };
 
-                        return null;
-                    };
+                            return null;
+                        };
 
+                        const resolvedItems = (await Promise.all(terms.map(resolveId))).filter(Boolean);
 
-
-
-                    // Try to resolve all parts as IDs first (Parallel)
-                    const resolvedItems = (await Promise.all(terms.map(resolveId))).filter(Boolean);
-
-                    if (resolvedItems.length > 0) {
-                        setResults(resolvedItems);
-                    } else {
-                        // Fuzzy search fallback if no direct ID matches found
-                        const firstTerm = terms[0];
-                        let { data: items } = await client.from('inventory').select('*')
-                            .not('status', 'ilike', 'Available%')
-                            .or(`short_description.ilike.%${firstTerm}%,shape.ilike.%${firstTerm}%,material.ilike.%${firstTerm}%,color.ilike.%${firstTerm}%,workbook.ilike.%${firstTerm}%`)
-                            .limit(250);
-
-                        if (items) {
-                            if (terms.length > 1) {
-                                items = items.filter(item => {
-                                    const blob = [item.short_description, item.shape, item.material, item.color].filter(Boolean).join(' ').toLowerCase();
-                                    return terms.every(t => blob.includes(t.toLowerCase()));
-                                });
-                            }
-                            setResults(items.map(d => ({ data: d, images: resolveImages(d) })));
+                        if (resolvedItems.length > 0) {
+                            setResults(resolvedItems);
                         } else {
-                            setResults([]);
+                            const firstTerm = terms[0];
+                            let { data: items } = await client.from('inventory').select('*')
+                                .not('status', 'ilike', 'Available%')
+                                .or(`short_description.ilike.%${firstTerm}%,shape.ilike.%${firstTerm}%,material.ilike.%${firstTerm}%,color.ilike.%${firstTerm}%,workbook.ilike.%${firstTerm}%`)
+                                .limit(250);
+
+                            if (items) {
+                                if (terms.length > 1) {
+                                    items = items.filter(item => {
+                                        const blob = [item.short_description, item.shape, item.material, item.color].filter(Boolean).join(' ').toLowerCase();
+                                        return terms.every(t => blob.includes(t.toLowerCase()));
+                                    });
+                                }
+                                setResults(items.map(d => ({ data: d, images: resolveImages(d) })));
+                            } else {
+                                setResults([]);
+                            }
                         }
+                    } catch (e) {
+                        console.error('Search error:', e);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                const resolveImages = (data) => {
+                    const urls = [];
+                    if (data.generated_png_url) urls.push(data.generated_png_url);
+                    if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
+                    if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
+                    return Array.from(new Set(urls.filter(Boolean)));
+                };
+
+                useEffect(() => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const q = urlParams.get('q') || urlParams.get('id');
+                    if (q) { setQuery(q); performSearch(q); }
+                }, []);
+
+                const loadImgData = async (url, maxSize = 900) => {
+                    try {
+                        const img = await new Promise((resolve, reject) => {
+                            const el = new Image(); el.crossOrigin = 'anonymous';
+                            el.onload = () => resolve(el); el.onerror = reject;
+                            el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
+                        });
+                        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                        const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
+                        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        return { dataUrl: canvas.toDataURL('image/jpeg', 0.88), w, h };
+                    } catch (e) { console.error('Image load failed', url, e); return null; }
+                };
+
+                const drawContain = (doc, img, cx, cy, cw, ch) => {
+                    doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
+                    const ir = img.w / img.h; const cr = cw / ch;
+                    let dw, dh;
+                    if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
+                    doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
+                };
+
+                const drawHeader = (doc, item, M, PW, startY) => {
+                    const norm = normalizeData(item.data);
+                    const codes = calculateCodes(item.data);
+                    const hY = startY + 4;
+                    const barcode = codes.bookBarcode || '—';
+                    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(barcode, M + 4, hY);
+
+                    const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
+                    if (aqld) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
+
+                    const shape = norm.shape || '';
+                    const type = norm.shortDescription || '';
+                    const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+                    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M - 4 });
+
+                    const color = item.data.color || item.data.Color || '';
+                    const material = item.data.material || item.data.Material || '';
+                    const detailStr = [color, material].filter(Boolean).join(' · ');
+                    if (detailStr) {
+                        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+                        doc.text(detailStr.toUpperCase(), M + 4, hY + 16);
                     }
 
-                } catch (e) {
-                    console.error('Search error:', e);
-                } finally {
-                    setLoading(false);
-                }
-            };
+                    doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
 
+                    const specY = hY + 28;
+                    const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
+                    const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
+                    const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
+                    const weightImp = toImp(norm.weightKg, 'lbs');
 
-            const resolveImages = (data) => {
-                const urls = [];
-                if (data.generated_png_url) urls.push(data.generated_png_url);
-                if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
-                if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
-                return Array.from(new Set(urls.filter(Boolean)));
-            };
+                    const cols = [
+                        { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
+                        { label: 'QTY', value: String(norm.quantity || 1), x: M + 38 },
+                        { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
+                        { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 155 }
+                    ];
 
-
-
-
-            useEffect(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const q = urlParams.get('q') || urlParams.get('id');
-                if (q) { setQuery(q); performSearch(q); }
-            }, []);
-
-            // --- PDF Export Logic (Parity with ViewerView) ---
-            const loadImgData = async (url, maxSize = 900) => {
-                try {
-                    const img = await new Promise((resolve, reject) => {
-                        const el = new Image(); el.crossOrigin = 'anonymous';
-                        el.onload = () => resolve(el); el.onerror = reject;
-                        el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
+                    cols.forEach((col) => {
+                        const cx = col.x;
+                        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
+                        doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
                     });
-                    const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
-                    const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
-                    const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    return { dataUrl: canvas.toDataURL('image/jpeg', 0.88), w, h };
-                } catch (e) { console.error('Image load failed', url, e); return null; }
-            };
 
-            const drawContain = (doc, img, cx, cy, cw, ch) => {
-                doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cw, ch, 'F');
-                const ir = img.w / img.h; const cr = cw / ch;
-                let dw, dh;
-                if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
-                doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
-            };
+                    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
+                    return specY + 20;
+                };
 
-            const drawHeader = (doc, item, M, PW, startY) => {
-                const norm = normalizeData(item.data);
-                const codes = calculateCodes(item.data);
-                const hY = startY + 4;
-                const barcode = codes.bookBarcode || '—';
-                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(barcode, M + 4, hY);
+                const drawHeaderCompact = (doc, item, M, PW, startY, pageNum, totalPages) => {
+                    const norm = normalizeData(item.data);
+                    const codes = calculateCodes(item.data);
+                    const hY = startY + 4;
+                    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
+                    doc.text(`${codes.bookBarcode || '—'}  ·  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
+                    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+                    doc.text((norm.shortDescription || norm.shape || 'Artifact').toUpperCase(), M + 4, hY + 6);
+                    doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
+                    return hY + 12;
+                };
 
-                const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
-                if (aqld) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
+                const exportPdf = async () => {
+                    if (!results.length || exporting) return;
+                    setExporting(true);
+                    setExportProgress(0);
+                    setExportStatus('Initializing Engine...');
+                    try {
+                        const { jsPDF } = window.jspdf;
+                        const PW = 210, PH = 297, M = 12;
+                        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
+                        doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
+                        doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
+                        doc.setFontSize(20); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text('Catalog', M + 4, 102);
+                        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
+                        doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  ·  ${new Date().toLocaleDateString()}`, M + 4, 118);
 
-                // Shape + Type (Description)
-                const shape = norm.shape || '';
-                const type = norm.shortDescription || '';
-                const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
-                doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M - 4 });
+                        const itemsWithCodes = results.map(r => ({ ...r, codes: calculateCodes(r.data) }));
+                        const simple = itemsWithCodes.filter(r => r.images.length <= 2);
+                        const rich = itemsWithCodes.filter(r => r.images.length > 2);
+                        let globalPageNum = 0;
 
-                // Color + Material
-                const color = item.data.color || item.data.Color || '';
-                const material = item.data.material || item.data.Material || '';
-                const detailStr = [color, material].filter(Boolean).join(' · ');
-                if (detailStr) {
-                    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
-                    doc.text(detailStr.toUpperCase(), M + 4, hY + 16);
-                }
+                        const footer = (d) => {
+                            globalPageNum++;
+                            d.setFontSize(7); d.setFont('helvetica', 'normal'); d.setTextColor(200, 200, 200);
+                            d.text('Art of Decor', M + 4, PH - 8);
+                            d.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' });
+                        };
 
+                        const totalItems = results.length;
+                        let processedCount = 0;
 
-                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
+                        const HW = (PW - M * 2 - 4) / 2; const HG = 4;
+                        for (let i = 0; i < simple.length; i += 2) {
+                            doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                            doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
+                            for (let slot = 0; slot < 2; slot++) {
+                                const item = simple[i + slot]; if (!item) break;
+                                processedCount++;
+                                setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
+                                setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
+                                const sx = M + slot * (HW + HG);
+                                const norm = normalizeData(item.data);
+                                const codes = item.codes;
+                                const color = item.data.color || item.data.Color || '';
+                                const material = item.data.material || item.data.Material || '';
+                                const detailStr = [color, material].filter(Boolean).join(' · ');
 
-                const specY = hY + 28;
-                const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
+                                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(codes.bookBarcode || '—', sx + 2, M + 6);
+                                const shape = norm.shape || '';
+                                const desc = norm.shortDescription || '';
+                                const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Artifact');
+                                doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
 
-                const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
-                const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
-                const weightImp = toImp(norm.weightKg, 'lbs');
+                                if (detailStr) {
+                                    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+                                    doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
+                                }
 
+                                doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
+                                doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 25);
+                                doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
 
-                const cols = [
-                    { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
-                    { label: 'QTY', value: String(norm.quantity || 1), x: M + 38 },
-                    { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
-                    { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 155 }
-                ];
+                                doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+                                const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\u00d7');
+                                const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \u00d7 ');
+                                if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
+                                if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
 
-                cols.forEach((col) => {
-                    const cx = col.x;
-                    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
-                    doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
-                });
-
-
-                doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
-                return specY + 20;
-            };
-
-
-            const drawHeaderCompact = (doc, item, M, PW, startY, pageNum, totalPages) => {
-                const norm = normalizeData(item.data);
-                const codes = calculateCodes(item.data);
-                const hY = startY + 4;
-                doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
-                doc.text(`${codes.bookBarcode || '—'}  ·  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
-                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
-                doc.text((norm.shortDescription || norm.shape || 'Artifact').toUpperCase(), M + 4, hY + 6);
-                doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
-                return hY + 12;
-            };
-
-            const exportPdf = async () => {
-                if (!results.length || exporting) return;
-                setExporting(true);
-                setExportProgress(0);
-                setExportStatus('Initializing Engine...');
-                try {
-                    const { jsPDF } = window.jspdf;
-                    const PW = 210, PH = 297, M = 12;
-                    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-                    // Cover Page
-                    doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
-                    doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
-                    doc.setFontSize(20); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text('Catalog', M + 4, 102);
-                    doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
-                    doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  ·  ${new Date().toLocaleDateString()}`, M + 4, 118);
-
-                    const itemsWithCodes = results.map(r => ({ ...r, codes: calculateCodes(r.data) }));
-                    const simple = itemsWithCodes.filter(r => r.images.length <= 2);
-                    const rich = itemsWithCodes.filter(r => r.images.length > 2);
-                    let globalPageNum = 0;
-
-                    const footer = (d) => {
-                        globalPageNum++;
-                        d.setFontSize(7); d.setFont('helvetica', 'normal'); d.setTextColor(200, 200, 200);
-                        d.text('Art of Decor', M + 4, PH - 8);
-                        d.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' });
-                    };
-
-                    const totalItems = results.length;
-                    let processedCount = 0;
-
-                    // Process Simple Items (2 per page)
-                    const HW = (PW - M * 2 - 4) / 2; const HG = 4;
-                    for (let i = 0; i < simple.length; i += 2) {
-                        doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                        doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
-                        for (let slot = 0; slot < 2; slot++) {
-                            const item = simple[i + slot]; if (!item) break;
-                            processedCount++;
-                            setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
-                            setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
-                            const sx = M + slot * (HW + HG);
-                            const norm = normalizeData(item.data);
-                            const codes = item.codes;
-
-                            const color = item.data.color || item.data.Color || '';
-                            const material = item.data.material || item.data.Material || '';
-                            const detailStr = [color, material].filter(Boolean).join(' · ');
-
-                            doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(codes.bookBarcode || '—', sx + 2, M + 6);
-
-                            const shape = norm.shape || '';
-                            const desc = norm.shortDescription || '';
-                            const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Artifact');
-                            doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
-
-                            if (detailStr) {
-                                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
-                                doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
-                            }
-
-                            doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
-
-                            doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 25);
-                            doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
-
-                            doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-                            const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\u00d7');
-                            const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \u00d7 ');
-                            if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
-                            if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
-
-                            const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4;
-                            if (item.images.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
-                            else if (item.images.length === 1) {
-                                const d = await loadImgData(getCleanImageUrl(item.images[0]));
-                                if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH);
-                            } else {
-                                const cellH = (imgH - 2) / 2;
-                                for (let j = 0; j < 2; j++) {
-                                    const d = await loadImgData(getCleanImageUrl(item.images[j]));
-                                    if (d) drawContain(doc, d, sx + 2, imgTop + j * (cellH + 2), imgW, cellH);
+                                const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4;
+                                if (item.images.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
+                                else if (item.images.length === 1) {
+                                    const d = await loadImgData(getCleanImageUrl(item.images[0]));
+                                    if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH);
+                                } else {
+                                    const cellH = (imgH - 2) / 2;
+                                    for (let j = 0; j < 2; j++) {
+                                        const d = await loadImgData(getCleanImageUrl(item.images[j]));
+                                        if (d) drawContain(doc, d, sx + 2, imgTop + j * (cellH + 2), imgW, cellH);
+                                    }
                                 }
                             }
                         }
 
-                    }
-
-                    // Process Rich Items (Full page grid)
-                    for (const item of rich) {
-                        processedCount++;
-                        setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
-                        setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
-                        const imgs = item.images; const n = imgs.length;
-                        const CHUNK = 12; const totalPagesForItem = Math.ceil(n / CHUNK);
-                        for (let p = 0; p < totalPagesForItem; p++) {
-                            doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                            const imgTop = (p === 0) ? drawHeader(doc, item, M, PW, M) : drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
-                            const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4;
-                            const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
-                            let cols = 2, rows = 1;
-                            const numInChunk = currentChunk.length;
-                            if (numInChunk <= 4) { cols = 2; rows = Math.ceil(numInChunk / 2); }
-                            else if (numInChunk <= 6) { cols = 3; rows = 2; }
-                            else if (numInChunk <= 9) { cols = 3; rows = 3; }
-                            else { cols = 4; rows = 3; }
-                            const GAP = 2; const cellW = (imgW - GAP * (cols - 1)) / cols; const cellH = (imgH - GAP * (rows - 1)) / rows;
-                            for (let j = 0; j < numInChunk; j++) {
-                                const cx = M + 4 + (j % cols) * (cellW + GAP);
-                                const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
-                                const d = await loadImgData(getCleanImageUrl(currentChunk[j]));
-                                if (d) drawContain(doc, d, cx, cy, cellW, cellH);
+                        for (const item of rich) {
+                            processedCount++;
+                            setExportProgress(Math.round(5 + (processedCount / totalItems) * 85));
+                            setExportStatus(`Processing Item ${processedCount}/${totalItems}...`);
+                            const imgs = item.images; const n = imgs.length;
+                            const CHUNK = 12; const totalPagesForItem = Math.ceil(n / CHUNK);
+                            for (let p = 0; p < totalPagesForItem; p++) {
+                                doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                                const imgTop = (p === 0) ? drawHeader(doc, item, M, PW, M) : drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
+                                const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4;
+                                const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
+                                let cols = 2, rows = 1;
+                                const numInChunk = currentChunk.length;
+                                if (numInChunk <= 4) { cols = 2; rows = Math.ceil(numInChunk / 2); }
+                                else if (numInChunk <= 6) { cols = 3; rows = 2; }
+                                else if (numInChunk <= 9) { cols = 3; rows = 3; }
+                                else { cols = 4; rows = 3; }
+                                const GAP = 2; const cellW = (imgW - GAP * (cols - 1)) / cols; const cellH = (imgH - GAP * (rows - 1)) / rows;
+                                for (let j = 0; j < numInChunk; j++) {
+                                    const cx = M + 4 + (j % cols) * (cellW + GAP);
+                                    const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
+                                    const d = await loadImgData(getCleanImageUrl(currentChunk[j]));
+                                    if (d) drawContain(doc, d, cx, cy, cellW, cellH);
+                                }
                             }
                         }
-                    }
 
-                    setExportStatus('Finalizing Catalogue...');
-                    setExportProgress(95);
-                    doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
-                    setExportStatus('Catalogue Downloaded');
-                    setExportProgress(100);
-                    setTimeout(() => setExporting(false), 800);
-                } catch (e) {
-                    console.error('PDF export failed', e);
-                    setExporting(false);
-                }
+                        setExportStatus('Finalizing Catalogue...');
+                        setExportProgress(95);
+                        doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
+                        setExportStatus('Catalogue Downloaded');
+                        setExportProgress(100);
+                        setTimeout(() => setExporting(false), 800);
+                    } catch (e) {
+                        console.error('PDF export failed', e);
+                        setExporting(false);
+                    }
+                };
+
+                return html`
+                    <div class="min-h-screen flex flex-col relative">
+                        ${viewer && html`<${FullscreenViewer} images=${viewer.item.images} initialIdx=${viewer.idx} onClose=${() => setViewer(null)} />`}
+                        
+                        <div class="shrink-0 pt-16 pb-8 flex flex-col items-center transition-all duration-700 ${!searching && results.length === 0 ? 'h-full justify-center' : ''}">
+                            <div class="max-w-4xl w-full px-6 flex flex-col gap-12">
+                                ${!searching && results.length === 0 && html`
+                                    <div class="flex flex-col items-center gap-10 animate-fade-up">
+                                        <${OnyxLogo} width="80" height="80" className="opacity-80 hover:opacity-100 transition-opacity" />
+                                    </div>
+                                `}
+                                <div class="relative group max-w-2xl mx-auto w-full">
+                                    <div class="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/10 group-focus-within:text-[#b8860b] transition-colors">
+                                        <${LucideIcon} name="search" size="24" />
+                                    </div>
+                                    <input type="text" value=${query} onChange=${e => setQuery(e.target.value)} 
+                                           onKeyDown=${e => e.key === 'Enter' && performSearch(query)}
+                                           placeholder="INPUT BARCODES..."
+                                           class="w-full bg-white/[0.02] border border-white/8 rounded-full font-black uppercase tracking-widest py-8 pl-18 pr-18 focus:outline-none focus:border-[#b8860b]/30 focus:bg-white/5 transition-all text-xl placeholder:text-white/5" />
+                                    ${loading && html`<div class="absolute inset-y-0 right-8 flex items-center"><${LucideIcon} name="loader" size="20" className="text-[#b8860b]/40" /></div>`}
+                                </div>
+                            </div>
+                        </div>
+
+                        ${searching && html`
+                            <div class="flex-1 custom-scrollbar">
+                               <div class="max-w-[1400px] mx-auto w-full px-6 pb-24">
+                                    <div class="flex items-center justify-between mb-8 opacity-60">
+                                        <span class="text-[10px] font-black uppercase tracking-widest">${results.length} Results</span>
+                                        <button onClick=${exportPdf} class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#b8860b] hover:text-white transition-colors">
+                                            <${LucideIcon} name="file-down" size="14" /> Export PDF
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        ${results.map((item, i) => html`<${ViewerCard} key=${i} item=${item} onOpenViewer=${(idx) => setViewer({ item, idx })} />`)}
+                                    </div>
+                               </div>
+                            </div>
+                        `}
+
+                        ${exporting && html`
+                            <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-fade-in">
+                                <div class="w-[360px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden">
+                                    <div class="absolute inset-0 bg-gradient-to-b from-[#b8860b]/5 to-transparent opacity-50"></div>
+                                    <div class="relative">
+                                        <div class="w-20 h-20 rounded-3xl bg-[#b8860b]/10 flex items-center justify-center border border-[#b8860b]/20 animate-pulse">
+                                            <${LucideIcon} name="cloud-upload" size="40" className="text-[#b8860b]" />
+                                        </div>
+                                        <div class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#050505] transition-all duration-500" style=${{ transform: exportProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                            <${LucideIcon} name="check" size="14" className="text-white" />
+                                        </div>
+                                    </div>
+                                    <div class="w-full space-y-4 relative">
+                                        <div class="flex justify-between items-end">
+                                            <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Generating</span>
+                                            <span class="text-sm font-mono font-black text-[#b8860b]">${exportProgress}%</span>
+                                        </div>
+                                        <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                            <div class="h-full bg-gradient-to-r from-[#b8860b]/50 to-[#b8860b] transition-all duration-500 ease-out"
+                                                 style=${{ width: `${exportProgress}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                                        ${exportStatus}
+                                    </p>
+                                </div>
+                            </div>
+                        `}
+                    </div>`;
             };
 
-
-            return html`
-                <div class="min-h-screen flex flex-col relative">
-                    ${viewer && html`<${FullscreenViewer} images=${viewer.item.images} initialIdx=${viewer.idx} onClose=${() => setViewer(null)} />`}
-                    
-                    <div class="shrink-0 pt-16 pb-8 flex flex-col items-center transition-all duration-700 ${!searching && results.length === 0 ? 'h-full justify-center' : ''}">
-                        <div class="max-w-4xl w-full px-6 flex flex-col gap-12">
-                            ${!searching && results.length === 0 && html`
-                                <div class="flex flex-col items-center gap-10 animate-fade-up">
-                                    <${OnyxLogo} width="80" height="80" className="opacity-80 hover:opacity-100 transition-opacity" />
-                                </div>
-                            `}
-                            <div class="relative group max-w-2xl mx-auto w-full">
-
-                                <div class="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/10 group-focus-within:text-[#b8860b] transition-colors">
-                                    <${LucideIcon} name="search" size="24" />
-                                </div>
-                                <input type="text" value=${query} onChange=${e => setQuery(e.target.value)} 
-                                       onKeyDown=${e => e.key === 'Enter' && performSearch(query)}
-                                       placeholder="INPUT BARCODES..."
-                                       class="w-full bg-white/[0.02] border border-white/8 rounded-full font-black uppercase tracking-widest py-8 pl-18 pr-18 focus:outline-none focus:border-[#b8860b]/30 focus:bg-white/5 transition-all text-xl placeholder:text-white/5" />
-                                ${loading && html`<div class="absolute inset-y-0 right-8 flex items-center"><${LucideIcon} name="loader" size="20" className="text-[#b8860b]/40" /></div>`}
-                            </div>
-                        </div>
-                    </div>
-
-
-                    ${searching && html`
-                        <div class="flex-1 custom-scrollbar">
-                           <div class="max-w-[1400px] mx-auto w-full px-6 pb-24">
-                                <div class="flex items-center justify-between mb-8 opacity-60">
-                                    <span class="text-[10px] font-black uppercase tracking-widest">${results.length} Results</span>
-                                    <button onClick=${exportPdf} class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#b8860b] hover:text-white transition-colors">
-                                        <${LucideIcon} name="file-down" size="14" /> Export PDF
-                                    </button>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    ${results.map((item, i) => html`<${ViewerCard} key=${i} item=${item} onOpenViewer=${(idx) => setViewer({ item, idx })} />`)}
-                                </div>
-                           </div>
-                        </div>
-                    `}
-
-                    ${exporting && html`
-                        <div class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-fade-in">
-                            <div class="w-[360px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden">
-                                <div class="absolute inset-0 bg-gradient-to-b from-[#b8860b]/5 to-transparent opacity-50"></div>
-                                
-                                <div class="relative">
-                                    <div class="w-20 h-20 rounded-3xl bg-[#b8860b]/10 flex items-center justify-center border border-[#b8860b]/20 animate-pulse">
-                                        <${LucideIcon} name="cloud-upload" size="40" className="text-[#b8860b]" />
-                                    </div>
-                                    <div class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#050505] transition-all duration-500" style=${{ transform: exportProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
-                                        <${LucideIcon} name="check" size="14" className="text-white" />
-                                    </div>
-                                </div>
-
-                                <div class="w-full space-y-4 relative">
-                                    <div class="flex justify-between items-end">
-                                        <span class="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Generating</span>
-                                        <span class="text-sm font-mono font-black text-[#b8860b]">${exportProgress}%</span>
-                                    </div>
-                                    <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                        <div class="h-full bg-gradient-to-r from-[#b8860b]/50 to-[#b8860b] transition-all duration-500 ease-out"
-                                             style=${{ width: `${exportProgress}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <p class="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                                    ${exportStatus}
-                                </p>
-                            </div>
-                        </div>
-                    `}
-                </div>`;
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(React.createElement(App));
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(App));
+        initViewer();
     </script>
 </body>
 
