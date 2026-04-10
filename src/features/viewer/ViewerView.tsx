@@ -203,9 +203,14 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
     const vendorColor = (codes as any).vendorColor || '#b8860b';
     const retailUsd = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
     const typeLabel = norm.shape || norm.shortDescription || 'Artifact';
-    const itemName = norm.shortDescription || norm.shape || 'Stone Piece';
+    const color = norm.color || (norm as any).Color || '';
+    const material = norm.material || (norm as any).Material || '';
+    const detailStr = [color, material].filter(Boolean).join(' · ');
+
     const dimensionsCmStr = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
-    const dimensionsInchStr = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => `${(Number(v) * 0.3937).toFixed(1)}"`).join('×');
+    const dimensionsInchStr = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean)
+        .map(v => `${(Number(v) * 0.3937).toFixed(1)}"`).join('×');
+
     const weightKg = norm.weightKg ? `${norm.weightKg}kg` : '';
     const weightLbs = norm.weightKg ? `${(Number(norm.weightKg) * 2.2046).toFixed(1)} lbs` : '';
     return (
@@ -215,16 +220,34 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                 <div className="flex justify-between items-start gap-3">
                     <div className="flex flex-col gap-2 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <div className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0" style={{ background: vendorColor + '22', border: `1px solid ${vendorColor}44`, color: vendorColor }}>{codes.bookBardcode || codes.bookBarcode || '—'}</div>
-                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/30 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
-                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/30 uppercase tracking-widest">{codes.bookLandCode || '—'}</div>
+                            <div className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0" style={{ background: vendorColor + '22', border: `1px solid ${vendorColor}44`, color: vendorColor }}>{codes.bookBarcode || '—'}</div>
+                            {detailStr && (
+                                <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[9px] font-black text-white/50 uppercase tracking-widest">{detailStr}</div>
+                            )}
+                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/20 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
+                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/20 uppercase tracking-widest">{codes.bookLandCode || '—'}</div>
                         </div>
                         <div className="flex items-baseline gap-2 mt-1"><h3 className="text-xl font-black text-white uppercase tracking-tight leading-none group-hover:text-[#b8860b] transition-colors truncate">{itemName}</h3><span className="text-xs font-black text-white/20 uppercase tracking-[0.2em] shrink-0">{typeLabel !== itemName ? typeLabel : ''}</span></div>
                     </div>
                     <div className="shrink-0 flex flex-col items-end"><span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">QTY</span><span className="text-2xl font-black text-white/60 leading-none">{norm.quantity || 1}</span></div>
                 </div>
                 <div className="flex items-center justify-between py-4 border-t border-b border-white/5"><div className="flex flex-col gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">USD Retail</span><span className="text-3xl font-black text-white font-mono">{retailUsd}</span></div><div className="flex flex-col items-end gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em]">Images</span><span className="text-lg font-black text-white/40 font-mono">{item.images.length}</span></div></div>
-                <div className="grid grid-cols-2 gap-5"><div className="flex flex-col gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span><span className="text-sm font-mono font-bold text-white/50 leading-tight">{dimensionsCmStr ? `${dimensionsCmStr}cm` : '—'}</span>{dimensionsInchStr && <span className="text-xs text-white/20">{dimensionsInchStr}</span>}</div><div className="flex flex-col gap-1"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span><span className="text-sm font-mono font-bold text-white/50 leading-tight">{weightKg || '—'}</span>{weightLbs && <span className="text-xs text-white/20">{weightLbs}</span>}</div></div>
+                <div className="grid grid-cols-2 gap-5">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Dimensions</span>
+                        <span className="text-sm font-mono font-bold text-white/50 leading-tight">
+                            {dimensionsCmStr ? `${dimensionsCmStr}cm` : '—'} 
+                            {dimensionsInchStr && <span className="text-[10px] text-white/20 block">({dimensionsInchStr})</span>}
+                        </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Weight</span>
+                        <span className="text-sm font-mono font-bold text-white/50 leading-tight">
+                            {weightKg || '—'}
+                            {weightLbs && <span className="text-[10px] text-white/20 block">({weightLbs})</span>}
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     );
