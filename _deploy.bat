@@ -1,8 +1,9 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.71.2 - Google Sites compatibility for iFrameViewer"
+git commit -m "v1.71.2 - Synchronize iFrameViewer with production hashes for Google Sites"
 git push origin main
+
 
 
 
