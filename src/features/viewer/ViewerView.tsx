@@ -269,6 +269,16 @@ function drawHeader(doc: any, item: ResolvedArtifact, M: number, PW: number, sta
     doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 12, PW - M, specY + 12);
     return specY + 16;
 }
+function drawHeaderCompact(doc: any, item: ResolvedArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
+
+    const hY = startY + 4;
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
+    doc.text(`${item.codes.bookBardcode || item.codes.bookBarcode || '—'}  \xb7  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
+    doc.text((item.data.shortDescription || item.data.shape || 'Stone Piece').toUpperCase(), M + 4, hY + 6);
+    doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
+    return hY + 12;
+}
 async function exportCatalogPdf(results: ResolvedArtifact[]) {
     if (!(window as any).jspdf) {
         await new Promise<void>((resolve, reject) => {
@@ -282,11 +292,20 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
     doc.setFontSize(20); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text('Catalog', M + 4, 102);
     doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
     doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  \u00b7  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
-    const simple = results.filter(r => r.images.length <= 2); const rich = results.filter(r => r.images.length > 2);
-    const footer = (doc: any, num: number) => { doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200); doc.text('Art of Decor', M + 4, PH - 8); doc.text(String(num), PW - M, PH - 8, { align: 'right' }); };
+    
+    const simple = results.filter(r => r.images.length <= 2);
+    const rich = results.filter(r => r.images.length > 2);
+    let globalPageNum = 0;
+    const footer = (doc: any) => { 
+        globalPageNum++; 
+        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(200, 200, 200); 
+        doc.text('Art of Decor', M + 4, PH - 8); 
+        doc.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' }); 
+    };
+    
     const HW = (PW - M * 2 - 4) / 2; const HG = 4;
     for (let i = 0; i < simple.length; i += 2) {
-        doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc, Math.floor(i / 2) + 1);
+        doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
         doc.setDrawColor(240, 240, 240); doc.setLineWidth(0.2); doc.line(M + HW + HG / 2, M, M + HW + HG / 2, PH - M);
         for (let slot = 0; slot < 2; slot++) {
             const item = simple[i + slot]; if (!item) break;
@@ -305,19 +324,48 @@ async function exportCatalogPdf(results: ResolvedArtifact[]) {
             else { const cellH = (imgH - 2) / 2; for (let j = 0; j < 2; j++) { const cy = imgTop + j * (cellH + 2); const d = await loadImgData(getCleanImageUrl(imgs[j])); if (d) drawContain(doc, d, sx + 2, cy, imgW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, cy, imgW, cellH, 'F'); } } }
         }
     }
+    
     for (let i = 0; i < rich.length; i++) {
-        doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc, Math.ceil(simple.length / 2) + i + 1);
-        const item = rich[i]; const imgTop = drawHeader(doc, item, M, PW, M); const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4; const imgs = item.images; const n = imgs.length;
-        let cols, rows; if (n <= 4) { cols = 2; rows = Math.ceil(n / 2); } else if (n <= 6) { cols = 3; rows = 2; } else if (n <= 9) { cols = 3; rows = 3; } else if (n <= 12) { cols = 4; rows = 3; } else { cols = 4; rows = 4; }
-        const GAP = 2; const cellW = (imgW - GAP * (cols - 1)) / cols; const cellH = (imgH - GAP * (rows - 1)) / rows; const display = Math.min(n, cols * rows);
-        for (let j = 0; j < display; j++) {
-            const cx = M + 4 + (j % cols) * (cellW + GAP); const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
-            if (j === display - 1 && n > display) { doc.setFillColor(20, 20, 20); doc.rect(cx, cy, cellW, cellH, 'F'); doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255); doc.text(`+${n - display + 1}`, cx + cellW / 2, cy + cellH / 2 + 3, { align: 'center' }); doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(160, 160, 160); doc.text('MORE', cx + cellW / 2, cy + cellH / 2 + 9, { align: 'center' }); }
-            else { const d = await loadImgData(getCleanImageUrl(imgs[j])); if (d) drawContain(doc, d, cx, cy, cellW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cellW, cellH, 'F'); } }
+        const item = rich[i]; const imgs = item.images; const n = imgs.length;
+        const CHUNK = 12; // 4 columns x 3 rows
+        const totalPagesForItem = Math.ceil(n / CHUNK);
+        
+        for (let p = 0; p < totalPagesForItem; p++) {
+            doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+            
+            let imgTop = 0;
+            if (p === 0) {
+                imgTop = drawHeader(doc, item, M, PW, M);
+            } else {
+                imgTop = drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
+            }
+            
+            const imgH = PH - imgTop - 14; const imgW = PW - M * 2 - 4;
+            const currentChunk = imgs.slice(p * CHUNK, (p + 1) * CHUNK);
+            const numInChunk = currentChunk.length;
+            
+            let cols = 2, rows = 1;
+            if (numInChunk <= 4) { cols = 2; rows = Math.ceil(numInChunk / 2); }
+            else if (numInChunk <= 6) { cols = 3; rows = 2; }
+            else if (numInChunk <= 9) { cols = 3; rows = 3; }
+            else { cols = 4; rows = 3; }
+            
+            const GAP = 2; 
+            const cellW = (imgW - GAP * (cols - 1)) / cols; 
+            const cellH = (imgH - GAP * (rows - 1)) / rows;
+            
+            for (let j = 0; j < numInChunk; j++) {
+                const cx = M + 4 + (j % cols) * (cellW + GAP);
+                const cy = imgTop + Math.floor(j / cols) * (cellH + GAP);
+                const d = await loadImgData(getCleanImageUrl(currentChunk[j]));
+                if (d) drawContain(doc, d, cx, cy, cellW, cellH);
+                else { doc.setFillColor(248, 248, 248); doc.rect(cx, cy, cellW, cellH, 'F'); }
+            }
         }
     }
     doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
+
 
 // ── Main Viewer Module ────────────────────────────────────────────────────────
 export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = ({ onOpenArtifact }) => {
