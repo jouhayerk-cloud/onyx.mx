@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -12,10 +13,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
-        
+
         :root {
             --main-color: #8da388;
             --secondary-color: #b8860b;
@@ -37,16 +38,29 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
 
         .image-viewer-bg {
             background: radial-gradient(circle at center, rgba(30, 30, 35, 0.8) 0%, rgba(5, 5, 5, 1) 100%);
         }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .animate-fade-up {
@@ -54,6 +68,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="root"></div>
 
@@ -62,7 +77,8 @@
         <defs>
             <filter id="liquid-glass">
                 <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
-                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="liquid" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+                    result="liquid" />
                 <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
             </filter>
         </defs>
@@ -116,13 +132,11 @@
             const norm = normalizeData(data);
             const costMxn = Math.round((parseFloat(norm.price) || 0) * 100) / 100;
             if (costMxn === 0) return { bookBarcode: '-', bookRetail: '-', bookAqCode: '-', bookLandCode: '-' };
-            
+
             const costUsd = Math.round((costMxn / exchangeRate) * 100) / 100;
             const landedCost = Math.round((costUsd * 1.4) * 100) / 100;
             const retailPrice = Math.round((landedCost * 12) * 100) / 100;
 
-            const vendorPrefix = String(norm.itemId || '').split('-')[0].toUpperCase() || 'SU';
-            const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
             const vendors = {
                 R: { name: 'RAMSES', color: '#737104' },
                 M: { name: 'MARTHA', color: '#4f2068' },
@@ -149,7 +163,7 @@
             };
 
             const rawId = String(norm.itemId || norm.tagId || norm.tag_id || '').toUpperCase();
-            const vendorPrefix = Object.keys(vendors).sort((a,b) => b.length - a.length).find(k => rawId.startsWith(k)) || 'SU';
+            const vendorPrefix = Object.keys(vendors).sort((a, b) => b.length - a.length).find(k => rawId.startsWith(k)) || 'SU';
             const workbookStr = String(norm.workbook || '326').toLowerCase().replace('v', '');
             const cypher = numberToCypher(Math.floor(landedCost));
             const barcode = `${vendorPrefix}${workbookStr}${norm.itemNumber || '1'}${cypher}`;
@@ -161,9 +175,8 @@
                 bookLandCode: cypher,
                 vendorColor: vendors[vendorPrefix]?.color || '#b8860b'
             };
-
-
         };
+
 
 
         // --- Components ---
@@ -227,7 +240,7 @@
                 if (touches.length === 2) {
                     const dx = touches[0].clientX - touches[1].clientX;
                     const dy = touches[0].clientY - touches[1].clientY;
-                    state.current.touchStart.dist = Math.sqrt(dx*dx + dy*dy);
+                    state.current.touchStart.dist = Math.sqrt(dx * dx + dy * dy);
                     state.current.lastScale = state.current.scale;
                 }
             };
@@ -237,7 +250,7 @@
                 if (touches.length === 2) {
                     const dx = touches[0].clientX - touches[1].clientX;
                     const dy = touches[0].clientY - touches[1].clientY;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
                     const factor = dist / state.current.touchStart.dist;
                     state.current.scale = Math.max(1, Math.min(6, state.current.lastScale * factor));
                     updateTransform(false);
@@ -278,19 +291,18 @@
             const norm = normalizeData(item.data);
             const codes = calculateCodes(item.data);
             const gridCols = item.images.length <= 3 ? (item.images.length === 2 ? 'grid-cols-2' : 'grid-cols-3') : 'grid-cols-4';
-            
+
             const dimensions = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
             const weight = norm.weightKg ? `${norm.weightKg}kg` : '';
 
             return html`
                 <div class="group relative flex flex-col overflow-hidden studio-glass rounded-[20px] transition-all hover:border-[#b8860b]/40 hover:shadow-2xl animate-fade-up">
                     <div class="relative w-full aspect-square overflow-hidden bg-white/5">
-                        <div class="grid gap-px h-full ${
-                            item.images.length === 1 ? 'grid-cols-1' :
-                            item.images.length === 2 ? 'grid-cols-2' : 
-                            item.images.length === 3 ? 'grid-cols-3' : 
+                        <div class="grid gap-px h-full ${item.images.length === 1 ? 'grid-cols-1' :
+                    item.images.length === 2 ? 'grid-cols-2' :
+                        item.images.length === 3 ? 'grid-cols-3' :
                             item.images.length <= 6 ? 'grid-cols-3' : 'grid-cols-4'
-                        }">
+                }">
 
                             ${item.images.slice(0, 16).map((url, i) => html`
                                 <div key=${i} class="relative overflow-hidden cursor-zoom-in group/img" onClick=${() => onOpenViewer(i)}>
@@ -373,7 +385,7 @@
                 if (!searchStr) return;
                 setLoading(true); setSearching(true);
                 const terms = searchStr.split(/[\s,]+/).filter(Boolean);
-                
+
                 try {
                     // Helper for resolving a single ID (Barcodes/Tags)
                     // CLONED: Official resolveArtifact logic from Studio (artifactUtils.ts)
@@ -384,7 +396,7 @@
                         // 1. Exact Barcode (Case-Insensitive)
                         const { data: exact } = await client.from('inventory').select('*').ilike('book_barcode', tid).not('status', 'ilike', 'Available%').maybeSingle();
                         if (exact) return { data: exact, images: resolveImages(exact) };
-                        
+
                         // 2. Fallback: Parse barcode style (SU + 326 + 15 + EE)
                         const match = tid.match(/^([A-Z]{2})([0-9]{3})([0-9]+)([A-Z]+)$/i);
                         if (match) {
@@ -395,7 +407,7 @@
                                 .not('status', 'ilike', 'Available%');
 
                             if (parsedData && parsedData.length > 0) {
-                                const found = parsedData.find(d => 
+                                const found = parsedData.find(d =>
                                     String(d.item_id || d.itemId || d.id || '').toUpperCase().startsWith(vendorPrefix.toUpperCase())
                                 ) || parsedData[0];
                                 return { data: found, images: resolveImages(found) };
@@ -418,7 +430,7 @@
 
                     // Try to resolve all parts as IDs first (Parallel)
                     const resolvedItems = (await Promise.all(terms.map(resolveId))).filter(Boolean);
-                    
+
                     if (resolvedItems.length > 0) {
                         setResults(resolvedItems);
                     } else {
@@ -428,7 +440,7 @@
                             .not('status', 'ilike', 'Available%')
                             .or(`short_description.ilike.%${firstTerm}%,shape.ilike.%${firstTerm}%,material.ilike.%${firstTerm}%,color.ilike.%${firstTerm}%,workbook.ilike.%${firstTerm}%`)
                             .limit(250);
-                        
+
                         if (items) {
                             if (terms.length > 1) {
                                 items = items.filter(item => {
@@ -453,8 +465,8 @@
             const resolveImages = (data) => {
                 const urls = [];
                 if (data.generated_png_url) urls.push(data.generated_png_url);
-                if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
-                if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if(t) urls.push(t); });
+                if (data.media_urls) data.media_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
+                if (data.generated_image_urls) data.generated_image_urls.split(',').forEach(u => { const t = u.trim(); if (t) urls.push(t); });
                 return Array.from(new Set(urls.filter(Boolean)));
             };
 
@@ -471,8 +483,8 @@
             const loadImgData = async (url, maxSize = 900) => {
                 try {
                     const img = await new Promise((resolve, reject) => {
-                        const el = new Image(); el.crossOrigin = 'anonymous'; 
-                        el.onload = () => resolve(el); el.onerror = reject; 
+                        const el = new Image(); el.crossOrigin = 'anonymous';
+                        el.onload = () => resolve(el); el.onerror = reject;
                         el.src = url; setTimeout(() => reject(new Error('timeout')), 8000);
                     });
                     const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
@@ -497,17 +509,17 @@
                 const hY = startY + 4;
                 const barcode = codes.bookBarcode || '—';
                 doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(barcode, M + 4, hY);
-                
+
                 const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
                 if (aqld) { doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180); doc.text(aqld, M + 4 + doc.getTextWidth(barcode) + 4, hY); }
 
-                
+
                 // Shape + Type (Description)
                 const shape = norm.shape || '';
                 const type = norm.shortDescription || '';
                 const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
                 doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M - 4 });
-                
+
                 // Color + Material
                 const color = item.data.color || item.data.Color || '';
                 const material = item.data.material || item.data.Material || '';
@@ -519,10 +531,10 @@
 
 
                 doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
-                
+
                 const specY = hY + 28;
                 const retail = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
-                
+
                 // Units Converter
                 const toImp = (val, type = 'in') => {
                     const v = parseFloat(val); if (!v || isNaN(v)) return '';
@@ -543,18 +555,18 @@
 
                 const cols = [
                     { label: 'USD RETAIL', value: retail, x: M + 4, accent: true },
-                    { label: 'QTY',        value: String(norm.quantity || 1), x: M + 38 },
+                    { label: 'QTY', value: String(norm.quantity || 1), x: M + 38 },
                     { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
-                    { label: 'WEIGHT',     value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 145 }
+                    { label: 'WEIGHT', value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 145 }
                 ];
-                
+
                 cols.forEach((col) => {
                     const cx = col.x;
                     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
                     doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
                 });
 
-                
+
                 doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
                 return specY + 20;
             };
@@ -579,7 +591,7 @@
                     const { jsPDF } = window.jspdf;
                     const PW = 210, PH = 297, M = 12;
                     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-                    
+
                     // Cover Page
                     doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
                     doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
@@ -609,18 +621,18 @@
                             const sx = M + slot * (HW + HG);
                             const norm = normalizeData(item.data);
                             const codes = item.codes;
-                            
+
                             const color = item.data.color || item.data.Color || '';
                             const material = item.data.material || item.data.Material || '';
                             const detailStr = [color, material].filter(Boolean).join(' · ');
-                            
+
                             doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(codes.vendorColor || '#82640f'); doc.text(codes.bookBarcode || '—', sx + 2, M + 6);
-                            
+
                             const shape = norm.shape || '';
                             const desc = norm.shortDescription || '';
                             const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Artifact');
                             doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
-                            
+
                             if (detailStr) {
                                 doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
                                 doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
@@ -629,10 +641,10 @@
 
 
                             doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
-                            
+
                             doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 25);
                             doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
-                            
+
                             doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
                             const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\u00d7');
                             const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \u00d7 ');
@@ -641,8 +653,8 @@
 
                             const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4;
                             if (item.images.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
-                            else if (item.images.length === 1) { 
-                                const d = await loadImgData(getCleanImageUrl(item.images[0])); 
+                            else if (item.images.length === 1) {
+                                const d = await loadImgData(getCleanImageUrl(item.images[0]));
                                 if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH);
                             } else {
                                 const cellH = (imgH - 2) / 2;
@@ -734,4 +746,5 @@
         root.render(React.createElement(App));
     </script>
 </body>
+
 </html>
