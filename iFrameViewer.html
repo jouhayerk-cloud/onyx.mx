@@ -461,16 +461,17 @@
                 const shape = norm.shape || '';
                 const type = norm.shortDescription || '';
                 const nameStr = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
-                doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M * 2 - 10 });
+                doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), M + 4, hY + 10, { maxWidth: PW - M - 4 });
                 
                 // Color + Material
-                const color = item.data.color || '';
-                const material = item.data.material || '';
+                const color = item.data.color || item.data.Color || '';
+                const material = item.data.material || item.data.Material || '';
                 const detailStr = [color, material].filter(Boolean).join(' · ');
                 if (detailStr) {
                     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
                     doc.text(detailStr.toUpperCase(), M + 4, hY + 16);
                 }
+
 
                 doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
                 
@@ -561,8 +562,35 @@
                         for (let slot = 0; slot < 2; slot++) {
                             const item = simple[i + slot]; if (!item) break;
                             const sx = M + slot * (HW + HG);
-                            const top = drawHeader(doc, item, sx - M, sx + HW, M); // Adapted for slot
-                            // simplified drawHeader call for slots
+                            const norm = normalizeData(item.data);
+                            const codes = item.codes;
+                            
+                            doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(codes.bookBarcode || '—', sx + 2, M + 6);
+                            
+                            const shape = norm.shape || '';
+                            const desc = norm.shortDescription || '';
+                            const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Artifact');
+                            doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(nameStr.toUpperCase(), sx + 2, M + 13, { maxWidth: HW - 4 });
+                            
+                            const color = item.data.color || item.data.Color || '';
+                            const material = item.data.material || item.data.Material || '';
+                            const detailStr = [color, material].filter(Boolean).join(' · ');
+                            if (detailStr) {
+                                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(120, 120, 120);
+                                doc.text(detailStr.toUpperCase(), sx + 2, M + 18);
+                            }
+
+                            doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
+                            
+                            doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text('USD RETAIL', sx + 2, M + 25);
+                            doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text(codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—', sx + 2, M + 31);
+                            
+                            doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+                            const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('\u00d7');
+                            const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' \u00d7 ');
+                            if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
+                            if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
+
                             const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4;
                             if (item.images.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
                             else if (item.images.length === 1) { 
@@ -576,6 +604,7 @@
                                 }
                             }
                         }
+
                     }
 
                     // Process Rich Items (Full page grid)
