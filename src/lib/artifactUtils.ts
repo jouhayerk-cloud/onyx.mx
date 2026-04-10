@@ -20,11 +20,10 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
     try {
         let fetched: { data: any; source?: string } | null = null;
 
-        // 1. Try exact match on book_barcode
+        // 1. Try exact match on multiple ID columns (Barcode, Item ID, or UUID)
         const { data: directData } = await supabase.from('inventory')
             .select('*')
-            .eq('book_barcode', tagId)
-            .not('status', 'ilike', 'Available%')
+            .or(`book_barcode.eq.${tagId},item_id.eq.${tagId},id.eq.${tagId}`)
             .maybeSingle();
 
 
@@ -68,7 +67,6 @@ export async function resolveArtifact(tagId: string, options: { exchangeRate?: n
             const { data: legacyData } = await supabase.from('inventory')
                 .select('*')
                 .eq('item_id', tagId)
-                .not('status', 'ilike', 'Available%')
                 .maybeSingle();
 
 
