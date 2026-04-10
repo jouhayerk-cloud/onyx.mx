@@ -1,8 +1,9 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.71.0 - Viewer Touch Gestures + PDF Pagination Modernization"
+git commit -m "v1.71.1 - Modernize iFrameViewer.html and synchronize with Studio aesthetic"
 git push origin main
+
 
 
 echo [2/3] Building production bundle...
