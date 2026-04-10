@@ -249,8 +249,7 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
     if (ir > cr) { dw = cw; dh = cw / ir; } else { dh = ch; dw = ch * ir; }
     doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
 }
-    doc.addImage(img.dataUrl, 'JPEG', cx + (cw - dw) / 2, cy + (ch - dh) / 2, dw, dh);
-}
+
 
 const toImp = (val: any, type: 'in'|'lbs'|'ft' = 'in') => {
     const v = parseFloat(val); if (!v || isNaN(v)) return '';
