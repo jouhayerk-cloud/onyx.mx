@@ -200,10 +200,10 @@ const ImageGrid: React.FC<{ images: string[]; onOpenViewer: (idx: number) => voi
 // ── Viewer Card ───────────────────────────────────────────────────────────────
 const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) => void }> = ({ item, onOpenFull }) => {
     const norm = item.data; const codes = item.codes;
-    const vendorColor = (codes as any).vendorColor || '#b8860b';
-    const retailUsd = codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—';
-    const typeLabel = norm.shape || norm.shortDescription || 'Artifact';
-    const itemName = norm.shortDescription || norm.shape || 'Artifact';
+    const shape = norm.shape || '';
+    const type = norm.shortDescription || '';
+    const combinedName = (shape && type && shape !== type) ? `${shape} - ${type}` : (shape || type || 'Artifact');
+    
     const color = norm.color || (norm as any).Color || '';
     const material = norm.material || (norm as any).Material || '';
     const detailStr = [color, material].filter(Boolean).join(' · ');
@@ -225,10 +225,20 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                             {detailStr && (
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[9px] font-black text-white/50 uppercase tracking-widest">{detailStr}</div>
                             )}
-                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/20 uppercase tracking-widest">{codes.bookAqCode || '—'}</div>
-                            <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[10px] font-black text-white/20 uppercase tracking-widest">{codes.bookLandCode || '—'}</div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/8">
+                                <span className="text-[8px] font-black text-white/20 uppercase">AQ</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{codes.bookAqCode || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/8">
+                                <span className="text-[8px] font-black text-white/20 uppercase">LD</span>
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{codes.bookLandCode || '—'}</span>
+                            </div>
                         </div>
-                        <div className="flex items-baseline gap-2 mt-1"><h3 className="text-xl font-black text-white uppercase tracking-tight leading-none group-hover:text-[#b8860b] transition-colors truncate">{itemName}</h3><span className="text-xs font-black text-white/20 uppercase tracking-[0.2em] shrink-0">{typeLabel !== itemName ? typeLabel : ''}</span></div>
+                        <div className="flex items-baseline gap-2 mt-1">
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none group-hover:text-[#b8860b] transition-colors truncate">
+                                {combinedName}
+                            </h3>
+                        </div>
                     </div>
                     <div className="shrink-0 flex flex-col items-end"><span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">QTY</span><span className="text-2xl font-black text-white/60 leading-none">{norm.quantity || 1}</span></div>
                 </div>
