@@ -826,6 +826,39 @@ export const UnifiedInventoryView = () => {
             toast.success(selectedIds.length > 0 ? `Shared ${selectedIds.length} selected items!` : 'Share link copied!');
         });
     };
+    
+    const handleCopyTags = () => {
+        if (selectedIds.length === 0) return toast.error('No items selected.');
+        
+        const tags = selectedIds.map(id => {
+            const item = items.find(i => (i.row ?? i.data?.id) === id);
+            if (!item) return null;
+            const norm = normalizeInventoryData(item.data);
+            const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
+            return calculated.bookBarcode;
+        }).filter(Boolean);
+
+        if (tags.length === 0) return toast.error('No tags found for selection.');
+        
+        const tagString = tags.join(' ');
+        navigator.clipboard.writeText(tagString).then(() => {
+            toast.success(`Copied ${tags.length} Barcode Tags`, {
+                icon: '📋',
+                style: { background: 'var(--main-color)', color: '#000' }
+            });
+        });
+    };
+
+    const handleSelectAll = () => {
+        const allFilteredIds = filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
+        const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.includes(id));
+        
+        if (isAllSelected) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(allFilteredIds);
+        }
+    };
 
     const handleToggleSelection = (id: string | number) => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -1097,7 +1130,20 @@ export const UnifiedInventoryView = () => {
                         {isSelectionMode && (
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
-                                <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-(--main-color) uppercase tracking-widest hover:text-white ml-1">CLEAR</button>
+                                <div className="flex items-center gap-3 border-l border-white/5 pl-4 ml-2">
+                                    <button onClick={handleSelectAll} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-(--main-color) transition-colors">
+                                        {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'DESELECT ALL' : 'SELECT ALL'}
+                                    </button>
+                                    <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">CLEAR</button>
+                                </div>
+                                <button 
+                                    onClick={handleCopyTags}
+                                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-(--main-color)/10 text-(--main-color) border border-(--main-color)/20 hover:bg-(--main-color) hover:text-black transition-all text-[9px] font-black uppercase tracking-widest ml-1"
+                                    title="Copy Selected Tag IDs (Space Separated)"
+                                >
+                                    <ScanBarcode size={14} strokeWidth={3} />
+                                    COPY TAGS
+                                </button>
                             </div>
                         )}
                         <button
