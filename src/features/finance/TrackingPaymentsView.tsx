@@ -1730,7 +1730,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         <div className="w-px h-4 bg-white/10 shrink-0 mx-1" />
 
                         {/* Subcategories Filter */}
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-2">
                             {SUBCATEGORIES.map(s => {
                                 const labels: Record<string, { label: string; icon: any; color: string }> = {
                                     'All': { label: 'ALL', icon: LayoutGrid, color: '#888' },
@@ -1746,9 +1746,9 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                                 const isActive = subcatFilter === s;
                                 return (
                                     <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-xl border border-transparent transition-all whitespace-nowrap shrink-0 group/f hover:bg-(--text-color)/5 ${isActive ? 'bg-(--text-color)/5 border-(--text-color)/5' : ''}`}>
-                                        <cfg.icon size={16} style={{ color: cfg.color }} className={`transition-all ${isActive ? 'scale-110 opacity-100' : 'opacity-30 group-hover/f:opacity-100 group-hover/f:scale-110'}`} />
-                                        <span className={`text-[7px] font-black tracking-[0.2em] transition-all uppercase ${isActive ? 'opacity-100' : 'opacity-20 group-hover/f:opacity-60'}`} style={{ color: cfg.color }}>
+                                        className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl border transition-all whitespace-nowrap shrink-0 group/f ${isActive ? 'bg-white/10 border-white/20' : 'bg-transparent border-transparent hover:bg-white/5'}`}>
+                                        <cfg.icon size={16} style={{ color: isActive ? cfg.color : '#666' }} className={`transition-all ${isActive ? 'scale-110 grayscale-0' : 'scale-100 grayscale'}`} />
+                                        <span className={`text-[8px] font-black tracking-[0.2em] transition-all uppercase`} style={{ color: isActive ? cfg.color : '#666' }}>
                                             {cfg.label}
                                         </span>
                                     </button>
@@ -2202,7 +2202,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                     </symbol>
                     <symbol id="hammer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 a2.12 2.12 0 0 1 0-3L12 9" /><path d="M17.64 15 22 10.64" /><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.23V5a2 2 0 0 0-2-2h-3a2 2 0 0 0-2 2v2.46c0 .83-.34 1.63-.93 2.23l-1.25 1.25" /><path d="m15 15 5 5" /><path d="m12 12 5 5" />
+                        <path d="m15 12-8.5 8.5" /><path d="M12 9l3-3" /><path d="m21 7-2 2" /><path d="M11 11l5 5" />
                     </symbol>
                     <symbol id="user" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
