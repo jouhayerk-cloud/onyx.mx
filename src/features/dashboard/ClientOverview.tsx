@@ -147,16 +147,11 @@ export const ClientOverview: React.FC = () => {
     );
 
     useEffect(() => { 
-        // Initial Panel States based on screen size
-        const isSmall = typeof window !== 'undefined' && window.innerWidth <= 1024;
-        if (isSmall) {
-            setIsPaymentsCollapsed(true);
-            setIsAnalysisCollapsed(true);
-        } else {
-            setIsPaymentsCollapsed(false);
-            setIsQueueCollapsed(false);
-            setIsAnalysisCollapsed(false);
-        }
+        // Initial Panel States: All deployed by default as requested
+        setIsPaymentsCollapsed(false);
+        setIsQueueCollapsed(false);
+        setIsAnalysisCollapsed(false);
+        
         const t = setTimeout(() => setIsLoading(false), 800); 
         return () => clearTimeout(t); 
     }, []);
@@ -555,7 +550,7 @@ export const ClientOverview: React.FC = () => {
                                     {requisitions.length === 0 ? <p className="text-[10px] font-black text-(--text-color)/20 uppercase text-center py-6">Queue Empty</p> : requisitions.map((req) => {
                                         const destReqMXN = req.docs.reduce((acc, d) => acc + (d.amount || 0) + (d.commission || 0), 0);
                                         const destReqUSD = destReqMXN / currentExchangeRate;
-                                        const isExpanded = !!expandedDests[req.key];
+                                        const isExpanded = expandedDests[req.key] !== false;
                                         const vendorId = req.vendorId || req.docs[0]?.vendor_id;
                                         const vendorColor = (vendors as any)[vendorId]?.color || '#888';
                                         return (

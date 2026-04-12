@@ -1076,12 +1076,16 @@ export function MainHeader() {
                             </div>
                         )}
                         {activeView === 'dashboard' && (
-                            <>
+                            <div className="flex items-center gap-1 sm:gap-4">
                                 <ModuleBadge icon="layout-grid" label="Analytics" color="var(--color-analytics)" />
-                                <div className="ml-auto pr-4">
-                                    <span className="text-[10px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.25em]">SYST_CONTROL</span>
-                                </div>
-                            </>
+                                <StudioAction 
+                                    icon={DollarSign}
+                                    label={currencyMode}
+                                    active={true}
+                                    onClick={() => setCurrencyMode(prev => prev === 'MXN' ? 'USD' : 'MXN')}
+                                    color={currencyMode === 'USD' ? '#10b981' : '#38bdf8'}
+                                />
+                            </div>
                         )}
                         {(activeView === 'create' || !activeView) && (
                             <span className="text-[11px] font-black text-(--text-color) opacity-20 uppercase tracking-[0.4em]">ONYX.MX</span>
