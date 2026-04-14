@@ -1,5 +1,69 @@
 # Changelog
 
+## [1.78.53] - 2026-04-12
+### Added
+- **Smart Clustering Engine**: Implemented core-noun priority sorting (e.g., Bowls together, Onyx together) for the Dashboard Compositional Analysis.
+- **Title Case Formatting**: Applied professional "Capitalized Lowercase" to all dashboard tags and description analytics.
+### Changed
+- **Dashboard Scope Isolation**: Restricted all counts, filters, and analytics to Acquisition and Production items ONLY, excluding Store inventory as requested.
+- **Case-Insensitive Grouping**: Unified material and description categories by normalizing keys, preventing duplicate segments in analytics.
+
+## [1.78.52] - 2026-04-12
+### Added
+- **Inventory Selection Suite**: Implemented "Select All / Deselect All" functionality that correctly targets only filtered items currently in view for rapid batch operations.
+- **Tag Export Engine**: Added "COPY TAGS" utility to extract and copy space-separated barcode tag IDs (e.g., `EM3261HEL SUV3262HEL`) to the clipboard, formatted for external ledger sync.
+### Changed
+- **Selection UI Transparency**: Stripped transparency from selection labels, ensuring high-contrast visibility against glass backgrounds.
+
+## [1.78.51] - 2026-04-12
+### Added
+- **Bulk Selection Selection Foundations**: Added the `isInventorySelectionModeAtom` and `selectedInventoryIdsAtom` hooks to the `UnifiedInventoryView`.
+- **Logic-Aware Filtering**: Enabled selection logic that tracks filtered item sets for efficient multi-item actions.
+
+## [1.78.49] - 2026-04-11
+### Added
+- **Logistics Consolidation Engine**: Intelligent grouping of empty crates by size while maintaining individual wireframe icons for partially/packed assets.
+- **Volumetric Grid Sorting**: Assets are now sorted by volume (descending), with empty consolidated groups prioritized at the top of the grid.
+### Changed
+- **Opaque UI Standard**: System-wide removal of transparency in functional labels (`opacity-X`, `white/20`) to improve legibility.
+### Fixed
+- **KPI Tracking Accuracy**: Corrected the `packedCrates` and `packedItems` counters by auditing all logistics-linked IDs.
+
+
+## [1.78.52] - 2026-04-12
+### Added
+- **Inventory Selection Suite**: Implemented "Select All / Deselect All" functionality to rapidly manage large item sets.
+- **Tag Export Utility**: Added a "COPY TAGS" engine to extract and copy space-separated barcode tag IDs for external ledger tracking.
+### Changed
+- **Selection UI Aesthetics**: Removed transparency from labels and counters in the selection toolbar for 100% legibility.
+
+## [1.78.49] - 2026-04-11
+### Added
+- **Logistics Density Engine**: Implemented smart grouping for empty crates by size while preserving individual wireframe icons for partially/packed assets.
+- **Volumetric Sorting**: Assets are now sorted by volume (descending), with empty consolidated groups prioritized at the top of the grid.
+### Changed
+- **Glass Studio Readability**: System-wide removal of transparency (`opacity-X`, `white/20`) from metrics and labels in the Logistics and Finance modules.
+### Fixed
+- **KPI Tracking Accuracy**: Corrected the `packedCrates` and `packedItems` counters by auditing all logistics-linked IDs.
+
+
+## [1.78.52] - 2026-04-12
+### Added
+- **Inventory Selection Suite**: Implemented "Select All / Deselect All" logic that targets only filtered items currently in view.
+- **Tag Export Engine**: Added "COPY TAGS" utility to extract and copy space-separated barcode tag IDs for batch management.
+### Changed
+- **Studio Readability**: Stripped transparency from selection labels/counters for 100% legibility in the top panel.
+
+## [1.78.49] - 2026-04-11
+### Added
+- **Logistics Consolidation Engine**: Intelligent grouping of empty crates by size while maintaining individual wireframe icons for partially/packed assets.
+- **Volumetric Grid Sorting**: Automatic sorting by volume (descending) with empty crates prioritized at the top of the grid.
+### Changed
+- **Glass Studio Hardening**: System-wide removal of `opacity-X` and `white/20` from metrics and labels to ensure perfect high-contrast readability.
+### Fixed
+- **KPI Tracking Accuracy**: Corrected packed item/crate counters by broader ID auditing across the logistics registry.
+
+
 ## [1.69.4] - 2026-04-07
 ### Changed
 - **Inventory UI Refinement**: Removed the redundant chevron icon from the Inventory List rows, as the details panel toggle is already intuitively handled by clicking the row itself.
