@@ -7,10 +7,12 @@ import { getCleanImageUrl } from '../../lib/utils';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import {
     Maximize2, Loader2, Search, Package, X,
-    ChevronLeft, ChevronRight, FileDown,
+    ChevronLeft, ChevronRight, FileDown, LayoutGrid,
     CloudUpload, Check as CheckIcon, FileText as FileTextIcon
 } from 'lucide-react';
 import gsap from 'gsap';
+import { jsPDF } from 'jspdf';
+import toast from 'react-hot-toast';
 
 declare global { interface Window { jspdf?: any; } }
 
@@ -360,25 +362,22 @@ function drawHeaderCompact(doc: any, item: ResolvedArtifact, M: number, PW: numb
     doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
     return hY + 12;
 }
-async function exportCatalogPdf(results: ResolvedArtifact[], onProgress?: (p: number, s: string) => void) {
-    onProgress?.(0, 'Initializing Engine...');
-    if (!(window as any).jspdf) {
-        onProgress?.(2, 'Downloading dependencies...');
-        await new Promise<void>((resolve, reject) => {
-            const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = () => resolve(); s.onerror = () => reject(new Error('jsPDF load failed')); document.head.appendChild(s);
-        });
-    }
+async function exportCatalogPdf(
+    results: ResolvedArtifact[], 
+    config: { title: string; method: 'grid' | 'single' },
+    onProgress?: (p: number, s: string) => void
+) {
     onProgress?.(5, 'Preparing Catalog...');
-    const { jsPDF } = (window as any).jspdf; const PW = 210, PH = 297, M = 12;
+    const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    
+    // --- COVER PAGE ---
     doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F');
     doc.setFontSize(48); doc.setFont('helvetica', 'bold'); doc.setTextColor(15, 15, 15); doc.text('Art of Decor', M + 4, 88);
-    doc.setFontSize(20); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text('Catalog', M + 4, 102);
+    doc.setFontSize(22); doc.setFont('helvetica', 'normal'); doc.setTextColor(130, 100, 15); doc.text(config.title || 'Artifact Catalog', M + 4, 102);
     doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3); doc.line(M + 4, 110, PW - M, 110);
-    doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  \u00b7  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
+    doc.setFontSize(9); doc.setTextColor(160, 160, 160); doc.text(`${results.length} Items  \xb7  ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, M + 4, 118);
     
-    const simple = results.filter(r => r.images.length <= 2);
-    const rich = results.filter(r => r.images.length > 2);
     let globalPageNum = 0;
     const footer = (doc: any) => { 
         globalPageNum++; 
@@ -386,8 +385,49 @@ async function exportCatalogPdf(results: ResolvedArtifact[], onProgress?: (p: nu
         doc.text('Art of Decor', M + 4, PH - 8); 
         doc.text(String(globalPageNum), PW - M, PH - 8, { align: 'right' }); 
     };
-    
-    const HW = (PW - M * 2 - 4) / 2; const HG = 4;
+
+    const totalItems = results.length;
+    let processedCount = 0;
+
+    if (config.method === 'single') {
+        // --- METHOD: ONE IMAGE PER PAGE ---
+        for (let i = 0; i < results.length; i++) {
+            const item = results[i];
+            const imgs = item.images;
+            processedCount++;
+            onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
+
+            if (imgs.length === 0) {
+                doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                const specY = drawHeader(doc, item, M, PW, M);
+                doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
+            } else {
+                for (let j = 0; j < imgs.length; j++) {
+                    doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
+                    const specY = drawHeader(doc, item, M, PW, M);
+                    
+                    const imgUrl = getCleanImageUrl(imgs[j]);
+                    const d = await loadImgData(imgUrl, 1200);
+                    const imgW = PW - M * 2 - 4;
+                    const imgH = PH - specY - 24;
+                    if (d) {
+                        drawContain(doc, d, M + 4, specY + 4, imgW, imgH);
+                    } else {
+                        doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, imgW, imgH, 'F');
+                    }
+                    
+                    if (imgs.length > 1) {
+                        doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
+                        doc.text(`IMAGE ${j + 1} OF ${imgs.length}`, PW - M, specY - 2, { align: 'right' });
+                    }
+                }
+            }
+        }
+    } else {
+        // --- METHOD: GRID CATALOG (Existing Logic) ---
+        const simple = results.filter(r => r.images.length <= 2);
+        const rich = results.filter(r => r.images.length > 2);
+        const HW = (PW - M * 2 - 4) / 2; const HG = 4;
     const totalItems = results.length;
     let processedCount = 0;
 
@@ -471,8 +511,11 @@ async function exportCatalogPdf(results: ResolvedArtifact[], onProgress?: (p: nu
             }
         }
     }
+}
     onProgress?.(95, 'Finalizing Catalogue...');
-    doc.save(`ArtOfDecor_Catalog_${new Date().toISOString().slice(0, 10)}.pdf`);
+    // Sanitize filename: remove characters that break OS file saving
+    const safeTitle = (config.title || 'ArtOfDecor').replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
+    doc.save(`${safeTitle}_${new Date().toISOString().slice(0, 10)}.pdf`);
     onProgress?.(100, 'Catalogue Downloaded');
 }
 
@@ -501,21 +544,27 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
 
     useEffect(() => { if (query) performSearch(query); }, []);
 
+    const [showExportConfig, setShowExportConfig] = useState(false);
+    const [exportTitle, setExportTitle] = useState('');
+    const [exportMethod, setExportMethod] = useState<'grid' | 'single'>('grid');
+
     const handleExportPdf = async () => {
         if (!results.length || exporting) return;
+        setShowExportConfig(false);
         setExporting(true); 
         setExportProgress(0);
         setExportStatus('Starting Export...');
         try { 
-            await exportCatalogPdf(results, (p, s) => {
+            await exportCatalogPdf(results, { title: exportTitle, method: exportMethod }, (p, s) => {
                 setExportProgress(p);
                 setExportStatus(s);
             }); 
-            // Briefly show 100% before closing
             setTimeout(() => setExporting(false), 800);
+            toast.success('Catalog exported successfully');
         } catch (e) { 
             console.error('PDF export failed:', e); 
             setExporting(false);
+            toast.error('Failed to generate PDF. Please try again.');
         }
     };
 
@@ -538,7 +587,18 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                     <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-8 pb-32">
                         {results.length > 0 ? (
                             <>
-                                <div className="flex items-center justify-between mb-8"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{results.length} Artifact{results.length !== 1 ? 's' : ''}</span><button onClick={handleExportPdf} className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all shadow-lg active:scale-95"><FileDown size={20} />Export PDF Catalog</button></div>
+                                <div className="flex items-center justify-between mb-8">
+                                    <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">
+                                        {results.length} Artifact{results.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <button 
+                                        onClick={() => setShowExportConfig(true)} 
+                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all shadow-lg active:scale-95"
+                                    >
+                                        <FileTextIcon size={20} />
+                                        Export PDF options
+                                    </button>
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max">
                                     {results.map((item, idx) => {
                                         const n = item.images.length;
@@ -551,6 +611,80 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 </div>
             )}
             
+            {showExportConfig && createPortal(
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-2xl animate-in fade-in duration-300">
+                    <div className="w-[480px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col gap-10 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#b8860b]/40 to-transparent" />
+                        
+                        <div className="flex flex-col gap-2">
+                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Export Configuration</h2>
+                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Customize your catalog</p>
+                        </div>
+
+                        <div className="space-y-8">
+                            {/* Title Input */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">PDF Title (Cover & Filename)</label>
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    value={exportTitle} 
+                                    onChange={e => setExportTitle(e.target.value)}
+                                    placeholder="Enter custom title..."
+                                    className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-[#b8860b]/30 focus:bg-white/5 transition-all"
+                                />
+                            </div>
+
+                            {/* Method Selection */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Methodology</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        onClick={() => setExportMethod('grid')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group ${exportMethod === 'grid' ? 'bg-[#b8860b]/10 border-[#b8860b]/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'grid' ? 'bg-[#b8860b]/20 border-[#b8860b]/30' : 'bg-white/5 border-white/10'}`}>
+                                            <LayoutGrid size={20} className={exportMethod === 'grid' ? 'text-[#b8860b]' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'grid' ? 'text-white' : 'text-white/40'}`}>Catalog Grid</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Multi-image rows</p>
+                                        </div>
+                                    </button>
+                                    <button 
+                                        onClick={() => setExportMethod('single')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group ${exportMethod === 'single' ? 'bg-[#b8860b]/10 border-[#b8860b]/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'single' ? 'bg-[#b8860b]/20 border-[#b8860b]/30' : 'bg-white/5 border-white/10'}`}>
+                                            <FileTextIcon size={20} className={exportMethod === 'single' ? 'text-[#b8860b]' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'single' ? 'text-white' : 'text-white/40'}`}>Per Image</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Full-page view</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button 
+                                onClick={() => setShowExportConfig(false)}
+                                className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleExportPdf}
+                                className="flex-[2] h-14 rounded-full bg-[#b8860b] text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_20px_rgba(184,134,11,0.3)] active:scale-95"
+                            >
+                                Start Generation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
             {exporting && createPortal(
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300 pointer-events-auto">
                     <div className="w-[360px] p-10 rounded-[48px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
