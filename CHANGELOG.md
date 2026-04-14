@@ -1,4 +1,12 @@
 # Changelog
+ 
+## [1.78.54] - 2026-04-12
+### Added
+- **Enhanced PDF Presentation Suite**: Introduced a glassmorphic configuration modal for custom titles and layout methodology.
+- **High-Fidelity "Per Image" Mode**: New export method generating a full A4 page for every artifact image, with technical specs repeated for standalone utility.
+### Changed
+- **Export Logic Stabilization**: Migrated PDF engine to direct module imports and implemented OS-level filename sanitization to resolve download blockers.
+- **Real-Time Feedback**: Integrated toast notifications for export success and proactive error reporting.
 
 ## [1.78.53] - 2026-04-12
 ### Added

@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.78.53 - Dashboard Analytics: Smart Clustering, Title Case, and Store Exclusion"
+git commit -m "v1.78.54 - PDF Presentation Suite: Custom Titles, Per Image Mode, and Stability Fixes"
 git push origin main
 
 
