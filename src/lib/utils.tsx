@@ -27,6 +27,14 @@ export function resolveUserRole(email: string): UserRole {
 export function generateUniqueId(): string {
   return Array.from({ length: 8 }, () => Math.random().toString(36).charAt(2)).join('').toUpperCase();
 }
+export function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.toString()
+    .toLowerCase()
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 export function formatCurrency(amount: number | string, currency: string = 'MXN'): string {
   const value = typeof amount === 'string' ? parseFloat(amount) : amount;

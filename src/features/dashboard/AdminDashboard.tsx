@@ -2,12 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import {
     exchangeRateAtom, showFinancialsAtom, financeDataAtom, activeViewAtom, userAtom,
-    liveExchangeRateAtom, inventoryAtom, storeInventoryAtom, logisticsDataAtom,
+    liveExchangeRateAtom, inventoryAtom, logisticsDataAtom,
     inventoryArtifactConfigAtom, currencyModeAtom, paymentsArtifactConfigAtom,
     financeSubTabAtom, paymentCategoryFilterAtom
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
-import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, toTitleCase } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import {
     Package, DollarSign, Users, TrendingUp, Layers, Shapes,
@@ -222,10 +222,9 @@ export function AdminDashboard() {
         return () => clearTimeout(t);
     }, []);
 
-    const items = useMemo(() =>
-        allInventoryItems.filter(i => i.data.status !== 'Pending Deletion'),
-        [allInventoryItems]
-    );
+    const items = useMemo(() => {
+        return allInventoryItems.filter(i => i.data?.status !== 'Pending Deletion');
+    }, [allInventoryItems]);
 
     const getVendorIdFromItem = (data: any) => {
         const itemIdStr = String(data.item_id || data.itemId || '');
@@ -403,20 +402,79 @@ export function AdminDashboard() {
     }, [vendorSummaries, logisticsData, opsBreakdown, items, financeData, currentExchangeRate]);
 
     const attributeStats = useMemo(() => {
-        const colorMatMap: Record<string, number> = {};
-        const shapeDescMap: Record<string, number> = {};
+        const colorMatMap: Record<string, { label: string, value: number }> = {};
+        const shapeDescMap: Record<string, { label: string, value: number }> = {};
+        
         items.forEach(i => {
             const norm = normalizeInventoryData(i.data);
             const qty = parseInt(norm?.quantity || '1') || 1;
-            const cm = `${norm?.color || 'Unknown'} ${norm?.material || 'Unknown'}`.trim();
-            colorMatMap[cm] = (colorMatMap[cm] || 0) + qty;
+            
+            // Normalize Color + Material key
+            const color = (norm?.color || 'Unknown').trim();
+            const material = (norm?.material || 'Unknown').trim();
+            const colorUpper = color.toUpperCase();
+            const materialUpper = material.toUpperCase();
+            const cmKey = `${colorUpper} ${materialUpper}`;
+            
+            if (!colorMatMap[cmKey]) {
+                const rawLabel = `${color} ${material}`.trim();
+                colorMatMap[cmKey] = { label: toTitleCase(rawLabel) || 'Unknown', value: 0 };
+            }
+            colorMatMap[cmKey].value += qty;
+            
+            // Normalize Shape + Description key
             const desc = (norm?.description || norm?.shortDescription || norm?.item_description || norm?.generatedDescription || '').trim() || 'No Description';
-            const sd = `${norm?.shape || 'Unknown'} - ${desc}`;
-            shapeDescMap[sd] = (shapeDescMap[sd] || 0) + qty;
+            const shape = (norm?.shape || 'Unknown').trim();
+            const descUpper = desc.toUpperCase();
+            const shapeUpper = shape.toUpperCase();
+            const sdKey = `${shapeUpper} - ${descUpper}`;
+            
+            if (!shapeDescMap[sdKey]) {
+                const rawLabel = `${shape} - ${desc}`;
+                shapeDescMap[sdKey] = { label: toTitleCase(rawLabel), value: 0 };
+            }
+            shapeDescMap[sdKey].value += qty;
         });
+
         return { 
-            topCM: Object.entries(colorMatMap).sort((a,b) => b[1]-a[1]).slice(0, 8),
-            topSD: Object.entries(shapeDescMap).sort((a,b) => b[1]-a[1]).slice(0, 10)
+            topCM: Object.values(colorMatMap)
+                .sort((a,b) => b.value - a.value)
+                .slice(0, 12)
+                .sort((a,b) => {
+                    // Normalize labels for reliable sorting by Material (last word)
+                    const matA = a.label.split(/\s+/).pop() || '';
+                    const matB = b.label.pop ? b.label.split(/\s+/).pop() : (b.label as string).split(/\s+/).pop() || ''; // Safety
+                    
+                    // Note: b.label is definitely string here, but TypeScript might want reassurance or my split logic is fine.
+                    const labelA = a.label;
+                    const labelB = b.label;
+                    const mNameA = labelA.split(/\s+/).pop() || '';
+                    const mNameB = labelB.split(/\s+/).pop() || '';
+                    
+                    if (mNameA !== mNameB) return mNameA.localeCompare(mNameB);
+                    return labelA.localeCompare(labelB);
+                })
+                .map(v => [v.label, v.value]),
+            topSD: Object.values(shapeDescMap)
+                .sort((a,b) => b.value - a.value)
+                .slice(0, 15) // Increased slice to allow for more clusters in the list
+                .sort((a,b) => {
+                    // label format is "Shape - Description"
+                    const partsA = a.label.split(' - ');
+                    const partsB = b.label.split(' - ');
+                    
+                    const descA = partsA[1] || '';
+                    const descB = partsB[1] || '';
+                    
+                    // Core noun is usually the last word
+                    const nounA = descA.split(/\s+/).pop() || '';
+                    const nounB = descB.split(/\s+/).pop() || '';
+                    
+                    if (nounA !== nounB) return nounA.localeCompare(nounB);
+                    if (descA !== descB) return descA.localeCompare(descB);
+                    return partsA[0].localeCompare(partsB[0]);
+                })
+                .map(v => [v.label, v.value])
         };
     }, [items]);
 

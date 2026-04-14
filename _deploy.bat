@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.71.3 - Fix Google Sites CORS and Path resolution with Absolute Base URL"
+git commit -m "v1.78.53 - Dashboard Analytics: Smart Clustering, Title Case, and Store Exclusion"
 git push origin main
 
 
