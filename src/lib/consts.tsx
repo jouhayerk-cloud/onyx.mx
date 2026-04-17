@@ -23,7 +23,7 @@ export const vendors = {
   EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
   CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
   AN: { name: 'ANGEL CABRERA', color: '#FFED00' },
-  SU: { name: 'SUZANA', color: '#B19CD9' },
+  SU: { name: 'SUSANA', color: '#B19CD9' },
   TE: { name: 'TELLEZ TALLER', color: '#FFCB05' },
   DH: { name: 'DELFINO HERNANDEZ', color: '#8DC63F' },
   ML: { name: 'MARIA LUISA', color: '#F9A17A' },
