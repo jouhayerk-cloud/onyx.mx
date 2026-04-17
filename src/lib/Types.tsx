@@ -132,6 +132,7 @@ export enum PaymentDestination {
   BBVA_Martha = "BBVA Martha",
   BBVA_Ramses = "BBVA Ramses",
   Fast_Cash_Wire = "Direct Wire",
+  Cash = "Cash",
 }
 
 export enum ExpenseStatus {
