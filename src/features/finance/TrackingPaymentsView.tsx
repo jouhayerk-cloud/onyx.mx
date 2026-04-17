@@ -185,22 +185,24 @@ const AddPaymentModal: React.FC<{
                     }
                 } else if (isProd && isPartial) {
                     const up = { pay_req: `requested ${perc}%`, notes: `Partial payment of ${amt} recorded.` };
-                    await supabase.from('inventory').update(up).in('id', ids);
+                    await supabase.from('production').update(up).in('id', ids);
                     if (db) {
                         for (const iid of ids) {
                             try {
-                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                if (lInv) await lInv.patch({ ...up, payReq: up.pay_req });
+                                const lProd = await db.production.findOne({ selector: { id: iid } }).exec();
+                                if (lProd) await lProd.patch(up);
                             } catch (e) { console.error(e); }
                         }
                     }
                 } else {
-                    await supabase.from('inventory').update({ pay_req: 'true' }).in('id', ids);
+                    const table = isProd ? 'production' : 'inventory';
+                    await supabase.from(table).update({ pay_req: 'true' }).in('id', ids);
                     if (db) {
                         for (const iid of ids) {
                             try {
-                                const lInv = await db.inventory.findOne({ selector: { id: iid } }).exec();
-                                if (lInv) await lInv.patch({ pay_req: 'true', payReq: 'true' });
+                                const coll = isProd ? db.production : db.inventory;
+                                const doc = await coll.findOne({ selector: { id: iid } }).exec();
+                                if (doc) await doc.patch({ pay_req: 'true', payReq: 'true' });
                             } catch (e) { console.error(e); }
                         }
                     }
@@ -1156,6 +1158,29 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             .then(d => { if (d?.rates?.MXN) setLiveExchangeRate(d.rates.MXN); })
             .catch(() => { });
     }, [liveExchangeRate, setLiveExchangeRate]);
+
+    // Auto-refresh payments list when finance or inventory data changes in the local RxDB.
+    // This fires after any save (AddPayment, EditPayment, inventory update) without requiring a manual reload.
+    useEffect(() => {
+        if (!db) return;
+        let timer: ReturnType<typeof setTimeout>;
+        const triggerRefresh = () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                setPaymentsVersion(v => v + 1);
+                onRefresh();
+            }, 300);
+        };
+
+        const finSub = db.finance.find().$.subscribe(triggerRefresh);
+        const invSub = db.inventory.find().$.subscribe(triggerRefresh);
+
+        return () => {
+            clearTimeout(timer);
+            finSub.unsubscribe();
+            invSub.unsubscribe();
+        };
+    }, [db, onRefresh, setPaymentsVersion]);
 
     const pendingGroups = useMemo<VendorGroup[]>(() => {
 

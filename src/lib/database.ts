@@ -81,7 +81,7 @@ const logisticsSchema = {
 
 const productionSchema = {
     title: 'production schema',
-    version: 3,
+    version: 4,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -96,6 +96,8 @@ const productionSchema = {
         progress: { type: ['number', 'null'] },
         ready_date: { type: ['string', 'null'] },
         status: { type: ['string', 'null'] },
+        pay_req: { type: ['string', 'boolean', 'null'] },
+        notes: { type: ['string', 'null'] },
         rating: { type: ['number', 'null'] },
         is_hidden: { type: ['boolean', 'null'] },
         hidden_reason: { type: ['string', 'null'] },
@@ -229,7 +231,7 @@ const createDatabase = async () => {
             production: { 
                 schema: productionSchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null,
                 }
             }
         });
