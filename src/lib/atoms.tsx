@@ -239,6 +239,8 @@ export const filteredInventoryTotalValueAtom = atom(0);
 export const filteredInventoryIdsAtom = atom<(string | number)[]>([]);
 export const isInventorySelectionModeAtom = atom<boolean>(false);
 export const selectedInventoryIdsAtom = atom<(string | number)[]>([]);
+export const isStoreSelectionModeAtom = atom<boolean>(false);
+export const selectedStoreIdsAtom = atom<string[]>([]);
 export const activeVendorsAtom = atom<string[]>([]);
 
 export const storeInventoryAtom = atom<any[]>([]);
