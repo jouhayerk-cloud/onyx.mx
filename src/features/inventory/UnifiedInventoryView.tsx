@@ -141,7 +141,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, onEdit, financeDocs }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
@@ -191,7 +191,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     const weightStr = formatWeightImperial(norm.weightKg);
 
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-    const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+    const payStatus = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
     const col = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
     const accentColor = col;
 
@@ -864,42 +864,60 @@ export const UnifiedInventoryView = () => {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
-    const { partialPayIds, fullPayIds } = useMemo(() => {
+    const { partialPayIds, fullPayIds, requestedAcqIds } = useMemo(() => {
         const pIds = new Set<string>();
         const fIds = new Set<string>();
+        const rAcqIds = new Set<string>();
 
-        // Step 1: Aggregate total paid MXN per inventory item across ALL payment records.
-        // A payment is included if its status is 'Paid' or 'Partial' (i.e. money has moved).
+        // paidMap: confirmed money movement (status: paid | partial) — for PAID/GREEN threshold
         const paidMap = new Map<string, number>();
+        // requestedMap: financial activity for Prod/Packing items to show RED
+        const requestedMap = new Map<string, number>();
+
         financeDocs.forEach((d: any) => {
             const status = String(d.status || '').toLowerCase();
-            if (status !== 'paid' && status !== 'partial') return;
+            const subcategory = String(d.subcategory || '').toLowerCase();
             const amount = Number(d.amount || 0);
             if (amount <= 0) return;
+
             const rel = d.related_ids || d.related_inventory_ids || '';
             let relArray: string[] = [];
             if (Array.isArray(rel)) relArray = rel.map((id: any) => String(id));
             else if (typeof rel === 'string') relArray = rel.split(',').map((s: string) => s.trim()).filter(Boolean);
-            relArray.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
-        });
+            if (relArray.length === 0) return;
 
-        // Step 2: Compare each item's running paid total to its actual cost.
-        // Only items where sum(payments) >= totalCost are marked fully paid.
-        items.forEach((item: any) => {
-            const id = String(item.data?.id || item.row);
-            const totalPaid = paidMap.get(id) || 0;
-            if (totalPaid <= 0) return; // No payments at all — leave unclassified
-            const price = Number(item.data?.price || item.data?.price_mxn || 0);
-            const qty = Number(item.data?.quantity || 1);
-            const totalCost = price * qty;
-            if (totalCost > 0 && totalPaid >= totalCost) {
-                fIds.add(id); // Fully covered
-            } else {
-                pIds.add(id); // Some payment exists but not enough
+            if (status === 'paid' || status === 'partial') {
+                relArray.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
+                relArray.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
+            }
+            // Prod/Packing requested → RED (partial in-motion)
+            if (status === 'requested' && (subcategory === 'prod' || subcategory === 'packing')) {
+                relArray.forEach(id => requestedMap.set(id, (requestedMap.get(id) || 0) + amount));
+            }
+            // Acq requested → YELLOW (requested, not yet paid)
+            if (status === 'requested' && subcategory === 'acq') {
+                relArray.forEach(id => rAcqIds.add(id));
             }
         });
 
-        return { partialPayIds: pIds, fullPayIds: fIds };
+        items.forEach((item: any) => {
+            const id = String(item.data?.id || item.row);
+            const totalPaid = paidMap.get(id) || 0;
+            const totalRequested = requestedMap.get(id) || 0;
+            if (totalRequested <= 0) return; // No Prod/Packing activity — leave for YELLOW/NEW checks
+
+            const price = Number(item.data?.price || item.data?.price_mxn || item.data?.acq_price_mxn || 0);
+            const qty = Number(item.data?.quantity || 1);
+            const totalCost = price * qty;
+
+            if (totalCost > 0 && totalPaid >= totalCost) {
+                fIds.add(id); // GREEN — fully paid
+            } else {
+                pIds.add(id); // RED — partial / in-motion
+            }
+        });
+
+        return { partialPayIds: pIds, fullPayIds: fIds, requestedAcqIds: rAcqIds };
     }, [financeDocs, items]);
 
     useEffect(() => { if (mode === 'edit' && itemData) { setEditData({ ...normalizeInventoryData(itemData), vendorId: String(itemData.itemId || '').split('-')[0] }); setNewFiles([]); } }, [mode, itemData]);
@@ -1297,6 +1315,7 @@ export const UnifiedInventoryView = () => {
                                         viewMode={viewMode} 
                                         partialPayIds={partialPayIds} 
                                         fullPayIds={fullPayIds} 
+                                        requestedAcqIds={requestedAcqIds}
                                         onEdit={handleEditItem} 
                                         financeDocs={financeDocs} 
                                     />

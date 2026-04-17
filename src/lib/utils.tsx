@@ -809,7 +809,7 @@ export const normalizeInventoryData = (data: any): any => {
     ...data,
     itemId: data.itemId || data.item_id,
     itemNumber: data.itemNumber || data.item_number,
-    price: data.price || data.price_mxn,
+    price: data.price || data.price_mxn || data.acq_price_mxn,
     shortDescription: data.shortDescription || data.short_description,
     widthCm: data.widthCm || data.width_cm,
     heightCm: data.heightCm || data.height_cm,
@@ -1060,23 +1060,25 @@ export async function generatePngAndSvgFromMasks(
   return { pngData, svgData };
 }
 
-export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
+export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayIds?: Set<string>, requestedAcqIds?: Set<string>): 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | null => {
   if (!item) return null;
   const payReqStr = String(item.payReq || item.pay_req || '').toLowerCase();
   const statusStr = String(item.status || item.item_status || '').toLowerCase();
   const dispStatus = String(item.dispersal_status || '').toLowerCase();
   
-  // 1. Highest priority: Fully Paid/Dispersed — must beat partial to resolve stale flags
+  // 1. Highest priority: Fully Paid/Dispersed
   if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
   
-  // 2. Partial Payments — only if not already fully covered
-  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-  
-  // 3. Low priority: Requests (Initial state)
-  if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+  // 2. Partial Payments — RED
+  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%') || payReqStr === 'partial') return 'RED';
 
-  
-  // 4. Default: check for price/qty
+  // 3. Acquisition payment requested — YELLOW
+  if (requestedAcqIds?.has(String(item.id))) return 'YELLOW';
+
+  // 4. Low priority: Requests (Initial state via item fields)
+  if (payReqStr === 'requested' || payReqStr === 'true' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+
+  // 5. Default: check for price/qty
   const qty = parseInt(String(item.quantity || 1));
   const price = parseFloat(String(item.price || 0));
   if (price > 0 && qty > 0 && statusStr === 'acquired') return 'PURPLE';
