@@ -1066,17 +1066,20 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   const statusStr = String(item.status || item.item_status || '').toLowerCase();
   const dispStatus = String(item.dispersal_status || '').toLowerCase();
   
-  // 1. Highest priority: Fully Paid/Dispersed
-  if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
-  
-  // 2. Partial Payments — RED
-  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%') || payReqStr === 'partial') return 'RED';
-
-  // 3. Acquisition payment requested — YELLOW
+  // 1. Precise status from calculation sets (highest priority)
+  if (partialPayIds?.has(String(item.id))) return 'RED';
+  if (fullPayIds?.has(String(item.id))) return 'GREEN';
   if (requestedAcqIds?.has(String(item.id))) return 'YELLOW';
 
-  // 4. Low priority: Requests (Initial state via item fields)
-  if (payReqStr === 'requested' || payReqStr === 'true' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+  // 2. Fallback to item fields (Legacy or direct field check)
+  if (item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+  
+  if (payReqStr.includes('%') || payReqStr === 'partial') return 'RED';
+
+  if (payReqStr === 'requested' || payReqStr === 'true' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') {
+    const isAcq = String(item.status || item.item_status || '').toLowerCase() === 'acquisition';
+    return isAcq ? 'YELLOW' : 'RED';
+  }
 
   // 5. Default: check for price/qty
   const qty = parseInt(String(item.quantity || 1));
