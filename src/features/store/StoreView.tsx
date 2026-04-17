@@ -13,7 +13,9 @@ import {
     dashboardStatusFilterAtom,
     liveExchangeRateAtom,
     exchangeRateAtom,
-    userAtom
+    userAtom,
+    isStoreSelectionModeAtom,
+    selectedStoreIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL } from '../../lib/utils';
@@ -21,8 +23,9 @@ import {
     ShoppingBag, Search, Filter, LayoutGrid, LayoutList, Layout, 
     ChevronRight, ArrowRight, X, Heart, Star, Info, Trash2, Box, PackageSearch,
     ChevronLeft, ChevronRight as ChevronRightIcon, Plus, Check, Minus, Maximize2, Zap,
-    Edit3, Ruler, Layers, CloudUpload, Pencil, Tag, FileText, Upload, Video
+    Edit3, Ruler, Layers, CloudUpload, Pencil, Tag, FileText, Upload, Video, Share2, ScanBarcode, Download, CheckCircle
 } from 'lucide-react';
+import { exportCatalogPdf } from '../../lib/pdfExport';
 import { useTranslation } from '../../lib/hooks';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -138,6 +141,77 @@ export function StoreView() {
             return matchesVendor && matchesSearch;
         });
     }, [storeItems, vendorFilter, search]);
+
+    const [isSelectionMode, setIsSelectionMode] = useAtom(isStoreSelectionModeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(selectedStoreIdsAtom);
+    const [isExporting, setIsExporting] = useState(false);
+    const [showExportConfig, setShowExportConfig] = useState(false);
+    const [exportTitle, setExportTitle] = useState("Rare Earth Gallery");
+    const [exportMethod, setExportMethod] = useState<'grid' | 'single'>('grid');
+    const [exportProgress, setExportProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
+
+    const toggleSelection = (item: any) => {
+        const id = item.row ?? item.data?.id;
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const handleSelectAll = () => {
+        if (filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id))) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean));
+        }
+    };
+    
+    // Add logic for export pdf
+    const executeExportPdf = async () => {
+        if (selectedIds.length === 0) return toast.error('No items selected for PDF.');
+        setIsExporting(true);
+        try {
+            const itemsToExport = selectedIds.map(id => {
+                const item: any = storeItems.find((i: any) => (i.row ?? i.data?.id) === id);
+                if (!item) return null;
+                const norm = normalizeInventoryData(item.data);
+                
+                const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
+                let imgs = [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
+                imgs = imgs.filter(img => !isVideoFile(img)); // remove videos
+                
+                const priceMxn = Number(item.price_mxn || norm.price_mxn || item.price || norm.price || 0);
+                const currentRate = liveRate || exchangeRate || 1;
+                const priceUsd = Math.round(priceMxn / currentRate);
+                
+                return {
+                    data: norm,
+                    codes: {
+                        bookBarcode: norm.itemId || '',
+                        primaryPriceLabel: 'ACQUISITION COST',
+                        primaryPriceValue: `$${priceMxn.toLocaleString('en-US')} MXN / $${priceUsd.toLocaleString('en-US')} USD`
+                    },
+                    images: imgs
+                };
+            }).filter(Boolean);
+            
+            const title = exportTitle || "Rare Earth Gallery";
+            const method = exportMethod;
+
+            setExportStatus("Generating PDF...");
+            setExportProgress(10);
+            const progressCb = (p: number, msg: string) => {
+                setExportProgress(p);
+                setExportStatus(msg);
+            };
+            
+            await exportCatalogPdf(itemsToExport as any, { title, method }, progressCb);
+            setTimeout(() => { setShowExportConfig(false); setIsExporting(false); }, 1500);
+            toast.success("PDF generated successfully!", { id: "store_pdf" });
+        } catch (e: any) {
+            toast.error("Export failed: " + e.message, { id: "store_pdf" });
+            setIsExporting(false);
+        }
+    };
 
     const toggleBag = (item: any) => {
         const isInBag = bag.some(b => b.row === item.row);
@@ -284,6 +358,38 @@ export function StoreView() {
     return (
         <div className="h-full overflow-hidden bg-transparent animate-in fade-in duration-1000" style={{ fontFamily: 'Inter, sans-serif' }}>
             <main className="h-full overflow-hidden relative flex flex-col">
+                {/* Top Selection Bar */}
+                <div className="flex items-center justify-end px-4 sm:px-6 py-2 border-b border-white/5 bg-black/20 shrink-0">
+                    <div className="flex items-center gap-5 shrink-0">
+                        {isSelectionMode && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
+                                <div className="flex items-center gap-3 border-l border-white/5 pl-4 ml-2">
+                                    <button onClick={handleSelectAll} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-(--main-color) transition-colors">
+                                        {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'DESELECT ALL' : 'SELECT ALL'}
+                                    </button>
+                                    <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">CLEAR</button>
+                                </div>
+                                <button 
+                                    onClick={() => setShowExportConfig(true)}
+                                    disabled={selectedIds.length === 0 || isExporting}
+                                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-(--main-color)/10 text-(--main-color) border border-(--main-color)/20 hover:bg-(--main-color) hover:text-black transition-all text-[9px] font-black uppercase tracking-widest ml-1 disabled:opacity-30 disabled:pointer-events-none"
+                                    title="Export Selected Items to PDF Catalog"
+                                >
+                                    <Download size={14} strokeWidth={2.5} />
+                                    EXPORT PDF
+                                </button>
+                            </div>
+                        )}
+                        <button
+                            onClick={() => { setIsSelectionMode(!isSelectionMode); if (!isSelectionMode) setSelectedIds([]); }}
+                            className={`flex items-center justify-center transition-all ${isSelectionMode ? 'text-white' : 'text-white/30 hover:text-white'}`}
+                            title={isSelectionMode ? "Exit Selection Mode" : "Select Items"}>
+                            {isSelectionMode ? <X size={18} /> : <Check size={18} strokeWidth={2.5} />}
+                        </button>
+                    </div>
+                </div>
+            
                 {/* View Modes */}
                 <div className="flex-1 overflow-hidden relative">
                     {viewMode === 'grid' && (
@@ -293,10 +399,15 @@ export function StoreView() {
                                     <ArtifactCard 
                                         key={item.row} 
                                         item={item} 
-                                        onClick={() => setSelectedItem(item)} 
+                                        onClick={() => {
+                                            if (isSelectionMode) toggleSelection(item);
+                                            else setSelectedItem(item);
+                                        }} 
                                         onToggleBag={() => toggleBag(item)}
                                         inBag={bag.some(b => b.row === item.row)}
                                         delay={idx % 20}
+                                        isSelected={selectedIds.includes(item.row ?? item.data?.id)}
+                                        isSelectionMode={isSelectionMode}
                                     />
                                 ))}
                             </div>
@@ -316,11 +427,16 @@ export function StoreView() {
                                     <StoreListItem 
                                         key={item.row} 
                                         item={item} 
-                                        onClick={() => setSelectedItem(item)}
+                                        onClick={() => {
+                                            if (isSelectionMode) toggleSelection(item);
+                                            else setSelectedItem(item);
+                                        }} 
                                         onToggleBag={() => toggleBag(item)}
                                         inBag={bag.some(b => b.row === item.row)}
                                         exchangeRate={liveRate || exchangeRate}
                                         vendorIndex={vendorIndices.get(item.row)}
+                                        isSelected={selectedIds.includes(item.row ?? item.data?.id)}
+                                        isSelectionMode={isSelectionMode}
                                     />
                                 ))}
                             </div>
@@ -342,6 +458,12 @@ export function StoreView() {
                                         onOpenDetails={() => setSelectedItem(item)}
                                         inBag={bag.some(b => b.row === item.row)}
                                         onToggleBag={() => toggleBagItem(item)}
+                                        onClick={() => {
+                                            if (isSelectionMode) toggleSelection(item);
+                                            else setSelectedItem(item);
+                                        }}
+                                        isSelected={selectedIds.includes(item.row ?? item.data?.id)}
+                                        isSelectionMode={isSelectionMode}
                                     />
                                 </div>
                             ))}
@@ -552,6 +674,122 @@ export function StoreView() {
                 </div>
             )}
 
+            {/* Custom UI Modals rendered via portal at end of body root */}
+            {showExportConfig && createPortal(
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-2xl animate-in fade-in duration-300">
+                    <div className="w-[480px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col gap-10 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-transparent via-(--main-color)/40 to-transparent" />
+                        
+                        <div className="flex flex-col gap-2">
+                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Export Configuration</h2>
+                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Customize your catalog</p>
+                        </div>
+
+                        <div className="space-y-8">
+                            {/* Title Input */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">PDF Title (Cover & Filename)</label>
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    value={exportTitle} 
+                                    onChange={e => setExportTitle(e.target.value)}
+                                    placeholder="Enter custom title..."
+                                    className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
+                                />
+                            </div>
+
+                            {/* Method Selection */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Methodology</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        onClick={() => setExportMethod('grid')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group ${exportMethod === 'grid' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'grid' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
+                                            <LayoutGrid size={20} className={exportMethod === 'grid' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'grid' ? 'text-white' : 'text-white/40'}`}>Catalog Grid</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Multi-image rows</p>
+                                        </div>
+                                    </button>
+                                    <button 
+                                        onClick={() => setExportMethod('single')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group ${exportMethod === 'single' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'single' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
+                                            <FileText size={20} className={exportMethod === 'single' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'single' ? 'text-white' : 'text-white/40'}`}>Per Image</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Full-page view</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 pt-4">
+                            <button 
+                                onClick={() => setShowExportConfig(false)}
+                                className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={executeExportPdf}
+                                className="flex-[2] h-14 rounded-full bg-(--main-color) text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-2xl active:scale-95"
+                            >
+                                Start Generation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {isExporting && createPortal(
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300 pointer-events-auto">
+                    <div className="w-[360px] p-10 rounded-[48px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
+                        
+                        <div className="relative">
+                            <div className="w-20 h-20 rounded-3xl bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20 animate-pulse">
+                                <CloudUpload size={40} className="text-(--main-color)" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#050505] transition-all duration-500" style={{ transform: exportProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
+                                <Check size={14} className="text-white font-bold" />
+                            </div>
+                        </div>
+
+                        <div className="w-full space-y-4 relative">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">PDF Exporting</span>
+                                <span className="text-sm font-mono font-black text-(--main-color)">{exportProgress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                <div 
+                                    className="h-full bg-linear-to-r from-(--main-color)/50 to-(--main-color) transition-all duration-500 ease-out"
+                                    style={{ width: `${exportProgress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
+                                {exportStatus}
+                            </p>
+                            {exportProgress === 100 && (
+                                <p className="text-[9px] font-bold text-green-500/60 uppercase tracking-widest text-center">
+                                    Ready for download
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
             <style>{`
                 @keyframes loading-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
                 .animate-loading-bar { animation: loading-bar 1.5s infinite cubic-bezier(0.7, 0, 0.3, 1); }
@@ -568,7 +806,7 @@ export function StoreView() {
 
 /* ─── Compact Elements ─── */
 
-const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any, onClick: () => void, onToggleBag: () => void, inBag: boolean, delay: number }) => {
+const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay, isSelected, isSelectionMode }: { item: any, onClick: () => void, onToggleBag: () => void, inBag: boolean, delay: number, isSelected?: boolean, isSelectionMode?: boolean }) => {
     const n = normalizeInventoryData(item.data);
     const rawUrls = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
     const mainImg = (rawUrls.length > 0 ? rawUrls[0] : '') || n.generatedPngUrl;
@@ -578,10 +816,20 @@ const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any,
     return (
         <div 
             onClick={onClick}
-            className="aspect-card bg-black/40 border border-white/5 relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-2xl cursor-pointer"
+            className={`aspect-card bg-black/40 border relative group overflow-hidden flex flex-col animate-in fade-in zoom-in duration-500 rounded-2xl cursor-pointer transition-all ${isSelected ? 'border-(--main-color) shadow-[0_0_20px_color-mix(in_srgb,var(--main-color)_30%,transparent)]' : 'border-white/5 hover:border-white/20'}`}
             style={{ animationDelay: `${delay * 30}ms` }}
         >
-            <div className="absolute top-4 left-4 z-10">
+            {isSelectionMode && (
+                <div className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-(--main-color)/10' : 'bg-black/40 opacity-0 group-hover:opacity-100'}`}>
+                    <CheckCircle
+                        size={48}
+                        className={`transition-all duration-300 drop-shadow-xl ${isSelected ? 'text-(--main-color) scale-110 opacity-100' : 'text-white/40 opacity-50 scale-90 delay-100'}`}
+                        strokeWidth={isSelected ? 3 : 1.5}
+                        fill={isSelected ? 'var(--text-color)' : 'transparent'}
+                    />
+                </div>
+            )}
+            <div className="absolute top-4 left-4 z-10 pointer-events-none">
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 w-fit shadow-xl">
                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vColor, boxShadow: `0 0 10px ${vColor}` }} />
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] italic" style={{ color: vColor }}>{vPrefix}-{String(n.itemNumber || 0).padStart(2, '0')}</span>
@@ -631,7 +879,7 @@ const ArtifactCard = ({ item, onClick, onToggleBag, inBag, delay }: { item: any,
     );
 };
 
-const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any) => {
+const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate, isSelectionMode, isSelected }: any) => {
     const n = normalizeInventoryData(item.data);
     const vendorPrefix = n.itemId?.split('-')[0] || '';
     const shortId = n.itemId ? `${vendorPrefix}-${String(n.itemNumber || 0).padStart(2, '0')}` : '';
@@ -644,9 +892,19 @@ const StoreListItem = ({ item, onClick, onToggleBag, inBag, exchangeRate }: any)
     const unitPrice = Number(n.price_mxn || n.price || 0);
 
     return (
-        <div className="group flex items-center gap-6 lg:gap-8 py-4 px-4 md:px-6 hover:bg-white/5 transition-all animate-in fade-in slide-in-from-left duration-300 cursor-pointer w-full" onClick={onClick}>
+        <div className={`group flex items-center gap-6 lg:gap-8 py-4 px-4 md:px-6 transition-all animate-in fade-in slide-in-from-left duration-300 cursor-pointer w-full border rounded-[32px] overflow-hidden ${isSelected ? 'border-(--main-color) bg-(--main-color)/5 shadow-[0_0_20px_color-mix(in_srgb,var(--main-color)_10%,transparent)]' : 'border-transparent hover:bg-white/5 bg-transparent'}`} onClick={onClick}>
             {/* Thumbnail */}
             <div className="w-16 h-16 lg:w-24 lg:h-24 shrink-0 rounded-lg overflow-hidden bg-black/40 relative group/thumb shadow-xl">
+                {isSelectionMode && (
+                    <div className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-(--main-color)/20' : 'bg-black/40 opacity-0 group-hover:opacity-100'}`}>
+                        <CheckCircle
+                            size={32}
+                            className={`transition-all duration-300 shadow-xl ${isSelected ? 'text-(--main-color) scale-110 opacity-100' : 'text-white/40 opacity-50 scale-90 delay-100'}`}
+                            strokeWidth={isSelected ? 3 : 2}
+                            fill={isSelected ? 'var(--text-color)' : 'transparent'}
+                        />
+                    </div>
+                )}
                 {mainImg ? (
                     <img src={getCleanImageUrl(mainImg)} className="w-full h-full object-cover opacity-80 group-hover/thumb:opacity-100 transition-opacity" />
                 ) : (
@@ -1041,7 +1299,7 @@ const DetailPanel = ({ item, exchangeRate, onClose, inBag, onToggleBag, onRemove
 
 /* ─── Gallery Full Item ─── */
 
-const GalleryFullItem = ({ item, onOpenDetails, inBag, onToggleBag }: { item: any; onOpenDetails: () => void; inBag: boolean; onToggleBag: () => void }) => {
+const GalleryFullItem = ({ item, onClick, inBag, onToggleBag, isSelectionMode, isSelected }: { item: any; onClick: () => void; inBag: boolean; onToggleBag: () => void; isSelectionMode?: boolean; isSelected?: boolean }) => {
     const n = normalizeInventoryData(item.data);
     const mediaUrls = useMemo(() => {
         const raw = n.mediaUrls ? String(n.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -1055,9 +1313,19 @@ const GalleryFullItem = ({ item, onOpenDetails, inBag, onToggleBag }: { item: an
     const vColor = vendors[vendorPrefix as keyof typeof vendors]?.color || 'var(--main-color)';
 
     return (
-        <div className="h-full w-full bg-black relative flex flex-col justify-center items-center overflow-hidden cursor-pointer" onClick={onOpenDetails}>
+        <div className={`h-full w-full bg-black relative flex flex-col justify-center items-center overflow-hidden cursor-pointer rounded-3xl border transition-all ${isSelected ? 'border-(--main-color) shadow-[0_0_30px_color-mix(in_srgb,var(--main-color)_20%,transparent)]' : 'border-black hover:border-white/10'}`} onClick={onClick}>
             {/* Immersive Background */}
             <div className="absolute inset-0 z-0">
+                {isSelectionMode && (
+                    <div className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-(--main-color)/20' : 'bg-black/30 opacity-0 group-hover:opacity-100'}`}>
+                        <CheckCircle
+                            size={64}
+                            className={`transition-all duration-300 drop-shadow-2xl ${isSelected ? 'text-(--main-color) scale-110 opacity-100' : 'text-white/30 opacity-50 scale-90 delay-100'}`}
+                            strokeWidth={isSelected ? 2.5 : 1.5}
+                            fill={isSelected ? 'var(--text-color)' : 'transparent'}
+                        />
+                    </div>
+                )}
                 {primaryMedia ? (
                     isVideo ? (
                         <video src={primaryMedia} className="w-full h-full object-cover grayscale-[0.2]" autoPlay muted loop />
@@ -1069,8 +1337,8 @@ const GalleryFullItem = ({ item, onOpenDetails, inBag, onToggleBag }: { item: an
                        <PackageSearch size={160} className="text-white/5" strokeWidth={1} />
                    </div>
                 )}
-                <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/90" />
-                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+                <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/90 z-10" />
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-10" />
             </div>
 
             {/* UI Overlay */}
