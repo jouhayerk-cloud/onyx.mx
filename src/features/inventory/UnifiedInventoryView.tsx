@@ -342,7 +342,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
+                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Advance' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
                             </span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
@@ -904,16 +904,31 @@ export const UnifiedInventoryView = () => {
             const id = String(item.data?.id || item.row);
             const totalPaid = paidMap.get(id) || 0;
             const totalRequested = requestedMap.get(id) || 0;
-            if (totalRequested <= 0) return; // No Prod/Packing activity — leave for YELLOW/NEW checks
-
-            const price = Number(item.data?.price || item.data?.price_mxn || item.data?.acq_price_mxn || 0);
-            const qty = Number(item.data?.quantity || 1);
+            
+            const norm = normalizeInventoryData(item.data);
+            const price = parseFloat(String(norm.price || 0));
+            const qty = parseInt(String(norm.quantity || 1));
             const totalCost = price * qty;
+            
+            const payReqStr = String(norm.payReq || '').toLowerCase();
+            const statusStr = String(norm.status || '').toLowerCase();
 
+            // Handle full payment
             if (totalCost > 0 && totalPaid >= totalCost) {
-                fIds.add(id); // GREEN — fully paid
-            } else {
-                pIds.add(id); // RED — partial / in-motion
+                fIds.add(id);
+                return;
+            }
+
+            // Identify Partial / In-motion (RED)
+            // Should be RED if:
+            // 1. We have financial docs (Paid or Requested) and it's not fully paid.
+            // 2. OR it has a pay_req flag and it's NOT a Requested Acquisition (which is YELLOW)
+            const hasActivity = totalRequested > 0 || (payReqStr && payReqStr !== 'false');
+            if (hasActivity) {
+                const isRequestedAcq = statusStr === 'acquisition' && totalPaid === 0 && (totalRequested > 0 || payReqStr === 'requested');
+                if (!isRequestedAcq) {
+                    pIds.add(id);
+                }
             }
         });
 
