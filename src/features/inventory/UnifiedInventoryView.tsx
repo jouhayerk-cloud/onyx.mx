@@ -867,24 +867,40 @@ export const UnifiedInventoryView = () => {
     const { partialPayIds, fullPayIds } = useMemo(() => {
         const pIds = new Set<string>();
         const fIds = new Set<string>();
-        financeDocs.forEach(d => { 
-            const isPartial = String(d.status).toLowerCase().includes('partial') || 
-                             String(d.description).includes('%') || 
-                             String(d.status).toLowerCase().includes('requested') && String(d.description).toLowerCase().includes('partial');
 
+        // Step 1: Aggregate total paid MXN per inventory item across ALL payment records.
+        // A payment is included if its status is 'Paid' or 'Partial' (i.e. money has moved).
+        const paidMap = new Map<string, number>();
+        financeDocs.forEach((d: any) => {
+            const status = String(d.status || '').toLowerCase();
+            if (status !== 'paid' && status !== 'partial') return;
+            const amount = Number(d.amount || 0);
+            if (amount <= 0) return;
             const rel = d.related_ids || d.related_inventory_ids || '';
             let relArray: string[] = [];
-            if (Array.isArray(rel)) relArray = rel.map(id => String(id));
-            else if (typeof rel === 'string') relArray = rel.split(',').map(s => s.trim()).filter(Boolean);
+            if (Array.isArray(rel)) relArray = rel.map((id: any) => String(id));
+            else if (typeof rel === 'string') relArray = rel.split(',').map((s: string) => s.trim()).filter(Boolean);
+            relArray.forEach(id => paidMap.set(id, (paidMap.get(id) || 0) + amount));
+        });
 
-            if ((d.status === 'Paid' || d.status === 'Partial') && isPartial) { 
-                relArray.forEach(id => pIds.add(id));
-            } else if (d.status === 'Paid') {
-                relArray.forEach(id => fIds.add(id));
+        // Step 2: Compare each item's running paid total to its actual cost.
+        // Only items where sum(payments) >= totalCost are marked fully paid.
+        items.forEach((item: any) => {
+            const id = String(item.data?.id || item.row);
+            const totalPaid = paidMap.get(id) || 0;
+            if (totalPaid <= 0) return; // No payments at all — leave unclassified
+            const price = Number(item.data?.price || item.data?.price_mxn || 0);
+            const qty = Number(item.data?.quantity || 1);
+            const totalCost = price * qty;
+            if (totalCost > 0 && totalPaid >= totalCost) {
+                fIds.add(id); // Fully covered
+            } else {
+                pIds.add(id); // Some payment exists but not enough
             }
         });
+
         return { partialPayIds: pIds, fullPayIds: fIds };
-    }, [financeDocs]);
+    }, [financeDocs, items]);
 
     useEffect(() => { if (mode === 'edit' && itemData) { setEditData({ ...normalizeInventoryData(itemData), vendorId: String(itemData.itemId || '').split('-')[0] }); setNewFiles([]); } }, [mode, itemData]);
 
@@ -979,7 +995,7 @@ export const UnifiedInventoryView = () => {
             const sA = getStatusClass(a.data, partialPayIds); const sB = getStatusClass(b.data, partialPayIds);
             if (sA === null && sB !== null) return -1; if (sA !== null && sB === null) return 1;
             let comp = 0;
-            if (sortKey === 'Date') comp = (new Date(b.data.updated_at || 0).getTime()) - (new Date(a.data.updated_at || 0).getTime());
+            if (sortKey === 'Date') comp = (new Date(b.data.timestamp || b.data.updated_at || 0).getTime()) - (new Date(a.data.timestamp || a.data.updated_at || 0).getTime());
             else if (sortKey === 'Vendor') comp = (a.data.itemId||'').localeCompare(b.data.itemId||'');
             else if (sortKey === 'Status') comp = ((sB==='RED'?6:sB==='YELLOW'?5:sB==='GREEN'?4:sB==='BLUE'?3:sB==='PURPLE'?2:1)-(sA==='RED'?6:sA==='YELLOW'?5:sA==='GREEN'?4:sA==='BLUE'?3:sA==='PURPLE'?2:1));
             else if (sortKey === 'Number') {

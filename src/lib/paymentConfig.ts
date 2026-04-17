@@ -1,5 +1,5 @@
 import { PaymentDestination } from './Types';
-import { fastCashIcon, boaCardIcon, bbvaMarthaIcon, bbvaRamsesIcon } from '../features/dashboard/paymentsIcons.svg';
+import { fastCashIcon, boaCardIcon, bbvaMarthaIcon, bbvaRamsesIcon, cashIcon } from '../features/dashboard/paymentsIcons.svg';
 
 export const destinationsConfig: Record<PaymentDestination, {
     icon: string;
@@ -25,5 +25,10 @@ export const destinationsConfig: Record<PaymentDestination, {
         icon: fastCashIcon,
         name: 'Direct Wire',
         calculateCommission: (amount: number) => amount * 0.10 // Placeholder: 10%
+    },
+    [PaymentDestination.Cash]: {
+        icon: cashIcon,
+        name: 'Liquid Cash',
+        calculateCommission: () => 0 // Cash has no bank fees
     },
 };

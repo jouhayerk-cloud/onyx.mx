@@ -1066,14 +1066,15 @@ export const getStatusClass = (item: any, partialPayIds?: Set<string>, fullPayId
   const statusStr = String(item.status || item.item_status || '').toLowerCase();
   const dispStatus = String(item.dispersal_status || '').toLowerCase();
   
-  // 1. Highest priority: Partial Payments (WIP) - Must check BEFORE Paid
-  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
-  
-  // 2. High priority: Paid/Dispersed (Terminal state)
+  // 1. Highest priority: Fully Paid/Dispersed — must beat partial to resolve stale flags
   if (fullPayIds?.has(String(item.id)) || item.payDate || item.pay_date || payReqStr === 'paid' || dispStatus === 'dispersed') return 'GREEN';
+  
+  // 2. Partial Payments — only if not already fully covered
+  if (partialPayIds?.has(String(item.id)) || payReqStr.includes('%')) return 'RED';
   
   // 3. Low priority: Requests (Initial state)
   if (payReqStr === 'requested' || payReqStr === 'true' || payReqStr === 'partial' || statusStr === 'requested' || dispStatus === 'requested' || dispStatus === 'sent') return 'YELLOW';
+
   
   // 4. Default: check for price/qty
   const qty = parseInt(String(item.quantity || 1));

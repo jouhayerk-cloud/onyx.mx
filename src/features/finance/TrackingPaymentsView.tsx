@@ -399,12 +399,13 @@ const AddPaymentModal: React.FC<{
                             <button onClick={() => setStep(2.2)} className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] mb-10 flex items-center gap-3 group transition-all">← BACK</button>
 
                             <div className="grid grid-cols-2 gap-4">
-                                {['Sppl', 'Labr', 'Packing', 'Oprt'].map(cat => {
+                                {['Sppl', 'Labr', 'Packing', 'Oprt', 'Monthly'].map(cat => {
                                     const labels: Record<string, { t: string, s: string, i: string }> = {
                                         Sppl: { t: 'SUPPLIES', s: 'Equipment & tools', i: '#hammer' },
                                         Labr: { t: 'LABOR', s: 'Workforce payments', i: '#user' },
                                         Packing: { t: 'PACKAGING', s: 'Shipping materials', i: '#label' },
-                                        Oprt: { t: 'OPERATIONS', s: 'General services', i: '#settings' }
+                                        Oprt: { t: 'OPERATIONS', s: 'General services', i: '#settings' },
+                                        Monthly: { t: 'MONTHLY', s: 'Fixed bills & subs', i: '#calendar' }
                                     };
                                     return (
                                         <button key={cat}
