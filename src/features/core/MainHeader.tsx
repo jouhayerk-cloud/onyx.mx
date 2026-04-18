@@ -302,8 +302,8 @@ const InventoryBar: React.FC = () => {
     const viewLabel = viewMode === 'list' ? 'LIST' : viewMode === 'grid' ? 'GRID' : 'GALLERY';
 
     return (
-        <div className="flex items-center w-full gap-2 overflow-x-auto no-scrollbar">
-            <div className={`flex items-center gap-1 min-w-0 ${isSearchOpen ? '' : 'sm:gap-2'}`}>
+        <div className="flex items-center gap-2 w-full min-w-max">
+            <div className={`flex items-center gap-1 shrink-0 ${isSearchOpen ? '' : 'sm:gap-2'}`}>
                 <DeployableSearch 
                     value={search} 
                     onChange={setSearch} 
@@ -356,7 +356,7 @@ const StoreBar: React.FC = () => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     return (
-        <div className={`flex flex-1 items-center gap-1 min-w-0 overflow-x-auto no-scrollbar ${isSearchOpen ? '' : 'sm:gap-2'}`}>
+        <div className={`flex flex-1 items-center gap-1 shrink-0 min-w-max ${isSearchOpen ? '' : 'sm:gap-2'}`}>
             <DeployableSearch 
                 value={search} 
                 onChange={setSearch} 
@@ -368,7 +368,7 @@ const StoreBar: React.FC = () => {
 
             {!isSearchOpen && (
                 <>
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-2 border-r border-white/5 mr-1">
+                    <div className="flex items-center gap-1.5 py-1 pr-2 border-r border-white/5 mr-1 shrink-0">
                         {vendorOptions.map(v => {
                             const vColor = vendors[v as keyof typeof vendors]?.color || 'var(--text-color)';
                             const isActive = vendorFilter === v;
@@ -1074,8 +1074,8 @@ export function MainHeader() {
                 </div>
 
                 {/* Dynamic Module Bar — Aligned Left & Horizontally Scrollable */}
-                <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar">
-                    <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-0">
+                <div className="flex-1 flex items-center justify-start min-w-0 overflow-x-auto no-scrollbar custom-scrollbar-hide">
+                    <div className="flex items-center gap-1 sm:gap-6 flex-nowrap min-w-max pr-4">
                         {activeView === 'inventory' && <InventoryBar />}
                         {activeView === 'store' && <StoreBar />}
                         {activeView === 'finance' && <FinanceBar />}
