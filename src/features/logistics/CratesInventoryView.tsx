@@ -878,10 +878,10 @@ export const CratesInventoryView: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
-            {/* Top bar */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-4 lg:px-8 py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10 gap-4 lg:gap-0">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-8">
-                    <div>
+            {/* Top bar - Horizontally scrollable app style */}
+            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10 w-full overflow-x-auto no-scrollbar gap-4 lg:gap-8">
+                <div className="flex items-center gap-4 sm:gap-8 shrink-0">
+                    <div className="shrink-0">
                         <h2 className="text-lg font-black uppercase tracking-tight text-(--text-color)">
                             Shipping <span className="text-(--main-color) italic">Crates</span>
                         </h2>
@@ -901,12 +901,12 @@ export const CratesInventoryView: React.FC = () => {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex gap-1 p-1 bg-white/5 border border-white/8 rounded-2xl overflow-x-auto w-full sm:w-auto">
+                    <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/8 rounded-2xl shrink-0">
                         {[['empty', 'Empty Inventory'], ['packed', 'Packed Crates']].map(([val, label]) => (
                             <button
                                 key={val}
                                 onClick={() => setActiveTab(val as any)}
-                                className={`flex-1 sm:flex-none px-5 py-2.5 sm:py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black shadow-sm' : 'text-white/40 hover:text-white'}`}
+                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black shadow-sm' : 'text-white/40 hover:text-white'}`}
                             >
                                 {label}
                             </button>
@@ -914,23 +914,23 @@ export const CratesInventoryView: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0 ml-auto">
                     {/* Search */}
-                    <div className="relative w-full lg:w-52">
+                    <div className="relative shrink-0">
                         <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
                         <input
                             type="text"
                             placeholder="SEARCH CRATES…"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-3 sm:py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition"
+                            className="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition w-40 sm:w-52"
                         />
                     </div>
 
                     {/* New Crate */}
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center justify-center w-full sm:w-auto gap-2 px-5 py-3 sm:py-2.5 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer"
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer shrink-0 whitespace-nowrap"
                     >
                         <Plus size={14} strokeWidth={3} /> New Crate
                     </button>
