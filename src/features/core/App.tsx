@@ -11,6 +11,7 @@ import { WelcomePage } from '../auth/WelcomePage';
 import { TagView } from '../logistics/TagView';
 import { ViewerView } from '../viewer/ViewerView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
+import { PullToRefresh } from '../../components/ui/PullToRefresh';
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
@@ -196,6 +197,7 @@ export default function App() {
 
   return (
     <>
+      <PullToRefresh />
       {view === 'tag' && tagId ? (
          <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
       ) : view === 'viewer' ? (
