@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom } from '../../lib/atoms';
-import { getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
+import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
+import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
+import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
+import { vendors } from '../../lib/consts';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
 const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: string; type?: string; count?: number; fillPct?: number }> = ({
@@ -132,6 +135,68 @@ interface CrateRecord {
     groupedIds?: string[];
 }
 
+// --- Extract item number from workbook barcode ---
+// Barcode format: VendorCode + '326' + ItemCount + LdCode  (e.g. EM32612HMF)
+// Strip vendor prefix, then strip '326', then grab leading digits.
+function extractItemNumFromBarcode(barcode: string, vendorPrefix: string): number {
+    if (!barcode) return 0;
+    let s = barcode.startsWith(vendorPrefix) ? barcode.slice(vendorPrefix.length) : barcode;
+    if (s.startsWith('326')) s = s.slice(3);  // strip book version
+    const m = s.match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+// Format: [Month(1-12)][Year(2 digits)][Vendors Combined][Sequence #] 
+// e.g., April 2026, EM + GE, 1st crate -> 426EMGE1
+function generateDynamicCrateId(crate: CrateRecord, allCrates: CrateRecord[], allInventory: any[]): string {
+    if (!crate.inventory_ids || crate.status === 'Empty') return crate.id.slice(0, 8).toUpperCase();
+
+    // 1. Month and Year from creation/update date (fallback to now)
+    const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
+    const mm = d.getMonth() + 1; // 1-12
+    const yy = String(d.getFullYear()).slice(-2);
+    const datePrefix = `${mm}${yy}`;
+
+    // Helper: get exact sorted vendors combination for a crate
+    const getVendors = (c: CrateRecord) => {
+        if (!c.inventory_ids) return '';
+        const vSet = new Set<string>();
+        c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+            const [id] = entry.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv && inv.data) {
+                const prefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
+                if (prefix) vSet.add(prefix.toUpperCase());
+            }
+        });
+        return Array.from(vSet).sort().join('');
+    };
+
+    // 2. Vendors string for this crate
+    const vendorsStr = getVendors(crate);
+    if (!vendorsStr) return crate.id.slice(0, 8).toUpperCase();
+
+    // 3. Count Sequence
+    // Find all packed/partial crates matching this specific vendor combo
+    const matchingCrates = allCrates.filter(c => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        return getVendors(c) === vendorsStr;
+    });
+
+    // Sort chronologically by date to find sequence index
+    matchingCrates.sort((a, b) => {
+        const tA = (a.updated_at || a.date) ? new Date(a.updated_at || a.date!).getTime() : 0;
+        const tB = (b.updated_at || b.date) ? new Date(b.updated_at || b.date!).getTime() : 0;
+        if (tA === tB) return a.id.localeCompare(b.id);
+        return tA - tB;
+    });
+
+    const index = matchingCrates.findIndex(c => c.id === crate.id);
+    const sequence = index >= 0 ? index + 1 : 1;
+
+    return `${datePrefix}${vendorsStr}${sequence}`;
+}
+
 // --- Status Badge ---
 const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
     const styles: Record<string, string> = {
@@ -147,7 +212,17 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInventory: any[]; onPack: (c: CrateRecord) => void }) => {
+const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const [exportMethod, setExportMethod] = useState<'images' | 'no-images'>('images');
+    const [exportNotes, setExportNotes] = useState('');
+    const [exportBruteWeight, setExportBruteWeight] = useState('');
+    const liveRate = useAtomValue(liveExchangeRateAtom) || 18.0;
+
+    const dynamicId = useMemo(() => generateDynamicCrateId(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
+    
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
     const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
@@ -174,14 +249,116 @@ const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInv
         return Math.min(100, (usedVol / internalVol) * 100);
     }, [crate.inventory_ids, allInventory, crate.width_cm, crate.length_cm, crate.height_cm]);
 
+    // Dense Manifesto Export Logic
+    const handleExportManifesto = async (excludeImages: boolean = false, notes?: string, bruteWeight?: string) => {
+        setShowExportMenu(false);
+        setIsExporting(true);
+        const tid = toast.loading('Generating Packing List…');
+
+        try {
+            const vendorCounts: Record<string, number> = {};
+            const manifestoItems: ManifestoItem[] = [];
+
+            const entries = (crate.inventory_ids || '').split(',').filter(Boolean);
+            for (const entry of entries) {
+                const [id, qtyStr] = entry.split(':');
+                const qty = qtyStr ? parseInt(qtyStr) : 1;
+                const inv = allInventory.find((i: any) => String(i.row) === id);
+                if (!inv) continue;
+
+                const norm = normalizeInventoryData(inv.data);
+                const vendorPrefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
+                vendorCounts[vendorPrefix] = (vendorCounts[vendorPrefix] || 0) + 1;
+
+                const calculated = calculateCodesAndPrices(norm, liveRate, '326');
+                const rawUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map((u: string) => u.trim()).filter(Boolean) : [];
+                
+                const allImgs: string[] = [];
+                if (norm.generatedPngUrl) allImgs.push(getCleanImageUrl(norm.generatedPngUrl));
+                rawUrls.forEach(u => allImgs.push(getCleanImageUrl(u)));
+                const uniqueUrls = Array.from(new Set(allImgs)).filter(Boolean).slice(0, 4);
+
+                const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
+                // Use the workbook barcode tag (same as shown in inventory/packing UI)
+                const tagId = calculated.bookBardcode || calculated.bookBarcode || vendorPrefix || 'N/A';
+
+                // Extract item number from bookBardcode (e.g. EM32612HMF → strip EM → strip 326 → 12)
+                const dbItemNum = extractItemNumFromBarcode(tagId, vendorPrefix) || vendorCounts[vendorPrefix];
+
+                manifestoItems.push({
+                    index: dbItemNum,
+                    vendorPrefix,
+                    qty,
+                    itemId: tagId,
+                    rowId: id,
+                    name: `${norm.shape || ''} ${norm.shortDescription || norm.description || ''}`.trim(),
+                    material: norm.material || '',
+                    color: norm.color || '',
+                    dims: [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('×') + ' cm',
+                    weightKg: Number(norm.weightKg || 0),
+                    costMxn: Number(norm.price || 0),
+                    costUsd: Number(norm.price || 0) / liveRate,
+                    imageUrls: uniqueUrls,
+                    tagColor,
+                    dbItemCount: Number(norm.quantity || 0),
+                });
+            }
+
+            const meta: ManifestoMeta = {
+                dynamicId,
+                crateId: crate.id,
+                crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm}`,
+                crateType: crate.type || 'crate',
+                fillPct: 0,
+                exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
+                baseArtifactUrl: `${window.location.origin}`,
+                excludeImages,
+                crateColor: manifestoItems.length > 0 ? manifestoItems[0].tagColor : undefined,
+                exportNotes: notes?.trim() || undefined,
+                exportBruteWeight: bruteWeight?.trim() || undefined,
+            };
+
+            await exportCrateManifesto(manifestoItems, meta, (pct) => {
+                if (pct % 20 === 0) toast.loading(`Packing List… ${pct}%`, { id: tid });
+            });
+
+            toast.success('Packing List generated!', { id: tid });
+        } catch (error: any) {
+            toast.error('Packing List generation failed: ' + (error?.message || 'Unknown error'), { id: tid });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const packedItems = useMemo(() => {
+        if (!crate.inventory_ids) return [];
+        const result: any[] = [];
+        crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+            const [id, qty] = entry.split(':');
+            const inv = allInventory.find(i => String(i.row) === id);
+            if (inv) {
+                const norm = normalizeInventoryData(inv.data);
+                const urls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                result.push({
+                    id, 
+                    norm,
+                    qty: qty ? parseInt(qty) : 1,
+                    mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null))
+                });
+            }
+        });
+        return result;
+    }, [crate.inventory_ids, allInventory]);
+
     return (
-        <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30 w-full">
+        <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30 w-full flex flex-col">
             {/* Top accent line */}
             <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-(--main-color)/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <div className="p-4 flex items-center gap-6">
+            {/* Main Row */}
+            <div className="p-4 flex items-center gap-6 relative">
                 {/* Wireframe preview window */}
-                <div className="relative w-48 h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden">
+                <div className="relative w-48 h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
                     <div className="absolute inset-0 opacity-[0.04]" style={{
                         backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
                         backgroundSize: '16px 16px'
@@ -198,13 +375,55 @@ const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInv
                     <div className="absolute top-2 left-2.5">
                         <StatusBadge status={crate.status} />
                     </div>
+                    {crate.status !== 'Empty' && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/wire:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <span className="text-[10px] font-black uppercase text-white tracking-widest flex items-center gap-1.5">
+                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} 
+                                View Contents
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Info & Stats */}
                 <div className="flex-1 min-w-0 flex items-center gap-8">
-                    {/* Size & ID */}
+                    {/* Crate ID — barcode for packed crates, text for empty */}
                     <div className="min-w-[140px]">
-                        <p className="text-[7px] font-mono text-(--text-color)/20 tracking-widest">{crate.id?.slice(0, 8).toUpperCase()}</p>
+                        {crate.status !== 'Empty' ? (
+                            <div className="mb-2 flex items-center shrink-0">
+                                <div className="flex bg-black/40 border border-white/10 rounded-lg overflow-hidden backdrop-blur-md shadow-md">
+                                    {(() => {
+                                        const match = dynamicId.match(/^(\d+)(.*)$/);
+                                        if (match) {
+                                            const firstId = crate.inventory_ids?.split(',').filter(Boolean)[0]?.split(':')[0];
+                                            const inv = allInventory.find(i => String(i.row) === firstId);
+                                            const vendorPrefix = inv ? (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] : 'UNK';
+                                            const badgeColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#10b981';
+
+                                            return (
+                                                <>
+                                                    <div className="px-2.5 py-1.5 bg-white/5 border-r border-white/5">
+                                                        <span className="text-sm font-black text-white tracking-widest leading-none block mt-[1px]">{match[1]}</span>
+                                                    </div>
+                                                    <div className="px-2.5 py-1.5" style={{ backgroundColor: badgeColor ? `${badgeColor}15` : 'rgba(255,255,255,0.05)' }}>
+                                                        <span className="text-sm font-black tracking-widest leading-none block mt-[1px]" style={{ color: badgeColor }}>{match[2]}</span>
+                                                    </div>
+                                                </>
+                                            );
+                                        }
+                                        return (
+                                            <div className="px-2.5 py-1.5 bg-white/5">
+                                                <span className="text-sm font-black tracking-widest text-white leading-none block mt-[1px]">{dynamicId}</span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-[9px] font-mono font-black tracking-widest text-(--text-color)/20">
+                                {crate.id?.slice(0, 8).toUpperCase()}
+                            </p>
+                        )}
                         <h3 className="text-xl font-black uppercase tracking-tight text-(--text-color) leading-tight mt-1">
                             {crate.width_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.length_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.height_cm}
                             <span className="text-[9px] text-(--text-color)/30 font-black ml-1">CM</span>
@@ -253,14 +472,141 @@ const CrateCard = ({ crate, allInventory, onPack }: { crate: CrateRecord; allInv
                     </div>
                 </div>
 
-                {/* Pack button */}
-                <button
-                    onClick={() => onPack(crate)}
-                    className="flex items-center justify-center gap-2 px-8 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer shrink-0"
-                >
-                    Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+                {/* Actions */}
+                <div className="flex flex-col gap-2 shrink-0 h-full justify-center">
+                    {crate.status !== 'Empty' && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowExportMenu(true)}
+                                disabled={isExporting}
+                                className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-black/30 border text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 ${
+                                    isExporting 
+                                        ? 'border-white/5 text-white/20 cursor-not-allowed' 
+                                        : 'border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 cursor-pointer shadow-lg shadow-emerald-500/5 min-w-[140px]'
+                                }`}
+                            >
+                                {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                                {isExporting ? 'Exporting...' : 'Packing List'}
+                            </button>
+                            
+                            {showExportMenu && !isExporting && createPortal(
+                                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-2xl animate-in fade-in duration-300">
+                                    <div className="w-[480px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col gap-10 shadow-2xl relative overflow-hidden group">
+                                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+                                        
+                                        <div className="flex flex-col gap-2">
+                                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Export Configuration</h2>
+                                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Configure Packing List Output</p>
+                                        </div>
+                
+                                        <div className="space-y-8">
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Image Fidelity</label>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button 
+                                                        onClick={() => setExportMethod('images')}
+                                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group cursor-pointer ${exportMethod === 'images' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                                    >
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'images' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                                            <LayoutGrid size={20} className={exportMethod === 'images' ? 'text-emerald-500' : 'text-white/40'} />
+                                                        </div>
+                                                        <div>
+                                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'images' ? 'text-white' : 'text-white/40'}`}>Include Images</p>
+                                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">High fidelity export</p>
+                                                        </div>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setExportMethod('no-images')}
+                                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group cursor-pointer ${exportMethod === 'no-images' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                                    >
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'no-images' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                                            <ImageOff size={20} className={exportMethod === 'no-images' ? 'text-emerald-500' : 'text-white/40'} />
+                                                        </div>
+                                                        <div>
+                                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'no-images' ? 'text-white' : 'text-white/40'}`}>List Only</p>
+                                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Compact & fast</p>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Notes & Title (Optional)</label>
+                                                <div className="relative group">
+                                                    <input 
+                                                        type="text"
+                                                        value={exportNotes}
+                                                        onChange={(e) => setExportNotes(e.target.value)}
+                                                        placeholder="Custom title or internal memo..."
+                                                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl h-14 px-5 text-sm text-white placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-all font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Brute Weight (Optional)</label>
+                                                <div className="relative group">
+                                                    <input 
+                                                        type="text"
+                                                        value={exportBruteWeight}
+                                                        onChange={(e) => setExportBruteWeight(e.target.value)}
+                                                        placeholder="e.g. 520 kg"
+                                                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl h-14 px-5 text-sm text-white placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-all font-medium font-mono uppercase"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                
+                                        <div className="flex gap-4 pt-4">
+                                            <button 
+                                                onClick={() => setShowExportMenu(false)}
+                                                className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all cursor-pointer"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                onClick={() => handleExportManifesto(exportMethod === 'no-images', exportNotes, exportBruteWeight)}
+                                                className="flex-[2] h-14 rounded-full bg-emerald-500 text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer"
+                                            >
+                                                Start Generation
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            , document.body)}
+                        </div>
+                    )}
+                    <button
+                        onClick={() => onPack(crate)}
+                        className={`flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer ${crate.status === 'Packed' ? 'opacity-50 hover:opacity-100' : ''}`}
+                    >
+                        Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                </div>
             </div>
+
+            {/* Expandable Packed Contents List */}
+            {isExpanded && crate.status !== 'Empty' && packedItems.length > 0 && (
+                <div className="border-t border-white/5 bg-black/20 p-4 max-h-64 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-300">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 px-1">{dynamicId} — Packing List</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {packedItems.map((item, idx) => (
+                            <div key={`${item.id}-${idx}`} className="flex items-center gap-3 bg-white/2 border border-white/5 rounded-xl p-2 hover:bg-white/5 transition-colors">
+                                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/50">
+                                    {item.mainImage ? <img src={item.mainImage} className="w-full h-full object-cover" /> : <div className="w-full h-full border border-white/10" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-bold text-white truncate">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
+                                    <p className="text-[8px] font-mono text-white/40">{item.norm.itemId || 'UNK'}</p>
+                                </div>
+                                <div className="w-auto px-2 py-1 bg-white/5 rounded text-[10px] font-black font-mono text-(--main-color)">
+                                    x{item.qty}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -594,7 +940,7 @@ export const CratesInventoryView: React.FC = () => {
                 {displayCrates.length > 0 ? (
                     <div className="flex flex-col gap-4 content-start pb-8">
                         {displayCrates.map(crate => (
-                            <CrateCard key={crate.id} crate={crate} allInventory={allInventory} onPack={handlePack} />
+                            <CrateCard key={crate.id} crate={crate} allCrates={crates} allInventory={allInventory} onPack={handlePack} />
                         ))}
                     </div>
                 ) : (
