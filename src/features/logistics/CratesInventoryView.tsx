@@ -356,9 +356,9 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
             <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-(--main-color)/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
             {/* Main Row */}
-            <div className="p-4 flex items-center gap-6 relative">
+            <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
                 {/* Wireframe preview window */}
-                <div className="relative w-48 h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="relative w-full xl:w-48 h-40 xl:h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
                     <div className="absolute inset-0 opacity-[0.04]" style={{
                         backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
                         backgroundSize: '16px 16px'
@@ -386,11 +386,11 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 </div>
 
                 {/* Info & Stats */}
-                <div className="flex-1 min-w-0 flex items-center gap-8">
+                <div className="flex-1 min-w-0 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-8">
                     {/* Crate ID — barcode for packed crates, text for empty */}
-                    <div className="min-w-[140px]">
+                    <div className="min-w-0 xl:min-w-[140px] flex flex-row xl:flex-col items-center xl:items-start justify-between xl:justify-start">
                         {crate.status !== 'Empty' ? (
-                            <div className="mb-2 flex items-center shrink-0">
+                            <div className="mb-0 xl:mb-2 flex items-center shrink-0">
                                 <div className="flex bg-black/40 border border-white/10 rounded-lg overflow-hidden backdrop-blur-md shadow-md">
                                     {(() => {
                                         const match = dynamicId.match(/^(\d+)(.*)$/);
@@ -424,19 +424,21 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                                 {crate.id?.slice(0, 8).toUpperCase()}
                             </p>
                         )}
-                        <h3 className="text-xl font-black uppercase tracking-tight text-(--text-color) leading-tight mt-1">
-                            {crate.width_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.length_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.height_cm}
-                            <span className="text-[9px] text-(--text-color)/30 font-black ml-1">CM</span>
-                        </h3>
-                        {crate.groupedCount && crate.groupedCount > 1 && (
-                            <p className="text-[9px] font-black text-(--main-color)/70 mt-1 uppercase tracking-widest">
-                                x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
-                            </p>
-                        )}
+                        <div className="flex flex-col items-end xl:items-start text-right xl:text-left">
+                            <h3 className="text-xl font-black uppercase tracking-tight text-(--text-color) leading-tight mt-1">
+                                {crate.width_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.length_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.height_cm}
+                                <span className="text-[9px] text-(--text-color)/30 font-black ml-1">CM</span>
+                            </h3>
+                            {crate.groupedCount && crate.groupedCount > 1 && (
+                                <p className="text-[9px] font-black text-(--main-color)/70 mt-1 uppercase tracking-widest">
+                                    x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Stats */}
-                    <div className="flex gap-4 min-w-[200px]">
+                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 xl:gap-4 xl:min-w-[200px] w-full mt-2 xl:mt-0">
                         <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
                             <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Volume</p>
                             <p className="text-sm font-mono font-black text-(--text-color)">{vol} m³</p>
@@ -473,16 +475,16 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col gap-2 shrink-0 h-full justify-center">
+                <div className="flex flex-col sm:flex-row xl:flex-col gap-2 shrink-0 h-full justify-center w-full xl:w-auto mt-2 xl:mt-0">
                     {crate.status !== 'Empty' && (
                         <div className="relative">
                             <button
                                 onClick={() => setShowExportMenu(true)}
                                 disabled={isExporting}
-                                className={`w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-black/30 border text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 ${
+                                className={`w-full sm:flex-1 xl:w-full flex items-center justify-center gap-2 px-6 py-3 bg-black/30 border text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 ${
                                     isExporting 
                                         ? 'border-white/5 text-white/20 cursor-not-allowed' 
-                                        : 'border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 cursor-pointer shadow-lg shadow-emerald-500/5 min-w-[140px]'
+                                        : 'border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 cursor-pointer shadow-lg shadow-emerald-500/5 xl:min-w-[140px]'
                                 }`}
                             >
                                 {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
@@ -578,7 +580,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                     )}
                     <button
                         onClick={() => onPack(crate)}
-                        className={`flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer ${crate.status === 'Packed' ? 'opacity-50 hover:opacity-100' : ''}`}
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer ${crate.status === 'Packed' ? 'opacity-50 hover:opacity-100' : ''}`}
                     >
                         Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </button>
@@ -877,8 +879,8 @@ export const CratesInventoryView: React.FC = () => {
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
             {/* Top bar */}
-            <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10">
-                <div className="flex items-center gap-8">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between px-4 lg:px-8 py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10 gap-4 lg:gap-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-8">
                     <div>
                         <h2 className="text-lg font-black uppercase tracking-tight text-(--text-color)">
                             Shipping <span className="text-(--main-color) italic">Crates</span>
@@ -899,12 +901,12 @@ export const CratesInventoryView: React.FC = () => {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex gap-1 p-1 bg-white/5 border border-white/8 rounded-2xl">
+                    <div className="flex gap-1 p-1 bg-white/5 border border-white/8 rounded-2xl overflow-x-auto w-full sm:w-auto">
                         {[['empty', 'Empty Inventory'], ['packed', 'Packed Crates']].map(([val, label]) => (
                             <button
                                 key={val}
                                 onClick={() => setActiveTab(val as any)}
-                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${activeTab === val ? 'bg-white text-black shadow-sm' : 'text-white/40 hover:text-white'}`}
+                                className={`flex-1 sm:flex-none px-5 py-2.5 sm:py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black shadow-sm' : 'text-white/40 hover:text-white'}`}
                             >
                                 {label}
                             </button>
@@ -912,23 +914,23 @@ export const CratesInventoryView: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     {/* Search */}
-                    <div className="relative">
+                    <div className="relative w-full lg:w-52">
                         <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
                         <input
                             type="text"
                             placeholder="SEARCH CRATES…"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition w-52"
+                            className="w-full bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-3 sm:py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition"
                         />
                     </div>
 
                     {/* New Crate */}
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer"
+                        className="flex items-center justify-center w-full sm:w-auto gap-2 px-5 py-3 sm:py-2.5 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer"
                     >
                         <Plus size={14} strokeWidth={3} /> New Crate
                     </button>
@@ -936,7 +938,7 @@ export const CratesInventoryView: React.FC = () => {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-7 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-7 custom-scrollbar pb-[120px] lg:pb-8">
                 {displayCrates.length > 0 ? (
                     <div className="flex flex-col gap-4 content-start pb-8">
                         {displayCrates.map(crate => (
