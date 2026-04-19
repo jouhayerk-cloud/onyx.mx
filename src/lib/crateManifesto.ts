@@ -374,8 +374,7 @@ export async function exportCrateManifesto(
         }
 
         // ── QR code ──────────────────────────────────────────────────────────
-        const artifactLink = `https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${encodeURIComponent(item.itemId)}`;
-        const qrDataUrl = await loadQrDataUrl(artifactLink, 100);
+        const qrDataUrl = await loadQrDataUrl(item.itemId, 100);
         const qrSize = 20;
         const qrX = COL_QR.x + (COL_QR.w - qrSize) / 2;
         const qrY = ry + (ROW_H - qrSize) / 2;
