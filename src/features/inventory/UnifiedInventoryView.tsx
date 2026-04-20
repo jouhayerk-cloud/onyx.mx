@@ -1099,7 +1099,7 @@ export const UnifiedInventoryView = () => {
             }
             
             const news = [editData.mediaUrls || '', ...uploaded].filter(Boolean).join(',');
-            const payload = {
+            const payload: any = {
                 status: editData.status,
                 shape: editData.shape,
                 material: editData.material,
@@ -1114,6 +1114,16 @@ export const UnifiedInventoryView = () => {
                 media_urls: news,
                 updated_at: new Date().toISOString()
             };
+
+            // Explicitly clear shadow fields if they exist to prevent stale data re-emerging
+            payload.widthCm = payload.width_cm;
+            payload.heightCm = payload.height_cm;
+            payload.lengthCm = payload.length_cm;
+            payload.weightKg = payload.weight_kg;
+            payload.item_id = editData.itemId;
+            payload.item_number = editData.itemNumber;
+            payload.price_mxn = parseFloat(editData.price) || 0;
+            payload.short_description = editData.shortDescription || '';
             
             setSavingProgress(90);
             const { error } = await supabase.from((itemData as any)?.source==='production'?'production':'inventory').update(payload).eq('id', itemRow);
