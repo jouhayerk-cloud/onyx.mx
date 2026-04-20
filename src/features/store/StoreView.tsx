@@ -18,7 +18,7 @@ import {
     selectedStoreIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
-import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL } from '../../lib/utils';
+import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL, calculateCodesAndPrices } from '../../lib/utils';
 import { 
     ShoppingBag, Search, Filter, LayoutGrid, LayoutList, Layout, 
     ChevronRight, ArrowRight, X, Heart, Star, Info, Trash2, Box, PackageSearch,
@@ -148,6 +148,7 @@ export function StoreView() {
     const [showExportConfig, setShowExportConfig] = useState(false);
     const [exportTitle, setExportTitle] = useState("Rare Earth Gallery");
     const [exportMethod, setExportMethod] = useState<'grid' | 'single'>('grid');
+    const [exportType, setExportType] = useState<'regular' | 'catalog'>('regular');
     const [exportProgress, setExportProgress] = useState(0);
     const [exportStatus, setExportStatus] = useState('');
 
@@ -177,20 +178,34 @@ export function StoreView() {
                 const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
                 const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
                 let imgs = [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
-                imgs = imgs.filter(img => !isVideoFile(img)); // remove videos
-                
-                const priceMxn = Number(item.price_mxn || norm.price_mxn || item.price || norm.price || 0);
+                imgs = imgs.filter(img => !isVideoFile(img));
+
                 const currentRate = liveRate || exchangeRate || 1;
+                const codes = calculateCodesAndPrices(item.data || item, currentRate, '1');
+
+                const priceMxn = Number(item.price_mxn || norm.price_mxn || item.price || norm.price || 0);
                 const priceUsd = Math.round(priceMxn / currentRate);
+
+                let primaryLabel = 'ACQUISITION COST';
+                let primaryValue = `$${priceMxn.toLocaleString('en-US')} MXN / $${priceUsd.toLocaleString('en-US')} USD`;
+
+                if (exportType === 'catalog') {
+                    primaryLabel = 'USD RETAIL';
+                    primaryValue = `$${codes.bookRetail} USD`;
+                }
                 
                 return {
                     data: norm,
                     codes: {
-                        bookBarcode: norm.itemId || '',
-                        primaryPriceLabel: 'ACQUISITION COST',
-                        primaryPriceValue: `$${priceMxn.toLocaleString('en-US')} MXN / $${priceUsd.toLocaleString('en-US')} USD`
+                        bookBarcode: codes.bookBarcode || norm.itemId || '',
+                        bookAqCode: codes.bookAqCode,
+                        bookLandCode: codes.bookLandCode,
+                        bookRetail: codes.bookRetail,
+                        primaryPriceLabel: primaryLabel,
+                        primaryPriceValue: primaryValue
                     },
-                    images: imgs
+                    images: imgs,
+                    exportType
                 };
             }).filter(Boolean);
             
@@ -204,7 +219,7 @@ export function StoreView() {
                 setExportStatus(msg);
             };
             
-            await exportCatalogPdf(itemsToExport as any, { title, method }, progressCb);
+            await exportCatalogPdf(itemsToExport as any, { title, method, exportType }, progressCb);
             setTimeout(() => { setShowExportConfig(false); setIsExporting(false); }, 1500);
             toast.success("PDF generated successfully!", { id: "store_pdf" });
         } catch (e: any) {
@@ -697,6 +712,37 @@ export function StoreView() {
                                     placeholder="Enter custom title..."
                                     className="w-full h-14 px-6 bg-white/[0.04] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-(--main-color)/30 focus:bg-white/5 transition-all"
                                 />
+                            </div>
+
+                            {/* Export Type Selection */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Export Scope & Financials</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        onClick={() => setExportType('regular')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left ${exportType === 'regular' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportType === 'regular' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
+                                            <Tag size={20} className={exportType === 'regular' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'regular' ? 'text-white' : 'text-white/40'}`}>Regular Export</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Internal · Full Costs</p>
+                                        </div>
+                                    </button>
+                                    <button 
+                                        onClick={() => setExportType('catalog')}
+                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left ${exportType === 'catalog' ? 'bg-(--main-color)/10 border-(--main-color)/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportType === 'catalog' ? 'bg-(--main-color)/20 border-(--main-color)/30' : 'bg-white/5 border-white/10'}`}>
+                                            <Share2 size={20} className={exportType === 'catalog' ? 'text-(--main-color)' : 'text-white/40'} />
+                                        </div>
+                                        <div>
+                                            <p className={`text-xs font-black uppercase tracking-widest ${exportType === 'catalog' ? 'text-white' : 'text-white/40'}`}>Catalog Mode</p>
+                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">External · Codes only</p>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Method Selection */}
