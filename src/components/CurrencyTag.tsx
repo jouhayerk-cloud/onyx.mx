@@ -12,7 +12,7 @@ export const CurrencyTag: React.FC<CurrencyTagProps> = ({ type, amount, size = '
         style: 'currency',
         currency: type,
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 0
     });
 
     const sizeClasses = {

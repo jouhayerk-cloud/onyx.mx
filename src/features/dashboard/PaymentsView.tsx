@@ -20,7 +20,7 @@ type VendorGroup = {
 
 import { destinationsConfig } from '../../lib/paymentConfig';
 
-const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
+const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 
 const getVendorIdFromDescription = (description: string): string | null => {
     const match = description.match(/from (\w+)$/);
@@ -297,8 +297,8 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
         const toastId = toast.loading(`Requesting payment for ${vendorGroup.vendorId}...`);
         try {
             const rawCommission = destinationsConfig[destination].calculateCommission(vendorGroup.total);
-            const commission = Number(rawCommission.toFixed(2));
-            const amount = Number(vendorGroup.total.toFixed(2));
+            const commission = Math.round(rawCommission);
+            const amount = Math.round(vendorGroup.total);
 
             await apiCall('appendExpense', {
                 expenseData: {

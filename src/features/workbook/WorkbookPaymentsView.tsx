@@ -8,7 +8,7 @@ import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { destinationsConfig } from '../../lib/paymentConfig';
 import { getTextColorForBg } from '../../lib/utils';
 
-const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
+const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 const apiCall = async (action: string, payload: object) => {
     const response = await fetch(SCRIPT_URL, {
         method: 'POST',

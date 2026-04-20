@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import { useAtomValue } from 'jotai';
 import { exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, cmToImperial, formatWeightImperialOnly } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
 import { supabase } from '../../lib/supabase';
 import { resolveArtifact, ResolvedArtifact } from '../../lib/artifactUtils';
@@ -266,13 +266,13 @@ export const TagView: React.FC<TagViewProps> = ({ tagId, onBack }) => {
     ].filter(Boolean).join(' · ') || null;
 
     const dimensionsInchStr = [
-        norm.lengthCm ? `${(Number(norm.lengthCm) * 0.3937).toFixed(1)}"` : '',
-        norm.widthCm ? `${(Number(norm.widthCm) * 0.3937).toFixed(1)}"` : '',
-        norm.heightCm ? `${(Number(norm.heightCm) * 0.3937).toFixed(1)}"` : '',
+        norm.lengthCm ? cmToImperial(norm.lengthCm) : '',
+        norm.widthCm ? cmToImperial(norm.widthCm) : '',
+        norm.heightCm ? cmToImperial(norm.heightCm) : '',
     ].filter(Boolean).join(' × ') || null;
 
     const weightStr = norm.weightKg ? `${norm.weightKg} kg` : null;
-    const weightLbs = norm.weightKg ? (Number(norm.weightKg) * 2.2046).toFixed(1) : null;
+    const weightLbs = norm.weightKg ? formatWeightImperialOnly(norm.weightKg) : null;
 
     const materialLabel = [norm.color, norm.material].filter(Boolean).join(' ') || 'Natural Stone';
     const typeLabel = [norm.shape, norm.shortDescription].filter(Boolean).join(' ') || 'Stone Artifact';

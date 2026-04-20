@@ -52,7 +52,7 @@ export const WorkbookSuppliesView: React.FC = () => {
     const fmt = (val: any) => {
         const n = parseFloat(val);
         if (isNaN(n)) return val || '-';
-        return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 });
+        return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
     };
 
     if (!suppliesInfo || suppliesInfo.items.length === 0) {
@@ -119,7 +119,7 @@ export const WorkbookSuppliesView: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-right text-white font-bold">{fmt(item.total)}</td>
                                     <td className="p-4 text-right text-[#00b0f0] font-bold">
-                                        {item.usd ? `$${parseFloat(item.usd).toFixed(2)}` : '-'}
+                                        {item.usd ? `$${Math.round(parseFloat(item.usd))}` : '-'}
                                     </td>
                                 </tr>
                             );

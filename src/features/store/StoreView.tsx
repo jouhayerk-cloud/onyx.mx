@@ -18,7 +18,7 @@ import {
     selectedStoreIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
-import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL, calculateCodesAndPrices } from '../../lib/utils';
+import { normalizeInventoryData, getCleanImageUrl, handleFileUpload, readFileAsDataURL, calculateCodesAndPrices, cmToImperial } from '../../lib/utils';
 import { 
     ShoppingBag, Search, Filter, LayoutGrid, LayoutList, Layout, 
     ChevronRight, ArrowRight, X, Heart, Star, Info, Trash2, Box, PackageSearch,
@@ -56,43 +56,7 @@ const StarRating = ({ rating, onChange, size = 12 }: { rating: number; onChange:
     </div>
 );
 
-/* ─── cmToImperial Helper ─── */
-const cmToImperial = (cm: number | string | undefined) => {
-    const val = typeof cm === 'string' ? parseFloat(cm) : cm;
-    if (!val || isNaN(val)) return '';
-    
-    const totalInches = val / 2.54;
-    const feet = Math.floor(totalInches / 12);
-    const inches = totalInches % 12;
-    const wholeInches = Math.floor(inches);
-    const fractionalInches = inches - wholeInches;
-    
-    const sixteenths = Math.round(fractionalInches * 16);
-    let finalFeet = feet;
-    let finalInches = wholeInches;
-    let num = sixteenths;
-    let den = 16;
-
-    if (sixteenths === 16) {
-        finalInches += 1;
-        num = 0;
-    }
-    if (finalInches === 12) {
-        finalFeet += 1;
-        finalInches = 0;
-    }
-
-    if (num > 0) {
-        while (num % 2 === 0 && den % 2 === 0) {
-            num /= 2; den /= 2;
-        }
-    }
-
-    const ftPart = finalFeet > 0 ? `${finalFeet}' ` : '';
-    const inPart = finalInches > 0 || num > 0 ? `${finalInches}${num > 0 ? ` ${num}/${den}` : ''}"` : '';
-    
-    return `${ftPart}${inPart}`.trim() || '0"';
-};
+// Centralized cmToImperial moved to src/lib/utils.tsx
 
 export function StoreView() {
     const [search, setSearch] = useAtom(storeSearchTermAtom);

@@ -16,8 +16,8 @@ const StatusPill: React.FC<{ label: string; active: boolean; color: string }> = 
     </span>
 );
 
-const fmtMXN = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(v || 0);
-const fmtUSD = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(v || 0);
+const fmtMXN = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
+const fmtUSD = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
 const InventoryPanel: React.FC<{ docs: any[]; exchangeRate: number; isArchive?: boolean; onRefresh: () => void }> = ({ docs, exchangeRate, isArchive, onRefresh }) => {
     const user = useAtomValue(userAtom);

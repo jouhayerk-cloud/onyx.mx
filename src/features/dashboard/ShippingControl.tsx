@@ -191,7 +191,7 @@ const WarehouseViewControls = ({ saveCratesToBackend }: { saveCratesToBackend: (
         const packedItems: PackedItem[] = itemsToPack.map(item => ({
             row: item.row, itemId: item.data.itemId, itemNumber: item.data.itemNumber, shape: item.data.shape,
             material: item.data.material, weightKg: item.data.weightKg, color: item.data.color,
-            widthCm: item.data.widthCm, heightCm: item.data.heightCm, lengthCm: item.data.lengthCm, price: item.data.price,
+            widthCm: item.data.widthCm, heightCm: item.data.heightCm, lengthCm: item.data.lengthCm, price: Math.round(parseFloat(item.data.price || '0')).toString(),
             bookBardcode: item.data.bookBardcode, bookAqCode: item.data.bookAqCode, bookLandCode: item.data.box_land_code,
         }));
 

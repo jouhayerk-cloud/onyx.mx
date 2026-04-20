@@ -161,6 +161,22 @@ export function UploadEntryForm() {
         else toast(message, { icon: type === 'loading' ? '⌛' : 'ℹ️' });
     };
 
+    useEffect(() => {
+        if (itemData.workbook === 'v825') {
+            setItemData(prev => ({ 
+                ...prev, 
+                status: 'Acquisition', 
+                payReq: 'Prepaid' 
+            }));
+        } else if (itemData.workbook === 'v326') {
+             setItemData(prev => ({ 
+                ...prev, 
+                status: 'Available',
+                payReq: ''
+            }));
+        }
+    }, [itemData.workbook, setItemData]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -266,6 +282,7 @@ export function UploadEntryForm() {
                 quantity: itemData.quantity ? Number(itemData.quantity) : 1,
                 status: itemData.status || 'Available',
                 workbook: itemData.workbook || 'v326',
+                pay_req: itemData.payReq || null,
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString()

@@ -195,7 +195,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     const col = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
     const accentColor = col;
 
-    const itemPriceMXN = Math.ceil(Number(norm.price || 0));
+    const itemPriceMXN = Math.round(Number(norm.price || 0));
     const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
 
     const [touchStart, setTouchStart] = useState<number | null>(null);

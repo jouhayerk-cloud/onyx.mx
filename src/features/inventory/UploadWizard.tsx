@@ -2,12 +2,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAtom, useAtomValue } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom, sidebarStateAtom } from '../../lib/atoms';
+import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom, sidebarStateAtom, uploadItemDataAtom } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL, isVideoFile } from '../../lib/utils';
-import { X, ArrowRight, Video, Plus, Database, Store, Hash, Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ArrowRight, Video, Plus, Database, Store, Hash, Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, ChevronRight, CloudUpload, Check } from 'lucide-react';
 import { UploadedFile } from '../../lib/Types';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
@@ -37,6 +37,7 @@ interface WizardState {
     price: string;
     notes: string;
     existingCount: number;
+    payReq?: string;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -57,15 +58,18 @@ const INITIAL_STATE: WizardState = {
     price: '',
     notes: '',
     existingCount: 0,
+    payReq: '',
 };
 
 export const UploadWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isUploadWizardOpenAtom);
     const sidebarState = useAtomValue(sidebarStateAtom);
     const user = useAtomValue(userAtom);
+    const itemData = useAtomValue(uploadItemDataAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
-    // ... [existing state] ...
+    
+    // ... rest of the component setup ...
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
@@ -89,15 +93,17 @@ export const UploadWizard: React.FC = () => {
 
     useEffect(() => {
         if (isOpen && !isOpenRef.current) {
-            setStep(isAdmin ? 1 : 3);
+            const isV825 = itemData.workbook === 'v825';
+            setStep(isAdmin ? (isV825 ? 2 : 1) : 3);
             setState({
                 ...INITIAL_STATE,
-                status: 'Available',
+                status: isV825 ? 'Acquisition' : 'Available',
+                payReq: isV825 ? 'Prepaid' : '',
                 vendorId: user?.role === 'Vendor' ? (user.name || '') : '',
             });
         }
         isOpenRef.current = isOpen;
-    }, [isOpen, isAdmin, user]);
+    }, [isOpen, isAdmin, user, itemData.workbook]);
 
     useEffect(() => {
         if (!db || !isOpen) return;
@@ -128,7 +134,9 @@ export const UploadWizard: React.FC = () => {
     useEffect(() => {
         if (!db || !state.vendorId || !isOpen) return;
         const fetchNextNum = async () => {
-            const items = await db.inventory.find({ selector: { item_id: { $regex: `^${state.vendorId}-` } } }).exec();
+            const selector: any = { item_id: { $regex: `^${state.vendorId}-` } };
+            // Optional: filter by workbook if relevant
+            const items = await db.inventory.find({ selector }).exec();
             let maxNum = 0;
             let existingCount = 0;
             items.forEach((i: any) => {
@@ -218,11 +226,12 @@ export const UploadWizard: React.FC = () => {
                 length_cm: parseFloat(state.lengthCm) || null,
                 price_mxn: parseFloat(state.price) || null,
                 description: state.notes,
+                pay_req: state.payReq || null,
                 media_urls: uploadedUrls.join(','),
                 created_by: user?.name || user?.email,
                 timestamp: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                workbook: 'v326',
+                workbook: itemData.workbook || 'v326',
             };
 
             setSavingProgress(90);

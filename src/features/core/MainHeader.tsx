@@ -563,14 +563,31 @@ const ProcessBar: React.FC = () => {
 };
 
 const UploadBar: React.FC = () => {
-    const itemData = useAtomValue(uploadItemDataAtom);
+    const [itemData, setItemData] = useAtom(uploadItemDataAtom);
+    const activeWb = itemData.workbook || 'v326';
+
     return (
         <div className="flex items-center gap-3">
             <ModuleBadge icon="upload" label="Add Entry" color="var(--color-upload)" />
 
-            <div className="flex flex-col items-center justify-center min-w-[72px] transition-all select-none border-l border-white/5 pl-5 ml-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none mb-2 opacity-30">BOOK</span>
-                <span className="text-[14px] font-black font-mono leading-none tracking-tighter opacity-80">{itemData.workbook || 'v326'}</span>
+            <div className="flex items-center border-l border-white/5 pl-5 ml-2 gap-5">
+                <div className="flex flex-col items-start select-none">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] leading-none mb-2 opacity-30">WORKBOOK TAG</span>
+                    <div className="flex gap-1.5">
+                        {['v326', 'v825'].map(wb => (
+                            <button
+                                key={wb}
+                                type="button"
+                                onClick={() => setItemData(prev => ({ ...prev, workbook: wb }))}
+                                className={`text-[11px] font-black font-mono leading-none tracking-tighter transition-all px-3 py-1.5 rounded-lg border ${activeWb === wb 
+                                    ? 'bg-white/10 text-white border-white/20 shadow-[0_5px_15px_rgba(255,255,255,0.05)]' 
+                                    : 'text-white/20 border-transparent hover:text-white/50 hover:bg-white/5'}`}
+                            >
+                                {wb.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -693,10 +710,10 @@ export function MainHeader() {
             summarySheet.columns = [
                 { header: 'VENDOR / SECTION', key: 'vendor', width: 30 },
                 { header: 'INV ITEMS (ACQ/PROD)', key: 'items', width: 22 },
-                { header: 'TOTAL SPEND (MXN)', key: 'total_mxn', width: 22, style: { numFmt: '#,##0.00' } },
-                { header: 'SPEND (USD - Inet Rate)', key: 'total_usd', width: 25, style: { numFmt: '#,##0.00' } },
-                { header: 'PAID (MXN)', key: 'paid_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0.00' } }
+                { header: 'TOTAL SPEND (MXN)', key: 'total_mxn', width: 22, style: { numFmt: '#,##0' } },
+                { header: 'SPEND (USD - Inet Rate)', key: 'total_usd', width: 25, style: { numFmt: '#,##0' } },
+                { header: 'PAID (MXN)', key: 'paid_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'PENDING (MXN)', key: 'pending_mxn', width: 18, style: { numFmt: '#,##0' } }
             ];
 
             // Apply Header Styling
@@ -825,9 +842,9 @@ export function MainHeader() {
                 { header: 'CATEGORY', key: 'category', width: 15 },
                 { header: 'VENDOR', key: 'vendor', width: 10 },
                 { header: 'DESTINATION', key: 'destination', width: 18 },
-                { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0.00' } },
-                { header: 'FEES (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0.00' } },
-                { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'AMOUNT (MXN)', key: 'amount', width: 15, style: { numFmt: '#,##0' } },
+                { header: 'FEES (MXN)', key: 'commission', width: 15, style: { numFmt: '#,##0' } },
+                { header: 'TOTAL (MXN)', key: 'total', width: 15, style: { numFmt: '#,##0' } },
                 { header: 'STATUS', key: 'status', width: 12 },
                 { header: 'PAY DATE', key: 'pay_date', width: 12 },
                 { header: 'REFERENCE', key: 'reference', width: 20 }
@@ -884,7 +901,7 @@ export function MainHeader() {
                 { header: 'CONTENTS SUMMARY', key: 'contents', width: 45 },
                 { header: 'NOTES / DESC', key: 'description', width: 40 },
                 { header: 'QTY', key: 'quantity', width: 8 },
-                { header: 'COST (MXN)', key: 'cost_mxn', width: 15, style: { numFmt: '#,##0.00' } },
+                { header: 'COST (MXN)', key: 'cost_mxn', width: 15, style: { numFmt: '#,##0' } },
                 { header: 'CREATED AT', key: 'date', width: 15 }
             ];
 
@@ -938,10 +955,12 @@ export function MainHeader() {
                     { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
                     { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
                     { header: 'QTY', key: 'quantity', width: 8 },
-                    { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0.00' } },
-                    { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0.00' } },
+                    { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
+                    { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
                     { header: 'PAY STATUS', key: 'pay_status', width: 18 }
                 ];
 
@@ -965,10 +984,16 @@ export function MainHeader() {
                     const qty = parseInt(itemData.quantity || '1', 10) || 1;
                     const costMxn = parseFloat(itemData.price || itemData.acquisition_price_mxn || '0') || 0;
                     
-                    const costUsd = costMxn / bookRate;
-                    const totalMxn = costMxn * qty;
-                    const landedMxn = costMxn * 1.4;
-                    const retailUsd = costUsd * 12;
+                    const onyxRound = (n: number) => {
+                        const floor = Math.floor(n);
+                        return (n - floor >= 0.4) ? floor + 1 : floor;
+                    };
+
+                    const costUsd = onyxRound(costMxn / bookRate);
+                    const totalMxn = Math.round(costMxn * qty);
+                    const landedUsd = onyxRound((costMxn / bookRate) * 1.4);
+                    const landedMxn = Math.round(costMxn * 1.4);
+                    const retailUsd = onyxRound(landedUsd * 12);
 
                     const norm = normalizeInventoryData(itemData);
                     const calculated = calculateCodesAndPrices(norm, bookRate, '326');
@@ -1011,8 +1036,10 @@ export function MainHeader() {
                         weight_imperial: formatWeightImperialOnly(itemData.weightKg || itemData.weight_kg),
                         quantity: qty,
                         cost_mxn: costMxn,
+                        acq_usd: costUsd,
                         total_mxn: totalMxn,
                         landed_mxn: landedMxn,
+                        ld_usd: landedUsd,
                         retail_usd: retailUsd,
                         pay_status: payStatusText
                     });
