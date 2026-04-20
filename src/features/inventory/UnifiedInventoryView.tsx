@@ -1200,14 +1200,6 @@ export const UnifiedInventoryView = () => {
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3 gap-3 overflow-x-auto no-scrollbar">
                     {/* Left: Stats */}
                     <div className="flex items-center gap-6 shrink-0">
-                        {/* Book Rate Display */}
-                        <div className="flex flex-col gap-0.5 border-r border-white/5 pr-6">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.3em]">Book Rate</span>
-                            <span className="text-[13px] font-mono font-black text-(--main-color) tracking-tighter">
-                                {exchangeRate ? exchangeRate.toFixed(2) : '0.00'} <span className="text-[9px] text-white/20 ml-1">MXN/USD</span>
-                            </span>
-                        </div>
-
                         {/* Payment Status cycle button */}
                         <button
                             onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
