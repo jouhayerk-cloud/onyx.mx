@@ -794,7 +794,7 @@ export async function extractGradientFromMask(
 
 export const numberToCypher = (num: number): string => {
 
-  const key = (import.meta.env.VITE_CYPHER_KEY as string) || 'DOXHELFANM';
+  const key = (import.meta.env.VITE_CYPHER_KEY as string) || 'DMOXHELFAN';
   if (!key || key.length < 10) return '—';
 
   return String(Math.floor(num))
@@ -840,13 +840,12 @@ export const normalizeInventoryData = (data: any): any => {
 
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
   const norm = normalizeInventoryData(data);
-  // Prices are stored as whole MXN pesos (e.g. 1500 = MX$1,500)
-  // Round at each step to 2dp to prevent IEEE 754 float drift
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
   const costMxn = round2(parseFloat(norm.price) || 0);
   if (costMxn === 0 || !exchangeRate || isNaN(exchangeRate)) {
     return {
+      bookAcquisition: '-',
       bookLanded: '-',
       bookRetail: '-',
       bookAqCode: '-',
@@ -855,26 +854,29 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     };
   }
 
+  // Formula: Acquisition USD = MXN Price / Rate
   const costUsd     = round2(costMxn / exchangeRate);
+  // Formula: Landed USD = Acquisition USD * 1.4
   const landedCost  = round2(costUsd * 1.4);
+  // Formula: Retail USD = Landed USD * 12
   const retailPrice = round2(landedCost * 12);
 
+  // Codes are based on the floored integer value of USD costs
   const costUsdRounded    = Math.floor(costUsd);
   const landedCostRounded = Math.floor(landedCost);
 
   const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
   const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
-
   const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
   const itemCountStr = itemCountNumber.toString();
 
   const cypherString = numberToCypher(landedCostRounded);
-
   const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
 
   return {
-    bookLanded:   Math.floor(landedCost).toString(),
-    bookRetail:   Math.floor(retailPrice).toString(),
+    bookAcquisition: Math.round(costUsd).toString(),
+    bookLanded:   Math.round(landedCost).toString(),
+    bookRetail:   Math.round(retailPrice).toString(),
     bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBarcode: newTagId,

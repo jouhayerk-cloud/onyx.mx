@@ -63,10 +63,9 @@ export const DataSyncProvider: React.FC = () => {
                 const isStoreStatus = storeStatuses.includes(status);
                 const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
                 const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';
-                const isProduction = r.source === 'production';
                 
-                // Inventory (WIP) includes production items, items with payment activity, or items NOT in store statuses
-                return isProduction || hasPaymentReq || !isStoreStatus;
+                // Inventory (WIP) includes items with payment activity or items NOT in store statuses
+                return hasPaymentReq || !isStoreStatus;
             });
 
             const storeItems = allRecords.filter(r => {
@@ -74,10 +73,9 @@ export const DataSyncProvider: React.FC = () => {
                 const isStoreStatus = storeStatuses.includes(status);
                 const payReq = String(r.data.payReq || r.data.pay_req || '').toLowerCase();
                 const hasPaymentReq = payReq !== '' && payReq !== 'false' && payReq !== 'undefined' && payReq !== 'null';
-                const isProduction = r.source === 'production';
 
-                // Store only includes non-production items in store statuses WITHOUT payment activity
-                return isStoreStatus && !hasPaymentReq && !isProduction;
+                // Store only includes items in store statuses WITHOUT payment activity
+                return isStoreStatus && !hasPaymentReq;
             });
 
             setInventory(wipItems);

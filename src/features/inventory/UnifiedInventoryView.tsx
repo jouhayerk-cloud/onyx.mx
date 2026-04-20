@@ -510,11 +510,12 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
                         <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
                         <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
-                        <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
-                        <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
                         <div><p className={lbl}>Acq. MXN</p><p className="text-xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
+                        <div><p className={lbl}>Acq. USD</p><p className="text-xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
                         <div><p className={lbl}>Landed USD</p><p className="text-xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
                         <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                        <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
+                        <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
                         <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
                             <button 
                                 onClick={(e) => {
@@ -849,6 +850,44 @@ export const UnifiedInventoryView = () => {
         });
     };
 
+    const handleBulkRemove = async () => {
+        if (selectedIds.length === 0) return toast.error('No items selected.');
+        if (!window.confirm(`Are you sure you want to REMOVE ${selectedIds.length} items to Store?`)) return;
+
+        const tid = toast.loading(`Moving ${selectedIds.length} items to Store...`);
+        try {
+            const inventoryIds: (string | number)[] = [];
+            const productionIds: (string | number)[] = [];
+
+            selectedIds.forEach(id => {
+                const item = items.find(i => (i.row ?? i.data?.id) === id);
+                if (item?.source === 'production') productionIds.push(id);
+                else inventoryIds.push(id);
+            });
+
+            const timestamp = new Date().toISOString();
+            
+            const promises = [];
+            if (inventoryIds.length > 0) {
+                promises.push(supabase.from('inventory').update({ status: 'Available', updated_at: timestamp }).in('id', inventoryIds));
+            }
+            if (productionIds.length > 0) {
+                promises.push(supabase.from('production').update({ status: 'Available', updated_at: timestamp }).in('id', productionIds));
+            }
+
+            const results = await Promise.all(promises);
+            const error = results.find(r => r.error);
+            if (error) throw error.error;
+
+            toast.success(`Successfully moved ${selectedIds.length} items to Store`, { id: tid });
+            setSelectedIds([]);
+            setIsSelectionMode(false);
+            setInventoryVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(`Remove failed: ${err.message}`, { id: tid });
+        }
+    };
+
     const handleSelectAll = () => {
         const allFilteredIds = filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
         const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedIds.includes(id));
@@ -1151,6 +1190,14 @@ export const UnifiedInventoryView = () => {
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3 gap-3 overflow-x-auto no-scrollbar">
                     {/* Left: Stats */}
                     <div className="flex items-center gap-6 shrink-0">
+                        {/* Book Rate Display */}
+                        <div className="flex flex-col gap-0.5 border-r border-white/5 pr-6">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.3em]">Book Rate</span>
+                            <span className="text-[13px] font-mono font-black text-(--main-color) tracking-tighter">
+                                {exchangeRate ? exchangeRate.toFixed(2) : '0.00'} <span className="text-[9px] text-white/20 ml-1">MXN/USD</span>
+                            </span>
+                        </div>
+
                         {/* Payment Status cycle button */}
                         <button
                             onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
@@ -1192,6 +1239,14 @@ export const UnifiedInventoryView = () => {
                                 >
                                     <ScanBarcode size={14} strokeWidth={3} />
                                     COPY TAGS
+                                </button>
+                                <button 
+                                    onClick={handleBulkRemove}
+                                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest ml-1"
+                                    title="Move Selected Items to Store (Mark as Available)"
+                                >
+                                    <Trash2 size={14} strokeWidth={3} />
+                                    REMOVE
                                 </button>
                             </div>
                         )}
