@@ -15,6 +15,7 @@ export interface CatalogArtifact {
         [key: string]: any;
     };
     images: string[];
+    exportType?: 'regular' | 'catalog';
 }
 
 interface ImgData { dataUrl: string; w: number; h: number; }
@@ -53,7 +54,7 @@ const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
     return `${whole}${f}"`;
 };
 
-function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number): number {
+function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): number {
     const norm = item.data; const codes = item.codes; const hY = startY + 4;
     const barcode = codes.bookBardcode || codes.bookBarcode || '—';
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
@@ -79,17 +80,20 @@ function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, star
     doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.3); doc.line(M + 4, hY + 20, PW - M, hY + 20);
     
     const specY = hY + 28;
-    const priceLabel = codes.primaryPriceLabel || 'USD RETAIL';
+    const priceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : 'USD RETAIL');
     const priceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail}` : '—');
     const dimsMetric = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×') + (norm.lengthCm ? 'cm' : '');
     const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
     const weightImp = toImp(norm.weightKg, 'lbs');
 
+    const dimensionsLabel = exportType === 'regular' ? dimsMetric : (dimsMetric ? `${dimsMetric} (${dimsImp})` : '—');
+    const weightLabel = exportType === 'regular' ? (norm.weightKg ? `${norm.weightKg}kg` : '—') : (norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—');
+
     const cols = [
         { label: priceLabel, value: priceValue, x: M + 4, accent: true },
-        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 38 },
-        { label: 'DIMENSIONS', value: dimsMetric ? `${dimsMetric} (${dimsImp})` : '—', x: M + 54 },
-        { label: 'WEIGHT',     value: norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—', x: M + 155 }
+        { label: 'QTY',        value: String(norm.quantity || 1), x: M + 75 },
+        { label: 'DIMENSIONS', value: dimensionsLabel, x: M + 92 },
+        { label: 'WEIGHT',     value: weightLabel, x: M + 165 }
     ];
     
     cols.forEach((col) => {
@@ -115,10 +119,11 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
-    config: { title: string; method: 'grid' | 'single' },
+    config: { title: string; method: 'grid' | 'single'; exportType?: 'regular' | 'catalog' },
     onProgress?: (p: number, s: string) => void
 ) {
     onProgress?.(5, 'Preparing Catalog...');
+    const exportType = config.exportType || 'regular';
     const PW = 210, PH = 297, M = 12;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     
@@ -150,12 +155,12 @@ export async function exportCatalogPdf(
 
             if (imgs.length === 0) {
                 doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                const specY = drawHeader(doc, item, M, PW, M);
+                const specY = drawHeader(doc, item, M, PW, M, exportType);
                 doc.setFillColor(248, 248, 248); doc.rect(M + 4, specY + 4, PW - M * 2 - 4, PH - specY - 24, 'F');
             } else {
                 for (let j = 0; j < imgs.length; j++) {
                     doc.addPage(); doc.setFillColor(255, 255, 255); doc.rect(0, 0, PW, PH, 'F'); doc.setFillColor(20, 20, 20); doc.rect(0, 0, 4, PH, 'F'); footer(doc);
-                    const specY = drawHeader(doc, item, M, PW, M);
+                    const specY = drawHeader(doc, item, M, PW, M, exportType);
                     
                     const imgUrl = getCleanImageUrl(imgs[j]);
                     const d = await loadImgData(imgUrl, 1200);
@@ -204,7 +209,7 @@ export async function exportCatalogPdf(
 
                 doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.2); doc.line(sx + 2, M + 21, sx + HW - 2, M + 21);
                 
-                const gridPriceLabel = codes.primaryPriceLabel || 'USD RETAIL';
+                const gridPriceLabel = codes.primaryPriceLabel || (exportType === 'regular' ? 'ACQUISITION COST' : 'USD RETAIL');
                 const gridPriceValue = codes.primaryPriceValue || (codes.bookRetail && codes.bookRetail !== '-' ? `$${codes.bookRetail} USD` : '—');
                 
                 doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(gridPriceLabel, sx + 2, M + 25);
@@ -212,9 +217,14 @@ export async function exportCatalogPdf(
                 
                 doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
                 const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
+                const dimsMStr = dimsM ? `${dimsM}cm` : '';
                 const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
-                if (dimsM) doc.text(`${dimsM}cm (${dimsI})`, sx + 2, M + 36);
-                if (norm.weightKg) doc.text(`${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})`, sx + 2, M + 41);
+                
+                const gridDimsValue = exportType === 'regular' ? dimsMStr : (dimsMStr ? `${dimsMStr} (${dimsI})` : '');
+                const gridWeightValue = exportType === 'regular' ? (norm.weightKg ? `${norm.weightKg}kg` : '') : (norm.weightKg ? `${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})` : '');
+
+                if (gridDimsValue) doc.text(gridDimsValue, sx + 2, M + 36);
+                if (gridWeightValue) doc.text(gridWeightValue, sx + 2, M + 41);
 
                 const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
                 if (imgs.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
@@ -235,7 +245,7 @@ export async function exportCatalogPdf(
                 
                 let imgTop = 0;
                 if (p === 0) {
-                    imgTop = drawHeader(doc, item, M, PW, M);
+                    imgTop = drawHeader(doc, item, M, PW, M, exportType);
                 } else {
                     imgTop = drawHeaderCompact(doc, item, M, PW, M, p + 1, totalPagesForItem);
                 }
