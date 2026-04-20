@@ -838,9 +838,14 @@ export const normalizeInventoryData = (data: any): any => {
   };
 };
 
+export const round2 = (n: number) => Math.round(n * 100) / 100;
+export const onyxRound = (n: number) => {
+  const floor = Math.floor(n);
+  return (n - floor >= 0.4) ? floor + 1 : floor;
+};
+
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
   const norm = normalizeInventoryData(data);
-  const round2 = (n: number) => Math.round(n * 100) / 100;
 
   const costMxn = round2(parseFloat(norm.price) || 0);
   if (costMxn === 0 || !exchangeRate || isNaN(exchangeRate)) {
@@ -861,9 +866,9 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   // Formula: Retail USD = Landed USD * 12
   const retailPrice = round2(landedCost * 12);
 
-  // Codes are based on the floored integer value of USD costs
-  const costUsdRounded    = Math.floor(costUsd);
-  const landedCostRounded = Math.floor(landedCost);
+  // Codes are based on the custom rounded integer value of USD costs (.40 threshold)
+  const costUsdRounded    = onyxRound(costUsd);
+  const landedCostRounded = onyxRound(landedCost);
 
   const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
   const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
@@ -874,9 +879,9 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
   const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
 
   return {
-    bookAcquisition: Math.round(costUsd).toString(),
-    bookLanded:   Math.round(landedCost).toString(),
-    bookRetail:   Math.round(retailPrice).toString(),
+    bookAcquisition: onyxRound(costUsd).toString(),
+    bookLanded:   onyxRound(landedCost).toString(),
+    bookRetail:   onyxRound(retailPrice).toString(),
     bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBarcode: newTagId,
@@ -900,15 +905,45 @@ export const formatWeightImperialOnly = (kg: any): string => {
   return `${lbs} lbs`;
 };
 
-export const formatCmToFeetIn = (cm: any): string => {
-  const val = parseFloat(cm);
-  if (!val || isNaN(val)) return '';
-  const totalInches = val * 0.393701;
+export const cmToImperial = (cm: number | string | undefined): string => {
+  const val = typeof cm === 'string' ? parseFloat(cm) : cm;
+  if (val === undefined || val === null || isNaN(val) || val === 0) return '';
+  
+  const totalInches = val / 2.54;
   const feet = Math.floor(totalInches / 12);
-  const inches = Math.round(totalInches % 12);
-  // If it's something like 0' 11", just return 11"
-  if (feet === 0) return `${inches}"`;
-  return `${feet}' ${inches}"`;
+  const inches = totalInches % 12;
+  const wholeInches = Math.floor(inches);
+  const fractionalInches = inches - wholeInches;
+  
+  let sixteenths = Math.round(fractionalInches * 16);
+  let finalFeet = feet;
+  let finalInches = wholeInches;
+  
+  if (sixteenths === 16) {
+    finalInches += 1;
+    sixteenths = 0;
+  }
+  if (finalInches === 12) {
+    finalFeet += 1;
+    finalInches = 0;
+  }
+
+  let num = sixteenths;
+  let den = 16;
+  if (num > 0) {
+    while (num % 2 === 0 && den % 2 === 0) {
+      num /= 2; den /= 2;
+    }
+  }
+
+  const ftPart = finalFeet > 0 ? `${finalFeet}' ` : '';
+  const inPart = `${finalInches}${num > 0 ? ` ${num}/${den}` : ''}"`;
+  
+  return `${ftPart}${inPart}`.trim();
+};
+
+export const formatCmToFeetIn = (cm: any): string => {
+  return cmToImperial(cm);
 };
 
 export const formatDimensionsMetricOnly = (w: any, h: any, l: any): string => {

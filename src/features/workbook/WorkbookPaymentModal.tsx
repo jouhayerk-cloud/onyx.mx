@@ -13,7 +13,7 @@ interface WorkbookPaymentModalProps {
     selectedItems: { id: string; price: number; description: string }[];
 }
 
-const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency }).format(amount || 0);
+const formatCurrency = (amount: number, currency: 'USD' | 'MXN') => new Intl.NumberFormat(currency === 'MXN' ? 'es-MX' : 'en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0);
 const DestinationCard: React.FC<{
     destination: PaymentDestination;
     config: typeof destinationsConfig[keyof typeof destinationsConfig];
@@ -57,7 +57,8 @@ export const WorkbookPaymentModal: React.FC<WorkbookPaymentModalProps> = ({ isOp
 
         try {
             const config = destinationsConfig[selectedDestination];
-            const commission = config.calculateCommission(totalAmount);
+            const rawCommission = config.calculateCommission(totalAmount);
+            const commission = Math.round(rawCommission);
             const finalTotal = totalAmount + commission;
             const inventoryItemRows = selectedItems.map(item => `WB:${item.id}`).join(',');
             const description = `Workbook Payment: ${selectedItems.length} items (${selectedItems[0].id}...)`;

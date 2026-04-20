@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAtom } from 'jotai';
 import { viewerSearchQueryAtom, exchangeRateAtom, workbookVersionAtom } from '../../lib/atoms';
 import { searchArtifacts, ResolvedArtifact } from '../../lib/artifactUtils';
-import { getCleanImageUrl } from '../../lib/utils';
+import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly } from '../../lib/utils';
 import { exportCatalogPdf } from '../../lib/pdfExport';
 import { OnyxLogo } from '../../components/OnyxLogo';
 import {
@@ -215,10 +215,10 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
 
     const dimensionsCmStr = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
     const dimensionsInchStr = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean)
-        .map(v => `${(Number(v) * 0.3937).toFixed(1)}"`).join('×');
+        .map(v => cmToImperial(v)).join('×');
 
     const weightKg = norm.weightKg ? `${norm.weightKg}kg` : '';
-    const weightLbs = norm.weightKg ? `${(Number(norm.weightKg) * 2.2046).toFixed(1)} lbs` : '';
+    const weightLbs = norm.weightKg ? formatWeightImperialOnly(norm.weightKg) : '';
     return (
         <div className="group relative flex flex-col overflow-hidden cursor-pointer bg-[#070606]/60 border border-white/5 backdrop-blur-xl transition-all duration-500 hover:-translate-y-0.5 hover:shadow-2xl hover:border-[#b8860b]/20" style={{ borderRadius: '16px' }}>
             <div className="relative w-full overflow-hidden"><ImageGrid images={item.images} onOpenViewer={onOpenFull} /><div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"><div className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm border border-white/10 flex items-center justify-center"><Maximize2 size={12} className="text-white/60" /></div></div></div>

@@ -629,7 +629,7 @@ const RequestPaymentModal: React.FC<{
     const isProduction = group.items.some(i => (i.data.status || '').toLowerCase() === 'production');
 
     const targetAmount = group.total * (percentage / 100);
-    const amountToRequest = Number(Math.max(0, targetAmount - group.paidTotal).toFixed(2));
+    const amountToRequest = Math.round(Math.max(0, targetAmount - group.paidTotal));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl p-4" onClick={onClose}>

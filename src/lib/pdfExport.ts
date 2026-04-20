@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { getCleanImageUrl } from './utils';
+import { getCleanImageUrl, cmToImperial, formatWeightImperialOnly } from './utils';
 
 // We accept a generalized artifact structure so different modules can use it
 export interface CatalogArtifact {
@@ -43,15 +43,8 @@ function drawContain(doc: any, img: ImgData, cx: number, cy: number, cw: number,
 
 const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
     const v = parseFloat(val); if (!v || isNaN(v)) return '';
-    if (type === 'lbs') return (v * 2.20462).toFixed(1) + ' lbs';
-    const totalInches = v * 0.393701;
-    if (type === 'ft') {
-        const feet = Math.floor(totalInches / 12); const inches = Math.round(totalInches % 12);
-        return feet > 0 ? `${feet}' ${inches}"` : `${inches}"`;
-    }
-    const whole = Math.floor(totalInches); const frac = Math.round((totalInches - whole) * 4) / 4;
-    let f = ''; if (frac === 0.25) f = ' 1/4'; if (frac === 0.5) f = ' 1/2'; if (frac === 0.75) f = ' 3/4';
-    return `${whole}${f}"`;
+    if (type === 'lbs') return formatWeightImperialOnly(v);
+    return cmToImperial(v);
 };
 
 function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): number {

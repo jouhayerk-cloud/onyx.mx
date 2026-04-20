@@ -24,7 +24,7 @@ import { vendors } from '../../lib/consts';
 import { useTranslation } from '../../lib/hooks';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { InventoryItem, InventoryItemData } from '../../lib/Types';
-import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { imageCache, fetchImageBatch, calculateCodesAndPrices, normalizeInventoryData, onyxRound } from '../../lib/utils';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
 const getTextColorForBg = (hexColor: string | undefined): string => {
@@ -114,6 +114,8 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
     }
   };
 
+  const fmtMXN = (v: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
+  const fmtUSD = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
   const norm = normalizeInventoryData(item.data);
   const vendorPrefix = norm.itemId?.split('-')[0] || '';
   const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#ccc';
@@ -172,7 +174,7 @@ const MarketItemCard: React.FC<MarketItemCardProps> = ({
                 <span>LD: {calculated.bookLandCode}</span>
               </div>
               <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
-                <span className="font-bold text-green-300 text-sm">${(parseFloat(String(norm.price)) / exchangeRate).toFixed(2)}</span>
+                <span className="font-bold text-green-300 text-sm">{fmtUSD(onyxRound(parseFloat(String(norm.price)) / exchangeRate))}</span>
                 <span className="text-[10px] text-green-300/60 leading-tight">({calculated.bookRetail})</span>
               </div>
             </div>

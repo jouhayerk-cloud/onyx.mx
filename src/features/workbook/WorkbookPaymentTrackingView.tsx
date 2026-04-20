@@ -29,7 +29,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
 
         const data = paymentSheet.data;
         const rate = parseFloat(data[2]?.[0] || '0').toFixed(2);
-        const totalAq = parseFloat(data[2]?.[1] || '0').toLocaleString('en-US', { style: 'currency', currency: 'MXN' });
+        const totalAq = parseFloat(data[2]?.[1] || '0').toLocaleString('en-US', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
         const shipping: { label: string; amount: string }[] = [];
         for (let i = 4; i < data.length; i++) {
@@ -39,7 +39,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
 
             shipping.push({
                 label: String(label),
-                amount: typeof amount === 'number' ? amount.toLocaleString('en-US', { style: 'currency', currency: 'MXN' }) : String(amount || '-')
+                amount: typeof amount === 'number' ? amount.toLocaleString('en-US', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }) : String(amount || '-')
             });
 
             if (String(label) === 'IN WAREHOUSE') break;
@@ -70,8 +70,8 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                 const pay = rowData[v.index];
                 const bal = rowData[v.index + 1];
                 vendorValues[v.id] = {
-                    payment: typeof pay === 'number' ? pay.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (pay || '-'),
-                    balance: typeof bal === 'number' ? bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (bal || '-')
+                    payment: typeof pay === 'number' ? pay.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : (pay || '-'),
+                    balance: typeof bal === 'number' ? bal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : (bal || '-')
                 };
             });
 
@@ -213,7 +213,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
                                 let activeVendorId: string | null = null;
                                 for (const vid in row.vendorData) {
                                     const payment = row.vendorData[vid].payment;
-                                    if (payment && payment !== '-' && payment !== '0.00' && payment !== '0') {
+                                    if (payment && payment !== '-' && payment !== '0' && payment !== '0.00') {
                                         activeVendorId = vid;
                                         break; // Assuming one vendor payment per row for the main color coding
                                     }
@@ -251,7 +251,7 @@ export const WorkbookPaymentTrackingView: React.FC = () => {
 
                                         {vendorColumns.map(v => {
                                             const vData = row.vendorData[v.id];
-                                            const isPayment = vData.payment !== '-' && vData.payment !== '0.00';
+                                            const isPayment = vData.payment !== '-' && vData.payment !== '0' && vData.payment !== '0.00';
                                             const isTargetVendor = v.id === activeVendorId;
 
                                             return (

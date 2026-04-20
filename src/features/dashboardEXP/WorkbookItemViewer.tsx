@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ItemThumbnail } from '../../components/ItemThumbnail';
 import { vendors } from '../../lib/consts';
-import { getTextColorForBg, numberToCypher, calculateCodesAndPrices } from '../../lib/utils';
+import { getTextColorForBg, numberToCypher, calculateCodesAndPrices, cmToImperial } from '../../lib/utils';
 
 export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix }: { item: any, vendor: string, exchangeRate: number, workbookPrefix: string }) => {
     const [expanded, setExpanded] = useState(false);
@@ -17,13 +17,13 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
     }, exchangeRate, workbookPrefix);
 
     const weightKg = parseFloat(item['KG']) || 0;
-    const weightLbs = parseFloat(item['POUNDS']) || (weightKg * 2.20462); // Use POUNDS if available, else calculate
+    const weightLbs = parseFloat(item['POUNDS']) || (weightKg * 2.20462); // Precise factor
     const widthCm = parseFloat(item['W CM']) || 0;
     const heightCm = parseFloat(item['H CM']) || 0;
     const depthCm = parseFloat(item['D CM']) || 0;
-    const widthIn = parseFloat(item['W Inches']) || (widthCm / 2.54);
-    const heightIn = parseFloat(item['H Inches']) || (heightCm / 2.54);
-    const depthIn = parseFloat(item['D Incbes']) || (depthCm / 2.54);
+    const widthInStr = cmToImperial(widthCm);
+    const heightInStr = cmToImperial(heightCm);
+    const depthInStr = cmToImperial(depthCm);
 
     const gridTemplateColumns = '128px 1.5fr 2fr 1.5fr'; 
 
@@ -68,9 +68,9 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
                 <div className="dimensions-panel">
                     <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 text-xs">
                         <strong></strong><span className="text-right opacity-70">Metric</span><span className="text-right opacity-70">Imperial</span>
-                        <strong>W:</strong> <span className="text-right">{widthCm > 0 ? `${widthCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{widthIn > 0 ? `${widthIn.toFixed(1)}"` : '-'}</span>
-                        <strong>H:</strong> <span className="text-right">{heightCm > 0 ? `${heightCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{heightIn > 0 ? `${heightIn.toFixed(1)}"` : '-'}</span>
-                        <strong>D:</strong> <span className="text-right">{depthCm > 0 ? `${depthCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{depthIn > 0 ? `${depthIn.toFixed(1)}"` : '-'}</span>
+                        <strong>W:</strong> <span className="text-right">{widthCm > 0 ? `${widthCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{widthInStr || '-'}</span>
+                        <strong>H:</strong> <span className="text-right">{heightCm > 0 ? `${heightCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{heightInStr || '-'}</span>
+                        <strong>D:</strong> <span className="text-right">{depthCm > 0 ? `${depthCm.toFixed(1)}cm` : '-'}</span> <span className="text-right">{depthInStr || '-'}</span>
                         <strong>Wt:</strong> <span className="text-right">{weightKg > 0 ? `${weightKg.toFixed(1)}kg` : '-'}</span> <span className="text-right">{weightLbs > 0 ? `${weightLbs.toFixed(1)}lb`: '-'}</span>
                     </div>
                 </div>
@@ -81,11 +81,11 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
                 <div className="expanded-details price-panel">
                     <div className="price-total price-mxn">
                         <span className="label">Cost (MXN) / piece</span>
-                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(parseFloat(item['Per piece MXN$'] || '0'))}</span>
+                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['Per piece MXN$'] || '0'))}</span>
                     </div>
                     <div className="price-total">
                         <span className="label">Total MXN</span>
-                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(parseFloat(item['TOTAL PESOS'] || '0'))}</span>
+                        <span className="value">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(parseFloat(item['TOTAL PESOS'] || '0'))}</span>
                     </div>
                     <div className="price-total price-landed">
                         <span className="label">Landed (USD) / piece</span>
@@ -97,23 +97,23 @@ export const WorkbookItemViewer = ({ item, vendor, exchangeRate, workbookPrefix 
                     </div>
                     <div className="price-total">
                         <span className="label">Acq. Price (USD) / piece</span>
-                        <span className="value">{item['AQ'] !== undefined ? `$${parseFloat(item['AQ']).toFixed(2)}` : '-'}</span>
+                        <span className="value">{item['AQ'] !== undefined ? `$${Math.round(parseFloat(item['AQ']))}` : '-'}</span>
                     </div>
                     <div className="price-total">
                         <span className="label">Acq. Price Rounded (USD)</span>
-                        <span className="value">{item['AQ ROUND'] !== undefined ? `$${parseFloat(item['AQ ROUND']).toFixed(2)}` : '-'}</span>
+                        <span className="value">{item['AQ ROUND'] !== undefined ? `$${Math.round(parseFloat(item['AQ ROUND']))}` : '-'}</span>
                     </div>
                     <div className="price-total">
                         <span className="label">Landed Price (USD) / piece</span>
-                        <span className="value">{item['LND'] !== undefined ? `$${parseFloat(item['LND']).toFixed(2)}` : '-'}</span>
+                        <span className="value">{item['LND'] !== undefined ? `$${Math.round(parseFloat(item['LND']))}` : '-'}</span>
                     </div>
                     <div className="price-total">
                         <span className="label">Landed Price Rounded (USD)</span>
-                        <span className="value">{item['LND ROUND'] !== undefined ? `$${parseFloat(item['LND ROUND']).toFixed(2)}` : '-'}</span>
+                        <span className="value">{item['LND ROUND'] !== undefined ? `$${Math.round(parseFloat(item['LND ROUND']))}` : '-'}</span>
                     </div>
                      <div className="price-total">
                         <span className="label">Total USD</span>
-                        <span className="value">{item['TOTAL USD'] !== undefined ? `$${parseFloat(item['TOTAL USD']).toFixed(2)}` : '-'}</span>
+                        <span className="value">{item['TOTAL USD'] !== undefined ? `$${Math.round(parseFloat(item['TOTAL USD']))}` : '-'}</span>
                     </div>
                 </div>
             )}
