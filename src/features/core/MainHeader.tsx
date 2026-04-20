@@ -263,6 +263,7 @@ const InventoryStats: React.FC = () => {
     const typesCount = useAtomValue(filteredInventoryCountAtom);
     const totalQty = useAtomValue(filteredInventoryTotalQtyAtom);
     const totalValue = useAtomValue(filteredInventoryTotalValueAtom);
+    const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
 
     const lbl = "text-[9px] font-black uppercase tracking-[0.2em] opacity-30 leading-none mb-1";
@@ -278,6 +279,13 @@ const InventoryStats: React.FC = () => {
             <div className="flex flex-col">
                 <span className={lbl}>Count</span>
                 <span className={`${val} text-[#6BCEBB]`}>{totalQty.toLocaleString()}</span>
+            </div>
+            <div className="w-px h-6 bg-white/5" />
+            <div className="flex flex-col min-w-[60px]">
+                <span className={lbl}>Rate</span>
+                <span className={`${val} text-white/50 font-mono`}>
+                    {exchangeRate ? exchangeRate.toFixed(2) : '0.00'}
+                </span>
             </div>
             <div className="w-px h-6 bg-white/5" />
             <div className="flex flex-col min-w-[80px]">

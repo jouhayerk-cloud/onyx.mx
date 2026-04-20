@@ -80,25 +80,33 @@ function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, star
     const dimsImp = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
     const weightImp = toImp(norm.weightKg, 'lbs');
 
-    const dimensionsLabel = exportType === 'regular' ? dimsMetric : (dimsMetric ? `${dimsMetric} (${dimsImp})` : '—');
-    const weightLabel = exportType === 'regular' ? (norm.weightKg ? `${norm.weightKg}kg` : '—') : (norm.weightKg ? `${norm.weightKg}kg (${weightImp})` : '—');
-
     const cols = [
         { label: priceLabel, value: priceValue, x: M + 4, accent: true },
         { label: 'QTY',        value: String(norm.quantity || 1), x: M + 75 },
-        { label: 'DIMENSIONS', value: dimensionsLabel, x: M + 92 },
-        { label: 'WEIGHT',     value: weightLabel, x: M + 165 }
+        { label: 'DIMENSIONS', m: dimsMetric, i: (dimsMetric ? `(${dimsImp})` : ''), x: M + 92 },
+        { label: 'WEIGHT',     m: (norm.weightKg ? `${norm.weightKg}kg` : ''), i: (norm.weightKg ? `(${weightImp})` : ''), x: M + 165 }
     ];
     
-    cols.forEach((col) => {
+    cols.forEach((col: any) => {
         const cx = col.x;
         doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(170, 170, 170); doc.text(col.label, cx, specY);
-        doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
+        
+        if (col.label === 'DIMENSIONS' || col.label === 'WEIGHT') {
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+            const mVal = col.m || '—';
+            doc.text(mVal, cx, specY + 8);
+            if (col.i && exportType !== 'regular') {
+                doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+                doc.text(col.i, cx, specY + 13);
+            }
+        } else {
+            doc.setFontSize(col.accent ? 13 : 10); doc.setFont('helvetica', 'bold'); doc.setTextColor(col.accent ? 15 : 30, col.accent ? 15 : 30, col.accent ? 15 : 30); doc.text(col.value, cx, specY + 8);
+        }
     });
 
     
-    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 14, PW - M, specY + 14);
-    return specY + 20;
+    doc.setDrawColor(235, 235, 235); doc.line(M + 4, specY + 18, PW - M, specY + 18);
+    return specY + 24;
 }
 
 function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, pageNum: number, totalPages: number): number {
@@ -213,16 +221,28 @@ export async function exportCatalogPdf(
                 
                 doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
                 const dimsM = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).join('×');
-                const dimsMStr = dimsM ? `${dimsM}cm` : '';
+                const dimsMStr = dimsM ? `${dimsM}cm` : '—';
                 const dimsI = [norm.lengthCm, norm.widthCm, norm.heightCm].filter(Boolean).map(v => toImp(v, 'in')).join(' × ');
-                
-                const gridDimsValue = exportType === 'regular' ? dimsMStr : (dimsMStr ? `${dimsMStr} (${dimsI})` : '');
-                const gridWeightValue = exportType === 'regular' ? (norm.weightKg ? `${norm.weightKg}kg` : '') : (norm.weightKg ? `${norm.weightKg}kg (${toImp(norm.weightKg, 'lbs')})` : '');
+                const weightMStr = norm.weightKg ? `${norm.weightKg}kg` : '—';
+                const weightIStr = norm.weightKg ? `(${toImp(norm.weightKg, 'lbs')})` : '';
 
-                if (gridDimsValue) doc.text(gridDimsValue, sx + 2, M + 36);
-                if (gridWeightValue) doc.text(gridWeightValue, sx + 2, M + 41);
+                // Dimensions (Two lines)
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60);
+                doc.text(dimsMStr, sx + 2, M + 36);
+                if (dimsMStr !== '—' && exportType !== 'regular') {
+                    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 110, 110);
+                    doc.text(`(${dimsI})`, sx + 2, M + 41);
+                }
 
-                const imgTop = M + 44; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
+                // Weight (Two lines)
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60);
+                doc.text(weightMStr, sx + 2, M + 48);
+                if (weightMStr !== '—' && exportType !== 'regular') {
+                    doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 110, 110);
+                    doc.text(weightIStr, sx + 2, M + 53);
+                }
+
+                const imgTop = M + 58; const imgH = PH - imgTop - 14; const imgW = HW - 4; const imgs = item.images;
                 if (imgs.length === 0) { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); }
                 else if (imgs.length === 1) { const d = await loadImgData(getCleanImageUrl(imgs[0])); if (d) drawContain(doc, d, sx + 2, imgTop, imgW, imgH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, imgTop, imgW, imgH, 'F'); } }
                 else { const cellH = (imgH - 2) / 2; for (let j = 0; j < 2; j++) { const cy = imgTop + j * (cellH + 2); const d = await loadImgData(getCleanImageUrl(imgs[j])); if (d) drawContain(doc, d, sx + 2, cy, imgW, cellH); else { doc.setFillColor(248, 248, 248); doc.rect(sx + 2, cy, imgW, cellH, 'F'); } } }

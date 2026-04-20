@@ -305,7 +305,29 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
         setExportProgress(0);
         setExportStatus('Starting Export...');
         try { 
-            await exportCatalogPdf(results, { title: exportTitle, method: exportMethod }, (p, s) => {
+            const itemsToExport = results.map(item => {
+                const codes = item.codes;
+                const norm = item.data;
+
+                return {
+                    data: norm,
+                    codes: {
+                        ...codes,
+                        primaryPriceLabel: 'USD RETAIL',
+                        primaryPriceValue: `$${codes.bookRetail} USD`
+                    },
+                    images: item.images,
+                    exportType: 'catalog'
+                };
+            });
+
+            const sortedItems = [...itemsToExport].sort((a, b) => {
+                const qA = parseInt(String(a.data.quantity || a.data.QTY || 1));
+                const qB = parseInt(String(b.data.quantity || b.data.QTY || 1));
+                return qB - qA;
+            });
+
+            await exportCatalogPdf(sortedItems as any, { title: exportTitle, method: exportMethod, exportType: 'catalog' }, (p, s) => {
                 setExportProgress(p);
                 setExportStatus(s);
             }); 
