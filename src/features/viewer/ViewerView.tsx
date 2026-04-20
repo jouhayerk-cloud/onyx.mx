@@ -320,7 +320,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
 
 
     return (
-        <div className="h-full flex flex-col bg-[#050505] text-white selection:bg-white/20 overflow-hidden relative font-sans">
+        <div className="h-full flex flex-col bg-white/[0.03] backdrop-blur-3xl text-white selection:bg-white/20 overflow-hidden relative font-sans rounded-[32px] border border-white/10 shadow-2xl m-1 sm:m-4">
             {viewerItem && <FullscreenViewer images={viewerItem.images} initialIdx={viewerIdx} onClose={() => setViewerItem(null)} />}
             <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-10 pb-6'}`}>
                 <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-10">

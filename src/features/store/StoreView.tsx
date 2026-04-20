@@ -372,7 +372,7 @@ export function StoreView() {
 
     return (
         <div className="h-full overflow-hidden bg-transparent animate-in fade-in duration-1000" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <main className="h-full overflow-hidden relative flex flex-col">
+            <main className="h-full overflow-hidden relative flex flex-col bg-white/[0.03] backdrop-blur-3xl m-1 sm:m-4 rounded-[32px] border border-white/10 shadow-2xl">
                 {/* Top Selection Bar */}
                 <div className="flex items-center justify-end px-4 sm:px-6 py-2 border-b border-white/5 bg-black/20 shrink-0">
                     <div className="flex items-center gap-5 shrink-0">
