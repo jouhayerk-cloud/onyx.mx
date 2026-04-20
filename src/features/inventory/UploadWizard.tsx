@@ -209,7 +209,7 @@ export const UploadWizard: React.FC = () => {
             }
 
             const finalItemId = `${state.vendorId}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
-            const payload = {
+            const payload: any = {
                 id: crypto.randomUUID(),
                 item_id: finalItemId,
                 vendor_id: state.vendorId,
@@ -233,6 +233,16 @@ export const UploadWizard: React.FC = () => {
                 updated_at: new Date().toISOString(),
                 workbook: itemData.workbook || 'v326',
             };
+
+            // Sync shadow fields
+            payload.widthCm = payload.width_cm;
+            payload.heightCm = payload.height_cm;
+            payload.lengthCm = payload.length_cm;
+            payload.weightKg = payload.weight_kg;
+            payload.itemId = payload.item_id;
+            payload.itemNumber = payload.item_number;
+            payload.priceMxn = payload.price_mxn;
+            payload.shortDescription = payload.short_description;
 
             setSavingProgress(90);
             await supabase.from('inventory').insert(payload);
