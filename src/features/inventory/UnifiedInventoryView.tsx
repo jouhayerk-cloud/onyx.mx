@@ -201,6 +201,18 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+    const getPayLabel = () => {
+        if (!payStatus) return 'New';
+        if (payStatus === 'GREEN') {
+            return 'Paid';
+        }
+        if (payStatus === 'YELLOW') return 'Requested';
+        if (payStatus === 'RED') return 'Advance';
+        if (payStatus === 'BLUE') return 'NEW';
+        if (payStatus === 'PURPLE') return 'Acquired';
+        return 'New';
+    };
+
     const itemPayments = useMemo(() => {
         if (!isExpanded || !financeDocs) return [];
         return financeDocs.filter((d: any) => {
@@ -342,7 +354,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
-                                {payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Advance' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}
+                                {getPayLabel()}
                             </span>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
@@ -687,7 +699,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
-                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{getPayLabel()}</span>
                         </div>
                     </div>
                 </div>
@@ -774,7 +786,7 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     </div>
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{payStatus === 'GREEN' ? 'Paid' : payStatus === 'YELLOW' ? 'Requested' : payStatus === 'RED' ? 'Partial' : payStatus === 'BLUE' ? 'NEW' : payStatus === 'PURPLE' ? 'Acquired' : 'New'}</span></div>
+                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{getPayLabel()}</span></div>
                 </div>
             </div>
             {isSelectionMode && (
@@ -814,6 +826,21 @@ export const UnifiedInventoryView = () => {
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+
+    useEffect(() => {
+        if (!user || (user.role !== 'Admin' && user.role !== 'Developer')) return;
+        const sync825 = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('inventory')
+                    .update({ pay_req: 'paid' })
+                    .or('workbook.eq.v825,workbook.eq.825')
+                    .neq('pay_req', 'paid');
+                if (error) console.error('Error syncing 825 items:', error);
+            } catch (e) { console.error(e); }
+        };
+        sync825();
+    }, [user]);
 
     const handleCopyShareLink = () => {
         const idsToShare = selectedIds.length > 0 ? selectedIds : filteredItems.map(i => i.row ?? i.data?.id).filter(Boolean);
@@ -951,6 +978,12 @@ export const UnifiedInventoryView = () => {
             
             const payReqStr = String(norm.payReq || '').toLowerCase();
             const statusStr = String(norm.status || '').toLowerCase();
+
+            // Skip financial flagging for Book 825 or Prepaid (Always GREEN)
+            if (norm.workbook === 'v825' || norm.workbook === '825' || payReqStr === 'prepaid') {
+                fIds.add(id);
+                return;
+            }
 
             // Handle full payment
             if (totalCost > 0 && totalPaid >= totalCost) {
@@ -1100,30 +1133,22 @@ export const UnifiedInventoryView = () => {
             
             const news = [editData.mediaUrls || '', ...uploaded].filter(Boolean).join(',');
             const payload: any = {
+                item_id: editData.itemId,
+                item_number: editData.itemNumber || '1',
                 status: editData.status,
                 shape: editData.shape,
                 material: editData.material,
                 color: editData.color,
                 short_description: editData.shortDescription || editData.short_description || '',
-                quantity: parseInt(editData.quantity) || 1,
-                price_mxn: parseFloat(editData.price) || 0,
-                weight_kg: parseFloat(editData.weightKg) || null,
-                width_cm: parseFloat(editData.widthCm) || null,
-                height_cm: parseFloat(editData.heightCm) || null,
-                length_cm: parseFloat(editData.lengthCm) || null,
+                quantity: parseInt(String(editData.quantity || 1)) || 1,
+                price_mxn: parseFloat(String(editData.price || 0)) || 0,
+                weight_kg: editData.weightKg ? parseFloat(String(editData.weightKg)) : null,
+                width_cm: editData.widthCm ? parseFloat(String(editData.widthCm)) : null,
+                height_cm: editData.heightCm ? parseFloat(String(editData.heightCm)) : null,
+                length_cm: editData.lengthCm ? parseFloat(String(editData.lengthCm)) : null,
                 media_urls: news,
                 updated_at: new Date().toISOString()
             };
-
-            // Explicitly clear shadow fields if they exist to prevent stale data re-emerging
-            payload.widthCm = payload.width_cm;
-            payload.heightCm = payload.height_cm;
-            payload.lengthCm = payload.length_cm;
-            payload.weightKg = payload.weight_kg;
-            payload.item_id = editData.itemId;
-            payload.item_number = editData.itemNumber;
-            payload.price_mxn = parseFloat(editData.price) || 0;
-            payload.short_description = editData.shortDescription || '';
             
             setSavingProgress(90);
             const { error } = await supabase.from((itemData as any)?.source==='production'?'production':'inventory').update(payload).eq('id', itemRow);
@@ -1206,7 +1231,7 @@ export const UnifiedInventoryView = () => {
                             className="flex items-center gap-3 transition-all group py-1 pr-2"
                             title="Cycle payment status filter">
                             <div className={`w-3 h-3 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
-                            <span className="text-[10px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter}</span>
+                            <span className="text-[10px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
                         </button>
                     </div>
 

@@ -259,6 +259,12 @@ export function PaymentsView({ mode = 'archive' }: PaymentsViewProps) {
         const targetStatuses = ['acquired', 'acquisition', 'acquisitions', 'production'];
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
+            const payReqStr = String(i.data.payReq || (i.data as any).pay_req || '').toLowerCase();
+            const workbook = String(i.data.workbook || '').toLowerCase();
+
+            // Skip 825 and Prepaid items
+            if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid') return false;
+
             return targetStatuses.includes(status) && !i.data.payReq && !(i.data as any).pay_req && i.data.payReq !== 'true' && (i.data as any).pay_req !== 'true';
         });
 

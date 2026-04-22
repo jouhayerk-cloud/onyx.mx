@@ -250,7 +250,11 @@ export const ClientOverview: React.FC = () => {
         const data = i.data as any;
         const status = (data?.status || data?.item_status || '').toLowerCase();
         const payReqStr = String(data?.payReq || data?.pay_req || '').toLowerCase();
+        const workbook = String(data?.workbook || '').toLowerCase();
         
+        // Skip 825 and Prepaid items
+        if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid') return false;
+
         // Exclude items already Requested or Paid
         const isExcluded = payReqStr === 'true' || payReqStr === 'paid' || payReqStr === 'requested';
         
