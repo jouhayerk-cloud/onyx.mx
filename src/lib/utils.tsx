@@ -888,6 +888,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookLandCode: cypherString,
     bookBarcode: newTagId,
     bookBarcodeDisplay: displayTagId,
+    bookBardcode: newTagId, // Legacy typo alias
     vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
   };
 };

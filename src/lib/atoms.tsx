@@ -396,3 +396,14 @@ const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' => {
   return 'app';
 };
 export const universalViewAtom = atom<'app' | 'tag' | 'viewer', ['app' | 'tag' | 'viewer'], void>(getInitialUniversalView(), (get, set, update) => set(universalViewAtom, update));
+
+// Packing Module Atoms
+export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list');
+export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null);
+export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30');
+export const isPackingPrintWizardOpenAtom = atom<boolean>(false);
+export const packingExportPDFTriggerAtom = atom<number>(0);
+export const packingExportXLSXTriggerAtom = atom<number>(0);
+export const packingExportJSONTriggerAtom = atom<number>(0);
+export const isPackingFiltersOpenAtom = atom<boolean>(false);
+export const isPackingNFCWizardOpenAtom = atom<boolean>(false);

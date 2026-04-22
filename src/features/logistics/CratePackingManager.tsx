@@ -358,14 +358,14 @@ const CrateSelectCard: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-2xl border transition-all text-left cursor-pointer group ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-left cursor-pointer group ${
                 isSelected
-                    ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-lg shadow-(--main-color)/5'
+                    ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-xl shadow-(--main-color)/5 scale-[1.02] z-10'
                     : 'bg-white/2 border-white/5 hover:border-white/12 hover:bg-white/4'
             }`}
         >
             {/* Wireframe crate icon */}
-            <div className="w-14 h-12 shrink-0 flex items-center justify-center">
+            <div className="w-16 h-14 shrink-0 flex items-center justify-center bg-black/20 rounded-xl">
                 <WireframeCrate
                     w={crate.width_cm}
                     l={crate.length_cm}
@@ -377,16 +377,19 @@ const CrateSelectCard: React.FC<{
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-mono text-white/30 truncate leading-none">{crate.id.slice(0, 10).toUpperCase()}</p>
-                <p className={`text-[11px] font-black text-white truncate leading-tight mt-0.5 ${isSelected ? 'text-(--main-color)' : ''}`}>
-                    {fmtDims(crate)} <span className="text-white/30 text-[8px] font-black">CM</span>
+                <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-[9px] font-mono text-white/30 truncate uppercase tracking-widest">{crate.id.slice(0, 10)}</p>
+                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />}
+                </div>
+                <p className={`text-[12px] font-black text-white truncate leading-tight ${isSelected ? 'text-(--main-color)' : ''}`}>
+                    {fmtDims(crate)} <span className="text-white/30 text-[9px] font-black">CM</span>
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-2 mt-1">
                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(crate.status)}`} />
                     <p className={`text-[8px] font-black uppercase tracking-widest ${statusText(crate.status)}`}>
                         {crate.status}
                     </p>
-                    <span className="text-[8px] text-white/20 font-mono flex items-center gap-1">
+                    <span className="text-[9px] text-white/30 font-mono flex items-center gap-1">
                         · 
                         <span 
                             onClick={(e) => {
@@ -396,13 +399,13 @@ const CrateSelectCard: React.FC<{
                             }}
                             className="hover:text-(--main-color) cursor-pointer transition-colors underline decoration-white/10 underline-offset-2"
                         >
-                            {packedCount} items
+                            {packedCount}
                         </span>
                     </span>
                 </div>
             </div>
 
-            <ChevronRight size={11} className={`shrink-0 transition-all ${isSelected ? 'text-(--main-color)' : 'text-white/15 group-hover:text-white/30'}`} />
+            <ChevronRight size={14} className={`shrink-0 transition-all ${isSelected ? 'text-(--main-color) translate-x-1' : 'text-white/10 group-hover:text-white/30'}`} />
         </button>
     );
 };
@@ -449,7 +452,7 @@ const PackingInventoryRow: React.FC<{
     return (
         <div className="flex flex-col gap-0">
             <div
-                className={`flex items-stretch overflow-hidden border rounded-xl transition-all group shadow-sm ${
+                className={`flex flex-col sm:flex-row items-stretch overflow-hidden border rounded-2xl transition-all group shadow-sm ${
                     fullyPacked
                         ? 'bg-white/1 border-white/3 opacity-40'
                         : isSelected
@@ -503,45 +506,47 @@ const PackingInventoryRow: React.FC<{
                     </div>
 
                     {/* Tag ID */}
-                    <div className="flex flex-col min-w-[64px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
+                    <div className="flex flex-col min-w-[100px] shrink-0 sm:border-r border-white/5 sm:pr-4 justify-center h-full gap-1 group/tag">
                         <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase shadow-md w-fit"
-                            style={{ backgroundColor: vendorColor }}>
-                            {calculated.bookBardcode || vendorPrefix || 'N/A'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                className="inline-flex items-center px-2 py-1 rounded text-black text-[11px] font-black uppercase shadow-md w-fit hover:scale-105 active:scale-95 transition-all"
+                                style={{ backgroundColor: vendorColor }}
+                            >
+                                {calculated.bookBarcodeDisplay || vendorPrefix || 'N/A'}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Price / Qty */}
-                    <div className="flex flex-col min-w-[100px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Qty &amp; Status</span>
+                    {/* Price / Qty / Stats */}
+                    <div className="flex flex-col min-w-[110px] shrink-0 sm:border-r border-white/5 sm:pr-4 justify-center h-full gap-1">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Status & Availability</span>
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <div className="flex items-baseline gap-1">
-                                <span className="text-[11px] font-mono font-black text-white">{itemQuantity}</span>
-                                <span className="text-[9px] text-white/40">total</span>
+                                <span className="text-[12px] font-black text-white">{itemQuantity}</span>
+                                <span className="text-[8px] text-white/40 uppercase font-black">Total</span>
                             </div>
                             {totalPackedQty > 0 && (
-                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/20 text-rose-400 font-black">
-                                    {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} elsewhere` : ''}
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/20 text-rose-400 font-black">
+                                    {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} Here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} Other` : ''}
                                 </span>
                             )}
                             {availableForThisCrate > 0 && (
-                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black">
-                                    {availableForThisCrate} avail
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black">
+                                    {availableForThisCrate} Avail
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    {/* AQ Code */}
-                    <div className="flex flex-col min-w-[56px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">AQ</span>
-                        <span className="text-[11px] text-white/70 font-mono">{calculated.bookAqCode || '—'}</span>
-                    </div>
-
-                    {/* Dims */}
-                    <div className="flex flex-col min-w-[60px] shrink-0 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black uppercase tracking-widest leading-none">Dims</span>
-                        <span className="text-[10px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                    {/* Dims & AQ (Hidden on mobile, moved to expanded) */}
+                    <div className="hidden lg:flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-4 justify-center h-full gap-1">
+                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Details</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-white/70 font-mono">{calculated.bookAqCode || '—'}</span>
+                            <span className="text-[11px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                        </div>
                     </div>
 
                     {weightKg && (
@@ -589,13 +594,13 @@ const PackingInventoryRow: React.FC<{
 
             {/* Expanded Detail Panel */}
             {isExpanded && (
-                <div className="ml-[94px] mr-1 px-4 pb-3 pt-2.5 bg-black/30 border-x border-b border-white/5 rounded-b-xl animate-in slide-in-from-top-2 duration-200">
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-x-6 gap-y-2">
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Material</p><p className="text-[11px] font-bold text-white/70 uppercase">{norm.material || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Dimensions</p><p className="text-[11px] font-mono font-bold text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Weight</p><p className="text-[11px] font-mono font-bold text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">Status</p><p className="text-[11px] font-bold text-white/70 uppercase">{norm.status || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-0.5">LD Code</p><p className="text-[11px] font-mono text-yellow-400/80">{calculated.bookLandCode || '—'}</p></div>
+                <div className="ml-4 sm:ml-[94px] mr-1 px-4 pb-4 pt-3 bg-black/40 border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-6 gap-y-4">
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Material</p><p className="text-[11px] font-black text-(--text-color)/80 uppercase tracking-wide">{norm.material || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Dimensions</p><p className="text-[11px] font-mono font-black text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Weight</p><p className="text-[11px] font-mono font-black text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Status</p><p className="text-[11px] font-black text-white/70 uppercase tracking-wide">{norm.status || '—'}</p></div>
+                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">LD Code</p><p className="text-[12px] font-mono font-black text-yellow-400/80">{calculated.bookLandCode || '—'}</p></div>
                     </div>
                     {norm.description && (
                         <p className="text-[10px] text-white/40 mt-2 italic leading-relaxed border-t border-white/5 pt-2">{norm.description}</p>

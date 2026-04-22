@@ -35,6 +35,7 @@ export interface ManifestoMeta {
     crateColor?: string;      // Main vendor color for styling the wireframe icon
     exportNotes?: string;     // Custom notes or alternate title injected from UI
     exportBruteWeight?: string; // Appended brute weight input from UI
+    excludeHeader?: boolean;  // If true, skips the top panel entirely
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -133,139 +134,141 @@ export async function exportCrateManifesto(
     doc.rect(0, 0, PW, PH, 'F');
 
     // ─── Header ──────────────────────────────────────────────────────────────
-    const HDR_H = 28;
-    doc.setFillColor(...SURFACE);
-    doc.rect(0, 0, PW, HDR_H, 'F');
-    // Removed orange bottom border line
+    const HDR_H = meta.excludeHeader ? 0 : 28;
+    if (!meta.excludeHeader) {
+        doc.setFillColor(...SURFACE);
+        doc.rect(0, 0, PW, HDR_H, 'F');
+        // Removed orange bottom border line
 
-    // Header QR — Left side
-    const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
-    if (headerQrUrl) {
-        const qrSize = 24;
-        const bx = ML;
-        const by = 2;
-        doc.setFillColor(255, 255, 255);
-        doc.rect(bx - 1, by - 1, qrSize + 2, qrSize + 2, 'F');
-        doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
-    }
+        // Header QR — Left side
+        const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
+        if (headerQrUrl) {
+            const qrSize = 24;
+            const bx = ML;
+            const by = 2;
+            doc.setFillColor(255, 255, 255);
+            doc.rect(bx - 1, by - 1, qrSize + 2, qrSize + 2, 'F');
+            doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
+        }
 
-    // Header layout structural assignments
-    const ts = ML + 60; // Title start (shifted right to fit QR and new Icon position)
+        // Header layout structural assignments
+        const ts = ML + 60; // Title start (shifted right to fit QR and new Icon position)
 
-    // Crate Name (Dynamic ID)
-    const didMatch = meta.dynamicId.match(/^(\d+)(.*)$/);
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    const idY = 14;
+        // Crate Name (Dynamic ID)
+        const didMatch = meta.dynamicId.match(/^(\d+)(.*)$/);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        const idY = 14;
 
-    if (didMatch) {
-        doc.setTextColor(0, 0, 0);
-        doc.text(didMatch[1], ts - 1, idY);
-        const offset = doc.getTextWidth(didMatch[1]);
-        if (meta.crateColor) {
-            const [cr, cg, cb] = hexToRgb(meta.crateColor);
-            doc.setTextColor(cr, cg, cb);
+        if (didMatch) {
+            doc.setTextColor(0, 0, 0);
+            doc.text(didMatch[1], ts - 1, idY);
+            const offset = doc.getTextWidth(didMatch[1]);
+            if (meta.crateColor) {
+                const [cr, cg, cb] = hexToRgb(meta.crateColor);
+                doc.setTextColor(cr, cg, cb);
+            } else {
+                doc.setTextColor(0, 0, 0);
+            }
+            doc.text(didMatch[2], ts - 1 + offset, idY);
         } else {
             doc.setTextColor(0, 0, 0);
+            doc.text(meta.dynamicId, ts - 1, idY);
         }
-        doc.text(didMatch[2], ts - 1 + offset, idY);
-    } else {
-        doc.setTextColor(0, 0, 0);
-        doc.text(meta.dynamicId, ts - 1, idY);
-    }
 
-    // Optional Internal Text / Custom Title
-    if (meta.exportNotes) {
+        // Optional Internal Text / Custom Title
+        if (meta.exportNotes) {
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text(meta.exportNotes.toUpperCase(), ts - 1, 23);
+        }
+
+        // Crate meta — Right aligned panel
+        const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+        const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
+        
+        doc.setTextColor(0, 0, 0);
         doc.setFontSize(9);
-        doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'bold');
-        doc.text(meta.exportNotes.toUpperCase(), ts - 1, 23);
-    }
-
-    // Crate meta — Right aligned panel
-    const totalUnits = items.reduce((s, i) => s + i.qty, 0);
-    const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
-    
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    let weightStr = `${totalWeight.toFixed(1)} kg NET`;
-    if (meta.exportBruteWeight) {
-        weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
-    }
-    const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}  ·  ${meta.exportedAt}`;
-    doc.text(metaLine, PW - MR, 14, { align: 'right' });
-
-    doc.setTextColor(...TEXT_LO);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Crate: ${meta.crateId.slice(0, 16).toUpperCase()}  ·  Fill: ${meta.fillPct.toFixed(1)}%`, PW - MR, 23, { align: 'right' });
-
-    // ─── Wireframe Icon — top right of header ─────────────────────────────────
-    try {
-        const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
-        const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
-        const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
-        const maxDim = Math.max(cw, cl, visH, 1);
-        
-        const sizePx = 22; // 22mm box target
-        const scale = (sizePx * 0.75) / maxDim;
-        const dw = cw * scale, dl = cl * scale, dh = visH * scale;
-        const depth = dl * 0.38;
-        const dx = depth, dy = -depth;
-        
-        const iconX = ML + 30; // Position perfectly between the QR and the large Title
-        const iconY = 4 + depth; // Push down equal to depth so it doesn't clip top
-        const x0 = iconX, y0 = iconY;
-        const x1 = x0 + dw, y1 = y0;
-        const x2 = x1, y2 = y0 + dh;
-        const x3 = x0, y3 = y0 + dh;
-
-        // Draw color (Dynamic vendor color or default red #f87171)
-        let R = 248, G = 113, B = 113;
-        if (meta.crateColor) {
-            const [cr, cg, cb] = hexToRgb(meta.crateColor);
-            R = cr; G = cg; B = cb;
+        let weightStr = `${totalWeight.toFixed(1)} kg NET`;
+        if (meta.exportBruteWeight) {
+            weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
         }
-        
-        // Back dashed edges
-        doc.setDrawColor(R, G, B);
-        doc.setLineWidth(0.3);
-        doc.setLineDashPattern([1, 1], 0);
-        doc.line(x0 + dx, y0 + dy, x0 + dx, y3 + dy);
-        doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
-        doc.line(x0 + dx, y3 + dy, x1 + dx, y2 + dy);
-        doc.setLineDashPattern([], 0); // reset
-        
-        doc.setLineWidth(0.6);
-        // Top face
-        doc.line(x0, y0, x0 + dx, y0 + dy);
-        doc.line(x1, y1, x1 + dx, y1 + dy);
-        doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
-        // Right face
-        doc.line(x1 + dx, y1 + dy, x1 + dx, y2 + dy);
-        doc.line(x1, y2, x1 + dx, y2 + dy);
-        // Front face
-        doc.rect(x0, y0, dw, dh, 'S');
-        
-        // Braces
-        if (meta.crateType.toLowerCase() !== 'pallet') {
-            doc.setLineWidth(0.3);
-            doc.line(x0, y0, x1, y2);
-            doc.line(x1, y0, x0, y2);
-        }
-        
-        // Fill % solid bar on front
-        if (meta.fillPct > 0) {
-            doc.setFillColor(R, G, B);
-            const fh = Math.max(0.1, dh * (meta.fillPct / 100)) - 1;
-            if (fh > 0) {
-                // semi transparency using hex is not natively supported directly on all pdf readers but solid is fine
-                doc.rect(x0 + 0.5, y0 + dh - fh - 0.5, dw - 1, fh, 'F');
+        const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}  ·  ${meta.exportedAt}`;
+        doc.text(metaLine, PW - MR, 14, { align: 'right' });
+
+        doc.setTextColor(...TEXT_LO);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Crate: ${meta.crateId.slice(0, 16).toUpperCase()}  ·  Fill: ${meta.fillPct.toFixed(1)}%`, PW - MR, 23, { align: 'right' });
+
+        // ─── Wireframe Icon — top right of header ─────────────────────────────────
+        try {
+            const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
+            const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
+            const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
+            const maxDim = Math.max(cw, cl, visH, 1);
+            
+            const sizePx = 22; // 22mm box target
+            const scale = (sizePx * 0.75) / maxDim;
+            const dw = cw * scale, dl = cl * scale, dh = visH * scale;
+            const depth = dl * 0.38;
+            const dx = depth, dy = -depth;
+            
+            const iconX = ML + 30; // Position perfectly between the QR and the large Title
+            const iconY = 4 + depth; // Push down equal to depth so it doesn't clip top
+            const x0 = iconX, y0 = iconY;
+            const x1 = x0 + dw, y1 = y0;
+            const x2 = x1, y2 = y0 + dh;
+            const x3 = x0, y3 = y0 + dh;
+
+            // Draw color (Dynamic vendor color or default red #f87171)
+            let R = 248, G = 113, B = 113;
+            if (meta.crateColor) {
+                const [cr, cg, cb] = hexToRgb(meta.crateColor);
+                R = cr; G = cg; B = cb;
             }
+            
+            // Back dashed edges
+            doc.setDrawColor(R, G, B);
+            doc.setLineWidth(0.3);
+            doc.setLineDashPattern([1, 1], 0);
+            doc.line(x0 + dx, y0 + dy, x0 + dx, y3 + dy);
+            doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
+            doc.line(x0 + dx, y3 + dy, x1 + dx, y2 + dy);
+            doc.setLineDashPattern([], 0); // reset
+            
+            doc.setLineWidth(0.6);
+            // Top face
+            doc.line(x0, y0, x0 + dx, y0 + dy);
+            doc.line(x1, y1, x1 + dx, y1 + dy);
+            doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
+            // Right face
+            doc.line(x1 + dx, y1 + dy, x1 + dx, y2 + dy);
+            doc.line(x1, y2, x1 + dx, y2 + dy);
+            // Front face
+            doc.rect(x0, y0, dw, dh, 'S');
+            
+            // Braces
+            if (meta.crateType.toLowerCase() !== 'pallet') {
+                doc.setLineWidth(0.3);
+                doc.line(x0, y0, x1, y2);
+                doc.line(x1, y0, x0, y2);
+            }
+            
+            // Fill % solid bar on front
+            if (meta.fillPct > 0) {
+                doc.setFillColor(R, G, B);
+                const fh = Math.max(0.1, dh * (meta.fillPct / 100)) - 1;
+                if (fh > 0) {
+                    // semi transparency using hex is not natively supported directly on all pdf readers but solid is fine
+                    doc.rect(x0 + 0.5, y0 + dh - fh - 0.5, dw - 1, fh, 'F');
+                }
+            }
+        } catch (e) {
+            // Silently skip wireframe if math fails
         }
-    } catch (e) {
-        // Silently skip wireframe if math fails
     }
 
     // ─── Column definitions (no price columns) ────────────────────────────────
@@ -305,7 +308,7 @@ export async function exportCrateManifesto(
     function drawPageChrome(isFirst: boolean) {
         doc.setFillColor(...BG);
         doc.rect(0, 0, PW, PH, 'F');
-        if (!isFirst) {
+        if (!isFirst && !meta.excludeHeader) {
             // Compact continuation header
             doc.setFillColor(...SURFACE);
             doc.rect(0, 0, PW, 10, 'F');
@@ -335,7 +338,7 @@ export async function exportCrateManifesto(
     }
 
     let currentPage = 0;
-    let contTableStartY = 12; // continuation pages: table starts below compact header
+    let contTableStartY = meta.excludeHeader ? 0 : 12; // continuation pages: table starts below compact header
     let currentRow = 0;
 
     for (let i = 0; i < items.length; i++) {

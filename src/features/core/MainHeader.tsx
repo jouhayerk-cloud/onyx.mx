@@ -64,7 +64,16 @@ import {
     PaymentCategory,
     paymentFilterBarModeAtom,
     processActiveTabAtom,
-    TOP_BAR_SEARCH_ATOM
+    TOP_BAR_SEARCH_ATOM,
+    packingViewModeAtom,
+    packingVendorFilterAtom,
+    packingLabelSizeAtom,
+    isPackingPrintWizardOpenAtom,
+    packingExportPDFTriggerAtom,
+    packingExportXLSXTriggerAtom,
+    packingExportJSONTriggerAtom,
+    isPackingFiltersOpenAtom,
+    isPackingNFCWizardOpenAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -86,7 +95,7 @@ import {
     ChevronLeft, Plus, Trash2, Grid, FileText, Database, Calendar, DollarSign, 
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
-    Target, Library, FolderKanban
+    Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -158,25 +167,24 @@ const SubTabPills: React.FC<{
 );
 
 const StudioAction: React.FC<{
-    icon: React.FC<any>;
-    label: string,
-    onClick: () => void,
-    active?: boolean,
-    color?: string,
-    title?: string,
-    disabled?: boolean,
-    className?: string
-}> = ({ icon: Icon, label, onClick, active, color, title, disabled, className = "" }) => (
-    <button
+    icon: any;
+    label: string;
+    onClick: () => void;
+    active?: boolean;
+    title?: string;
+    color?: string;
+    disabled?: boolean;
+    className?: string;
+}> = ({ icon: Icon, label, onClick, active, title, color = 'var(--main-color)', disabled, className = "" }) => (
+    <button 
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className={`flex items-center justify-center p-1 transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className} ${
-            active ? 'text-(--main-color)' : 'text-(--text-color)/40 hover:text-(--text-color)'
-        }`}
-        style={active && color ? { color } : {}}
+        className={`flex flex-col items-center justify-center h-10 px-2.5 rounded-xl transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className}
+            ${active ? 'bg-white/5 text-white' : 'text-white/30 hover:text-white/60 hover:bg-white/2'}`}
     >
-        <Icon size={26} strokeWidth={1.5} className="group-hover/studio:scale-110 transition-transform" />
+        <Icon size={16} strokeWidth={2.5} className="group-hover/studio:scale-110 transition-transform mb-0.5" style={{ color: active ? color : undefined }} />
+        <span className="text-[7px] font-black uppercase tracking-widest leading-none">{label}</span>
     </button>
 );
 
@@ -217,6 +225,8 @@ const DeployableSearch: React.FC<{
         )}
     </div>
 );
+
+
 
 
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
@@ -520,6 +530,20 @@ const LogisticsBar: React.FC = () => {
 const PackingBar: React.FC = () => {
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    
+    // Packing specific state
+    const [viewMode, setViewMode] = useAtom(packingViewModeAtom);
+    const [isPrintOpen, setIsPrintOpen] = useAtom(isPackingPrintWizardOpenAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
+    const setExportPDF = useSetAtom(packingExportPDFTriggerAtom);
+    const setExportXLSX = useSetAtom(packingExportXLSXTriggerAtom);
+    const setExportJSON = useSetAtom(packingExportJSONTriggerAtom);
+    const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
+    const [labelSize, setLabelSize] = useAtom(packingLabelSizeAtom);
+
+    const cycleView = () => setViewMode(v => v === 'list' ? 'grid' : 'list');
+    const ViewIcon = viewMode === 'list' ? LayoutList : LayoutGrid;
+
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
             <DeployableSearch 
@@ -530,6 +554,75 @@ const PackingBar: React.FC = () => {
                 accentColor="var(--main-color)"
                 placeholder="FIND INVENTORY..."
             />
+
+            {!isSearchOpen && (
+                <div className="flex items-center gap-2 animate-in fade-in duration-300">
+                    {/* Primary Print Action */}
+                    <button 
+                        onClick={() => setIsPrintOpen(true)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 text-(--main-color) hover:bg-(--main-color)/20 transition-all active:scale-95 group"
+                    >
+                        <Printer size={16} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">Print Labels</span>
+                    </button>
+
+                    <div className="w-px h-6 bg-white/5 mx-1" />
+
+                    {/* Export Actions */}
+                    <div className="flex items-center gap-0.5">
+                        <StudioAction 
+                            icon={FileText}
+                            label="PDF"
+                            onClick={() => setExportPDF(prev => prev + 1)}
+                            title="Export PDF Catalog"
+                        />
+                        <StudioAction 
+                            icon={FileSpreadsheet}
+                            label="XLSX"
+                            onClick={() => setExportXLSX(prev => prev + 1)}
+                            title="Export Packing XLSX"
+                        />
+                        <StudioAction 
+                            icon={FileJson}
+                            label="JSON"
+                            onClick={() => setExportJSON(prev => prev + 1)}
+                            title="Export Designer JSON"
+                        />
+                        <StudioAction 
+                            icon={Nfc}
+                            label="NFC"
+                            onClick={() => setIsNFCWizardOpen(true)}
+                            title="Write NFC Tags"
+                        />
+                    </div>
+
+                    <div className="w-px h-6 bg-white/5 mx-1" />
+
+                    {/* View & Config Actions */}
+                    <div className="flex items-center gap-0.5">
+                        <StudioAction 
+                            icon={ViewIcon}
+                            label={viewMode.toUpperCase()}
+                            active={true}
+                            onClick={cycleView}
+                            title="Toggle View Mode"
+                        />
+                        <StudioAction 
+                            icon={Filter}
+                            label="CONFIG"
+                            active={isFiltersOpen}
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                            title="Toggle Label Config"
+                        />
+                    </div>
+
+                    {/* Label Size Indicator */}
+                    <div className="hidden xl:flex flex-col items-center justify-center px-3 border-l border-white/5">
+                        <span className="text-[7px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Size</span>
+                        <span className="text-[10px] font-mono font-black text-white/60">{labelSize}mm</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
