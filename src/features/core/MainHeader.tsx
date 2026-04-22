@@ -106,7 +106,7 @@ const filterConfig: Record<TrafficLightStatus, { icon: string; title: string }> 
     ALL: { icon: '○', title: 'All items' },
     RED: { icon: '●', title: 'Approved, pending payment' },
     YELLOW: { icon: '●', title: 'Payment requested, unpaid' },
-    GREEN: { icon: '●', title: 'Paid / shipped' },
+    GREEN: { icon: '●', title: 'Paid / Prepaid' },
 };
 
 const iconToLucide: Record<string, React.FC<any>> = {
@@ -679,8 +679,12 @@ export function MainHeader() {
                 
                 const payReqStr = String(norm.payReq || '').toLowerCase();
                 const statusStr = String(norm.status || '').toLowerCase();
+                const workbook = String(norm.workbook || '').toLowerCase();
 
-                if (totalCost > 0 && totalPaid >= totalCost) {
+                // 0. Book 825 or Prepaid Override
+                if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid' || payReqStr === 'paid') {
+                    fullPayIds.add(id);
+                } else if (totalCost > 0 && totalPaid >= totalCost) {
                     fullPayIds.add(id);
                 } else if (totalPaid > 0 || totalRequested > 0 || payReqStr === 'requested' || payReqStr === 'true' || payReqStr.includes('%')) {
                     // Distinguish between Requested Acquisition and Partial/Advance

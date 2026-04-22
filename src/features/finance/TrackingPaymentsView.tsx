@@ -1190,6 +1190,11 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
         const pendingItems = inventory.filter(i => {
             const status = (i.data.status || '').toLowerCase();
             const payReqStr = String(i.data.payReq || (i.data as any).pay_req || '').toLowerCase();
+            const workbook = String(i.data.workbook || '').toLowerCase();
+            
+            // Skip 825 and Prepaid items
+            if (workbook === '825' || workbook === 'v825' || payReqStr === 'prepaid') return false;
+
             const isUnpaid = !['true', 'paid', 'requested', 'partial'].includes(payReqStr) && !payReqStr.includes('%');
             return targetStatuses.includes(status) && isUnpaid;
         });

@@ -166,7 +166,7 @@ export function UploadEntryForm() {
             setItemData(prev => ({ 
                 ...prev, 
                 status: 'Acquisition', 
-                payReq: 'Prepaid' 
+                payReq: 'paid' 
             }));
         } else if (itemData.workbook === 'v326') {
              setItemData(prev => ({ 

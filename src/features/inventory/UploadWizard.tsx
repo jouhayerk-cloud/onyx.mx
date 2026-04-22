@@ -98,7 +98,7 @@ export const UploadWizard: React.FC = () => {
             setState({
                 ...INITIAL_STATE,
                 status: isV825 ? 'Acquisition' : 'Available',
-                payReq: isV825 ? 'Prepaid' : '',
+                payReq: isV825 ? 'paid' : '',
                 vendorId: user?.role === 'Vendor' ? (user.name || '') : '',
             });
         }
