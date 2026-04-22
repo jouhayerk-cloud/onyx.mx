@@ -878,6 +878,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
 
   const cypherString = numberToCypher(landedCostRounded);
   const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
+  const displayTagId = `${vendorPrefix}${bookStr} ${itemCountStr}${cypherString}`;
 
   return {
     bookAcquisition: onyxRound(costUsd).toString(),
@@ -886,6 +887,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     bookAqCode:   numberToCypher(costUsdRounded),
     bookLandCode: cypherString,
     bookBarcode: newTagId,
+    bookBarcodeDisplay: displayTagId,
     vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
   };
 };

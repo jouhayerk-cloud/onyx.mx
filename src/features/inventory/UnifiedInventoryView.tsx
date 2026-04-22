@@ -52,8 +52,8 @@ import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode } from 'lucide-react';
 
 
-const lbl = "text-[9px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
-const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-color)/12 rounded-2xl text-xs text-(--text-color) placeholder-(--text-color)/30 outline-none focus:border-(--main-color)/50 focus:bg-(--text-color)/[0.08] transition-all";
+const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
+const inp = "h-12 w-full px-4 bg-(--text-color)/[0.04] border border-(--text-color)/12 rounded-2xl text-sm text-(--text-color) placeholder-(--text-color)/30 outline-none focus:border-(--main-color)/50 focus:bg-(--text-color)/[0.08] transition-all";
 const inpNum = inp + " font-mono text-center";
 
 const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }: { src: string; mediaUrls?: string[]; initialIdx?: number; onClose: () => void }) => {
@@ -337,22 +337,30 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         )}
                     </div>
                     <div className="flex-1 flex items-center px-4 gap-8 min-w-0 overflow-x-auto no-scrollbar relative pr-10 lg:pr-16">
-                        <div className="flex flex-col shrink-0 min-w-[120px] py-1">
+                        <div className="flex flex-col shrink-0 min-w-[140px] py-1">
                             <div className="flex items-baseline gap-3">
-                                <h3 className="text-sm font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[9px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
-                                <span className="text-sm font-black text-(--main-color) font-mono">x{norm.quantity || 1}</span>
+                                <h3 className="text-base font-black text-(--text-color) uppercase tracking-tight whitespace-nowrap">{norm.shape || 'OBJ'} {norm.shortDescription && <span className="opacity-40 font-black ml-1 text-[11px] uppercase tracking-widest">{norm.shortDescription}</span>}</h3>
+                                <span className="text-base font-black text-(--main-color) font-mono">x{norm.quantity || 1}</span>
                             </div>
-                            <div className="text-[9px] text-(--text-color)/30 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
+                            <div className="text-[11px] text-(--text-color)/60 uppercase tracking-[0.2em] font-black whitespace-nowrap">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
-                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Tag ID</span><span className="inline-flex items-center px-1.5 py-0.5 rounded text-black text-[10px] font-black uppercase tracking-tight shadow-md w-fit" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || 'N/A'}</span></div>
-                        <div className="flex flex-col min-w-[120px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[9px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span><span className="text-[9px] font-mono text-(--text-color)/40">{weightStr || '—'}</span></div></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-xs font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-xs font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
-                        <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[11px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[60px] shrink-0"><span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[11px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[80px] shrink-0 ml-auto items-end pr-4">
-                            <span className="text-[8px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
+                        <div className="flex flex-col min-w-[100px] shrink-0 justify-center">
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                className="inline-flex items-center px-3 py-1 rounded text-black text-[14px] font-black uppercase tracking-tight shadow-lg w-fit hover:scale-105 active:scale-95 transition-all" 
+                                style={{ backgroundColor: vendorColor }}
+                            >
+                                {calculated.bookBarcodeDisplay || 'N/A'}
+                            </button>
+                        </div>
+                        <div className="flex flex-col min-w-[140px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Size / Weight</span><div className="flex flex-col gap-0.5"><span className="text-[11px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span><span className="text-[11px] font-mono text-(--text-color)/40">{weightStr || '—'}</span></div></div>
+                        <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Price / Qty</span><div className="flex items-baseline gap-2"><span className="text-sm font-bold text-(--text-color)">{showFinancials ? `$${itemPriceMXN}` : '***'}</span></div></div>
+                        <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-sm font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
+                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[13px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
+                        <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[13px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
+                        <div className="flex flex-col min-w-[90px] shrink-0 ml-auto items-end pr-4">
+                            <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
                                 {getPayLabel()}
                             </span>
@@ -518,16 +526,16 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                 )}
 
                 <div className="p-8 overflow-y-auto grow custom-scrollbar flex flex-col gap-8">
-                    <div><h3 className="text-2xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
+                    <div><h3 className="text-3xl font-black text-white tracking-tighter uppercase mb-1">{norm.shape || 'OBJ'} {norm.shortDescription}</h3><p className="text-[13px] font-bold text-white/50 uppercase tracking-[0.3em] font-mono">{norm.color} {norm.material}</p></div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 p-8 rounded-[32px] bg-white/2 border border-white/5">
-                        <div><p className={lbl}>AQ Code</p><p className="text-xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
-                        <div><p className={lbl}>LD Code</p><p className="text-xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
-                        <div><p className={lbl}>Acq. MXN</p><p className="text-xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
-                        <div><p className={lbl}>Acq. USD</p><p className="text-xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
-                        <div><p className={lbl}>Landed USD</p><p className="text-xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
-                        <div><p className={lbl}>Retail USD</p><p className="text-xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
-                        <div><p className={lbl}>Dimensions</p><p className="text-[13px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
-                        <div><p className={lbl}>Weight</p><p className="text-[13px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
+                        <div><p className={lbl}>AQ Code</p><p className="text-2xl font-mono font-black text-(--main-color)">{calculated.bookAqCode || '—'}</p></div>
+                        <div><p className={lbl}>LD Code</p><p className="text-2xl font-mono font-black text-yellow-500">{calculated.bookLandCode || '—'}</p></div>
+                        <div><p className={lbl}>Acq. MXN</p><p className="text-2xl font-black text-green-400">{showFinancials ? `$${itemPriceMXN}` : '***'}</p></div>
+                        <div><p className={lbl}>Acq. USD</p><p className="text-2xl font-black text-cyan-400">{showFinancials ? `$${calculated.bookAcquisition}` : '***'}</p></div>
+                        <div><p className={lbl}>Landed USD</p><p className="text-2xl font-black text-yellow-300">{showFinancials ? `$${calculated.bookLanded}` : '***'}</p></div>
+                        <div><p className={lbl}>Retail USD</p><p className="text-2xl font-black text-[#6BCEBB]">{showFinancials ? `$${calculated.bookRetail}` : '***'}</p></div>
+                        <div><p className={lbl}>Dimensions</p><p className="text-[15px] font-mono font-bold text-white/50">{dimensionsStr || '—'}</p></div>
+                        <div><p className={lbl}>Weight</p><p className="text-[15px] font-mono font-bold text-white/50">{weightStr || '—'}</p></div>
                         <div className="col-span-full border-t border-white/5 pt-6 flex items-center justify-between">
                             <button 
                                 onClick={(e) => {
@@ -555,9 +563,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                         <div className="w-1.5 h-1.5 rounded-none bg-black/20" />
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5" style={{ backgroundColor: vendorColor }}>
-                                            {calculated.bookBarcode}
-                                        </span>
+                                        <button 
+                                            onClick={() => { navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                            className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5 hover:scale-105 active:scale-95 transition-all" 
+                                            style={{ backgroundColor: vendorColor }}
+                                        >
+                                            {calculated.bookBarcodeDisplay}
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-center p-1.5 bg-white border border-black/5 rounded-none transition-all grayscale group-hover/hub:grayscale-0 overflow-hidden w-full">
@@ -659,40 +671,46 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                              <div className="flex items-center gap-2">
-                                <div className="px-2 py-1 rounded bg-white text-black text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || vendorPrefix}</div>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                    className="px-3 py-1 rounded bg-white text-black text-[14px] font-black uppercase tracking-tight shadow-lg hover:scale-105 active:scale-95 transition-all" 
+                                    style={{ backgroundColor: vendorColor }}
+                                >
+                                    {calculated.bookBarcodeDisplay || vendorPrefix}
+                                </button>
                                 <div className="flex gap-1">
                                      <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookAqCode}</div>
                                      <div className="px-1.5 py-1 rounded bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase tracking-widest">{calculated.bookLandCode}</div>
                                 </div>
                              </div>
-                             <h3 className="text-xl font-black text-(--text-color) uppercase tracking-tighter leading-tight mt-1 truncate">
+                             <h3 className="text-2xl font-black text-(--text-color) uppercase tracking-tighter leading-tight mt-1.5 truncate">
                                  {norm.shape || 'OBJECT'} 
-                                 <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-[0.25em] ml-2">{norm.shortDescription}</span>
+                                 <span className="text-[12px] font-black text-(--text-color)/30 uppercase tracking-[0.25em] ml-2">{norm.shortDescription}</span>
                              </h3>
-                             <div className="text-[10px] text-(--text-color)/40 uppercase tracking-widest font-black mt-1">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
+                             <div className="text-[12px] text-(--text-color)/70 uppercase tracking-widest font-black mt-1.5">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                         </div>
                         <div className="flex flex-col items-end ml-4 shrink-0">
-                            <span className="text-[9px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">TOTAL MXN</span>
-                            <span className="text-2xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">
+                            <span className="text-[11px] font-black text-(--text-color)/40 uppercase tracking-[0.3em] mb-1">TOTAL MXN</span>
+                            <span className="text-3xl font-mono font-black text-(--main-color) whitespace-nowrap leading-none">
                                 {showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}
                             </span>
-                            <div className="flex items-center gap-2 mt-2">
-                                <span className="text-[10px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">QTY {norm.quantity || 1}</span>
-                                <span className="w-px h-2 bg-white/10" />
-                                <span className="text-[10px] font-mono font-bold text-(--text-color)/60">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
+                            <div className="flex items-center gap-2 mt-2.5">
+                                <span className="text-[12px] font-black text-(--text-color)/40 uppercase tracking-[0.3em]">QTY {norm.quantity || 1}</span>
+                                <span className="w-px h-3 bg-white/10" />
+                                <span className="text-[12px] font-mono font-bold text-(--text-color)/60">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
                             </div>
                         </div>
                     </div>
                     
                     <div className="flex items-center gap-4 py-3 border-y border-white/5">
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Dimensions</span>
-                            <span className="text-[10px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span>
+                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Dimensions</span>
+                            <span className="text-[12px] font-mono text-(--text-color)/60">{dimensionsStr || '—'}</span>
                         </div>
                         <div className="w-px h-6 bg-white/5" />
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Weight</span>
-                            <span className="text-[10px] font-mono text-(--text-color)/60">{weightStr || '—'}</span>
+                            <span className="text-[10px] font-black text-(--text-color)/20 uppercase tracking-[0.15em]">Weight</span>
+                            <span className="text-[12px] font-mono text-(--text-color)/60">{weightStr || '—'}</span>
                         </div>
                     </div>
 
@@ -759,34 +777,40 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                     </>
                 )}
                 
-                <div className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-black" style={{ backgroundColor: vendorColor }}>{calculated.bookBarcode || vendorPrefix}</div>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                    className="absolute top-2 left-2 z-10 px-2.5 py-0.5 rounded text-[11px] font-black uppercase text-black shadow-md hover:scale-105 active:scale-95 transition-all" 
+                    style={{ backgroundColor: vendorColor }}
+                >
+                    {calculated.bookBarcodeDisplay || vendorPrefix}
+                </button>
             </div>
             <div className="p-3 flex flex-col gap-2 flex-1">
                 <div className="flex items-start justify-between">
                     <div className="flex flex-col flex-1 min-w-0">
-                        <div className="font-black text-[13px] text-(--text-color) uppercase tracking-tight truncate">{norm.shape || 'OBJ'}</div>
-                        <div className="text-[9px] font-black text-(--text-color)/30 uppercase tracking-widest">{norm.shortDescription}</div>
+                        <div className="font-black text-[15px] text-(--text-color) uppercase tracking-tight truncate">{norm.shape || 'OBJ'}</div>
+                        <div className="text-[11px] font-black text-(--text-color)/30 uppercase tracking-widest">{norm.shortDescription}</div>
                     </div>
-                    <span className="text-[11px] font-black text-(--main-color) font-mono ml-2 shrink-0">x{norm.quantity || 1}</span>
+                    <span className="text-[13px] font-black text-(--main-color) font-mono ml-2 shrink-0">x{norm.quantity || 1}</span>
                 </div>
-                <div className="text-[9px] text-(--text-color)/20 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
+                <div className="text-[11px] text-(--text-color)/60 uppercase tracking-widest font-black truncate">{[norm.color, norm.material].filter(Boolean).join(' ')}</div>
                 <div className="flex flex-col gap-0.5 my-1">
-                    <span className="text-[9px] font-mono text-(--text-color)/40 truncate">{dimensionsStr || '—'}</span>
-                    <span className="text-[9px] font-mono text-(--text-color)/20 truncate">{weightStr || '—'}</span>
+                    <span className="text-[11px] font-mono text-(--text-color)/40 truncate">{dimensionsStr || '—'}</span>
+                    <span className="text-[11px] font-mono text-(--text-color)/20 truncate">{weightStr || '—'}</span>
                 </div>
                 {/* Financial Summary Overlay */}
                 <div className="flex flex-col gap-0.5 pt-2 mb-1 border-t border-white/5">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tight">
+                    <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
                         <span className="text-(--text-color)/30">Cost MXN</span>
                         <span className="text-(--text-color)/80 font-mono">{showFinancials ? `$${itemPriceMXN.toLocaleString()}` : '***'}</span>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-tight">
+                    <div className="flex justify-between items-center text-[13px] font-black uppercase tracking-tight">
                         <span className="text-(--main-color)/40">Total MXN</span>
                         <span className="text-(--main-color) font-mono">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span>
                     </div>
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[10px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{getPayLabel()}</span></div>
+                    <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[11px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{getPayLabel()}</span></div>
                 </div>
             </div>
             {isSelectionMode && (
