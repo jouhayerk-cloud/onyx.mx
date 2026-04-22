@@ -241,8 +241,9 @@ const createDatabase = async () => {
                 console.log('🚀 [DB] Starting prioritized paginated sync...');
                 const fetchPaginated = async (table: string, filterField?: string, filterVal?: any) => {
                     let page = 0;
-                    const pageSize = 1000; // Larger pages for faster sync
+                    const pageSize = 1000;
                     const allData: any[] = [];
+                    let success = true;
 
                     try {
                         while (true) {
@@ -260,6 +261,7 @@ const createDatabase = async () => {
                             const { data, error } = await query;
                             if (error) {
                                 console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
+                                success = false;
                                 break;
                             }
                             if (!data || data.length === 0) break;
@@ -270,34 +272,40 @@ const createDatabase = async () => {
                         }
                     } catch (e) {
                         console.error(`🔥 [DB] ${table} fetch timeout/error:`, e);
+                        success = false;
                     }
-                    return allData;
+                    return { data: allData, success };
                 };
 
-                // Sync sequences...
-                const invData = await fetchPaginated('inventory');
-                const activeData = invData.filter(d => String(d.workbook) !== '825');
-                const archiveData = invData.filter(d => String(d.workbook) === '825');
+                const syncCollection = async (table: string, collection: RxCollection<any>) => {
+                    const { data, success } = await fetchPaginated(table);
+                    if (!success) return; // Skip if fetch failed to avoid accidental wiping
 
-                if (activeData.length > 0) await bulkUpsertChunked(db.inventory, activeData);
-                if (archiveData.length > 0) await bulkUpsertChunked(db.inventory, archiveData);
-                
-                // Pruning stale records (only if on a robust connection/device)
-                if (invData.length > 0 && window.innerWidth > 768) {
-                   const remoteInvIds = new Set(invData.map(d => String(d.id)));
-                   const localInvDocs = await db.inventory.find().exec();
-                   const staleInv = localInvDocs.filter((doc: any) => !remoteInvIds.has(doc.id));
-                   if (staleInv.length > 0) await Promise.all(staleInv.map((doc: any) => doc.remove()));
-                }
+                    // 1. Upsert new/updated records
+                    if (data.length > 0) {
+                        await bulkUpsertChunked(collection, data);
+                    }
 
-                const finData = await fetchPaginated('finance');
-                if (finData.length > 0) await bulkUpsertChunked(db.finance, finData);
+                    // 2. Prune stale records (items deleted from Supabase)
+                    // We only prune if we have a successful fetch, treating it as the source of truth
+                    const remoteIds = new Set(data.map(d => String(d.id)));
+                    const localDocs = await collection.find().exec();
+                    const staleDocs = localDocs.filter((doc: any) => !remoteIds.has(doc.id));
+                    
+                    if (staleDocs.length > 0) {
+                        console.log(`[DB] Pruning ${staleDocs.length} stale records from ${table}`);
+                        // Use sequential removal to avoid blocking the event loop on mobile
+                        for (const doc of staleDocs) {
+                            await doc.remove();
+                        }
+                    }
+                };
 
-                const logData = await fetchPaginated('logistics');
-                if (logData.length > 0) await bulkUpsertChunked(db.logistics, logData);
-
-                const prodData = await fetchPaginated('production');
-                if (prodData.length > 0) await bulkUpsertChunked(db.production, prodData);
+                // Sync all collections sequentially
+                await syncCollection('inventory', db.inventory);
+                await syncCollection('finance', db.finance);
+                await syncCollection('logistics', db.logistics);
+                await syncCollection('production', db.production);
 
                 console.log('🏁 [DB] Prioritized paginated sync complete.');
             } catch (err) {
