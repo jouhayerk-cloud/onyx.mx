@@ -280,9 +280,10 @@ export async function exportCrateManifesto(
     const COL_QR   = { x: ML,       w: 18  }; 
     const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
     const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 38  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 110 + (meta.excludeImages ? 18 : 0)  }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 45  }; 
+    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 100 + (meta.excludeImages ? 18 : 0)  }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 55  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
+
 
     // ─── Column header row ────────────────────────────────────────────────────
     const COL_HDR_Y = HDR_H;
@@ -513,25 +514,26 @@ export async function exportCrateManifesto(
             const l = parseFloat(cmMatch[2]);
             const h = parseFloat(cmMatch[3]);
             const imp = [w, l, h].map(v => cmToImperial(v)).join(' × ');
-            doc.setFontSize(7);
+            doc.setFontSize(7.5); // Slightly larger
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...TEXT_LO);
+            doc.setTextColor(...TEXT_MID); // Darker than TEXT_LO
             doc.text(imp, COL_DIMS.x + 2, ry + 10.5);
         }
 
-        doc.setFontSize(7.5);
+        doc.setFontSize(8); // Slightly larger weight font
         doc.setFont('helvetica', 'normal');
         if (item.weightKg > 0) {
             const kgText = `${item.weightKg} kg`;
-            doc.setTextColor(...TEXT_MID);
+            doc.setTextColor(...TEXT_HI); // Stronger contrast for weight
             doc.text(kgText, COL_DIMS.x + 2, ry + 14.5);
             const kgW = doc.getTextWidth(kgText);
-            doc.setTextColor(...TEXT_LO);
+            doc.setTextColor(...TEXT_MID);
             doc.text(` · ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2 + kgW, ry + 14.5);
         } else {
             doc.setTextColor(...TEXT_LO);
             doc.text('—', COL_DIMS.x + 2, ry + 14.5);
         }
+
 
 
         // ── Qty ───────────────────────────────────────────────────────────────
