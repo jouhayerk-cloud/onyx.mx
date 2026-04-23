@@ -315,31 +315,46 @@ const ScannerCenter: React.FC<{
     }, []);
 
     useEffect(() => {
-        let scanner: Html5Qrcode | null = null;
-
+        let isMounted = true;
+        
         const startScanner = async () => {
-            if (mode === 'qr' && !isScanning) {
+            if (mode === 'qr') {
+                // Ensure element exists
                 const element = document.getElementById(qrRegionId);
                 if (!element) {
-                    // Element not ready, retry briefly
-                    setTimeout(startScanner, 100);
+                    if (isMounted) setTimeout(startScanner, 100);
                     return;
                 }
 
                 try {
-                    scanner = new Html5Qrcode(qrRegionId);
+                    const scanner = new Html5Qrcode(qrRegionId);
                     qrScannerRef.current = scanner;
-                    setIsScanning(true);
+
+                    const config = {
+                        fps: 20, // Increased FPS for better responsiveness
+                        qrbox: (viewWidth: number, viewHeight: number) => {
+                            const size = Math.min(viewWidth, viewHeight) * 0.7;
+                            return { width: size, height: size };
+                        },
+                        aspectRatio: 1.0,
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        }
+                    };
 
                     await scanner.start(
                         { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (text) => handleIdCaptured(text),
-                        () => {}
+                        config,
+                        (text) => {
+                            if (isMounted) handleIdCaptured(text);
+                        },
+                        () => {} // ignore scan failures
                     );
+                    
+                    if (isMounted) setIsScanning(true);
                 } catch (err) {
                     console.error("QR Scanner Error:", err);
-                    setIsScanning(false);
+                    if (isMounted) setIsScanning(false);
                 }
             }
         };
@@ -347,11 +362,23 @@ const ScannerCenter: React.FC<{
         startScanner();
 
         return () => {
-            if (scanner && scanner.isScanning) {
-                scanner.stop().then(() => scanner.clear()).catch(console.error);
+            isMounted = false;
+            const scanner = qrScannerRef.current;
+            if (scanner) {
+                if (scanner.isScanning) {
+                    scanner.stop()
+                        .then(() => {
+                            scanner.clear();
+                            qrScannerRef.current = null;
+                        })
+                        .catch(err => console.error("Failed to stop scanner:", err));
+                } else {
+                    scanner.clear();
+                    qrScannerRef.current = null;
+                }
             }
         };
-    }, [mode, handleIdCaptured, isScanning]);
+    }, [mode, handleIdCaptured]);
 
     useEffect(() => {
         if (mode === 'nfc') {
