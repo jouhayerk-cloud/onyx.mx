@@ -437,46 +437,41 @@ export async function exportCrateManifesto(
         // ── Tag ID badge ──────────────────────────────────────────────────────
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         const badgeText = item.itemId.length > 16 ? item.itemId.slice(0, 14) + '…' : item.itemId;
-        doc.setFontSize(7.5);
-        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(badgeText) + 5);
-        const badgeH = 6;
-        const badgeX = COL_TAG.x + 2;
-        const badgeY = ry + 3;
-        doc.setFillColor(tr, tg, tb);
-        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
-        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(badgeText, badgeX + badgeW / 2, badgeY + 4.2, { align: 'center' });
+        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(badgeText) + 6);
+        const badgeH = 7.5;
+        const badgeX = COL_TAG.x + 2;
+        const badgeY = ry + (ROW_H - badgeH) / 2 - 1.5; // Centered in row
+        doc.setFillColor(tr, tg, tb);
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.text(badgeText, badgeX + badgeW / 2, badgeY + 5.2, { align: 'center' });
 
-        // DB count
-        if (item.dbItemCount > 0) {
-            doc.setTextColor(...TEXT_LO);
-            doc.setFontSize(7.5);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Stock: ${item.dbItemCount}`, COL_TAG.x + 2, badgeY + badgeH + 5);
-        }
+        // Stock display removed per user request
 
         // ── Name & description ────────────────────────────────────────────────
         doc.setTextColor(...TEXT_HI);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         const nameStr = item.name.trim().slice(0, 50);
-        doc.text(nameStr, COL_NAME.x + 2, ry + 9.5);
+        doc.text(nameStr, COL_NAME.x + 2, ry + 10.5);
+        const nameW = doc.getTextWidth(nameStr);
 
-        // Color + Material pill badges
-        let pillX = COL_NAME.x + 2;
-        const pillY = ry + 10.5;
-        const pillH = 4.5;
+        // Color + Material pill badges — Moved next to name on the same row
+        let pillX = COL_NAME.x + 2 + nameW + 3;
+        const pillY = ry + 6.5; 
+        const pillH = 5.2;
         const drawPill = (text: string, bgR: number, bgG: number, bgB: number, fgR = 30, fgG = 30, fgB = 30) => {
             if (!text) return;
-            doc.setFontSize(6);
+            doc.setFontSize(7.5); // Larger tag text
             doc.setFont('helvetica', 'bold');
             const tw = doc.getTextWidth(text);
-            const pw = tw + 4;
+            const pw = tw + 5;
             doc.setFillColor(bgR, bgG, bgB);
-            doc.roundedRect(pillX, pillY, pw, pillH, 1, 1, 'F');
+            doc.roundedRect(pillX, pillY, pw, pillH, 1.2, 1.2, 'F');
             doc.setTextColor(fgR, fgG, fgB);
-            doc.text(text, pillX + 2, pillY + 3.2);
+            doc.text(text, pillX + 2.5, pillY + 4);
             pillX += pw + 2;
         };
         if (item.color) {
@@ -490,6 +485,7 @@ export async function exportCrateManifesto(
         if (item.material) {
             drawPill(item.material.toUpperCase(), 228, 228, 228, 60, 60, 60);
         }
+
 
         doc.setTextColor(...TEXT_LO);
         doc.setFontSize(6.5);
