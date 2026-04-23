@@ -113,8 +113,8 @@ export async function exportCrateManifesto(
     meta: ManifestoMeta,
     onProgress?: (pct: number) => void
 ): Promise<void> {
-    // Sort items by descending quantity (#)
-    const sortedItems = [...items].sort((a, b) => b.qty - a.qty);
+    // Sort items by descending vendor item count (index)
+    const sortedItems = [...items].sort((a, b) => b.index - a.index);
 
     // US Letter landscape: 11" × 8.5" = 279.4mm × 215.9mm
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
