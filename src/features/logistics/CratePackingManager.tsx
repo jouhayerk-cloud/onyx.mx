@@ -550,15 +550,19 @@ const PackingInventoryRow: React.FC<{
                     {/* Tag ID */}
                     <div className="flex flex-col min-w-[110px] shrink-0 sm:border-r border-white/10 sm:pr-4 justify-center h-full gap-1 group/tag">
                         <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] leading-none">Tag ID</span>
-                        <div className="flex items-center gap-2">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                                    const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || 'Untitled Item')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
+                                    navigator.clipboard.writeText(fullText); 
+                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                }}
                                 className="inline-flex items-center px-3 py-1.5 rounded text-black text-[14px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
                                 style={{ backgroundColor: vendorColor }}
                             >
                                 {calculated.bookBarcodeDisplay || vendorPrefix || 'N/A'}
                             </button>
-                        </div>
                     </div>
 
                     {/* Price / Qty / Stats */}

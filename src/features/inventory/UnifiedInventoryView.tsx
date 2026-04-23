@@ -346,7 +346,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         </div>
                         <div className="flex flex-col min-w-[100px] shrink-0 justify-center">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                                    const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
+                                    navigator.clipboard.writeText(fullText); 
+                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                }}
                                 className="inline-flex items-center px-3 py-1 rounded text-black text-[14px] font-black uppercase tracking-tight shadow-lg w-fit hover:scale-105 active:scale-95 transition-all" 
                                 style={{ backgroundColor: vendorColor }}
                             >
@@ -564,7 +570,12 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button 
-                                            onClick={() => { navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                            onClick={() => { 
+                                                const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                                                const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
+                                                navigator.clipboard.writeText(fullText); 
+                                                toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                            }}
                                             className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-[0.2em] border border-black/5 hover:scale-105 active:scale-95 transition-all" 
                                             style={{ backgroundColor: vendorColor }}
                                         >
@@ -672,7 +683,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                              <div className="flex items-center gap-2">
                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                                        const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
+                                        navigator.clipboard.writeText(fullText); 
+                                        toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                    }}
                                     className="px-3 py-1 rounded bg-white text-black text-[14px] font-black uppercase tracking-tight shadow-lg hover:scale-105 active:scale-95 transition-all" 
                                     style={{ backgroundColor: vendorColor }}
                                 >
@@ -778,7 +795,13 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                 )}
                 
                 <button 
-                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                        const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
+                        navigator.clipboard.writeText(fullText); 
+                        toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                    }}
                     className="absolute top-2 left-2 z-10 px-2.5 py-0.5 rounded text-[11px] font-black uppercase text-black shadow-md hover:scale-105 active:scale-95 transition-all" 
                     style={{ backgroundColor: vendorColor }}
                 >

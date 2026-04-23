@@ -20,10 +20,11 @@ import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
-import { ExportProgressOverlay } from '../../components/ExportProgressOverlay';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
+import { ImageOff, LayoutGrid, CheckCircle } from 'lucide-react';
+import { ExportWizard } from '../../components/ExportWizard';
 
 /* ─── ONYX MASTER TEMPLATE (V3) ─── */
 const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
@@ -225,11 +226,12 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
         try {
             const { normData, codes } = currentItem;
             
-            // Format: TAGID|COLOR+MATERIAL|DESCRIPTION|AC Coe+Bookv0Retail
+            // Format: TAGID|COLOR+MATERIAL|DESCRIPTION|AC Code+Workbook+Retail
             const tagId = codes.bookBarcode;
             const materialColor = `${normData.color || ''} ${normData.material || ''}`.trim();
             const description = `${normData.shape || ''} ${normData.shortDescription || ''}`.trim();
-            const retailTag = `${codes.bookAqCode || '??'}-${codes.bookLandCode || '???????'}`;
+            const wbStr = String(normData.workbook || '').replace(/v/gi, '');
+            const retailTag = `${codes.bookAqCode || ''}${wbStr}${codes.bookRetail || ''}`;
             
             const nfcData = `${tagId}|${materialColor}|${description}|${retailTag}`;
 
@@ -481,7 +483,12 @@ export const PackingModule: React.FC = () => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
     const [exportProgress, setExportProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
     const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const [exportMethod, setExportMethod] = useState<'images' | 'no-images'>('images');
+    const [exportNotes, setExportNotes] = useState('');
+    const [exportBruteWeight, setExportBruteWeight] = useState('');
     const pendingBatchRef = useRef<any>(null);
 
     const toggleExpand = (id: string) => {
@@ -640,24 +647,8 @@ export const PackingModule: React.FC = () => {
         }
     };
 
-    /* ── Export JSON ── */
-    const handleExportJSON = () => {
-        if (selectedIds.size === 0) return toast.error('Select items first');
-        const batchProject = buildBatchJSON(selectedItems, workbookPrefix, labelSize);
-        const blob = new Blob([JSON.stringify(batchProject, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Onyx_Batch_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success(`JSON exported — ${selectedItems.length} items`);
-    };
-
     /* ── Export PDF (Manifesto Style) ── */
-    const handleExportPDF = async () => {
+    const handleStartExport = async (cfg: any) => {
         if (selectedIds.size === 0) return toast.error('Select items first');
         const tid = toast.loading('Generating Manifesto PDF...');
         try {
@@ -683,32 +674,32 @@ export const PackingModule: React.FC = () => {
                     costUsd: Number(c.bookAcquisition) || 0,
                     imageUrls,
                     tagColor: (vendors as any)[vendorPrefix]?.color || '#555',
-                    dbItemCount: Number(d.quantity) || 0 // Assuming current qty as stock for manifesto
+                    dbItemCount: Number(d.quantity) || 0
                 };
             });
 
-            setIsExportProgressOpen(true);
             await exportCrateManifesto(manifestoItems, {
                 dynamicId: `BATCH-${new Date().toISOString().slice(0, 10)}`,
                 crateId: 'INTERNAL-PACKING',
                 crateDims: 'N/A',
                 crateType: 'BATCH',
                 fillPct: 0,
-                exportedAt: new Date().toLocaleString(),
-                exportNotes: `PACKING LIST — ${selectedIds.size} ITEMS`,
-                excludeHeader: true
+                exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
+                exportNotes: cfg.notes?.trim() || `PACKING LIST — ${selectedIds.size} ITEMS`,
+                exportBruteWeight: cfg.bruteWeight?.trim() || undefined,
+                excludeImages: !cfg.includeImages,
+                excludeHeader: true,
+                customTitle: cfg.title
             }, (pct) => {
                 setExportProgress(pct);
-                toast.loading(`Generating Manifesto: ${pct}%`, { id: tid });
+                setExportStatus(`Assembling page vectors: ${pct}%`);
             });
             
             toast.success('Manifesto PDF Downloaded', { id: tid });
         } catch (e) {
             console.error('Manifesto Export Error:', e);
             toast.error('Failed to generate PDF', { id: tid });
-        } finally {
             setIsExportProgressOpen(false);
-            setExportProgress(0);
         }
     };
 
@@ -814,8 +805,8 @@ export const PackingModule: React.FC = () => {
 
     useEffect(() => {
         if (exportPDFTrigger > 0) {
-            if (selectedIds.size > 0) handleExportPDF();
-            else toast.error('Please select items to export');
+            if (selectedIds.size > 0) setIsExportProgressOpen(true);
+            else toast.error('Select items to export PDF');
             setExportPDFTrigger(0);
         }
     }, [exportPDFTrigger]);
@@ -838,6 +829,17 @@ export const PackingModule: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full bg-transparent overflow-hidden relative">
+            
+            {/* ── UNIFIED EXPORT WIZARD ── */}
+            <ExportWizard 
+                isOpen={isExportProgressOpen}
+                onClose={() => { setIsExportProgressOpen(false); setExportProgress(0); }}
+                onStart={handleStartExport}
+                progress={exportProgress}
+                status={exportStatus}
+                moduleName="Packing"
+                showBruteWeight={true}
+            />
 
             {/* ── SELECTION OVERLAY (Only shows when items selected) ── */}
             {selectedIds.size > 0 && (
@@ -1104,7 +1106,13 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                         </h3>
                         {item.codes.bookBarcode && (
                             <button 
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const wbStr = String(d.workbook || '').replace(/v/gi, '');
+                                    const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
+                                    navigator.clipboard.writeText(fullText); 
+                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                }}
                                 className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase text-black shadow-lg hover:scale-110 active:scale-90 transition-all" 
                                 style={{ backgroundColor: vendorColor }}
                             >
@@ -1222,7 +1230,13 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                         <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Tag ID</span>
                         <div className="flex items-center gap-2">
                             <button 
-                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const wbStr = String(d.workbook || '').replace(/v/gi, '');
+                                    const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
+                                    navigator.clipboard.writeText(fullText); 
+                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                }}
                                 className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-black text-[12px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
                                 style={{ backgroundColor: vendorColor }}
                             >
@@ -1310,7 +1324,13 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                const wbStr = String(d.workbook || '').replace(/v/gi, '');
+                                                const fullText = `${item.codes.bookBarcode}|${(d.color || '')} ${(d.material || '')}`.trim() + `|${(d.shape || '')} ${(d.shortDescription || d.description || '')}`.trim() + `|${item.codes.bookAqCode || ''}${wbStr}${item.codes.bookRetail || ''}`;
+                                                navigator.clipboard.writeText(fullText); 
+                                                toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                            }}
                                             className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-widest shadow-sm border border-black/5 hover:scale-105 active:scale-95 transition-all" 
                                             style={{ backgroundColor: vendorColor }}
                                         >
