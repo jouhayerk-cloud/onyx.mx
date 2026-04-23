@@ -24,6 +24,7 @@
     "gsap": "^3.13.0",
     "heic2any": "^0.0.4",
     "html2canvas": "^1.4.1",
+    "html5-qrcode": "^2.3.8",
     "jotai": "^2.15.0",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
