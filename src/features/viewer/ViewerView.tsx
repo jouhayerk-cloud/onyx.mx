@@ -10,9 +10,10 @@ import {
     Maximize2, Loader2, Search, Package, X,
     ChevronLeft, ChevronRight, FileDown, LayoutGrid,
     CloudUpload, Check as CheckIcon, FileText as FileTextIcon,
-    QrCode, Smartphone, Trash2, CheckCircle2
+    QrCode, Smartphone, Trash2, CheckCircle2, Download
 } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { ExportWizard } from '../../components/ExportWizard';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import gsap from 'gsap';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
@@ -228,7 +229,19 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                 <div className="flex justify-between items-start gap-3">
                     <div className="flex flex-col gap-2 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <div className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0" style={{ background: vendorColor + '22', border: `1px solid ${vendorColor}44`, color: vendorColor }}>{codes.bookBarcode || '—'}</div>
+                            <button 
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    const wbStr = String(norm.workbook || '').replace(/v/gi, '');
+                                    const fullText = `${codes.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${codes.bookAqCode || ''}${wbStr}${codes.bookRetail || ''}`;
+                                    navigator.clipboard.writeText(fullText); 
+                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                }}
+                                className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition-all shadow-md" 
+                                style={{ background: vendorColor, color: 'black' }}
+                            >
+                                {codes.bookBarcode || '—'}
+                            </button>
                             {detailStr && (
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[9px] font-black text-white/50 uppercase tracking-widest">{detailStr}</div>
                             )}
@@ -331,15 +344,18 @@ const ScannerCenter: React.FC<{
                     qrScannerRef.current = scanner;
 
                     const config = {
-                        fps: 20, // Increased FPS for better responsiveness
+                        fps: 30, // Higher FPS for smoother detection
                         qrbox: (viewWidth: number, viewHeight: number) => {
-                            const size = Math.min(viewWidth, viewHeight) * 0.7;
+                            const size = Math.min(viewWidth, viewHeight) * 0.8;
                             return { width: size, height: size };
                         },
                         aspectRatio: 1.0,
-                        experimentalFeatures: {
-                            useBarCodeDetectorIfSupported: true
-                        }
+                        formatsToSupport: [ 
+                            Html5QrcodeSupportedFormats.QR_CODE,
+                            Html5QrcodeSupportedFormats.DATA_MATRIX,
+                            Html5QrcodeSupportedFormats.AZTEC,
+                            Html5QrcodeSupportedFormats.PDF_417
+                        ]
                     };
 
                     await scanner.start(
@@ -365,17 +381,20 @@ const ScannerCenter: React.FC<{
             isMounted = false;
             const scanner = qrScannerRef.current;
             if (scanner) {
-                if (scanner.isScanning) {
-                    scanner.stop()
-                        .then(() => {
-                            scanner.clear();
-                            qrScannerRef.current = null;
-                        })
-                        .catch(err => console.error("Failed to stop scanner:", err));
-                } else {
-                    scanner.clear();
-                    qrScannerRef.current = null;
-                }
+                const stopAndClear = async () => {
+                    try {
+                        if (scanner.isScanning) {
+                            await scanner.stop();
+                        }
+                        scanner.clear();
+                        qrScannerRef.current = null;
+                    } catch (err) {
+                        console.warn("Cleanup error (likely expected if unmounted):", err);
+                        // Force clear if stop fails
+                        try { scanner.clear(); } catch(e){}
+                    }
+                };
+                stopAndClear();
             }
         };
     }, [mode, handleIdCaptured]);
@@ -496,12 +515,9 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
     useEffect(() => { if (query) performSearch(query); }, []);
 
     const [showExportConfig, setShowExportConfig] = useState(false);
-    const [exportTitle, setExportTitle] = useState('');
-    const [exportMethod, setExportMethod] = useState<'grid' | 'single'>('grid');
 
-    const handleExportPdf = async () => {
+    const handleStartExport = async (cfg: any) => {
         if (!results.length || exporting) return;
-        setShowExportConfig(false);
         setExporting(true); 
         setExportProgress(0);
         setExportStatus('Starting Export...');
@@ -527,16 +543,20 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 const qB = parseInt(String(b.data.quantity || b.data.QTY || 1));
                 return qB - qA;
             });
-            await exportCatalogPdf(sortedItems as any, { title: exportTitle, method: exportMethod, exportType: 'catalog' }, (p, s) => {
+            await exportCatalogPdf(sortedItems as any, { 
+                title: cfg.title || "ONYX COLLECTION", 
+                method: cfg.method, 
+                exportType: 'catalog' 
+            }, (p, s) => {
                 setExportProgress(p);
                 setExportStatus(s);
             }); 
-            setTimeout(() => setExporting(false), 800);
             toast.success('Catalog exported successfully');
         } catch (e) { 
             console.error('PDF export failed:', e); 
-            setExporting(false);
             toast.error('Failed to generate PDF. Please try again.');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -622,13 +642,24 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                                     <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">
                                         {results.length} Artifact{results.length !== 1 ? 's' : ''}
                                     </span>
-                                    <button 
-                                        onClick={() => setShowExportConfig(true)} 
-                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 text-[#b8860b] text-xs font-black uppercase tracking-[0.2em] hover:bg-[#b8860b]/20 transition-all shadow-lg active:scale-95"
-                                    >
-                                        <FileTextIcon size={20} />
-                                        Export PDF options
-                                    </button>
+                                    <div className="flex items-center gap-4">
+                                        <button 
+                                            onClick={() => setShowExportConfig(true)}
+                                            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white hover:bg-white/10 hover:border-[#b8860b]/40 transition-all active:scale-95 group/btn"
+                                        >
+                                            <Download size={14} className="group-hover/btn:text-[#b8860b] transition-colors" />
+                                            Export Catalog
+                                        </button>
+                                        
+                                        <ExportWizard 
+                                            isOpen={showExportConfig}
+                                            onClose={() => { setShowExportConfig(false); setExportProgress(0); }}
+                                            onStart={handleStartExport}
+                                            progress={exportProgress}
+                                            status={exportStatus}
+                                            moduleName="Viewer"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-max">
                                     {results.map((item, idx) => {

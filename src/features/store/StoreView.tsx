@@ -26,6 +26,7 @@ import {
     Edit3, Ruler, Layers, CloudUpload, Pencil, Tag, FileText, Upload, Video, Share2, ScanBarcode, Download, CheckCircle
 } from 'lucide-react';
 import { exportCatalogPdf } from '../../lib/pdfExport';
+import { ExportWizard } from '../../components/ExportWizard';
 import { useTranslation } from '../../lib/hooks';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
@@ -129,8 +130,7 @@ export function StoreView() {
         }
     };
     
-    // Add logic for export pdf
-    const executeExportPdf = async () => {
+    const handleStartExport = async (cfg: any) => {
         if (selectedIds.length === 0) return toast.error('No items selected for PDF.');
         setIsExporting(true);
         try {
@@ -173,21 +173,22 @@ export function StoreView() {
                 };
             }).filter(Boolean);
             
-            const title = exportTitle || "Rare Earth Gallery";
-            const method = exportMethod;
-
             setExportStatus("Generating PDF...");
             setExportProgress(10);
-            const progressCb = (p: number, msg: string) => {
+            
+            await exportCatalogPdf(itemsToExport as any, { 
+                title: cfg.title || "Rare Earth Gallery", 
+                method: cfg.method, 
+                exportType 
+            }, (p: number, msg: string) => {
                 setExportProgress(p);
                 setExportStatus(msg);
-            };
+            });
             
-            await exportCatalogPdf(itemsToExport as any, { title, method, exportType }, progressCb);
-            setTimeout(() => { setShowExportConfig(false); setIsExporting(false); }, 1500);
             toast.success("PDF generated successfully!", { id: "store_pdf" });
         } catch (e: any) {
             toast.error("Export failed: " + e.message, { id: "store_pdf" });
+        } finally {
             setIsExporting(false);
         }
     };
@@ -358,6 +359,15 @@ export function StoreView() {
                                     <Download size={14} strokeWidth={2.5} />
                                     EXPORT PDF
                                 </button>
+                                
+                                <ExportWizard 
+                                    isOpen={showExportConfig}
+                                    onClose={() => { setShowExportConfig(false); setExportProgress(0); }}
+                                    onStart={handleStartExport}
+                                    progress={exportProgress}
+                                    status={exportStatus}
+                                    moduleName="Store"
+                                />
                             </div>
                         )}
                         <button

@@ -8,7 +8,7 @@ import { useDatabase } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
-import { ExportProgressOverlay } from '../../components/ExportProgressOverlay';
+import { ExportWizard } from '../../components/ExportWizard';
 import { vendors } from '../../lib/consts';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
@@ -256,91 +256,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
         return Math.min(100, (usedVol / internalVol) * 100);
     }, [crate.inventory_ids, allInventory, crate.width_cm, crate.length_cm, crate.height_cm]);
 
-    // Dense Manifesto Export Logic
-    const handleExportManifesto = async (excludeImages: boolean = false, notes?: string, bruteWeight?: string) => {
-        setShowExportMenu(false);
-        setIsExporting(true);
-        const tid = toast.loading('Generating Packing List…');
-
-        try {
-            const vendorCounts: Record<string, number> = {};
-            const manifestoItems: ManifestoItem[] = [];
-
-            const entries = (crate.inventory_ids || '').split(',').filter(Boolean);
-            for (const entry of entries) {
-                const [id, qtyStr] = entry.split(':');
-                const qty = qtyStr ? parseInt(qtyStr) : 1;
-                const inv = allInventory.find((i: any) => String(i.row) === id);
-                if (!inv) continue;
-
-                const norm = normalizeInventoryData(inv.data);
-                const vendorPrefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
-                vendorCounts[vendorPrefix] = (vendorCounts[vendorPrefix] || 0) + 1;
-
-                const calculated = calculateCodesAndPrices(norm, liveRate, '326');
-                const rawUrls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map((u: string) => u.trim()).filter(Boolean) : [];
-                
-                const allImgs: string[] = [];
-                if (norm.generatedPngUrl) allImgs.push(getCleanImageUrl(norm.generatedPngUrl));
-                rawUrls.forEach(u => allImgs.push(getCleanImageUrl(u)));
-                const uniqueUrls = Array.from(new Set(allImgs)).filter(Boolean).slice(0, 4);
-
-                const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
-                // Use the workbook barcode tag (same as shown in inventory/packing UI)
-                const tagId = calculated.bookBardcode || calculated.bookBarcode || vendorPrefix || 'N/A';
-
-                // Extract item number from bookBardcode (e.g. EM32612HMF → strip EM → strip 326 → 12)
-                const dbItemNum = extractItemNumFromBarcode(tagId, vendorPrefix) || vendorCounts[vendorPrefix];
-
-                manifestoItems.push({
-                    index: dbItemNum,
-                    vendorPrefix,
-                    qty,
-                    itemId: tagId,
-                    rowId: id,
-                    name: `${norm.shape || ''} ${norm.shortDescription || norm.description || ''}`.trim(),
-                    material: norm.material || '',
-                    color: norm.color || '',
-                    dims: [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('×') + ' cm',
-                    weightKg: Number(norm.weightKg || 0),
-                    costMxn: Number(norm.price || 0),
-                    costUsd: Number(norm.price || 0) / liveRate,
-                    imageUrls: uniqueUrls,
-                    tagColor,
-                    dbItemCount: Number(norm.quantity || 0),
-                });
-            }
-
-            const meta: ManifestoMeta = {
-                dynamicId,
-                crateId: crate.id,
-                crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm}`,
-                crateType: crate.type || 'crate',
-                fillPct: 0,
-                exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
-                baseArtifactUrl: `${window.location.origin}`,
-                excludeImages,
-                crateColor: manifestoItems.length > 0 ? manifestoItems[0].tagColor : undefined,
-                exportNotes: notes?.trim() || undefined,
-                exportBruteWeight: bruteWeight?.trim() || undefined,
-            };
-
-            setIsExportProgressOpen(true);
-            await exportCrateManifesto(manifestoItems, meta, (pct) => {
-                setExportProgress(pct);
-                if (pct % 20 === 0) toast.loading(`Packing List… ${pct}%`, { id: tid });
-            });
-
-            toast.success('Packing List generated!', { id: tid });
-        } catch (error: any) {
-            toast.error('Packing List generation failed: ' + (error?.message || 'Unknown error'), { id: tid });
-        } finally {
-            setIsExporting(false);
-            setIsExportProgressOpen(false);
-            setExportProgress(0);
-        }
-    };
-
+    // Top-level hooks for CrateCard
     const packedItems = useMemo(() => {
         if (!crate.inventory_ids) return [];
         const result: any[] = [];
@@ -360,6 +276,65 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
         });
         return result;
     }, [crate.inventory_ids, allInventory]);
+
+    const handleStartExport = async (cfg: any) => {
+        if (packedItems.length === 0) return toast.error('Crate is empty');
+        const tid = toast.loading('Generating Manifesto PDF...');
+        setIsExporting(true);
+        try {
+            const manifestoItems: ManifestoItem[] = packedItems.map((item, idx) => {
+                const d = normalizeInventoryData(item.norm);
+                const c = calculateCodesAndPrices(d, liveRate, '326');
+                const vendorPrefix = String(d.vendor_id || d.itemId || '').split('-')[0] || 'UNK';
+                const rawUrls = d.mediaUrls ? String(d.mediaUrls).split(',').map((u: string) => u.trim()).filter(Boolean) : [d.generatedPngUrl];
+                const imageUrls = rawUrls.map(u => getCleanImageUrl(u));
+                
+                return {
+                    index: idx + 1,
+                    vendorPrefix,
+                    qty: item.qty,
+                    itemId: d.itemId || 'N/A',
+                    rowId: item.id,
+                    name: `${d.shape || ''} ${d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE',
+                    material: d.material || 'ONYX',
+                    color: d.color || '',
+                    dims: `${d.widthCm || 0}×${d.heightCm || 0}×${d.lengthCm || 0} cm`,
+                    weightKg: Number(d.weightKg || 0),
+                    costMxn: Number(d.price || 0),
+                    costUsd: Number(c.bookAcquisition || 0),
+                    imageUrls,
+                    tagColor: (vendors as any)[vendorPrefix]?.color || '#555',
+                    dbItemCount: Number(d.quantity || 0)
+                };
+            });
+
+            await exportCrateManifesto(manifestoItems, {
+                dynamicId,
+                crateId: crate.id,
+                crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm} cm`,
+                crateType: crate.type,
+                fillPct,
+                exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
+                exportNotes: cfg.notes?.trim() || `CRATE MANIFESTO — ${crate.id}`,
+                exportBruteWeight: cfg.bruteWeight?.trim() || undefined,
+                excludeImages: !cfg.includeImages,
+                crateColor: (vendors as any)[dynamicId.split('-')[0]]?.color,
+                customTitle: cfg.title
+            }, (pct) => {
+                setExportProgress(pct);
+                setExportStatus(`Assembling page vectors: ${pct}%`);
+            });
+            
+            toast.success('Manifesto PDF Downloaded', { id: tid });
+        } catch (e) {
+            console.error('Manifesto Export Error:', e);
+            toast.error('Failed to generate PDF', { id: tid });
+        } finally {
+            setIsExporting(false);
+            setIsExportProgressOpen(false);
+            setExportProgress(0);
+        }
+    };
 
     return (
         <div className="group relative transition-all duration-500 w-full flex flex-col py-6 border-b border-white/5 last:border-0">
@@ -482,105 +457,24 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row xl:flex-col gap-2 shrink-0 h-full justify-center w-full xl:w-auto mt-2 xl:mt-0">
                     {crate.status !== 'Empty' && (
-                        <div className="relative">
+                        <div className="flex gap-2">
                             <button
-                                onClick={() => setShowExportMenu(true)}
-                                disabled={isExporting}
-                                className={`w-full sm:flex-1 xl:w-full flex items-center justify-center gap-2 px-6 py-3 bg-black/30 border text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 ${
-                                    isExporting 
-                                        ? 'border-white/5 text-white/20 cursor-not-allowed' 
-                                        : 'border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-400 cursor-pointer shadow-lg shadow-emerald-500/5 xl:min-w-[140px]'
-                                }`}
+                                onClick={() => setIsExportProgressOpen(true)}
+                                className={`flex items-center justify-center w-12 h-12 bg-white/5 border border-white/8 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-white/20 hover:text-emerald-500 rounded-2xl transition-all duration-300 cursor-pointer ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
+                                title="Export Manifesto"
                             >
-                                {isExporting ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
-                                {isExporting ? 'Exporting...' : 'Packing List'}
+                                <Download size={18} />
                             </button>
                             
-                            {showExportMenu && !isExporting && createPortal(
-                                <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/80 backdrop-blur-2xl animate-in fade-in duration-300">
-                                    <div className="w-[480px] p-10 rounded-[48px] bg-white/[0.03] border border-white/10 flex flex-col gap-10 shadow-2xl relative overflow-hidden group">
-                                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
-                                        
-                                        <div className="flex flex-col gap-2">
-                                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Export Configuration</h2>
-                                            <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Configure Packing List Output</p>
-                                        </div>
-                
-                                        <div className="space-y-8">
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Image Fidelity</label>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <button 
-                                                        onClick={() => setExportMethod('images')}
-                                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group cursor-pointer ${exportMethod === 'images' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
-                                                    >
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'images' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
-                                                            <LayoutGrid size={20} className={exportMethod === 'images' ? 'text-emerald-500' : 'text-white/40'} />
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'images' ? 'text-white' : 'text-white/40'}`}>Include Images</p>
-                                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">High fidelity export</p>
-                                                        </div>
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => setExportMethod('no-images')}
-                                                        className={`flex flex-col gap-4 p-5 rounded-3xl border transition-all text-left group cursor-pointer ${exportMethod === 'no-images' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}
-                                                    >
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${exportMethod === 'no-images' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
-                                                            <ImageOff size={20} className={exportMethod === 'no-images' ? 'text-emerald-500' : 'text-white/40'} />
-                                                        </div>
-                                                        <div>
-                                                            <p className={`text-xs font-black uppercase tracking-widest ${exportMethod === 'no-images' ? 'text-white' : 'text-white/40'}`}>List Only</p>
-                                                            <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider mt-1">Compact & fast</p>
-                                                        </div>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Notes & Title (Optional)</label>
-                                                <div className="relative group">
-                                                    <input 
-                                                        type="text"
-                                                        value={exportNotes}
-                                                        onChange={(e) => setExportNotes(e.target.value)}
-                                                        placeholder="Custom title or internal memo..."
-                                                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl h-14 px-5 text-sm text-white placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-all font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="space-y-3">
-                                                <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Brute Weight (Optional)</label>
-                                                <div className="relative group">
-                                                    <input 
-                                                        type="text"
-                                                        value={exportBruteWeight}
-                                                        onChange={(e) => setExportBruteWeight(e.target.value)}
-                                                        placeholder="e.g. 520 kg"
-                                                        className="w-full bg-white/[0.02] border border-white/5 rounded-2xl h-14 px-5 text-sm text-white placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-all font-medium font-mono uppercase"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                
-                                        <div className="flex gap-4 pt-4">
-                                            <button 
-                                                onClick={() => setShowExportMenu(false)}
-                                                className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all cursor-pointer"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button 
-                                                onClick={() => handleExportManifesto(exportMethod === 'no-images', exportNotes, exportBruteWeight)}
-                                                className="flex-[2] h-14 rounded-full bg-emerald-500 text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] active:scale-95 cursor-pointer"
-                                            >
-                                                Start Generation
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            , document.body)}
+                            <ExportWizard 
+                                isOpen={isExportProgressOpen}
+                                onClose={() => { setIsExportProgressOpen(false); setExportProgress(0); }}
+                                onStart={handleStartExport}
+                                progress={exportProgress}
+                                status={exportStatus}
+                                moduleName="Crate"
+                                showBruteWeight={true}
+                            />
                         </div>
                     )}
                     <button
@@ -614,13 +508,6 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                     </div>
                 </div>
             )}
-
-            <ExportProgressOverlay 
-                isOpen={isExportProgressOpen}
-                progress={exportProgress}
-                title="Generating Packing List"
-                message={`Assembling manifest for ${dynamicId}...`}
-            />
         </div>
     );
 };

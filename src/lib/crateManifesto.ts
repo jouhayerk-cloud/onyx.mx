@@ -37,6 +37,7 @@ export interface ManifestoMeta {
     exportNotes?: string;     // Custom notes or alternate title injected from UI
     exportBruteWeight?: string; // Appended brute weight input from UI
     excludeHeader?: boolean;  // If true, skips the top panel entirely
+    customTitle?: string;     // Explicit title override
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -120,8 +121,10 @@ export async function exportCrateManifesto(
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
     const PW = 279.4;
     const PH = 215.9;
-    const ML = 6; // margin left
-    const MR = 6; // margin right
+    const ML = 10; // margin left (increased for printer compatibility)
+    const MR = 10; // margin right
+    const MT = 10; // margin top for continuation pages
+    const MB = 10; // margin bottom (including footer)
 
     // ─── Palette (light theme) ────────────────────────────────────────────────
     const BG      : [number, number, number] = [255, 255, 255];
@@ -132,484 +135,255 @@ export async function exportCrateManifesto(
     const TEXT_MID: [number, number, number] = [70, 70, 70];
     const TEXT_LO : [number, number, number] = [150, 150, 150];
 
-    // ─── Background ──────────────────────────────────────────────────────────
-    doc.setFillColor(...BG);
-    doc.rect(0, 0, PW, PH, 'F');
-
-    // ─── Header ──────────────────────────────────────────────────────────────
-    const HDR_H = meta.excludeHeader ? 0 : 22;
-    if (!meta.excludeHeader) {
-        doc.setFillColor(...SURFACE);
-        doc.rect(0, 0, PW, HDR_H, 'F');
-        // Removed orange bottom border line
-
-        // Header QR — Left side
-        const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
-        if (headerQrUrl) {
-            const qrSize = 14;
-            const bx = ML;
-            const by = 2;
-            doc.setFillColor(255, 255, 255);
-            doc.rect(bx - 0.5, by - 0.5, qrSize + 1, qrSize + 1, 'F');
-            doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
-        }
-
-        // Header layout structural assignments
-        const ts = ML + 42; // Title start (shifted right to fit QR and new Icon position)
-
-        // Crate Name (Dynamic ID)
-        const didMatch = meta.dynamicId.match(/^(\d+)(.*)$/);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        const idY = 14;
-
-        if (didMatch) {
-            doc.setTextColor(0, 0, 0);
-            doc.text(didMatch[1], ts - 1, idY);
-            const offset = doc.getTextWidth(didMatch[1]);
-            if (meta.crateColor) {
-                const [cr, cg, cb] = hexToRgb(meta.crateColor);
-                doc.setTextColor(cr, cg, cb);
-            } else {
-                doc.setTextColor(0, 0, 0);
-            }
-            doc.text(didMatch[2], ts - 1 + offset, idY);
-        } else {
-            doc.setTextColor(0, 0, 0);
-            doc.text(meta.dynamicId, ts - 1, idY);
-        }
-
-        // Optional Internal Text / Custom Title
-        if (meta.exportNotes) {
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.text(meta.exportNotes.toUpperCase(), ts - 1, 18);
-        }
-
-        // Crate meta — Right aligned panel
-        const totalUnits = items.reduce((s, i) => s + i.qty, 0);
-        const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
-        
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        let weightStr = `${totalWeight.toFixed(1)} kg NET`;
-        if (meta.exportBruteWeight) {
-            weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
-        }
-        const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}  ·  ${meta.exportedAt}`;
-        doc.text(metaLine, PW - MR, 12, { align: 'right' });
-
-        doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Crate: ${meta.crateId.slice(0, 16).toUpperCase()}  ·  Fill: ${meta.fillPct.toFixed(1)}%`, PW - MR, 18, { align: 'right' });
-
-        // ─── Wireframe Icon — top right of header ─────────────────────────────────
-        try {
-            const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
-            const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
-            const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
-            const maxDim = Math.max(cw, cl, visH, 1);
-            
-            const sizePx = 14; // 14mm box target
-            const scale = (sizePx * 0.75) / maxDim;
-            const dw = cw * scale, dl = cl * scale, dh = visH * scale;
-            const depth = dl * 0.38;
-            const dx = depth, dy = -depth;
-            
-            const iconX = ML + 22; // Position perfectly between the QR and the Title
-            const iconY = 4 + depth; // Push down equal to depth so it doesn't clip top
-            const x0 = iconX, y0 = iconY;
-            const x1 = x0 + dw, y1 = y0;
-            const x2 = x1, y2 = y0 + dh;
-            const x3 = x0, y3 = y0 + dh;
-
-            // Draw color (Dynamic vendor color or default red #f87171)
-            let R = 248, G = 113, B = 113;
-            if (meta.crateColor) {
-                const [cr, cg, cb] = hexToRgb(meta.crateColor);
-                R = cr; G = cg; B = cb;
-            }
-            
-            // Back dashed edges
-            doc.setDrawColor(R, G, B);
-            doc.setLineWidth(0.3);
-            doc.setLineDashPattern([1, 1], 0);
-            doc.line(x0 + dx, y0 + dy, x0 + dx, y3 + dy);
-            doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
-            doc.line(x0 + dx, y3 + dy, x1 + dx, y2 + dy);
-            doc.setLineDashPattern([], 0); // reset
-            
-            doc.setLineWidth(0.6);
-            // Top face
-            doc.line(x0, y0, x0 + dx, y0 + dy);
-            doc.line(x1, y1, x1 + dx, y1 + dy);
-            doc.line(x0 + dx, y0 + dy, x1 + dx, y1 + dy);
-            // Right face
-            doc.line(x1 + dx, y1 + dy, x1 + dx, y2 + dy);
-            doc.line(x1, y2, x1 + dx, y2 + dy);
-            // Front face
-            doc.rect(x0, y0, dw, dh, 'S');
-            
-            // Braces
-            if (meta.crateType.toLowerCase() !== 'pallet') {
-                doc.setLineWidth(0.3);
-                doc.line(x0, y0, x1, y2);
-                doc.line(x1, y0, x0, y2);
-            }
-            
-            // Fill % solid bar on front
-            if (meta.fillPct > 0) {
-                doc.setFillColor(R, G, B);
-                const fh = Math.max(0.1, dh * (meta.fillPct / 100)) - 1;
-                if (fh > 0) {
-                    // semi transparency using hex is not natively supported directly on all pdf readers but solid is fine
-                    doc.rect(x0 + 0.5, y0 + dh - fh - 0.5, dw - 1, fh, 'F');
-                }
-            }
-        } catch (e) {
-            // Silently skip wireframe if math fails
-        }
-    }
-
-    // ─── Column definitions (no price columns) ────────────────────────────────
-    // QR | Photo | Tag ID | Item Name & Details | Dimensions & Weight | Qty
+    // ─── Column definitions ──────────────────────────────────────────────────
     const TABLE_END = PW - MR;
     const COL_QR   = { x: ML,       w: 18  }; 
     const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
     const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 38  }; 
     const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 100 + (meta.excludeImages ? 18 : 0)  }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 55  }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 50  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
-
-    // ─── Column header row ────────────────────────────────────────────────────
-    const COL_HDR_Y = HDR_H;
-    const COL_HDR_H = 6;
-    doc.setFillColor(230, 230, 230);
-    doc.rect(ML, COL_HDR_Y, TABLE_END - ML, COL_HDR_H, 'F');
-    doc.setTextColor(...TEXT_LO);
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    const hy = COL_HDR_Y + 5.5;
-    doc.text('QR',              COL_QR.x   + COL_QR.w   / 2, hy, { align: 'center' });
-    if (!meta.excludeImages) {
-        doc.text('IMG',             COL_IMG.x  + COL_IMG.w  / 2, hy, { align: 'center' });
-    }
-    doc.text('TAG ID',          COL_TAG.x  + 2, hy);
-    doc.text('ITEM DESCRIPTION',COL_NAME.x + 2, hy);
-    doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, hy);
-    doc.text('QTY',             COL_QTY.x  + 2, hy);
-
-    // ─── Row rendering ────────────────────────────────────────────────────────
+    const HDR_H = meta.excludeHeader ? 0 : 25;
+    const COL_HDR_H = 7;
     const ROW_H = 18;
-    const TABLE_START_Y = COL_HDR_Y + COL_HDR_H;
-    const FOOTER_H = 7;
-    const ROWS_PER_PAGE = Math.floor((PH - TABLE_START_Y - FOOTER_H) / ROW_H);
+    const FOOTER_H = 10; // Increased to 10mm for strict margin compliance
 
-    function drawPageChrome(isFirst: boolean) {
+    // ─── Helper: Draw Page Chrome ──────────────────────────────────────────
+    async function drawPageChrome(pageNum: number) {
         doc.setFillColor(...BG);
         doc.rect(0, 0, PW, PH, 'F');
-        if (!isFirst && !meta.excludeHeader) {
-            // Compact continuation header
+
+        if (pageNum === 1 && !meta.excludeHeader) {
+            // Full Header
             doc.setFillColor(...SURFACE);
-            doc.rect(0, 0, PW, 10, 'F');
-            doc.setDrawColor(...ACCENT);
-            doc.setLineWidth(0.5);
-            doc.line(0, 10, PW, 10);
-            doc.setTextColor(...ACCENT);
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`PACKING LIST  ${meta.dynamicId}  (cont.)`, ML, 7);
-        }
-    }
+            doc.rect(0, 0, PW, HDR_H, 'F');
 
-    function drawColHeaders(startY: number) {
-        doc.setFillColor(230, 230, 230);
-        doc.rect(ML, startY, TABLE_END - ML, COL_HDR_H, 'F');
-        doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        const cy = startY + 5.5;
-        doc.text('QR',               COL_QR.x   + COL_QR.w   / 2, cy, { align: 'center' });
-        doc.text('IMG',              COL_IMG.x  + COL_IMG.w  / 2, cy, { align: 'center' });
-        doc.text('TAG ID',           COL_TAG.x  + 2, cy);
-        doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, cy);
-        doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, cy);
-        doc.text('QTY',              COL_QTY.x  + 2, cy);
-    }
-
-    let currentPage = 0;
-    let contTableStartY = meta.excludeHeader ? 0 : 12; // continuation pages: table starts below compact header
-    let currentRow = 0;
-    const itemsCount = sortedItems.length;
-
-    for (let i = 0; i < itemsCount; i++) {
-        onProgress?.(Math.round((i / itemsCount) * 90));
-        const item = sortedItems[i];
-        
-        const imgList = item.imageUrls || [];
-        const hasGallery = !meta.excludeImages && imgList.length > 1;
-        const rowsNeeded = hasGallery ? 2 : 1;
-
-        if (currentRow > 0 && currentRow + rowsNeeded > ROWS_PER_PAGE) {
-            doc.addPage('letter', 'landscape');
-            currentPage++;
-            currentRow = 0;
-            drawPageChrome(false);
-            drawColHeaders(contTableStartY);
-        }
-
-        const tableY = currentPage === 0 ? TABLE_START_Y : contTableStartY + COL_HDR_H;
-        const ry = tableY + currentRow * ROW_H;
-
-        // Alternating row bg
-        if (currentRow % 2 === 0) {
-            doc.setFillColor(250, 250, 250);
-            doc.rect(ML, ry, TABLE_END - ML, ROW_H, 'F');
-        }
-        // Row bottom border
-        if (!hasGallery) {
-            doc.setDrawColor(...BORDER);
-            doc.setLineWidth(0.2);
-            doc.line(ML, ry + ROW_H, TABLE_END, ry + ROW_H);
-        } else {
-            doc.setDrawColor(240, 240, 240); // subtle separator before gallery
-            doc.setLineWidth(0.2);
-            doc.line(ML, ry + ROW_H, TABLE_END, ry + ROW_H);
-        }
-
-        // ── QR code ──────────────────────────────────────────────────────────
-        const qrDataUrl = await loadQrDataUrl(item.itemId, 100);
-        const qrSize = 14;
-        const qrX = COL_QR.x + (COL_QR.w - qrSize) / 2;
-        const qrY = ry + (ROW_H - qrSize) / 2;
-        if (qrDataUrl) {
-            doc.setFillColor(255, 255, 255);
-            doc.rect(qrX - 0.5, qrY - 0.5, qrSize + 1, qrSize + 1, 'F');
-            doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-        } else {
-            doc.setFillColor(...BORDER);
-            doc.rect(qrX, qrY, qrSize, qrSize, 'F');
-            doc.setTextColor(...TEXT_LO);
-            doc.setFontSize(5.5);
-            doc.text('NO QR', qrX + qrSize / 2, qrY + qrSize / 2, { align: 'center' });
-        }
-
-        // ── Thumbnails ─────────────────────────────────────────────────────────
-        const thumbZoneW = 14; 
-        const thumbZoneX = COL_IMG.x + 2; 
-        const thumbZoneY = ry + (ROW_H - thumbZoneW) / 2; // Center a 14x14 block in the row
-
-        if (!meta.excludeImages) {
-            if (imgList.length === 0) {
-                // Placeholder empty
-                doc.setFillColor(...BORDER);
-                doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
-            } else {
-                // Main image takes the primary 20x20 slot
-                const imgResult = await loadImageDataUrl(imgList[0], 120);
-                if (imgResult) {
-                    const { dataUrl, w, h } = imgResult;
-                    const aspect = w / h;
-                    let dw = thumbZoneW;
-                    let dh = thumbZoneW;
-                    if (aspect > 1) {
-                        dh = thumbZoneW / aspect;
-                    } else {
-                        dw = thumbZoneW * aspect;
-                    }
-                    const dx = thumbZoneX + (thumbZoneW - dw) / 2;
-                    const dy = thumbZoneY + (thumbZoneW - dh) / 2;
-
-                    doc.setFillColor(240, 240, 240);
-                    doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
-                    doc.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
-                } else {
-                    doc.setFillColor(...BORDER);
-                    doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
-                }
+            // Header QR — Left side
+            const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
+            if (headerQrUrl) {
+                const qrSize = 16;
+                const bx = ML;
+                const by = 4;
+                doc.setFillColor(255, 255, 255);
+                doc.rect(bx - 0.5, by - 0.5, qrSize + 1, qrSize + 1, 'F');
+                doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
             }
-        } else {
-            // Draw a subtle placeholder if images are excluded
-            doc.setFillColor(250, 250, 250);
-            doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
-            doc.setDrawColor(...BORDER);
-            doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'D');
-        }
 
-        // ── Tag ID badge ──────────────────────────────────────────────────────
-        const [tr, tg, tb] = hexToRgb(item.tagColor);
-        const badgeText = item.itemId.length > 16 ? item.itemId.slice(0, 14) + '…' : item.itemId;
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(badgeText) + 6);
-        const badgeH = 7.5;
-        const badgeX = COL_TAG.x + 2;
-        const badgeY = ry + (ROW_H - badgeH) / 2 - 1.5; // Centered in row
-        doc.setFillColor(tr, tg, tb);
-        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.text(badgeText, badgeX + badgeW / 2, badgeY + 5.2, { align: 'center' });
-
-        // Stock display removed per user request
-
-        // ── Name & description ────────────────────────────────────────────────
-        doc.setTextColor(...TEXT_HI);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        const nameStr = item.name.trim().slice(0, 50);
-        doc.text(nameStr, COL_NAME.x + 2, ry + 10.5);
-        const nameW = doc.getTextWidth(nameStr);
-
-        // Color + Material pill badges — Moved next to name on the same row
-        let pillX = COL_NAME.x + 2 + nameW + 3;
-        const pillY = ry + 6.5; 
-        const pillH = 5.2;
-        const drawPill = (text: string, bgR: number, bgG: number, bgB: number, fgR = 30, fgG = 30, fgB = 30) => {
-            if (!text) return;
-            doc.setFontSize(7.5); // Larger tag text
+            const ts = ML + 42;
+            doc.setFontSize(22);
             doc.setFont('helvetica', 'bold');
-            const tw = doc.getTextWidth(text);
-            const pw = tw + 5;
-            doc.setFillColor(bgR, bgG, bgB);
-            doc.roundedRect(pillX, pillY, pw, pillH, 1.2, 1.2, 'F');
-            doc.setTextColor(fgR, fgG, fgB);
-            doc.text(text, pillX + 2.5, pillY + 4);
-            pillX += pw + 2;
-        };
-        if (item.color) {
-            const [cr, cg, cb] = hexToRgb(item.tagColor);
-            drawPill(item.color.toUpperCase(),
-                Math.min(255, Math.round(cr * 0.12 + 224)),
-                Math.min(255, Math.round(cg * 0.12 + 224)),
-                Math.min(255, Math.round(cb * 0.12 + 224)),
-                Math.round(cr * 0.65), Math.round(cg * 0.65), Math.round(cb * 0.65));
-        }
-        if (item.material) {
-            drawPill(item.material.toUpperCase(), 228, 228, 228, 60, 60, 60);
-        }
+            doc.setTextColor(...TEXT_HI);
+            doc.text(meta.customTitle || "LOGISTICS MANIFESTO", ts, 12);
 
+            doc.setFontSize(9);
+            doc.setTextColor(...TEXT_LO);
+            doc.text(`${meta.dynamicId.toUpperCase()}  ·  ${meta.exportedAt}`, ts, 18);
 
-        doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'normal');
-        // Removed internal ID display as per user request
+            if (meta.exportNotes) {
+                doc.setFontSize(8);
+                doc.setTextColor(...TEXT_MID);
+                doc.text(meta.exportNotes.toUpperCase(), ts, 23);
+            }
 
+            // Stats block
+            const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+            const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
+            doc.setTextColor(...TEXT_HI);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            let weightStr = `${totalWeight.toFixed(1)} kg NET`;
+            if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
+            const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`;
+            doc.text(metaLine, PW - MR, 12, { align: 'right' });
 
-        // ── Dimensions & weight ───────────────────────────────────────────────
-        doc.setTextColor(...TEXT_MID);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        
-        const dimStr = item.dims || '';
-        doc.text(dimStr || '—', COL_DIMS.x + 2, ry + 7);
-        
-        // Imperial Dimensions (stacked below metric)
-        const cmMatch = dimStr.match(/([\d.]+)\s*[x×]\s*([\d.]+)\s*[x×]\s*([\d.]+)/);
-        if (cmMatch) {
-            const w = parseFloat(cmMatch[1]);
-            const l = parseFloat(cmMatch[2]);
-            const h = parseFloat(cmMatch[3]);
-            const imp = [w, l, h].map(v => cmToImperial(v)).join(' × ');
-            doc.setFontSize(7.5); // Slightly larger
+            doc.setTextColor(...TEXT_LO);
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(...TEXT_MID); // Darker than TEXT_LO
-            doc.text(imp, COL_DIMS.x + 2, ry + 10.5);
-        }
+            doc.text(`Crate: ${meta.crateId.toUpperCase()}  ·  Exported: ${meta.exportedAt}`, PW - MR, 18, { align: 'right' });
 
-        doc.setFontSize(8); // Slightly larger weight font
-        doc.setFont('helvetica', 'normal');
-        if (item.weightKg > 0) {
-            const kgText = `${item.weightKg} kg`;
-            doc.setTextColor(...TEXT_HI); // Stronger contrast for weight
-            doc.text(kgText, COL_DIMS.x + 2, ry + 14.5);
-            const kgW = doc.getTextWidth(kgText);
-            doc.setTextColor(...TEXT_MID);
-            doc.text(` · ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2 + kgW, ry + 14.5);
-        } else {
+            // Wireframe Icon
+            try {
+                const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
+                const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
+                const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
+                const maxDim = Math.max(cw, cl, visH, 1);
+                const sizePx = 16;
+                const scale = (sizePx * 0.75) / maxDim;
+                const dw = cw * scale, dl = cl * scale, dh = visH * scale;
+                const depth = dl * 0.38;
+                const dx = depth, dy = -depth;
+                const x0 = ML + 22, y0 = 6 + depth;
+                let [R, G, B] = meta.crateColor ? hexToRgb(meta.crateColor) : [217, 90, 10];
+                doc.setDrawColor(R, G, B);
+                doc.setLineWidth(0.3);
+                doc.setLineDashPattern([1, 1], 0);
+                doc.line(x0 + dx, y0 + dy, x0 + dx, y0 + dh + dy);
+                doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
+                doc.setLineDashPattern([], 0);
+                doc.setLineWidth(0.5);
+                doc.line(x0, y0, x0 + dx, y0 + dy);
+                doc.line(x0 + dw, y0, x0 + dw + dx, y0 + dy);
+                doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
+                doc.line(x0 + dw + dx, y0 + dy, x0 + dw + dx, y0 + dh + dy);
+                doc.line(x0 + dw, y0 + dh, x0 + dw + dx, y0 + dh + dy);
+                doc.rect(x0, y0, dw, dh, 'S');
+            } catch {}
+        } else if (pageNum > 1) {
+            // Continuation Header
+            doc.setFillColor(...SURFACE);
+            doc.rect(0, 0, PW, MT, 'F');
             doc.setTextColor(...TEXT_LO);
-            doc.text('—', COL_DIMS.x + 2, ry + 14.5);
+            doc.setFontSize(7);
+            const pageTitle = meta.customTitle || (meta.dynamicId.toUpperCase() + '  ·  PACKING LIST');
+            doc.text(`${pageTitle}  ·  PAGE ${pageNum}`, ML, MT - 4);
         }
 
-
-
-        // ── Qty ───────────────────────────────────────────────────────────────
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`×${item.qty}`, COL_QTY.x + 2, ry + 13);
-
-        // ── Secondary Gallery Row ──────────────────────────────────────────────
-        if (hasGallery) {
-            const gy = ry + ROW_H;
-            if (currentRow % 2 === 0) {
-                // Inherit background
-                doc.setFillColor(250, 250, 250);
-                doc.rect(ML, gy, TABLE_END - ML, ROW_H, 'F');
-            }
-
-            const gThumbW = 14;
-            let gx = COL_IMG.x + 2; 
-            const gThumbY = gy + (ROW_H - gThumbW) / 2;
-
-            for (let j = 1; j < Math.min(10, imgList.length); j++) {
-                const imgResult = await loadImageDataUrl(imgList[j], 120);
-                if (imgResult) {
-                    const { dataUrl, w, h } = imgResult;
-                    const aspect = w / h;
-                    let dw = gThumbW;
-                    let dh = gThumbW;
-                    if (aspect > 1) {
-                        dh = gThumbW / aspect;
-                    } else {
-                        dw = gThumbW * aspect;
-                    }
-                    const dx = gx + (gThumbW - dw) / 2;
-                    const dy = gThumbY + (gThumbW - dh) / 2;
-
-                    doc.setFillColor(240, 240, 240);
-                    doc.rect(gx, gThumbY, gThumbW, gThumbW, 'F');
-                    doc.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
-                } else {
-                    doc.setFillColor(...BORDER);
-                    doc.rect(gx, gThumbY, gThumbW, gThumbW, 'F');
-                }
-                gx += gThumbW + 2.5;
-            }
-
-            // Bottom border for the gallery (closes the item)
-            doc.setDrawColor(...BORDER);
-            doc.setLineWidth(0.2);
-            doc.line(ML, gy + ROW_H, TABLE_END, gy + ROW_H);
-        }
-
-        currentRow += rowsNeeded;
-    }
-
-    // ─── Footer on every page ─────────────────────────────────────────────────
-    const totalPages = doc.internal.pages.length - 1;
-    for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p);
+        // Footer (Strict 10mm margin compliance)
         doc.setFillColor(...SURFACE);
         doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
         doc.setDrawColor(...BORDER);
-        doc.setLineWidth(0.2);
+        doc.setLineWidth(0.1);
         doc.line(0, PH - FOOTER_H, PW, PH - FOOTER_H);
         doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text('CONFIDENTIAL · INTERNAL USE ONLY', ML, PH - 3.5);
-        doc.text(`${meta.dynamicId}  ·  Page ${p} / ${totalPages}`, PW - MR, PH - 3.5, { align: 'right' });
+        doc.setFontSize(7);
+        // Move text up to be within the 10mm safe zone (PH - 10 = 205.9)
+        // Actually, if FOOTER_H is 10, the top of footer is at PH-10.
+        // Let's place text at PH - 5 for vertical center of the footer bar, 
+        // but wait, if strict margin is 10mm, we can't have text at PH-5.
+        // It must be at PH - 10 or higher.
+        doc.text('CONFIDENTIAL · LOGISTICS MANIFESTO', ML, PH - 12);
+        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
+    }
+
+    function drawColHeaders(y: number) {
+        doc.setFillColor(230, 230, 230);
+        doc.rect(ML, y, TABLE_END - ML, COL_HDR_H, 'F');
+        doc.setTextColor(...TEXT_LO);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        const ty = y + 4.5;
+        doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
+        if (!meta.excludeImages) doc.text('PHOTO', COL_IMG.x + COL_IMG.w / 2, ty, { align: 'center' });
+        doc.text('TAG ID', COL_TAG.x + 2, ty);
+        doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, ty);
+        doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, ty);
+        doc.text('QTY', COL_QTY.x + 2, ty);
+    }
+
+    let page = 1;
+    let y = (meta.excludeHeader ? 0 : HDR_H);
+    
+    await drawPageChrome(page);
+    drawColHeaders(y);
+    y += COL_HDR_H;
+
+    for (let i = 0; i < sortedItems.length; i++) {
+        onProgress?.(Math.round((i / sortedItems.length) * 95));
+        const item = sortedItems[i];
+        
+        // Gallery logic: if item has multiple images, it might take 2 row-slots
+        const hasGallery = !meta.excludeImages && item.imageUrls && item.imageUrls.length > 1;
+        const totalRowH = hasGallery ? ROW_H * 2 : ROW_H;
+
+        // Check for page break
+        if (y + totalRowH > PH - FOOTER_H) {
+            doc.addPage('letter', 'landscape');
+            page++;
+            y = MT;
+            await drawPageChrome(page);
+            drawColHeaders(y);
+            y += COL_HDR_H;
+        }
+
+        // Alternating background
+        if (i % 2 === 0) {
+            doc.setFillColor(252, 252, 252);
+            doc.rect(ML, y, TABLE_END - ML, totalRowH, 'F');
+        }
+        
+        // Separator
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.1);
+        doc.line(ML, y + totalRowH, TABLE_END, y + totalRowH);
+
+        // QR
+        const qrDataUrl = await loadQrDataUrl(item.itemId, 120);
+        if (qrDataUrl) {
+            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 2, y + 2, 14, 14);
+        }
+
+        // Image
+        if (!meta.excludeImages && item.imageUrls && item.imageUrls.length > 0) {
+            const imgRes = await loadImageDataUrl(item.imageUrls[0], 120);
+            if (imgRes) {
+                const { dataUrl, w, h } = imgRes;
+                const aspect = w / h;
+                let dw = 14, dh = 14;
+                if (aspect > 1) dh = 14 / aspect; else dw = 14 * aspect;
+                doc.addImage(dataUrl, 'JPEG', COL_IMG.x + (18 - dw) / 2, y + (18 - dh) / 2, dw, dh);
+            }
+        }
+
+        // Tag Badge
+        const [tr, tg, tb] = hexToRgb(item.tagColor);
+        doc.setFillColor(tr, tg, tb);
+        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(item.itemId) + 6);
+        doc.roundedRect(COL_TAG.x + 2, y + 5, badgeW, 7, 1, 1, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.itemId, COL_TAG.x + 2 + badgeW/2, y + 9.8, { align: 'center' });
+
+        // Name & Badges
+        doc.setTextColor(...TEXT_HI);
+        doc.setFontSize(10);
+        doc.text(item.name.toUpperCase().slice(0, 45), COL_NAME.x + 2, y + 8);
+        
+        let pillX = COL_NAME.x + 2;
+        const pillY = y + 10;
+        const drawPill = (txt: string, br: number, bg: number, bb: number) => {
+            if (!txt) return;
+            doc.setFontSize(7);
+            const tw = doc.getTextWidth(txt.toUpperCase());
+            doc.setFillColor(br, bg, bb);
+            doc.roundedRect(pillX, pillY, tw + 4, 5, 0.8, 0.8, 'F');
+            doc.setTextColor(30, 30, 30);
+            doc.text(txt.toUpperCase(), pillX + 2, pillY + 3.8);
+            pillX += tw + 6;
+        };
+        if (item.color) drawPill(item.color, 240, 240, 240);
+        if (item.material) drawPill(item.material, 230, 230, 230);
+
+        // Dims & Weight
+        doc.setTextColor(...TEXT_MID);
+        doc.setFontSize(9);
+        doc.text(item.dims || '—', COL_DIMS.x + 2, y + 7);
+        doc.setFontSize(8);
+        doc.text(`${item.weightKg} kg  ·  ${(item.weightKg * 2.2).toFixed(1)} lbs`, COL_DIMS.x + 2, y + 12);
+
+        // Qty
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(16);
+        doc.text(`×${item.qty}`, COL_QTY.x + 2, y + 11);
+
+        // Gallery
+        if (hasGallery) {
+            let gx = COL_IMG.x + 2;
+            const gy = y + ROW_H + 2;
+            for (let j = 1; j < Math.min(8, item.imageUrls!.length); j++) {
+                const gRes = await loadImageDataUrl(item.imageUrls![j], 80);
+                if (gRes) {
+                    doc.addImage(gRes.dataUrl, 'JPEG', gx, gy, 14, 14);
+                    gx += 16;
+                }
+            }
+        }
+
+        y += totalRowH;
     }
 
     onProgress?.(100);
-
-    // ─── Save ─────────────────────────────────────────────────────────────────
-    const safeId = meta.dynamicId.replace(/[^A-Z0-9_\- ]/gi, '_').trim().replace(/ /g, '_');
+    const safeId = meta.dynamicId.replace(/[^A-Z0-9_\-]/gi, '_');
     doc.save(`MANIFESTO_${safeId}.pdf`);
 }
-
-
