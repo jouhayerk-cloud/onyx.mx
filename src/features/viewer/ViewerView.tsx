@@ -315,13 +315,16 @@ const ScannerCenter: React.FC<{
 
     const handleIdCaptured = useCallback((id: string) => {
         if (!id.trim()) return;
-        const normalized = id.trim().toUpperCase();
+        // Parse the TAGID from potentially pipe-delimited metadata (TAGID|COLOR|DESC|RETAIL)
+        const tagId = id.trim().split('|')[0].trim().toUpperCase();
+        if (!tagId) return;
+
         setScannedIds(prev => {
-            if (prev.includes(normalized)) return prev;
+            if (prev.includes(tagId)) return prev;
             playBeep();
-            setLastScan(normalized);
+            setLastScan(tagId);
             setTimeout(() => setLastScan(null), 1500);
-            return [...prev, normalized];
+            return [...prev, tagId];
         });
     }, []);
 
