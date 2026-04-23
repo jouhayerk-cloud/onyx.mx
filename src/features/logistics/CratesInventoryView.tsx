@@ -8,6 +8,7 @@ import { useDatabase } from '../../lib/hooks';
 import { cratesVersionAtom, logisticsSubTabAtom, isDummyModeAtom, inventoryAtom, liveExchangeRateAtom } from '../../lib/atoms';
 import { getCrateInternalVolume, getItemPaddedVolume, getCleanImageUrl, normalizeInventoryData, calculateCodesAndPrices } from '../../lib/utils';
 import { exportCrateManifesto, type ManifestoItem, type ManifestoMeta } from '../../lib/crateManifesto';
+import { ExportProgressOverlay } from '../../components/ExportProgressOverlay';
 import { vendors } from '../../lib/consts';
 
 // ─── Wireframe Crate SVG ─────────────────────────────────────────────────────
@@ -219,6 +220,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
     const [exportMethod, setExportMethod] = useState<'images' | 'no-images'>('images');
     const [exportNotes, setExportNotes] = useState('');
     const [exportBruteWeight, setExportBruteWeight] = useState('');
+    const [exportProgress, setExportProgress] = useState(0);
+    const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
     const liveRate = useAtomValue(liveExchangeRateAtom) || 18.0;
 
     const dynamicId = useMemo(() => generateDynamicCrateId(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
@@ -318,7 +321,9 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 exportBruteWeight: bruteWeight?.trim() || undefined,
             };
 
+            setIsExportProgressOpen(true);
             await exportCrateManifesto(manifestoItems, meta, (pct) => {
+                setExportProgress(pct);
                 if (pct % 20 === 0) toast.loading(`Packing List… ${pct}%`, { id: tid });
             });
 
@@ -327,6 +332,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
             toast.error('Packing List generation failed: ' + (error?.message || 'Unknown error'), { id: tid });
         } finally {
             setIsExporting(false);
+            setIsExportProgressOpen(false);
+            setExportProgress(0);
         }
     };
 
@@ -609,6 +616,13 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                     </div>
                 </div>
             )}
+
+            <ExportProgressOverlay 
+                isOpen={isExportProgressOpen}
+                progress={exportProgress}
+                title="Generating Packing List"
+                message={`Assembling manifest for ${dynamicId}...`}
+            />
         </div>
     );
 };

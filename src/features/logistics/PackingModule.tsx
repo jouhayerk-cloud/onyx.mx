@@ -19,6 +19,7 @@ import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile } from '../../lib/utils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
+import { ExportProgressOverlay } from '../../components/ExportProgressOverlay';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
@@ -391,6 +392,8 @@ export const PackingModule: React.FC = () => {
     const [lastPrintedIds, setLastPrintedIds] = useState<string[]>([]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [activeItemIndex, setActiveItemIndex] = useState(0);
+    const [exportProgress, setExportProgress] = useState(0);
+    const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
     const pendingBatchRef = useRef<any>(null);
 
     const toggleExpand = (id: string) => {
@@ -573,6 +576,7 @@ export const PackingModule: React.FC = () => {
                 };
             });
 
+            setIsExportProgressOpen(true);
             await exportCrateManifesto(manifestoItems, {
                 dynamicId: `BATCH-${new Date().toISOString().slice(0, 10)}`,
                 crateId: 'INTERNAL-PACKING',
@@ -583,6 +587,7 @@ export const PackingModule: React.FC = () => {
                 exportNotes: `PACKING LIST — ${selectedIds.size} ITEMS`,
                 excludeHeader: true
             }, (pct) => {
+                setExportProgress(pct);
                 toast.loading(`Generating Manifesto: ${pct}%`, { id: tid });
             });
             
@@ -590,6 +595,9 @@ export const PackingModule: React.FC = () => {
         } catch (e) {
             console.error('Manifesto Export Error:', e);
             toast.error('Failed to generate PDF', { id: tid });
+        } finally {
+            setIsExportProgressOpen(false);
+            setExportProgress(0);
         }
     };
 

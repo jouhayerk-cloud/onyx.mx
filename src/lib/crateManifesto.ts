@@ -79,8 +79,7 @@ async function loadBarcodeDataUrl(text: string): Promise<string | null> {
     } catch { return null; }
 }
 
-async function loadImageDataUrl(url: string, maxPx = 80): Promise<string | null> {
-
+async function loadImageDataUrl(url: string, maxPx = 80): Promise<{ dataUrl: string, w: number, h: number } | null> {
     try {
         const img = await new Promise<HTMLImageElement>((res, rej) => {
             const el = new Image();
@@ -96,7 +95,7 @@ async function loadImageDataUrl(url: string, maxPx = 80): Promise<string | null>
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
         c.getContext('2d')!.drawImage(img, 0, 0, w, h);
-        return c.toDataURL('image/jpeg', 0.82);
+        return { dataUrl: c.toDataURL('image/jpeg', 0.82), w, h };
     } catch { return null; }
 }
 
@@ -117,8 +116,8 @@ export async function exportCrateManifesto(
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
     const PW = 279.4;
     const PH = 215.9;
-    const ML = 10; // margin left
-    const MR = 10; // margin right
+    const ML = 6; // margin left
+    const MR = 6; // margin right
 
     // ─── Palette (light theme) ────────────────────────────────────────────────
     const BG      : [number, number, number] = [255, 255, 255];
@@ -134,7 +133,7 @@ export async function exportCrateManifesto(
     doc.rect(0, 0, PW, PH, 'F');
 
     // ─── Header ──────────────────────────────────────────────────────────────
-    const HDR_H = meta.excludeHeader ? 0 : 28;
+    const HDR_H = meta.excludeHeader ? 0 : 22;
     if (!meta.excludeHeader) {
         doc.setFillColor(...SURFACE);
         doc.rect(0, 0, PW, HDR_H, 'F');
@@ -143,20 +142,20 @@ export async function exportCrateManifesto(
         // Header QR — Left side
         const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
         if (headerQrUrl) {
-            const qrSize = 24;
+            const qrSize = 14;
             const bx = ML;
             const by = 2;
             doc.setFillColor(255, 255, 255);
-            doc.rect(bx - 1, by - 1, qrSize + 2, qrSize + 2, 'F');
+            doc.rect(bx - 0.5, by - 0.5, qrSize + 1, qrSize + 1, 'F');
             doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
         }
 
         // Header layout structural assignments
-        const ts = ML + 60; // Title start (shifted right to fit QR and new Icon position)
+        const ts = ML + 42; // Title start (shifted right to fit QR and new Icon position)
 
         // Crate Name (Dynamic ID)
         const didMatch = meta.dynamicId.match(/^(\d+)(.*)$/);
-        doc.setFontSize(24);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         const idY = 14;
 
@@ -178,10 +177,10 @@ export async function exportCrateManifesto(
 
         // Optional Internal Text / Custom Title
         if (meta.exportNotes) {
-            doc.setFontSize(9);
+            doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'bold');
-            doc.text(meta.exportNotes.toUpperCase(), ts - 1, 23);
+            doc.text(meta.exportNotes.toUpperCase(), ts - 1, 18);
         }
 
         // Crate meta — Right aligned panel
@@ -189,19 +188,19 @@ export async function exportCrateManifesto(
         const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
         
         doc.setTextColor(0, 0, 0);
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         let weightStr = `${totalWeight.toFixed(1)} kg NET`;
         if (meta.exportBruteWeight) {
             weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
         }
         const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}  ·  ${meta.exportedAt}`;
-        doc.text(metaLine, PW - MR, 14, { align: 'right' });
+        doc.text(metaLine, PW - MR, 12, { align: 'right' });
 
         doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(8);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Crate: ${meta.crateId.slice(0, 16).toUpperCase()}  ·  Fill: ${meta.fillPct.toFixed(1)}%`, PW - MR, 23, { align: 'right' });
+        doc.text(`Crate: ${meta.crateId.slice(0, 16).toUpperCase()}  ·  Fill: ${meta.fillPct.toFixed(1)}%`, PW - MR, 18, { align: 'right' });
 
         // ─── Wireframe Icon — top right of header ─────────────────────────────────
         try {
@@ -210,13 +209,13 @@ export async function exportCrateManifesto(
             const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
             const maxDim = Math.max(cw, cl, visH, 1);
             
-            const sizePx = 22; // 22mm box target
+            const sizePx = 14; // 14mm box target
             const scale = (sizePx * 0.75) / maxDim;
             const dw = cw * scale, dl = cl * scale, dh = visH * scale;
             const depth = dl * 0.38;
             const dx = depth, dy = -depth;
             
-            const iconX = ML + 30; // Position perfectly between the QR and the large Title
+            const iconX = ML + 22; // Position perfectly between the QR and the Title
             const iconY = 4 + depth; // Push down equal to depth so it doesn't clip top
             const x0 = iconX, y0 = iconY;
             const x1 = x0 + dw, y1 = y0;
@@ -274,16 +273,16 @@ export async function exportCrateManifesto(
     // ─── Column definitions (no price columns) ────────────────────────────────
     // QR | Photo | Tag ID | Item Name & Details | Dimensions & Weight | Qty
     const TABLE_END = PW - MR;
-    const COL_QR   = { x: ML,       w: 24  }; 
-    const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 24  }; 
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 46  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 96 + (meta.excludeImages ? 24 : 0)  }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 46  }; 
+    const COL_QR   = { x: ML,       w: 18  }; 
+    const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
+    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 38  }; 
+    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 110 + (meta.excludeImages ? 18 : 0)  }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 45  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
     // ─── Column header row ────────────────────────────────────────────────────
     const COL_HDR_Y = HDR_H;
-    const COL_HDR_H = 8;
+    const COL_HDR_H = 6;
     doc.setFillColor(230, 230, 230);
     doc.rect(ML, COL_HDR_Y, TABLE_END - ML, COL_HDR_H, 'F');
     doc.setTextColor(...TEXT_LO);
@@ -300,9 +299,9 @@ export async function exportCrateManifesto(
     doc.text('QTY',             COL_QTY.x  + 2, hy);
 
     // ─── Row rendering ────────────────────────────────────────────────────────
-    const ROW_H = 28;
+    const ROW_H = 18;
     const TABLE_START_Y = COL_HDR_Y + COL_HDR_H;
-    const FOOTER_H = 10;
+    const FOOTER_H = 7;
     const ROWS_PER_PAGE = Math.floor((PH - TABLE_START_Y - FOOTER_H) / ROW_H);
 
     function drawPageChrome(isFirst: boolean) {
@@ -378,12 +377,12 @@ export async function exportCrateManifesto(
 
         // ── QR code ──────────────────────────────────────────────────────────
         const qrDataUrl = await loadQrDataUrl(item.itemId, 100);
-        const qrSize = 20;
+        const qrSize = 14;
         const qrX = COL_QR.x + (COL_QR.w - qrSize) / 2;
         const qrY = ry + (ROW_H - qrSize) / 2;
         if (qrDataUrl) {
             doc.setFillColor(255, 255, 255);
-            doc.rect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 'F');
+            doc.rect(qrX - 0.5, qrY - 0.5, qrSize + 1, qrSize + 1, 'F');
             doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
         } else {
             doc.setFillColor(...BORDER);
@@ -394,9 +393,9 @@ export async function exportCrateManifesto(
         }
 
         // ── Thumbnails ─────────────────────────────────────────────────────────
-        const thumbZoneW = COL_IMG.w - 4; // 24 -> 20 width available
+        const thumbZoneW = 14; 
         const thumbZoneX = COL_IMG.x + 2; 
-        const thumbZoneY = ry + (ROW_H - thumbZoneW) / 2; // Center a 20x20 block in the row
+        const thumbZoneY = ry + (ROW_H - thumbZoneW) / 2; // Center a 14x14 block in the row
 
         if (!meta.excludeImages) {
             if (imgList.length === 0) {
@@ -405,11 +404,23 @@ export async function exportCrateManifesto(
                 doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
             } else {
                 // Main image takes the primary 20x20 slot
-                const imgData = await loadImageDataUrl(imgList[0], 120);
-                if (imgData) {
+                const imgResult = await loadImageDataUrl(imgList[0], 120);
+                if (imgResult) {
+                    const { dataUrl, w, h } = imgResult;
+                    const aspect = w / h;
+                    let dw = thumbZoneW;
+                    let dh = thumbZoneW;
+                    if (aspect > 1) {
+                        dh = thumbZoneW / aspect;
+                    } else {
+                        dw = thumbZoneW * aspect;
+                    }
+                    const dx = thumbZoneX + (thumbZoneW - dw) / 2;
+                    const dy = thumbZoneY + (thumbZoneW - dh) / 2;
+
                     doc.setFillColor(240, 240, 240);
                     doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
-                    doc.addImage(imgData, 'JPEG', thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW);
+                    doc.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
                 } else {
                     doc.setFillColor(...BORDER);
                     doc.rect(thumbZoneX, thumbZoneY, thumbZoneW, thumbZoneW, 'F');
@@ -426,16 +437,16 @@ export async function exportCrateManifesto(
         // ── Tag ID badge ──────────────────────────────────────────────────────
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         const badgeText = item.itemId.length > 16 ? item.itemId.slice(0, 14) + '…' : item.itemId;
-        doc.setFontSize(8);
-        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(badgeText) + 6);
-        const badgeH = 7.5;
+        doc.setFontSize(7.5);
+        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(badgeText) + 5);
+        const badgeH = 6;
         const badgeX = COL_TAG.x + 2;
-        const badgeY = ry + 4.5;
+        const badgeY = ry + 3;
         doc.setFillColor(tr, tg, tb);
-        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, 'F');
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.2, 1.2, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text(badgeText, badgeX + badgeW / 2, badgeY + 5.2, { align: 'center' });
+        doc.text(badgeText, badgeX + badgeW / 2, badgeY + 4.2, { align: 'center' });
 
         // DB count
         if (item.dbItemCount > 0) {
@@ -454,19 +465,19 @@ export async function exportCrateManifesto(
 
         // Color + Material pill badges
         let pillX = COL_NAME.x + 2;
-        const pillY = ry + 13.5;
-        const pillH = 5.5;
+        const pillY = ry + 10.5;
+        const pillH = 4.5;
         const drawPill = (text: string, bgR: number, bgG: number, bgB: number, fgR = 30, fgG = 30, fgB = 30) => {
             if (!text) return;
-            doc.setFontSize(6.5);
+            doc.setFontSize(6);
             doc.setFont('helvetica', 'bold');
             const tw = doc.getTextWidth(text);
-            const pw = tw + 5;
+            const pw = tw + 4;
             doc.setFillColor(bgR, bgG, bgB);
-            doc.roundedRect(pillX, pillY, pw, pillH, 1.2, 1.2, 'F');
+            doc.roundedRect(pillX, pillY, pw, pillH, 1, 1, 'F');
             doc.setTextColor(fgR, fgG, fgB);
-            doc.text(text, pillX + 2.5, pillY + 4);
-            pillX += pw + 2.5;
+            doc.text(text, pillX + 2, pillY + 3.2);
+            pillX += pw + 2;
         };
         if (item.color) {
             const [cr, cg, cb] = hexToRgb(item.tagColor);
@@ -481,30 +492,31 @@ export async function exportCrateManifesto(
         }
 
         doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(7);
+        doc.setFontSize(6.5);
         doc.setFont('helvetica', 'normal');
-        doc.text(`ID: ${item.rowId}`, COL_NAME.x + 2, ry + ROW_H - 4);
+        // Removed internal ID display as per user request
+
 
         // ── Dimensions & weight ───────────────────────────────────────────────
         doc.setTextColor(...TEXT_MID);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(item.dims || '—', COL_DIMS.x + 2, ry + 10.5);
-        doc.setFontSize(8.5);
+        doc.text(item.dims || '—', COL_DIMS.x + 2, ry + 7.5);
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         if (item.weightKg > 0) {
-            doc.text(`${item.weightKg} kg`, COL_DIMS.x + 2, ry + 17);
+            doc.text(`${item.weightKg} kg`, COL_DIMS.x + 2, ry + 12);
             doc.setTextColor(...TEXT_LO);
-            doc.text(`${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, ry + 22.5);
+            doc.text(`${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, ry + 16);
         } else {
-            doc.text('—', COL_DIMS.x + 2, ry + 17);
+            doc.text('—', COL_DIMS.x + 2, ry + 12);
         }
 
         // ── Qty ───────────────────────────────────────────────────────────────
         doc.setTextColor(0, 0, 0);
-        doc.setFontSize(22);
+        doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(`×${item.qty}`, COL_QTY.x + 2, ry + 18);
+        doc.text(`×${item.qty}`, COL_QTY.x + 2, ry + 13);
 
         // ── Secondary Gallery Row ──────────────────────────────────────────────
         if (hasGallery) {
@@ -515,16 +527,28 @@ export async function exportCrateManifesto(
                 doc.rect(ML, gy, TABLE_END - ML, ROW_H, 'F');
             }
 
-            const gThumbW = 20;
+            const gThumbW = 14;
             let gx = COL_IMG.x + 2; 
             const gThumbY = gy + (ROW_H - gThumbW) / 2;
 
             for (let j = 1; j < Math.min(10, imgList.length); j++) {
-                const imgData = await loadImageDataUrl(imgList[j], 120);
-                if (imgData) {
+                const imgResult = await loadImageDataUrl(imgList[j], 120);
+                if (imgResult) {
+                    const { dataUrl, w, h } = imgResult;
+                    const aspect = w / h;
+                    let dw = gThumbW;
+                    let dh = gThumbW;
+                    if (aspect > 1) {
+                        dh = gThumbW / aspect;
+                    } else {
+                        dw = gThumbW * aspect;
+                    }
+                    const dx = gx + (gThumbW - dw) / 2;
+                    const dy = gThumbY + (gThumbW - dh) / 2;
+
                     doc.setFillColor(240, 240, 240);
                     doc.rect(gx, gThumbY, gThumbW, gThumbW, 'F');
-                    doc.addImage(imgData, 'JPEG', gx, gThumbY, gThumbW, gThumbW);
+                    doc.addImage(dataUrl, 'JPEG', dx, dy, dw, dh);
                 } else {
                     doc.setFillColor(...BORDER);
                     doc.rect(gx, gThumbY, gThumbW, gThumbW, 'F');
