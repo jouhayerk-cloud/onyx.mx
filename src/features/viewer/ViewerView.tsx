@@ -500,7 +500,6 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 const qB = parseInt(String(b.data.quantity || b.data.QTY || 1));
                 return qB - qA;
             });
-
             await exportCatalogPdf(sortedItems as any, { title: exportTitle, method: exportMethod, exportType: 'catalog' }, (p, s) => {
                 setExportProgress(p);
                 setExportStatus(s);
@@ -516,42 +515,48 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
 
 
     return (
-        <div className="h-full flex flex-col bg-white/[0.03] backdrop-blur-3xl text-white selection:bg-white/20 overflow-hidden relative font-sans rounded-[32px] border border-white/10 shadow-2xl m-1 sm:m-4">
+        <div className="h-full flex flex-col text-white selection:bg-white/20 overflow-hidden relative font-sans">
             {viewerItem && <FullscreenViewer images={viewerItem.images} initialIdx={viewerIdx} onClose={() => setViewerItem(null)} />}
-            <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-10 pb-6'}`}>
-                <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-10">
-                    {isInitial && results.length === 0 && <div className="flex flex-col items-center gap-8"><OnyxLogo width={56} height={56} className="opacity-80 hover:opacity-100 transition-opacity" /></div>}
-                    <div className="flex flex-col gap-8">
-                        {/* Large Opaque Scanner Triggers */}
-                        <div className="flex items-center justify-center gap-12 sm:gap-16 pb-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-20 pb-10'}`}>
+                <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-12">
+                    {isInitial && results.length === 0 && (
+                        <div className="flex items-center justify-center gap-16 sm:gap-24 animate-in fade-in zoom-in duration-1000">
+                            {/* QR Trigger */}
                             <button 
                                 onClick={() => setScannerMode('qr')}
-                                className="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:scale-95"
+                                className="group transition-all hover:scale-110 active:scale-90"
                                 title="Open QR Scanner"
                             >
-                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-lg">
-                                    <QrCode size={32} strokeWidth={2} />
+                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                                    <QrCode size={48} strokeWidth={1.5} />
                                 </div>
-                                <span className="text-[10px] font-black text-white group-hover:text-[#b8860b] uppercase tracking-[0.4em] transition-all">QR Scan</span>
                             </button>
-                            <div className="w-px h-8 bg-white/20" />
+
+                            {/* Large Onyx Logo */}
+                            <div className="relative group">
+                                <div className="absolute -inset-8 bg-[#b8860b]/20 blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000 rounded-full" />
+                                <OnyxLogo width={120} height={120} className="relative opacity-90 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105" />
+                            </div>
+
+                            {/* NFC Trigger */}
                             <button 
                                 onClick={() => setScannerMode('nfc')}
-                                className="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:scale-95"
+                                className="group transition-all hover:scale-110 active:scale-90"
                                 title="Scan NFC Tag"
                             >
-                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-lg">
-                                    <Smartphone size={32} strokeWidth={2} />
+                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                                    <Smartphone size={48} strokeWidth={1.5} />
                                 </div>
-                                <span className="text-[10px] font-black text-white group-hover:text-[#b8860b] uppercase tracking-[0.4em] transition-all">NFC Scan</span>
                             </button>
                         </div>
+                    )}
 
+                    <div className="flex flex-col gap-10">
                         <div className="relative group max-w-2xl mx-auto w-full">
-                            <div className="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/20 group-focus-within:text-[#b8860b] transition-colors"><Search size={22} strokeWidth={2.5} /></div>
-                            <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder="INPUT BARCODES..." className={`w-full transition-all duration-700 bg-black border-2 border-white rounded-full font-black uppercase tracking-tight placeholder:text-white/30 focus:border-[#b8860b] focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-20 sm:h-28 px-20 text-lg sm:text-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)]' : 'h-14 px-14 text-sm sm:text-base'}`} />
-                            <div className={`absolute inset-y-0 flex items-center transition-all duration-700 ${isInitial && results.length === 0 ? 'right-8' : 'right-4'}`}>
-                                {loading && <Loader2 size={20} className="animate-spin text-[#b8860b]" />}
+                            <div className="absolute inset-y-0 left-8 flex items-center pointer-events-none text-white/20 group-focus-within:text-[#b8860b] transition-colors"><Search size={24} strokeWidth={2.5} /></div>
+                            <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder="INPUT BARCODES..." className={`w-full transition-all duration-700 bg-transparent border-2 border-white/20 rounded-full font-black uppercase tracking-tight placeholder:text-white/10 focus:border-[#b8860b] focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-24 sm:h-32 px-24 text-xl sm:text-3xl' : 'h-14 px-14 text-sm sm:text-base'}`} />
+                            <div className={`absolute inset-y-0 flex items-center transition-all duration-700 ${isInitial && results.length === 0 ? 'right-10' : 'right-4'}`}>
+                                {loading && <Loader2 size={24} className="animate-spin text-[#b8860b]" />}
                             </div>
                         </div>
 
