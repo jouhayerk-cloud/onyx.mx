@@ -9,8 +9,10 @@ import { OnyxLogo } from '../../components/OnyxLogo';
 import {
     Maximize2, Loader2, Search, Package, X,
     ChevronLeft, ChevronRight, FileDown, LayoutGrid,
-    CloudUpload, Check as CheckIcon, FileText as FileTextIcon
+    CloudUpload, Check as CheckIcon, FileText as FileTextIcon,
+    QrCode, Smartphone, Trash2, CheckCircle2
 } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import gsap from 'gsap';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
@@ -268,6 +270,177 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
         </div>
     );
 };
+// ── Scanner Center Overlay (QR & NFC) ──────────────────────────────────────────
+const ScannerCenter: React.FC<{
+    initialMode?: 'qr' | 'nfc';
+    onComplete: (ids: string[]) => void;
+    onClose: () => void;
+}> = ({ initialMode = 'qr', onComplete, onClose }) => {
+    const [mode, setMode] = useState<'qr' | 'nfc'>(initialMode);
+    const [scannedIds, setScannedIds] = useState<string[]>([]);
+    const [isScanning, setIsScanning] = useState(false);
+    const [lastScan, setLastScan] = useState<string | null>(null);
+    const [nfcError, setNfcError] = useState<string | null>(null);
+    
+    const qrRegionId = "qr-reader-region";
+    const qrScannerRef = useRef<Html5Qrcode | null>(null);
+
+    const playBeep = () => {
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.01);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        } catch (e) {}
+    };
+
+    const handleIdCaptured = useCallback((id: string) => {
+        if (!id.trim()) return;
+        const normalized = id.trim().toUpperCase();
+        setScannedIds(prev => {
+            if (prev.includes(normalized)) return prev;
+            playBeep();
+            setLastScan(normalized);
+            setTimeout(() => setLastScan(null), 1500);
+            return [...prev, normalized];
+        });
+    }, []);
+
+    useEffect(() => {
+        let scanner: Html5Qrcode | null = null;
+
+        const startScanner = async () => {
+            if (mode === 'qr' && !isScanning) {
+                const element = document.getElementById(qrRegionId);
+                if (!element) {
+                    // Element not ready, retry briefly
+                    setTimeout(startScanner, 100);
+                    return;
+                }
+
+                try {
+                    scanner = new Html5Qrcode(qrRegionId);
+                    qrScannerRef.current = scanner;
+                    setIsScanning(true);
+
+                    await scanner.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        (text) => handleIdCaptured(text),
+                        () => {}
+                    );
+                } catch (err) {
+                    console.error("QR Scanner Error:", err);
+                    setIsScanning(false);
+                }
+            }
+        };
+
+        startScanner();
+
+        return () => {
+            if (scanner && scanner.isScanning) {
+                scanner.stop().then(() => scanner.clear()).catch(console.error);
+            }
+        };
+    }, [mode, handleIdCaptured, isScanning]);
+
+    useEffect(() => {
+        if (mode === 'nfc') {
+            if (!('NDEFReader' in window)) {
+                setNfcError("NFC not supported on this device/browser.");
+                return;
+            }
+
+            const reader = new (window as any).NDEFReader();
+            let aborted = false;
+
+            const startNfc = async () => {
+                try {
+                    await reader.scan();
+                    reader.onreading = (event: any) => {
+                        if (aborted) return;
+                        const decoder = new TextDecoder();
+                        for (const record of event.message.records) {
+                            if (record.recordType === "text") {
+                                handleIdCaptured(decoder.decode(record.data));
+                            }
+                        }
+                    };
+                } catch (err) {
+                    console.error("NFC Error:", err);
+                    setNfcError("NFC Access Denied or Failed.");
+                }
+            };
+
+            startNfc();
+            return () => { aborted = true; };
+        }
+    }, [mode, handleIdCaptured]);
+
+    return createPortal(
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center bg-black/90 backdrop-blur-3xl p-4 sm:p-10 animate-in fade-in duration-500">
+            <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[48px] overflow-hidden flex flex-col shadow-2xl relative">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#b8860b]/40 to-transparent" />
+                <div className="p-8 pb-4 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Scanner Center</h2>
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Batch ID Capture</p>
+                    </div>
+                    <button onClick={onClose} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="px-8 flex gap-3 mb-6">
+                    <button onClick={() => setMode('qr')} className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl border transition-all ${mode === 'qr' ? 'bg-[#b8860b]/10 border-[#b8860b]/30 text-[#b8860b]' : 'bg-white/2 border-white/5 text-white/20 hover:text-white/40'}`}>
+                        <QrCode size={18} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">QR Scan</span>
+                    </button>
+                    <button onClick={() => setMode('nfc')} className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl border transition-all ${mode === 'nfc' ? 'bg-[#b8860b]/10 border-[#b8860b]/30 text-[#b8860b]' : 'bg-white/2 border-white/5 text-white/20 hover:text-white/40'}`}>
+                        <Smartphone size={18} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">NFC Scan</span>
+                    </button>
+                </div>
+                <div className="flex-1 min-h-[300px] bg-black/40 relative flex items-center justify-center">
+                    {mode === 'qr' ? <div id={qrRegionId} className="w-full h-full" /> : (
+                        <div className="flex flex-col items-center gap-6 p-10 text-center">
+                            <div className={`w-24 h-24 rounded-full flex items-center justify-center border transition-all duration-500 ${nfcError ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-[#b8860b]/10 border-[#b8860b]/20 text-[#b8860b] animate-pulse'}`}><Smartphone size={40} /></div>
+                            <div><p className="text-sm font-black text-white uppercase tracking-widest mb-2">{nfcError || "Scanning for Tags..."}</p><p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">Hold device near NFC tag</p></div>
+                        </div>
+                    )}
+                    {lastScan && (
+                        <div className="absolute top-6 inset-x-0 flex justify-center pointer-events-none px-4 animate-in slide-in-from-top-4 duration-300">
+                            <div className="bg-green-500/20 border border-green-500/40 backdrop-blur-xl px-4 py-2 rounded-full flex items-center gap-2 shadow-xl"><CheckCircle2 size={12} className="text-green-400" /><span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Captured: {lastScan}</span></div>
+                        </div>
+                    )}
+                </div>
+                <div className="p-8 bg-black/20 flex flex-col gap-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3"><span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Batch List</span><div className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] font-mono font-black text-[#b8860b]">{scannedIds.length}</div></div>
+                        {scannedIds.length > 0 && <button onClick={() => setScannedIds([])} className="text-[9px] font-black text-rose-500/40 hover:text-rose-500 uppercase tracking-widest transition-colors flex items-center gap-1.5"><Trash2 size={12} /> Clear List</button>}
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto no-scrollbar">
+                        {scannedIds.length === 0 ? <div className="w-full py-8 border border-dashed border-white/5 rounded-2xl flex items-center justify-center"><p className="text-[10px] font-black text-white/10 uppercase tracking-widest">No tags scanned yet</p></div> : scannedIds.map(id => (
+                            <div key={id} className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2 group/tag"><span className="text-[10px] font-mono font-black text-white/60 tracking-tight">{id}</span><button onClick={() => setScannedIds(prev => prev.filter(x => x !== id))} className="opacity-0 group-hover/tag:opacity-100 transition-opacity"><X size={10} className="text-white/20 hover:text-rose-500" /></button></div>
+                        ))}
+                    </div>
+                    <div className="flex gap-4">
+                        <button onClick={onClose} className="flex-1 h-14 rounded-full bg-white/5 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] hover:bg-white/10 transition-all">Cancel</button>
+                        <button disabled={scannedIds.length === 0} onClick={() => onComplete(scannedIds)} className="flex-[2] h-14 rounded-full bg-[#b8860b] disabled:bg-white/5 disabled:text-white/10 text-[10px] font-black text-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#b8860b]/10">Generate Results</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    , document.body);
+};
 
 // ── Main Viewer Module ────────────────────────────────────────────────────────
 export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = ({ onOpenArtifact }) => {
@@ -282,6 +455,7 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
     const [exportStatus, setExportStatus] = useState('');
     const [viewerItem, setViewerItem] = useState<ResolvedArtifact | null>(null);
     const [viewerIdx, setViewerIdx] = useState(0);
+    const [scannerMode, setScannerMode] = useState<'qr' | 'nfc' | null>(null);
 
     const performSearch = useCallback(async (q: string) => {
         if (!q.trim()) { setResults([]); setIsInitial(true); return; }
@@ -347,13 +521,66 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
             <div className={`shrink-0 transition-all duration-700 ${isInitial && results.length === 0 ? 'h-full flex flex-col items-center justify-center' : 'pt-10 pb-6'}`}>
                 <div className="max-w-4xl mx-auto w-full px-6 flex flex-col gap-10">
                     {isInitial && results.length === 0 && <div className="flex flex-col items-center gap-8"><OnyxLogo width={56} height={56} className="opacity-80 hover:opacity-100 transition-opacity" /></div>}
-                    <div className="relative group max-w-2xl mx-auto w-full">
-                        <div className="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/10 group-focus-within:text-[#b8860b]/50 transition-colors"><Search size={22} strokeWidth={2.5} /></div>
-                        <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder="INPUT BARCODES..." className={`w-full transition-all duration-700 bg-white/[0.02] border border-white/8 rounded-full font-black uppercase tracking-tight placeholder:text-white/10 focus:border-[#b8860b]/20 focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-20 sm:h-28 px-20 text-lg sm:text-2xl' : 'h-14 px-14 text-sm sm:text-base'}`} />
-                        {loading && <div className="absolute inset-y-0 right-8 flex items-center"><Loader2 size={20} className="animate-spin text-[#b8860b]/40" /></div>}
+                    <div className="flex flex-col gap-8">
+                        {/* Large Opaque Scanner Triggers */}
+                        <div className="flex items-center justify-center gap-12 sm:gap-16 pb-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                            <button 
+                                onClick={() => setScannerMode('qr')}
+                                className="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:scale-95"
+                                title="Open QR Scanner"
+                            >
+                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-lg">
+                                    <QrCode size={32} strokeWidth={2} />
+                                </div>
+                                <span className="text-[10px] font-black text-white group-hover:text-[#b8860b] uppercase tracking-[0.4em] transition-all">QR Scan</span>
+                            </button>
+                            <div className="w-px h-8 bg-white/20" />
+                            <button 
+                                onClick={() => setScannerMode('nfc')}
+                                className="group flex flex-col items-center gap-4 transition-all hover:scale-105 active:scale-95"
+                                title="Scan NFC Tag"
+                            >
+                                <div className="text-white group-hover:text-[#b8860b] transition-all drop-shadow-lg">
+                                    <Smartphone size={32} strokeWidth={2} />
+                                </div>
+                                <span className="text-[10px] font-black text-white group-hover:text-[#b8860b] uppercase tracking-[0.4em] transition-all">NFC Scan</span>
+                            </button>
+                        </div>
+
+                        <div className="relative group max-w-2xl mx-auto w-full">
+                            <div className="absolute inset-y-0 left-7 flex items-center pointer-events-none text-white/20 group-focus-within:text-[#b8860b] transition-colors"><Search size={22} strokeWidth={2.5} /></div>
+                            <input type="text" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') performSearch(query); }} placeholder="INPUT BARCODES..." className={`w-full transition-all duration-700 bg-black border-2 border-white rounded-full font-black uppercase tracking-tight placeholder:text-white/30 focus:border-[#b8860b] focus:bg-white/5 outline-none ${isInitial && results.length === 0 ? 'h-20 sm:h-28 px-20 text-lg sm:text-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)]' : 'h-14 px-14 text-sm sm:text-base'}`} />
+                            <div className={`absolute inset-y-0 flex items-center transition-all duration-700 ${isInitial && results.length === 0 ? 'right-8' : 'right-4'}`}>
+                                {loading && <Loader2 size={20} className="animate-spin text-[#b8860b]" />}
+                            </div>
+                        </div>
+
+                        {/* Batch Scanning Status Indicator (if query has multiple items) */}
+                        {query.includes(' ') && (
+                            <div className="flex justify-center">
+                                <div className="px-4 py-1.5 rounded-full bg-[#b8860b]/10 border border-[#b8860b]/20 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <span className="text-[10px] font-black text-[#b8860b] uppercase tracking-[0.2em]">Batch Search Active</span>
+                                    <div className="w-1 h-1 rounded-full bg-[#b8860b]/40" />
+                                    <span className="text-[10px] font-mono font-black text-[#b8860b]">{query.split(' ').filter(Boolean).length} ITEMS</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {scannerMode && (
+                <ScannerCenter 
+                    initialMode={scannerMode}
+                    onClose={() => setScannerMode(null)}
+                    onComplete={(ids) => {
+                        const newQuery = ids.join(' ');
+                        setQuery(newQuery);
+                        setScannerMode(null);
+                        performSearch(newQuery);
+                    }}
+                />
+            )}
             {!isInitial && (
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-8 pb-32">
