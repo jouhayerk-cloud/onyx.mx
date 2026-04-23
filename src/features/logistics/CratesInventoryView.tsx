@@ -147,55 +147,59 @@ function extractItemNumFromBarcode(barcode: string, vendorPrefix: string): numbe
     return m ? parseInt(m[1], 10) : 0;
 }
 
-// Format: [Month(1-12)][Year(2 digits)][Vendors Combined][Sequence #] 
-// e.g., April 2026, EM + GE, 1st crate -> 426EMGE1
-function generateDynamicCrateId(crate: CrateRecord, allCrates: CrateRecord[], allInventory: any[]): string {
-    if (!crate.inventory_ids || crate.status === 'Empty') return crate.id.slice(0, 8).toUpperCase();
-
-    // 1. Month and Year from creation/update date (fallback to now)
+// Format components for space-separated tags
+function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[], allInventory: any[]) {
+    if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
+    
     const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
-    const mm = d.getMonth() + 1; // 1-12
+    const mm = d.getMonth() + 1;
     const yy = String(d.getFullYear()).slice(-2);
     const datePrefix = `${mm}${yy}`;
-
-    // Helper: get exact sorted vendors combination for a crate
-    const getVendors = (c: CrateRecord) => {
-        if (!c.inventory_ids) return '';
-        const vSet = new Set<string>();
+    
+    const vSet = new Set<string>();
+    crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+        const [id] = entry.split(':');
+        const inv = allInventory.find((i: any) => String(i.row) === id);
+        if (inv?.data) {
+            const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+            if (p) vSet.add(p.toUpperCase());
+        }
+    });
+    const vendorsList = Array.from(vSet).sort();
+    const vendorsStr = vendorsList.join('');
+    
+    const matchingCrates = allCrates.filter(c => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        const cVSet = new Set<string>();
         c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
             const [id] = entry.split(':');
             const inv = allInventory.find((i: any) => String(i.row) === id);
-            if (inv && inv.data) {
-                const prefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
-                if (prefix) vSet.add(prefix.toUpperCase());
+            if (inv?.data) {
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+                if (p) cVSet.add(p.toUpperCase());
             }
         });
-        return Array.from(vSet).sort().join('');
-    };
-
-    // 2. Vendors string for this crate
-    const vendorsStr = getVendors(crate);
-    if (!vendorsStr) return crate.id.slice(0, 8).toUpperCase();
-
-    // 3. Count Sequence
-    // Find all packed/partial crates matching this specific vendor combo
-    const matchingCrates = allCrates.filter(c => {
-        if (c.status === 'Empty' || !c.inventory_ids) return false;
-        return getVendors(c) === vendorsStr;
+        return Array.from(cVSet).sort().join('') === vendorsStr;
     });
 
-    // Sort chronologically by date to find sequence index
     matchingCrates.sort((a, b) => {
         const tA = (a.updated_at || a.date) ? new Date(a.updated_at || a.date!).getTime() : 0;
         const tB = (b.updated_at || b.date) ? new Date(b.updated_at || b.date!).getTime() : 0;
-        if (tA === tB) return a.id.localeCompare(b.id);
-        return tA - tB;
+        return tA === tB ? a.id.localeCompare(b.id) : tA - tB;
     });
 
     const index = matchingCrates.findIndex(c => c.id === crate.id);
     const sequence = index >= 0 ? index + 1 : 1;
 
-    return `${datePrefix}${vendorsStr}${sequence}`;
+    return { date: datePrefix, vendors: vendorsList, sequence: String(sequence) };
+}
+
+// Format: [Month(1-12)][Year(2 digits)][Vendors Combined][Sequence #] 
+// e.g., April 2026, EM + GE, 1st crate -> 426EMGE1
+function generateDynamicCrateId(crate: CrateRecord, allCrates: CrateRecord[], allInventory: any[]): string {
+    const { date, vendors, sequence } = getDynamicCrateIdComponents(crate, allCrates, allInventory);
+    if (!date) return sequence;
+    return `${date}${vendors.join('')}${sequence}`;
 }
 
 // --- Status Badge ---
@@ -358,127 +362,121 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
     }, [crate.inventory_ids, allInventory]);
 
     return (
-        <div className="group relative bg-white/3 border border-white/8 rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-500 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-black/30 w-full flex flex-col">
-            {/* Top accent line */}
-            <div className="absolute top-0 inset-x-0 h-px bg-linear-to-r from-transparent via-(--main-color)/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 border-b border-white/5 last:border-0">
 
             {/* Main Row */}
             <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
                 {/* Wireframe preview window */}
-                <div className="relative w-full xl:w-48 h-40 xl:h-32 shrink-0 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
+                <div className="relative w-full xl:w-56 h-44 xl:h-36 shrink-0 flex items-center justify-center overflow-hidden cursor-pointer group/wire" onClick={() => setIsExpanded(!isExpanded)}>
                     <div className="absolute inset-0 opacity-[0.04]" style={{
-                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-                        backgroundSize: '16px 16px'
+                        backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px'
                     }} />
-                    <WireframeCrate
-                        w={crate.width_cm}
-                        l={crate.length_cm}
-                        h={crate.height_cm}
-                        status={crate.status}
-                        type={crate.type}
-                        count={crate.groupedCount || 1}
-                        fillPct={fillPct}
-                    />
-                    <div className="absolute top-2 left-2.5">
+                    <div className="scale-110">
+                        <WireframeCrate
+                            w={crate.width_cm}
+                            l={crate.length_cm}
+                            h={crate.height_cm}
+                            status={crate.status}
+                            type={crate.type}
+                            count={crate.groupedCount || 1}
+                            fillPct={fillPct}
+                        />
+                    </div>
+                    <div className="absolute top-0 left-0">
                         <StatusBadge status={crate.status} />
                     </div>
-                    {crate.status !== 'Empty' && (
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/wire:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                            <span className="text-[10px] font-black uppercase text-white tracking-widest flex items-center gap-1.5">
-                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} 
-                                View Contents
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 {/* Info & Stats */}
-                <div className="flex-1 min-w-0 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-8">
+                <div className="flex-1 min-w-0 flex flex-col xl:flex-row items-stretch xl:items-center gap-6 xl:gap-12">
                     {/* Crate ID — barcode for packed crates, text for empty */}
-                    <div className="min-w-0 xl:min-w-[140px] flex flex-row xl:flex-col items-center xl:items-start justify-between xl:justify-start">
+                    <div className="min-w-0 xl:min-w-[160px] flex flex-row xl:flex-col items-center xl:items-start justify-between xl:justify-start gap-2">
                         {crate.status !== 'Empty' ? (
-                            <div className="mb-0 xl:mb-2 flex items-center shrink-0">
-                                <div className="flex bg-black/40 border border-white/10 rounded-lg overflow-hidden backdrop-blur-md shadow-md">
+                            <div className="mb-0 xl:mb-3 flex items-center shrink-0">
+                                <div className="flex items-center">
                                     {(() => {
-                                        const match = dynamicId.match(/^(\d+)(.*)$/);
-                                        if (match) {
-                                            const firstId = crate.inventory_ids?.split(',').filter(Boolean)[0]?.split(':')[0];
-                                            const inv = allInventory.find(i => String(i.row) === firstId);
-                                            const vendorPrefix = inv ? (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] : 'UNK';
-                                            const badgeColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#10b981';
-
-                                            return (
-                                                <>
-                                                    <div className="px-2.5 py-1.5 bg-white/5 border-r border-white/5">
-                                                        <span className="text-sm font-black text-white tracking-widest leading-none block mt-[1px]">{match[1]}</span>
-                                                    </div>
-                                                    <div className="px-2.5 py-1.5" style={{ backgroundColor: badgeColor ? `${badgeColor}15` : 'rgba(255,255,255,0.05)' }}>
-                                                        <span className="text-sm font-black tracking-widest leading-none block mt-[1px]" style={{ color: badgeColor }}>{match[2]}</span>
-                                                    </div>
-                                                </>
-                                            );
-                                        }
+                                        const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, allCrates, allInventory);
                                         return (
-                                            <div className="px-2.5 py-1.5 bg-white/5">
-                                                <span className="text-sm font-black tracking-widest text-white leading-none block mt-[1px]">{dynamicId}</span>
-                                            </div>
+                                            <>
+                                                {date && (
+                                                    <div className="bg-white/10 px-2 py-1">
+                                                        <span className="text-[16px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
+                                                    </div>
+                                                )}
+                                                {vList.map((v, idx) => (
+                                                    <div 
+                                                        key={v} 
+                                                        className="px-2 py-1"
+                                                        style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}
+                                                    >
+                                                        <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                                                    </div>
+                                                ))}
+                                                {sequence && (
+                                                    <div className="px-3 py-1 bg-white/5">
+                                                        <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
+                                                    </div>
+                                                )}
+                                            </>
                                         );
                                     })()}
                                 </div>
                             </div>
                         ) : (
-                            <p className="text-[9px] font-mono font-black tracking-widest text-(--text-color)/20">
+                            <p className="text-[11px] font-mono font-black tracking-[0.3em] text-white/40 uppercase">
                                 {crate.id?.slice(0, 8).toUpperCase()}
                             </p>
                         )}
                         <div className="flex flex-col items-end xl:items-start text-right xl:text-left">
-                            <h3 className="text-xl font-black uppercase tracking-tight text-(--text-color) leading-tight mt-1">
-                                {crate.width_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.length_cm}<span className="text-(--text-color)/30 text-sm">×</span>{crate.height_cm}
-                                <span className="text-[9px] text-(--text-color)/30 font-black ml-1">CM</span>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">
+                                {crate.width_cm}<span className="text-white/40 mx-0.5">×</span>{crate.length_cm}<span className="text-white/40 mx-0.5">×</span>{crate.height_cm}
+                                <span className="text-[10px] text-white/40 font-black ml-1.5 tracking-widest">CM</span>
                             </h3>
                             {crate.groupedCount && crate.groupedCount > 1 && (
-                                <p className="text-[9px] font-black text-(--main-color)/70 mt-1 uppercase tracking-widest">
-                                    x{crate.groupedCount} {crate.type === 'pallet' ? 'PALLETS' : 'CRATES'}
+                                <p className="text-[10px] font-black text-(--main-color) mt-2 uppercase tracking-[0.2em]">
+                                    {crate.groupedCount} UNITS AVAILABLE
                                 </p>
                             )}
+
+                            {/* Repositioned Description / Summary */}
+                            <div className="mt-4 hidden lg:block max-w-[280px]">
+                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-1.5">Contents / Notes</p>
+                                {crate.contents_summary ? (
+                                    <p className="text-[11px] text-white/80 font-medium italic line-clamp-2 leading-relaxed">{crate.contents_summary}</p>
+                                ) : crate.description ? (
+                                    <p className="text-[11px] text-white/60 line-clamp-2 font-mono italic leading-relaxed">{crate.description}</p>
+                                ) : (
+                                    <p className="text-[11px] text-white/20 italic">No notes provided</p>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 xl:gap-4 xl:min-w-[200px] w-full mt-2 xl:mt-0">
-                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Volume</p>
-                            <p className="text-sm font-mono font-black text-(--text-color)">{vol} m³</p>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-row gap-4 xl:gap-10 xl:min-w-[240px] w-full mt-4 xl:mt-0">
+                        <div className="flex flex-col gap-1.5">
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">Volume</p>
+                            <p className="text-[17px] font-mono font-black text-white leading-none">{vol} <span className="text-[9px] font-black text-white/20">M³</span></p>
                         </div>
-                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Weight</p>
-                            <p className="text-sm font-mono font-black text-(--main-color)">
-                                {netWeight > 0 ? `${netWeight.toFixed(1)} kg` : '—'}
+                        <div className="flex flex-col gap-1.5">
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">Net Weight</p>
+                            <p className="text-[17px] font-mono font-black text-(--main-color) leading-none">
+                                {netWeight > 0 ? netWeight.toFixed(1) : '—'} <span className="text-[9px] font-black text-white/20">KG</span>
                             </p>
                         </div>
-                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5">
-                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Fill</p>
-                            <p className={`text-sm font-mono font-black ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <div className="flex flex-col gap-1.5">
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">Utilization</p>
+                            <p className={`text-[17px] font-mono font-black leading-none ${fillPct > 90 ? 'text-rose-400' : fillPct > 70 ? 'text-amber-400' : 'text-emerald-400'}`}>
                                 {fillPct.toFixed(1)}%
                             </p>
                         </div>
-                        <div className="flex-1 bg-black/20 rounded-xl px-4 py-2.5 border border-white/5 text-center">
-                            <p className="text-[7px] uppercase tracking-widest text-(--text-color)/30 font-black">Items</p>
-                            <p className="text-sm font-mono font-black text-(--text-color)">{itemCount}</p>
+                        <div className="flex flex-col gap-1.5 text-center xl:text-left">
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">Inventory</p>
+                            <p className="text-[17px] font-mono font-black text-white leading-none">{itemCount} <span className="text-[9px] font-black text-white/20">ITEMS</span></p>
                         </div>
                     </div>
 
-                    {/* Description / Summary */}
-                    <div className="flex-1 min-w-0 hidden lg:block">
-                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-(--text-color)/20 mb-1">Contents / Notes</p>
-                        {crate.contents_summary ? (
-                            <p className="text-[11px] text-(--text-color)/40 font-medium italic line-clamp-2">{crate.contents_summary}</p>
-                        ) : crate.description ? (
-                            <p className="text-[11px] text-(--text-color)/30 line-clamp-2 font-mono italic">{crate.description}</p>
-                        ) : (
-                            <p className="text-[11px] text-(--text-color)/10 italic">No description provided</p>
-                        )}
-                    </div>
                 </div>
 
                 {/* Actions */}
@@ -860,9 +858,32 @@ export const CratesInventoryView: React.FC = () => {
 
     // Group logic for 'empty' crates
     const displayCrates = useMemo(() => {
-        if (activeTab === 'packed') return filteredCrates;
+        if (activeTab === 'packed') {
+            const getVendors = (c: CrateRecord) => {
+                if (!c.inventory_ids) return 'ZZZZ';
+                const vSet = new Set<string>();
+                c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+                    const [id] = entry.split(':');
+                    const inv = allInventory.find((i: any) => String(i.row) === id);
+                    if (inv && inv.data) {
+                        const prefix = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0] || 'UNK';
+                        if (prefix) vSet.add(prefix.toUpperCase());
+                    }
+                });
+                return Array.from(vSet).sort().join(',');
+            };
 
-        // For empty crates, group by WxLxHxType
+            return [...filteredCrates].sort((a, b) => {
+                const vA = getVendors(a);
+                const vB = getVendors(b);
+                if (vA !== vB) return vA.localeCompare(vB);
+                
+                const tA = (a.updated_at || a.date) ? new Date(a.updated_at || a.date!).getTime() : 0;
+                const tB = (b.updated_at || b.date) ? new Date(b.updated_at || b.date!).getTime() : 0;
+                return tB - tA;
+            });
+        }
+
         const groups: Record<string, CrateRecord> = {};
         for (const c of filteredCrates) {
             const key = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
@@ -875,7 +896,7 @@ export const CratesInventoryView: React.FC = () => {
             groups[key].weight_kg = (groups[key].weight_kg || 0) + (c.weight_kg || 0);
         }
         return Object.values(groups);
-    }, [filteredCrates, activeTab]);
+    }, [filteredCrates, activeTab, allInventory]);
 
     // Status counters
     const summary = useMemo(() => ({

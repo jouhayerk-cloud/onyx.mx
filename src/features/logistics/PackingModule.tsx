@@ -5,7 +5,8 @@ import {
     packingViewModeAtom, packingVendorFilterAtom, packingLabelSizeAtom,
     isPackingPrintWizardOpenAtom, packingExportPDFTriggerAtom, 
     packingExportXLSXTriggerAtom, packingExportJSONTriggerAtom,
-    isPackingFiltersOpenAtom, isPackingNFCWizardOpenAtom
+    isPackingFiltersOpenAtom, isPackingNFCWizardOpenAtom,
+    packingSortKeyAtom, packingSortOrderAtom
 } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
@@ -388,6 +389,8 @@ export const PackingModule: React.FC = () => {
     const [exportXLSXTrigger, setExportXLSXTrigger] = useAtom(packingExportXLSXTriggerAtom);
     const [exportJSONTrigger, setExportJSONTrigger] = useAtom(packingExportJSONTriggerAtom);
     const [isNFCWizardOpen, setIsNFCWizardOpen] = useAtom(isPackingNFCWizardOpenAtom);
+    const [sortKey, setSortKey] = useAtom(packingSortKeyAtom);
+    const [sortOrder, setSortOrder] = useAtom(packingSortOrderAtom);
     const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
     const [lastPrintedIds, setLastPrintedIds] = useState<string[]>([]);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -406,7 +409,7 @@ export const PackingModule: React.FC = () => {
 
     const processedItems = useMemo(() => {
         try {
-            return inventory.map(item => {
+            const items = inventory.map(item => {
                 const normData = normalizeInventoryData(item?.data || {});
                 const codes = calculateCodesAndPrices(normData, exchangeRate, workbookPrefix);
                 const baseImg = normData.generatedPngUrl || (normData.mediaUrls ? String(normData.mediaUrls).split(',')[0].trim() : null);
@@ -436,11 +439,34 @@ export const PackingModule: React.FC = () => {
 
                 return true;
             });
+
+            return items.sort((a, b) => {
+                let valA: any = '';
+                let valB: any = '';
+
+                if (sortKey === 'Date') {
+                    valA = a.data?.timestamp || a.created_at || a.data?.created_at || '';
+                    valB = b.data?.timestamp || b.created_at || b.data?.created_at || '';
+                } else if (sortKey === 'Status') {
+                    valA = a.normData.status || '';
+                    valB = b.normData.status || '';
+                } else if (sortKey === 'Vendor') {
+                    valA = a.codes.bookBarcode?.substring(0, 2) || '';
+                    valB = b.codes.bookBarcode?.substring(0, 2) || '';
+                } else if (sortKey === '#') {
+                    valA = Number(a.normData.quantity) || 0;
+                    valB = Number(b.normData.quantity) || 0;
+                }
+
+                if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
         } catch (e) {
             console.error('processedItems error:', e);
             return [];
         }
-    }, [inventory, deferredSearch, exchangeRate, workbookPrefix, vendorFilter]);
+    }, [inventory, deferredSearch, exchangeRate, workbookPrefix, vendorFilter, sortKey, sortOrder]);
 
     const availableVendors = useMemo(() => {
         const vendorSet = new Set<string>();
@@ -755,18 +781,34 @@ export const PackingModule: React.FC = () => {
                                 {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
                             </button>
                         </div>
-                        <div className="relative group">
-                            <select
-                                value={labelSize}
-                                onChange={e => setLabelSize(e.target.value as any)}
-                                className="bg-white/5 border border-white/8 px-4 py-2.5 rounded-xl text-[9px] font-black text-white outline-none uppercase tracking-widest cursor-pointer w-full sm:w-auto appearance-none pr-10"
-                            >
-                                <option value="40x30">40×30 mm Pocket</option>
-                                <option value="50x30">50×30 mm Industrial</option>
-                                <option value="50x80">50×80 mm Elite Wide</option>
-                            </select>
-                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/30">
-                                <ChevronRight size={12} className="rotate-90" />
+                        {/* Sort by UI - Free Floating Tags */}
+                        <div className="flex items-center gap-4 ml-2">
+                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20">Sort by</span>
+                            <div className="flex items-center gap-3">
+                                {['Date', 'Status', 'Vendor', '#'].map((key) => {
+                                    const isActive = sortKey === key;
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => {
+                                                if (isActive) {
+                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                } else {
+                                                    setSortKey(key as any);
+                                                }
+                                            }}
+                                            className={`group flex items-center gap-1.5 transition-all duration-300 ${isActive ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                                        >
+                                            <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : ''}`}>{key}</span>
+                                            {isActive && (
+                                                <div className="flex flex-col items-center justify-center -space-y-1">
+                                                    <ChevronRight size={8} className={`-rotate-90 transition-all duration-300 ${sortOrder === 'asc' ? 'text-(--main-color) scale-125' : 'text-white/10 opacity-0'}`} />
+                                                    <ChevronRight size={8} className={`rotate-90 transition-all duration-300 ${sortOrder === 'desc' ? 'text-(--main-color) scale-125' : 'text-white/10 opacity-0'}`} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -933,78 +975,97 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
     return (
         <div
             onClick={onToggle}
-            className={`group relative flex flex-col rounded-2xl overflow-hidden cursor-pointer border transition-all duration-400 hover:-translate-y-1 hover:shadow-2xl hover:shadow-(--main-color)/10 ${isSelected ? 'bg-(--main-color)/8 border-(--main-color)/35 shadow-xl shadow-(--main-color)/10 scale-[1.01]' : 'bg-white/5 border-white/10 hover:border-(--main-color)/30'}`}
+            className={`group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer border transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${isSelected ? 'bg-(--main-color)/10 border-(--main-color)/40 shadow-2xl shadow-(--main-color)/20 scale-[1.02]' : 'bg-white/[0.03] border-white/10 hover:border-(--main-color)/40'}`}
         >
-            {/* Image */}
-            <div className="aspect-4/3 relative overflow-hidden bg-black/30">
+            {/* Image Section */}
+            <div className="aspect-[5/4] relative overflow-hidden bg-black/40">
                 {item.imageUrl ? (
                     <>
-                        <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out" />
-                        {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40"><Video className="w-8 h-8 text-white" /></div>}
+                        <img src={item.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
+                        {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm"><Video className="w-10 h-10 text-white drop-shadow-lg" /></div>}
                     </>
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                        <OnyxMiniLogo className="w-12 h-12 opacity-10" />
+                        <OnyxMiniLogo className="w-16 h-16 opacity-5" />
                     </div>
                 )}
-                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                {/* Tag ID */}
-                <div className="absolute top-2 left-2 z-10">
-                    {item.codes.bookBarcode && (
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
-                            className="px-2 py-1 rounded text-[10px] font-black uppercase text-black shadow-lg hover:scale-105 active:scale-95 transition-all" 
-                            style={{ backgroundColor: vendorColor }}
-                        >
-                            {item.codes.bookBarcodeDisplay}
-                        </button>
-                    )}
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+                
+                {/* Selection Indicator */}
+                <div className="absolute top-3 right-3 z-20">
+                    <div className={`w-8 h-8 rounded-2xl border flex items-center justify-center transition-all duration-500 ${isSelected ? 'bg-(--main-color) border-(--main-color) shadow-[0_0_20px_rgba(var(--main-rgb),0.4)] rotate-0' : 'bg-black/40 border-white/20 opacity-0 group-hover:opacity-100 backdrop-blur-xl rotate-12'}`}>
+                        {isSelected && <CheckCircle2 className="w-5 h-5 text-black" strokeWidth={3.5} />}
+                    </div>
                 </div>
-                {/* Selection */}
-                <div className="absolute top-2 right-2 z-10">
-                    <div className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-(--main-color) border-(--main-color) shadow-lg' : 'bg-black/50 border-white/15 opacity-0 group-hover:opacity-100 backdrop-blur-md'}`}>
-                        {isSelected && <CheckCircle2 className="w-4 h-4 text-black" strokeWidth={3.5} />}
+
+                {/* Price Tag Floating */}
+                <div className="absolute bottom-3 left-3 z-20">
+                    <div className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 shadow-xl">
+                         <span className="text-sm font-black text-white leading-none">${Math.ceil(Number(d.price || 0)).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Card body */}
-            <div className="p-3 flex flex-col gap-2 flex-1">
-                <div>
-                    <div className="font-bold text-sm text-white leading-tight truncate">
-                        {d.shape || 'OBJ'}
-                        <span className="opacity-40 font-black text-[10px] uppercase tracking-widest ml-2">{d.shortDescription || ''}</span>
+            {/* Content Section */}
+            <div className="p-5 flex flex-col gap-4 flex-1">
+                {/* Header: Title & Tag */}
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-3">
+                        <h3 className="font-black text-base text-white leading-tight tracking-tight flex-1">
+                            {d.shape || 'OBJ'}
+                            <span className="block text-[11px] font-bold text-(--text-color)/40 uppercase tracking-[0.2em] mt-1">{d.shortDescription || 'Artifact'}</span>
+                        </h3>
+                        {item.codes.bookBarcode && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
+                                className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase text-black shadow-lg hover:scale-110 active:scale-90 transition-all" 
+                                style={{ backgroundColor: vendorColor }}
+                            >
+                                {item.codes.bookBarcodeDisplay}
+                            </button>
+                        )}
                     </div>
-                    {[d.color, d.material].some(Boolean) && (
-                        <div className="text-[10px] text-(--text-color)/60 uppercase tracking-[0.2em] font-black mt-1 truncate">
-                            {[d.color, d.material].filter(Boolean).join(' · ')}
-                        </div>
-                    )}
+                    
+                    {/* Material & Color - High Contrast */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {d.material && (
+                            <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[9px] font-black text-white/60 uppercase tracking-widest">{d.material}</span>
+                        )}
+                        {d.color && (
+                            <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[9px] font-black text-white/40 uppercase tracking-widest">{d.color}</span>
+                        )}
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                    <div className="flex flex-col">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest mb-0.5 leading-none">DIMS</span>
-                        <span className="text-[10px] font-bold text-white/70 font-mono truncate">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-4 border-t border-white/5">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Dimensions</span>
+                        <span className="text-xs font-mono font-bold text-white/80">{dimsCm ? `${dimsCm}cm` : '—'}</span>
                     </div>
-                    <div className="flex gap-2 justify-end">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[7px] font-black text-white/25 uppercase tracking-[0.2em] mb-0.5 leading-none">AQ</span>
-                            <span className="text-[10px] font-mono font-black text-(--main-color)/90">{item.codes.bookAqCode || '—'}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[7px] font-black text-white/25 uppercase tracking-[0.2em] mb-0.5 leading-none">LD</span>
-                            <span className="text-[10px] font-mono font-black text-yellow-500/90">{item.codes.bookLandCode || '—'}</span>
-                        </div>
+                    <div className="flex flex-col gap-1 items-end">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Weight</span>
+                        <span className="text-xs font-mono font-bold text-(--main-color)/80">{d.weightKg ? `${d.weightKg}kg` : '—'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Acquisition</span>
+                        <span className="text-xs font-mono font-black text-white/60">{item.codes.bookAqCode || '—'}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Landed</span>
+                        <span className="text-xs font-mono font-black text-yellow-500/80">{item.codes.bookLandCode || '—'}</span>
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-auto pt-2.5 border-t border-white/8">
-                    <div className="flex flex-col">
-                        <span className="text-[13px] font-black text-(--main-color)">${Math.ceil(Number(d.price || 0))}</span>
-                        <span className="text-[8px] font-bold text-white/25 tracking-widest uppercase mt-0.5">COST MXN</span>
-                    </div>
-                    <span className="text-[10px] font-black text-white/30 bg-white/5 px-2 py-1 rounded-md font-mono">×{d.quantity || 1}</span>
+                {/* Footer Quantity */}
+                <div className="mt-auto pt-3 flex items-center justify-between border-t border-white/5">
+                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">Stock Level</span>
+                     <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5">
+                        <span className="text-[11px] font-black font-mono text-white/60 tracking-tighter">QTY</span>
+                        <span className="text-[13px] font-black font-mono text-(--main-color)">{d.quantity || 1}</span>
+                     </div>
                 </div>
             </div>
         </div>
@@ -1024,7 +1085,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
     return (
         <div className="flex flex-col gap-0">
             <div
-                className={`flex flex-col sm:flex-row items-stretch overflow-hidden border rounded-2xl transition-all group shadow-sm ${
+                className={`flex flex-row items-center h-16 sm:h-14 overflow-hidden border rounded-2xl transition-all group shadow-sm ${
                     isSelected
                         ? 'bg-(--main-color)/8 border-(--main-color)/30 ring-1 ring-(--main-color)/20'
                         : 'bg-white/3 border-white/6 hover:border-white/12 hover:bg-white/5'
@@ -1033,51 +1094,51 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                 {/* Select checkbox */}
                 <div
                     onClick={onToggle}
-                    className="w-10 shrink-0 flex items-center justify-center border-r border-white/5 cursor-pointer"
+                    className="w-12 h-full shrink-0 flex items-center justify-center border-r border-white/5 cursor-pointer"
                 >
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all border ${
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all border ${
                         isSelected
                             ? 'bg-(--main-color) border-(--main-color) shadow-md shadow-(--main-color)/30'
-                            : 'border-white/15 group-hover:border-white/30'
+                            : 'border-white/15 group-hover:border-white/30 bg-white/2'
                     }`}>
-                        {isSelected && <CheckCircle2 size={8} className="text-black" strokeWidth={3} />}
+                        {isSelected && <CheckCircle2 size={10} className="text-black" strokeWidth={3.5} />}
                     </div>
                 </div>
 
                 {/* Image thumb */}
-                <div onClick={onToggle} className="w-14 h-14 shrink-0 bg-black/40 relative cursor-pointer">
+                <div onClick={onToggle} className="w-16 h-full shrink-0 bg-black/40 relative cursor-pointer group-hover:scale-105 transition-transform duration-500 overflow-hidden">
                     {item.imageUrl ? (
                         <>
                             <img src={item.imageUrl} className="w-full h-full object-cover" />
-                            {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-3 h-3" /></div>}
+                            {isVid && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-4 h-4" /></div>}
                         </>
                     ) : (
                         <div className="w-full h-full flex items-center justify-center opacity-20">
-                            <OnyxMiniLogo className="w-7 h-7 object-contain" />
+                            <OnyxMiniLogo className="w-8 h-8 object-contain" />
                         </div>
                     )}
                 </div>
 
                 {/* Scrollable data columns */}
-                <div onClick={onToggle} className="flex-1 overflow-x-auto no-scrollbar flex items-center px-4 sm:px-3 gap-4 sm:gap-3 min-w-0 cursor-pointer py-3 sm:py-0">
+                <div onClick={onToggle} className="flex-1 overflow-x-auto no-scrollbar flex items-center h-full px-5 gap-6 min-w-0 cursor-pointer">
                     {/* Name cluster */}
-                    <div className="flex flex-col justify-center min-w-[140px] max-w-[240px] shrink-0 sm:border-r border-white/5 sm:pr-3 h-full">
-                        <h3 className="text-xs font-black text-white truncate leading-tight">
+                    <div className="flex flex-col justify-center min-w-[160px] max-w-[280px] shrink-0 border-r border-white/5 pr-6 h-full">
+                        <h3 className="text-[13px] font-black text-white truncate leading-none mb-1">
                             {(d.shape || '') + ' ' + (d.shortDescription || d.description || '')}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-[10px] text-(--text-color)/60 font-black uppercase tracking-wider mt-1">
+                        <div className="flex items-center gap-2 text-[10px] text-(--text-color)/50 font-black uppercase tracking-widest leading-none">
                             {d.color && <span className="truncate">{d.color}</span>}
-                            {d.material && <><span className="text-white/20">·</span><span className="truncate">{d.material}</span></>}
+                            {d.material && <><span className="text-white/10">•</span><span className="truncate">{d.material}</span></>}
                         </div>
                     </div>
 
-                    {/* Tag ID Cluster (already updated in previous turn, but ensuring consistency) */}
-                    <div className="flex flex-col min-w-[100px] shrink-0 sm:border-r border-white/5 sm:pr-4 justify-center h-full gap-1 group/tag">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
+                    {/* Tag ID Cluster */}
+                    <div className="flex flex-col min-w-[110px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1 group/tag">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Tag ID</span>
                         <div className="flex items-center gap-2">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.codes.bookBarcode); toast.success(`Copied: ${item.codes.bookBarcode}`, { icon: '📋' }); }}
-                                className="inline-flex items-center px-2 py-1 rounded text-black text-[11px] font-black uppercase shadow-md w-fit hover:scale-105 active:scale-95 transition-all"
+                                className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-black text-[12px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
                                 style={{ backgroundColor: vendorColor }}
                             >
                                 {item.codes.bookBarcodeDisplay || 'N/A'}
@@ -1088,47 +1149,49 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     navigator.clipboard.writeText(`https://jouhayerk-cloud.github.io/onyx.mx/?tagid=${item.codes.bookBarcode}`);
                                     toast.success('Trace Link Copied');
                                 }}
-                                className="p-1 -m-1 text-white/20 hover:text-(--main-color) transition-all opacity-0 group-hover/tag:opacity-100"
+                                className="p-1.5 text-white/10 hover:text-(--main-color) transition-all opacity-0 group-hover/tag:opacity-100"
                                 title="Copy Trace Link"
                             >
-                                <Copy size={12} />
+                                <Copy size={14} />
                             </button>
                         </div>
                     </div>
 
-                    {/* Desktop-only Columns (hidden on mobile, moved to expanded panel) */}
-                    <div className="hidden lg:flex flex-col min-w-[72px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Price / Qty</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-[12px] font-bold text-white">${itemPriceMXN}</span>
-                            <span className="text-[10px] text-white/40 font-mono">×{itemQuantity}</span>
+                    {/* Price / Qty */}
+                    <div className="flex flex-col min-w-[85px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Value / Qty</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-[14px] font-black text-white leading-none">${itemPriceMXN.toLocaleString()}</span>
+                            <span className="text-[11px] text-white/40 font-mono font-bold">×{itemQuantity}</span>
                         </div>
                     </div>
 
-                    <div className="hidden sm:flex flex-col min-w-[56px] shrink-0 border-r border-white/5 pr-3 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">AQ / LD</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-white/70 font-mono">{item.codes.bookAqCode || '—'}</span>
-                            <span className="text-[11px] text-yellow-400/80 font-mono">{item.codes.bookLandCode || '—'}</span>
+                    {/* AQ / LD */}
+                    <div className="flex flex-col min-w-[70px] shrink-0 border-r border-white/5 pr-6 justify-center h-full gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Codes</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[12px] text-white/80 font-mono font-black">{item.codes.bookAqCode || '—'}</span>
+                            <span className="text-[12px] text-yellow-500 font-mono font-black">{item.codes.bookLandCode || '—'}</span>
                         </div>
                     </div>
 
-                    <div className="hidden md:flex flex-col min-w-[60px] shrink-0 justify-center h-full gap-0.5">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Dims / Wt</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
-                            {weightKg && <span className="text-[10px] text-white/50 font-mono">{weightKg}kg</span>}
+                    {/* Dims / Wt */}
+                    <div className="flex flex-col min-w-[120px] shrink-0 justify-center h-full gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-none">Specs</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-[11px] text-white/60 font-mono font-bold whitespace-nowrap">{dimsCm ? `${dimsCm}cm` : '—'}</span>
+                            {weightKg && <span className="text-[11px] text-(--main-color)/80 font-mono font-bold whitespace-nowrap">{weightKg}kg</span>}
                         </div>
                     </div>
                 </div>
 
                 {/* Expand button */}
-                <div className="flex items-center px-2 py-2 shrink-0 bg-white/2 border-l border-white/5">
+                <div className="flex items-center h-full px-3 shrink-0 bg-white/[0.01] border-l border-white/5">
                     <button
                         onClick={e => { e.stopPropagation(); onToggleExpand(); }}
-                        className={`p-1.5 hover:text-white hover:bg-white/10 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : 'text-white/25'}`}
+                        className={`w-10 h-10 flex items-center justify-center hover:text-white hover:bg-white/8 rounded-xl transition-all ${isExpanded ? 'text-(--main-color) bg-(--main-color)/5 shadow-inner' : 'text-white/15'}`}
                     >
-                        <Maximize2 className={`w-3.5 h-3.5 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        <Maximize2 className={`w-4 h-4 stroke-[2.5] transition-transform duration-500 ${isExpanded ? 'rotate-180 scale-110' : ''}`} />
                     </button>
                 </div>
             </div>
