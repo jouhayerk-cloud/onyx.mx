@@ -112,6 +112,9 @@ export async function exportCrateManifesto(
     meta: ManifestoMeta,
     onProgress?: (pct: number) => void
 ): Promise<void> {
+    // Sort items by descending quantity (#)
+    const sortedItems = [...items].sort((a, b) => b.qty - a.qty);
+
     // US Letter landscape: 11" × 8.5" = 279.4mm × 215.9mm
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
     const PW = 279.4;
@@ -339,10 +342,11 @@ export async function exportCrateManifesto(
     let currentPage = 0;
     let contTableStartY = meta.excludeHeader ? 0 : 12; // continuation pages: table starts below compact header
     let currentRow = 0;
+    const itemsCount = sortedItems.length;
 
-    for (let i = 0; i < items.length; i++) {
-        onProgress?.(Math.round((i / items.length) * 90));
-        const item = items[i];
+    for (let i = 0; i < itemsCount; i++) {
+        onProgress?.(Math.round((i / itemsCount) * 90));
+        const item = sortedItems[i];
         
         const imgList = item.imageUrls || [];
         const hasGallery = !meta.excludeImages && imgList.length > 1;
