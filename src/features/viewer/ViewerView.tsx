@@ -232,10 +232,8 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    const wbStr = String(norm.workbook || '').replace(/v/gi, '');
-                                    const fullText = `${codes.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || '')}`.trim() + `|${codes.bookAqCode || ''}${wbStr}${codes.bookRetail || ''}`;
-                                    navigator.clipboard.writeText(fullText); 
-                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
+                                    navigator.clipboard.writeText(codes.bookBarcode); 
+                                    toast.success(`Tag ID Copied: ${codes.bookBarcode}`, { icon: '📋' }); 
                                 }}
                                 className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition-all shadow-md" 
                                 style={{ background: vendorColor, color: 'black' }}

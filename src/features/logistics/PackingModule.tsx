@@ -209,6 +209,8 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
     const [isWriting, setIsWriting] = useState(false);
     const [status, setStatus] = useState<'idle' | 'writing' | 'success' | 'error'>('idle');
     const [error, setError] = useState<string | null>(null);
+    const [targetCopies, setTargetCopies] = useState(1);
+    const [currentCopiesWritten, setCurrentCopiesWritten] = useState(0);
 
     const currentItem = items[currentIndex];
     const isSupported = 'NDEFReader' in window;
@@ -241,18 +243,25 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             });
             
             setStatus('success');
-            toast.success(`Tag Written: ${tagId}`);
+            toast.success(`Tag Written: ${tagId}${targetCopies > 1 ? ` (${currentCopiesWritten + 1}/${targetCopies})` : ''}`);
             
             // Auto-advance after success
             setTimeout(() => {
-                if (currentIndex < items.length - 1) {
-                    setCurrentIndex(prev => prev + 1);
+                const nextCopyCount = currentCopiesWritten + 1;
+                if (nextCopyCount < targetCopies) {
+                    setCurrentCopiesWritten(nextCopyCount);
                     setStatus('idle');
                 } else {
-                    onClose();
-                    toast.success("Batch Completed!");
+                    setCurrentCopiesWritten(0);
+                    if (currentIndex < items.length - 1) {
+                        setCurrentIndex(prev => prev + 1);
+                        setStatus('idle');
+                    } else {
+                        onClose();
+                        toast.success("Batch Completed!");
+                    }
                 }
-            }, 1200);
+            }, 800);
         } catch (err: any) {
             console.error('NFC Write Error:', err);
             setStatus('error');
@@ -341,70 +350,69 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
 
                         {isSupported && currentItem && (
                             <div className="w-full flex flex-col items-center gap-12">
-                                {/* High-Fidelity Tag Preview */}
-                                <div className="animate-in zoom-in-95 duration-700">
-                                    <NFCTagCard item={currentItem} />
-                                    <div className="mt-4 flex justify-center">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Preview of physical label</span>
+                                {/* High-Fidelity Tag Preview with Responsive Scaling */}
+                                <div className="animate-in zoom-in-95 duration-700 w-full flex flex-col items-center">
+                                    <div className="scale-75 sm:scale-90 md:scale-100 origin-center">
+                                        <NFCTagCard item={currentItem} />
+                                    </div>
+                                    <div className="mt-2 flex flex-col items-center gap-1">
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Physical Label Preview</span>
+                                        {targetCopies > 1 && (
+                                            <div className="flex gap-1 mt-2">
+                                                {Array.from({ length: targetCopies }).map((_, i) => (
+                                                    <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${i < currentCopiesWritten ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-white/10'}`} />
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Status & Action */}
-                                <div className="flex flex-col items-center gap-8 w-full max-w-sm">
-                                    <div className="flex flex-col items-center text-center gap-3">
+                                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+                                    <div className="flex flex-col items-center text-center gap-2">
                                         {status === 'idle' && (
-                                            <>
-                                                <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 animate-pulse">
-                                                    <Zap size={32} />
+                                            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                                <button 
+                                                    onClick={() => setTargetCopies(Math.max(1, targetCopies - 1))}
+                                                    className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all active:scale-90"
+                                                >
+                                                    -
+                                                </button>
+                                                <div className="flex flex-col items-center px-4">
+                                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Copies</span>
+                                                    <span className="text-xl font-black text-white">{targetCopies}</span>
                                                 </div>
-                                                <h4 className="text-lg font-black text-white uppercase tracking-widest">Ready to Program</h4>
-                                                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Click below to start writing</p>
-                                            </>
+                                                <button 
+                                                    onClick={() => setTargetCopies(Math.min(10, targetCopies + 1))}
+                                                    className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all active:scale-90"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
                                         )}
-                                        {status === 'writing' && (
-                                            <>
-                                                <div className="w-16 h-16 rounded-full bg-(--main-color)/10 border border-(--main-color)/30 flex items-center justify-center text-(--main-color) animate-spin-slow">
-                                                    <Nfc size={32} />
-                                                </div>
-                                                <h4 className="text-lg font-black text-(--main-color) uppercase tracking-widest">Approaching Tag...</h4>
-                                                <p className="text-[10px] font-bold text-(--main-color)/50 uppercase tracking-[0.2em] animate-pulse">Hold tag near device</p>
-                                            </>
-                                        )}
-                                        {status === 'success' && (
-                                            <>
-                                                <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 animate-in zoom-in">
-                                                    <CheckCircle2 size={32} />
-                                                </div>
-                                                <h4 className="text-lg font-black text-green-500 uppercase tracking-widest">Successfully Written</h4>
-                                                <p className="text-[10px] font-bold text-green-500/50 uppercase tracking-[0.2em]">Advancing to next item...</p>
-                                            </>
-                                        )}
-                                        {status === 'error' && (
-                                            <>
-                                                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500">
-                                                    <X size={32} />
-                                                </div>
-                                                <h4 className="text-lg font-black text-red-500 uppercase tracking-widest">Write Failed</h4>
-                                                <p className="text-[10px] font-bold text-red-500/50 uppercase tracking-[0.2em]">{error}</p>
-                                            </>
-                                        )}
+                                        {status === 'writing' && <p className="text-[11px] font-black text-(--main-color) uppercase tracking-[0.3em] animate-pulse">Hold tag near device</p>}
+                                        {status === 'success' && <p className="text-[11px] font-black text-green-500 uppercase tracking-[0.3em]">Written Successfully</p>}
+                                        {status === 'error' && <p className="text-[11px] font-black text-red-500 uppercase tracking-[0.3em]">{error}</p>}
                                     </div>
 
                                     <button
                                         disabled={isWriting || status === 'success'}
                                         onClick={handleWrite}
-                                        className={`w-full py-6 rounded-[2rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl
+                                        className={`w-full py-6 rounded-[2.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-2xl
                                             ${status === 'writing' ? 'bg-white/10 text-white/50 cursor-wait' : 
                                               status === 'success' ? 'bg-green-500 text-black' :
                                               'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
                                     >
-                                        {status === 'writing' ? (
-                                            <>SCANNING...</>
-                                        ) : (
-                                            <>
-                                                <Zap size={24} strokeWidth={3} />
-                                                WRITE TAG
-                                            </>
+                                        <div className="flex items-center gap-4">
+                                            {status === 'writing' ? (
+                                                <div className="animate-spin-slow"><Nfc size={24} /></div>
+                                            ) : <Zap size={24} strokeWidth={3} />}
+                                            <span>{status === 'writing' ? 'SCANNING...' : 'WRITE TAG'}</span>
+                                        </div>
+                                        {targetCopies > 1 && status === 'idle' && (
+                                            <span className="text-[10px] opacity-40 font-bold uppercase tracking-widest">Write {targetCopies} Copies</span>
+                                        )}
+                                        {targetCopies > 1 && status === 'success' && (
+                                            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Next Copy in 0.8s</span>
                                         )}
                                     </button>
                                 </div>
@@ -418,7 +426,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             <div className="p-8 border-t border-white/10 bg-white/2 flex items-center justify-between">
                 <button 
                     disabled={isReviewStep || currentIndex === 0}
-                    onClick={() => { setCurrentIndex(prev => prev - 1); setStatus('idle'); }}
+                    onClick={() => { setCurrentIndex(prev => prev - 1); setStatus('idle'); setCurrentCopiesWritten(0); }}
                     className={`flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all ${isReviewStep ? 'opacity-0 pointer-events-none' : 'disabled:opacity-0'}`}
                 >
                     <ChevronLeft size={20} />
@@ -433,6 +441,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                             } else if (currentIndex < items.length - 1) {
                                 setCurrentIndex(prev => prev + 1);
                                 setStatus('idle');
+                                setCurrentCopiesWritten(0);
                             } else {
                                 onClose();
                             }
