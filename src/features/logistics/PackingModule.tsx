@@ -203,6 +203,7 @@ const NFCTagCard = ({ item }: { item: any }) => {
 
 /* ─── NFC Tag Writing Wizard ─── */
 const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, onClose: () => void }) => {
+    const [isReviewStep, setIsReviewStep] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isWriting, setIsWriting] = useState(false);
     const [status, setStatus] = useState<'idle' | 'writing' | 'success' | 'error'>('idle');
@@ -261,7 +262,6 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
     };
 
     if (!isOpen) return null;
-    if (!currentItem) return null;
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
@@ -272,9 +272,11 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         <Nfc size={24} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-widest">NFC Writing Batch</h2>
+                        <h2 className="text-xl font-black text-white uppercase tracking-widest">
+                            {isReviewStep ? 'Batch Review' : 'NFC Tag Programming'}
+                        </h2>
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">
-                            Item {currentIndex + 1} of {items.length} · {items.length - currentIndex - 1} remaining
+                            {isReviewStep ? `${items.length} items selected` : `Item ${currentIndex + 1} of ${items.length}`}
                         </p>
                     </div>
                 </div>
@@ -286,89 +288,126 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                 </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-4xl mx-auto w-full">
-                {!isSupported && (
-                    <div className="flex flex-col items-center gap-6 p-12 rounded-3xl bg-red-500/10 border border-red-500/20 text-center animate-in zoom-in duration-500">
-                        <ShieldAlert size={64} className="text-red-500" />
-                        <div>
-                            <h3 className="text-2xl font-black text-white uppercase mb-2">Web NFC Not Supported</h3>
-                            <p className="text-sm text-white/60 leading-relaxed max-w-md">
-                                Your browser does not support the Web NFC API. Please use Chrome on Android or a compatible desktop version with NFC hardware.
-                            </p>
-                        </div>
-                    </div>
-                )}
-
-                {isSupported && (
-                    <div className="w-full flex flex-col items-center gap-12">
-                        {/* High-Fidelity Tag Preview */}
-                        <div className="animate-in zoom-in-95 duration-700">
-                            <NFCTagCard item={currentItem} />
-                            <div className="mt-4 flex justify-center">
-                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Preview of physical label</span>
+            {/* Content Area */}
+            <div className="flex-1 overflow-hidden">
+                {isReviewStep ? (
+                    <div className="h-full flex flex-col p-8 gap-8">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {items.map((item, idx) => (
+                                    <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-4 items-center animate-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 30}ms` }}>
+                                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/5">
+                                            {item.imageUrl ? (
+                                                <img src={item.imageUrl} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={20} /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest truncate">{item.codes.bookBarcode}</span>
+                                            <span className="text-xs font-bold text-white uppercase truncate mt-0.5">{item.normData.shape} {item.normData.shortDescription}</span>
+                                            <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate mt-0.5">{item.normData.color} · {item.normData.material}</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Status & Action */}
-                        <div className="flex flex-col items-center gap-8 w-full max-w-sm">
-                            <div className="flex flex-col items-center text-center gap-3">
-                                {status === 'idle' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 animate-pulse">
-                                            <Zap size={32} />
-                                        </div>
-                                        <h4 className="text-lg font-black text-white uppercase tracking-widest">Ready to Program</h4>
-                                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Click below to start writing</p>
-                                    </>
-                                )}
-                                {status === 'writing' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-full bg-(--main-color)/10 border border-(--main-color)/30 flex items-center justify-center text-(--main-color) animate-spin-slow">
-                                            <Nfc size={32} />
-                                        </div>
-                                        <h4 className="text-lg font-black text-(--main-color) uppercase tracking-widest">Approaching Tag...</h4>
-                                        <p className="text-[10px] font-bold text-(--main-color)/50 uppercase tracking-[0.2em] animate-pulse">Hold tag near device</p>
-                                    </>
-                                )}
-                                {status === 'success' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 animate-in zoom-in">
-                                            <CheckCircle2 size={32} />
-                                        </div>
-                                        <h4 className="text-lg font-black text-green-500 uppercase tracking-widest">Successfully Written</h4>
-                                        <p className="text-[10px] font-bold text-green-500/50 uppercase tracking-[0.2em]">Advancing to next item...</p>
-                                    </>
-                                )}
-                                {status === 'error' && (
-                                    <>
-                                        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500">
-                                            <X size={32} />
-                                        </div>
-                                        <h4 className="text-lg font-black text-red-500 uppercase tracking-widest">Write Failed</h4>
-                                        <p className="text-[10px] font-bold text-red-500/50 uppercase tracking-[0.2em]">{error}</p>
-                                    </>
-                                )}
-                            </div>
-
-                            <button
-                                disabled={isWriting || status === 'success'}
-                                onClick={handleWrite}
-                                className={`w-full py-6 rounded-[2rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl
-                                    ${status === 'writing' ? 'bg-white/10 text-white/50 cursor-wait' : 
-                                      status === 'success' ? 'bg-green-500 text-black' :
-                                      'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
+                        <div className="shrink-0 flex justify-center pb-8 border-t border-white/5 pt-8">
+                            <button 
+                                onClick={() => setIsReviewStep(false)}
+                                className="px-16 py-5 rounded-[2rem] bg-(--main-color) text-black text-lg font-black uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 flex items-center gap-4"
                             >
-                                {status === 'writing' ? (
-                                    <>SCANNING...</>
-                                ) : (
-                                    <>
-                                        <Zap size={24} strokeWidth={3} />
-                                        WRITE TAG
-                                    </>
-                                )}
+                                <Zap size={24} strokeWidth={3} />
+                                Begin Programming
                             </button>
                         </div>
+                    </div>
+                ) : (
+                    <div className="h-full flex flex-col items-center justify-center p-8 max-w-4xl mx-auto w-full">
+                        {!isSupported && (
+                            <div className="flex flex-col items-center gap-6 p-12 rounded-3xl bg-red-500/10 border border-red-500/20 text-center animate-in zoom-in duration-500">
+                                <ShieldAlert size={64} className="text-red-500" />
+                                <div>
+                                    <h3 className="text-2xl font-black text-white uppercase mb-2">Web NFC Not Supported</h3>
+                                    <p className="text-sm text-white/60 leading-relaxed max-w-md">
+                                        Your browser does not support the Web NFC API. Please use Chrome on Android or a compatible desktop version with NFC hardware.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {isSupported && currentItem && (
+                            <div className="w-full flex flex-col items-center gap-12">
+                                {/* High-Fidelity Tag Preview */}
+                                <div className="animate-in zoom-in-95 duration-700">
+                                    <NFCTagCard item={currentItem} />
+                                    <div className="mt-4 flex justify-center">
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Preview of physical label</span>
+                                    </div>
+                                </div>
+
+                                {/* Status & Action */}
+                                <div className="flex flex-col items-center gap-8 w-full max-w-sm">
+                                    <div className="flex flex-col items-center text-center gap-3">
+                                        {status === 'idle' && (
+                                            <>
+                                                <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 animate-pulse">
+                                                    <Zap size={32} />
+                                                </div>
+                                                <h4 className="text-lg font-black text-white uppercase tracking-widest">Ready to Program</h4>
+                                                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Click below to start writing</p>
+                                            </>
+                                        )}
+                                        {status === 'writing' && (
+                                            <>
+                                                <div className="w-16 h-16 rounded-full bg-(--main-color)/10 border border-(--main-color)/30 flex items-center justify-center text-(--main-color) animate-spin-slow">
+                                                    <Nfc size={32} />
+                                                </div>
+                                                <h4 className="text-lg font-black text-(--main-color) uppercase tracking-widest">Approaching Tag...</h4>
+                                                <p className="text-[10px] font-bold text-(--main-color)/50 uppercase tracking-[0.2em] animate-pulse">Hold tag near device</p>
+                                            </>
+                                        )}
+                                        {status === 'success' && (
+                                            <>
+                                                <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 animate-in zoom-in">
+                                                    <CheckCircle2 size={32} />
+                                                </div>
+                                                <h4 className="text-lg font-black text-green-500 uppercase tracking-widest">Successfully Written</h4>
+                                                <p className="text-[10px] font-bold text-green-500/50 uppercase tracking-[0.2em]">Advancing to next item...</p>
+                                            </>
+                                        )}
+                                        {status === 'error' && (
+                                            <>
+                                                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500">
+                                                    <X size={32} />
+                                                </div>
+                                                <h4 className="text-lg font-black text-red-500 uppercase tracking-widest">Write Failed</h4>
+                                                <p className="text-[10px] font-bold text-red-500/50 uppercase tracking-[0.2em]">{error}</p>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        disabled={isWriting || status === 'success'}
+                                        onClick={handleWrite}
+                                        className={`w-full py-6 rounded-[2rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl
+                                            ${status === 'writing' ? 'bg-white/10 text-white/50 cursor-wait' : 
+                                              status === 'success' ? 'bg-green-500 text-black' :
+                                              'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
+                                    >
+                                        {status === 'writing' ? (
+                                            <>SCANNING...</>
+                                        ) : (
+                                            <>
+                                                <Zap size={24} strokeWidth={3} />
+                                                WRITE TAG
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -376,9 +415,9 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             {/* Footer Navigation */}
             <div className="p-8 border-t border-white/10 bg-white/2 flex items-center justify-between">
                 <button 
-                    disabled={currentIndex === 0}
+                    disabled={isReviewStep || currentIndex === 0}
                     onClick={() => { setCurrentIndex(prev => prev - 1); setStatus('idle'); }}
-                    className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all disabled:opacity-0"
+                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all ${isReviewStep ? 'opacity-0 pointer-events-none' : 'disabled:opacity-0'}`}
                 >
                     <ChevronLeft size={20} />
                     <span className="text-xs font-black uppercase tracking-widest">Previous</span>
@@ -387,7 +426,9 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                 <div className="flex gap-4">
                     <button 
                         onClick={() => {
-                            if (currentIndex < items.length - 1) {
+                            if (isReviewStep) {
+                                onClose();
+                            } else if (currentIndex < items.length - 1) {
                                 setCurrentIndex(prev => prev + 1);
                                 setStatus('idle');
                             } else {
@@ -396,7 +437,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         }}
                         className="flex items-center gap-3 px-8 py-3 rounded-2xl bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
                     >
-                        <span className="text-xs font-black uppercase tracking-widest">Skip Item</span>
+                        <span className="text-xs font-black uppercase tracking-widest">{isReviewStep ? 'Cancel' : 'Skip Item'}</span>
                     </button>
                 </div>
             </div>
