@@ -245,23 +245,11 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             setStatus('success');
             toast.success(`Tag Written: ${tagId}${targetCopies > 1 ? ` (${currentCopiesWritten + 1}/${targetCopies})` : ''}`);
             
-            // Auto-advance after success
+            // Reset to idle to allow manual repeated writing or navigation
             setTimeout(() => {
-                const nextCopyCount = currentCopiesWritten + 1;
-                if (nextCopyCount < targetCopies) {
-                    setCurrentCopiesWritten(nextCopyCount);
-                    setStatus('idle');
-                } else {
-                    setCurrentCopiesWritten(0);
-                    if (currentIndex < items.length - 1) {
-                        setCurrentIndex(prev => prev + 1);
-                        setStatus('idle');
-                    } else {
-                        onClose();
-                        toast.success("Batch Completed!");
-                    }
-                }
-            }, 800);
+                setCurrentCopiesWritten(prev => prev + 1);
+                setStatus('idle');
+            }, 1200);
         } catch (err: any) {
             console.error('NFC Write Error:', err);
             setStatus('error');
@@ -304,20 +292,35 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                 {isReviewStep ? (
                     <div className="h-full flex flex-col p-8 gap-8">
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8">
                                 {items.map((item, idx) => (
-                                    <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex gap-4 items-center animate-in slide-in-from-bottom-4" style={{ animationDelay: `${idx * 30}ms` }}>
-                                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/5">
-                                            {item.imageUrl ? (
-                                                <img src={item.imageUrl} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={20} /></div>
-                                            )}
+                                    <div key={idx} className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 flex flex-col gap-8 animate-in slide-in-from-bottom-8 duration-500 hover:bg-white/[0.05] transition-all group" style={{ animationDelay: `${idx * 50}ms` }}>
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-24 h-24 rounded-3xl overflow-hidden bg-black/40 shrink-0 border border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
+                                                {item.imageUrl ? (
+                                                    <img src={item.imageUrl} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={32} /></div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col gap-1.5 min-w-0">
+                                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em]">{item.codes.vendorPrefix || 'ONYX'} REGISTRY</span>
+                                                <h3 className="text-2xl font-black text-white uppercase tracking-tighter truncate">{item.codes.bookBarcode}</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/40 uppercase tracking-widest">{item.normData.shape}</span>
+                                                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/40 uppercase tracking-widest">{item.normData.color}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[9px] font-black text-(--main-color) uppercase tracking-widest truncate">{item.codes.bookBarcode}</span>
-                                            <span className="text-xs font-bold text-white uppercase truncate mt-0.5">{item.normData.shape} {item.normData.shortDescription}</span>
-                                            <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider truncate mt-0.5">{item.normData.color} · {item.normData.material}</span>
+                                        
+                                        <div className="relative w-full flex justify-center">
+                                            <div className="scale-[0.6] sm:scale-[0.75] md:scale-[0.85] origin-top transform-gpu">
+                                                <NFCTagCard item={item} />
+                                            </div>
+                                            {/* Spacer to maintain height for the scaled absolute-ish element */}
+                                            <div className="invisible" style={{ height: '210px' }} aria-hidden="true">
+                                                <NFCTagCard item={item} />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
