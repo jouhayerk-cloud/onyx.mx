@@ -150,6 +150,56 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         templateData   // ← 'templateData' is the key importDesign() reads
     };
 };
+const NFCTagCard = ({ item }: { item: any }) => {
+    const { normData, codes } = item;
+    
+    // Format dimensions
+    const dims = [normData.lengthCm, normData.widthCm, normData.heightCm].filter(Boolean).join('*');
+    const dimsStr = dims ? `${dims} CM` : '';
+    
+    // Retail Tag (ACQ-Workbook-Retail)
+    const retailTag = `${codes.bookAqCode || '??'}-${codes.bookLandCode || '???????'}`;
+
+    return (
+        <div className="w-[400px] h-[250px] bg-white text-black p-4 flex flex-col relative font-sans shadow-2xl border border-black/10">
+            {/* Left Vertical text */}
+            <div className="absolute left-1 top-0 bottom-0 flex items-center justify-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.6em] rotate-180 whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
+                    MADE IN MEXICO
+                </span>
+            </div>
+
+            <div className="flex-1 ml-8 flex flex-col">
+                <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-2xl font-black tracking-tighter leading-none">{retailTag}</span>
+                        <span className="text-base font-bold leading-tight mt-1">{normData.shape} {normData.shortDescription}</span>
+                        <span className="text-base font-medium leading-tight">{normData.color} {normData.material}</span>
+                        <span className="text-base font-bold leading-tight mt-1">{dimsStr}</span>
+                    </div>
+                    <div className="shrink-0">
+                        <QRCodeSVG value={codes.bookBarcode} size={80} level="H" includeMargin={false} />
+                    </div>
+                </div>
+
+                <div className="mt-auto flex flex-col items-center">
+                    <div className="w-full flex justify-center">
+                        <Barcode 
+                            value={codes.bookBarcode} 
+                            format="CODE128" 
+                            width={1.5} 
+                            height={50} 
+                            displayValue={false} 
+                            margin={0}
+                            background="transparent"
+                        />
+                    </div>
+                    <span className="text-lg font-black tracking-[0.4em] uppercase mt-1">{codes.bookBarcode}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 /* ─── NFC Tag Writing Wizard ─── */
 const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, onClose: () => void }) => {
@@ -172,14 +222,23 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
         setError(null);
 
         try {
+            const { normData, codes } = currentItem;
+            
+            // Format: TAGID|COLOR+MATERIAL|DESCRIPTION|AC Coe+Bookv0Retail
+            const tagId = codes.bookBarcode;
+            const materialColor = `${normData.color || ''} ${normData.material || ''}`.trim();
+            const description = `${normData.shape || ''} ${normData.shortDescription || ''}`.trim();
+            const retailTag = `${codes.bookAqCode || '??'}-${codes.bookLandCode || '???????'}`;
+            
+            const nfcData = `${tagId}|${materialColor}|${description}|${retailTag}`;
+
             const reader = new (window as any).NDEFReader();
-            // Start scanning/writing
             await reader.write({
-                records: [{ recordType: "text", data: currentItem.codes.bookBarcode }]
+                records: [{ recordType: "text", data: nfcData }]
             });
             
             setStatus('success');
-            toast.success(`Tag Written: ${currentItem.codes.bookBarcodeDisplay}`);
+            toast.success(`Tag Written: ${tagId}`);
             
             // Auto-advance after success
             setTimeout(() => {
@@ -190,7 +249,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                     onClose();
                     toast.success("Batch Completed!");
                 }
-            }, 1000);
+            }, 1200);
         } catch (err: any) {
             console.error('NFC Write Error:', err);
             setStatus('error');
@@ -243,26 +302,11 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
 
                 {isSupported && (
                     <div className="w-full flex flex-col items-center gap-12">
-                        {/* Item Card Preview */}
-                        <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 duration-700">
-                            <div className="aspect-square relative bg-black/40">
-                                {currentItem.imageUrl ? (
-                                    <img src={currentItem.imageUrl} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={80} /></div>
-                                )}
-                                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
-                                <div className="absolute bottom-6 left-6 right-6">
-                                    <div className="inline-flex px-3 py-1.5 rounded-lg bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest mb-3 shadow-xl">
-                                        {currentItem.codes.bookBarcodeDisplay}
-                                    </div>
-                                    <h3 className="text-2xl font-black text-white uppercase leading-tight truncate">
-                                        {currentItem.normData.shape || 'PIECE'}
-                                    </h3>
-                                    <p className="text-xs font-bold text-white/50 uppercase tracking-widest mt-1">
-                                        {currentItem.normData.color} · {currentItem.normData.material}
-                                    </p>
-                                </div>
+                        {/* High-Fidelity Tag Preview */}
+                        <div className="animate-in zoom-in-95 duration-700">
+                            <NFCTagCard item={currentItem} />
+                            <div className="mt-4 flex justify-center">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Preview of physical label</span>
                             </div>
                         </div>
 
