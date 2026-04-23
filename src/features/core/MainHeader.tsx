@@ -495,6 +495,7 @@ const LogisticsBar: React.FC = () => {
     const [subTab, setSubTab] = useAtom(logisticsSubTabAtom);
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isPackingFiltersOpen, setIsPackingFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'truck' },
@@ -514,13 +515,26 @@ const LogisticsBar: React.FC = () => {
             />
 
             {!isSearchOpen && (
-                <div className="flex items-center gap-0.5 animate-in fade-in duration-300">
+                <div className="flex items-center gap-4 animate-in fade-in duration-300">
                     <SubTabPills
                         tabs={tabs}
                         active={subTab}
                         onSelect={(id) => { setSubTab(id as any); if (id !== 'packing') setSearch(''); }}
                         accentColor="var(--color-logistics)"
                     />
+
+                    {subTab === 'packing' && (
+                        <>
+                            <div className="w-px h-6 bg-white/5 mx-1" />
+                            <button 
+                                onClick={() => setIsPackingFiltersOpen(!isPackingFiltersOpen)}
+                                className={`flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${isPackingFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white/60'}`}
+                            >
+                                <Filter size={13} />
+                                Config
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>
@@ -556,72 +570,69 @@ const PackingBar: React.FC = () => {
             />
 
             {!isSearchOpen && (
-                <div className="flex items-center gap-2 animate-in fade-in duration-300">
-                    {/* Primary Print Action */}
+                <>
                     <button 
-                        onClick={() => setIsPrintOpen(true)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-(--main-color)/10 border border-(--main-color)/20 text-(--main-color) hover:bg-(--main-color)/20 transition-all active:scale-95 group"
+                        onClick={() => setIsNFCWizardOpen(true)}
+                        className="p-2 text-(--main-color) hover:scale-110 transition-all animate-in fade-in group shrink-0"
+                        title="Write NFC Tags"
                     >
-                        <Printer size={16} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] font-black uppercase tracking-widest hidden lg:block">Print Labels</span>
+                        <Nfc size={22} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
                     </button>
 
-                    <div className="w-px h-6 bg-white/5 mx-1" />
+                    <div className="flex items-center gap-2 animate-in fade-in duration-300">
+                        <div className="w-px h-6 bg-white/5 mx-1" />
 
-                    {/* Export Actions */}
-                    <div className="flex items-center gap-0.5">
-                        <StudioAction 
-                            icon={FileText}
-                            label="PDF"
-                            onClick={() => setExportPDF(prev => prev + 1)}
-                            title="Export PDF Catalog"
-                        />
-                        <StudioAction 
-                            icon={FileSpreadsheet}
-                            label="XLSX"
-                            onClick={() => setExportXLSX(prev => prev + 1)}
-                            title="Export Packing XLSX"
-                        />
-                        <StudioAction 
-                            icon={FileJson}
-                            label="JSON"
-                            onClick={() => setExportJSON(prev => prev + 1)}
-                            title="Export Designer JSON"
-                        />
-                        <StudioAction 
-                            icon={Nfc}
-                            label="NFC"
-                            onClick={() => setIsNFCWizardOpen(true)}
-                            title="Write NFC Tags"
-                        />
+                        {/* Export & Print Actions */}
+                        <div className="flex items-center gap-0.5">
+                            <StudioAction 
+                                icon={FileText}
+                                label="PDF"
+                                onClick={() => setExportPDF(prev => prev + 1)}
+                                title="Export PDF Catalog"
+                            />
+                            <StudioAction 
+                                icon={FileSpreadsheet}
+                                label="XLSX"
+                                onClick={() => setExportXLSX(prev => prev + 1)}
+                                title="Export Packing XLSX"
+                            />
+                            <StudioAction 
+                                icon={FileJson}
+                                label="JSON"
+                                onClick={() => setExportJSON(prev => prev + 1)}
+                                title="Export Designer JSON"
+                            />
+                            <StudioAction 
+                                icon={Printer}
+                                label="PRINT"
+                                onClick={() => setIsPrintOpen(true)}
+                                title="Print Labels"
+                                color="var(--main-color)"
+                            />
+                        </div>
+
+                        <div className="w-px h-6 bg-white/5 mx-1" />
+
+                        {/* View & Config Actions */}
+                        <div className="flex items-center gap-0.5">
+                            <StudioAction 
+                                icon={ViewIcon}
+                                label={viewMode.toUpperCase()}
+                                active={true}
+                                onClick={cycleView}
+                                title="Toggle View Mode"
+                            />
+                            <button 
+                                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                                className={`flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white/60'}`}
+                            >
+                                <Filter size={13} />
+                                Config
+                            </button>
+                        </div>
+
                     </div>
-
-                    <div className="w-px h-6 bg-white/5 mx-1" />
-
-                    {/* View & Config Actions */}
-                    <div className="flex items-center gap-0.5">
-                        <StudioAction 
-                            icon={ViewIcon}
-                            label={viewMode.toUpperCase()}
-                            active={true}
-                            onClick={cycleView}
-                            title="Toggle View Mode"
-                        />
-                        <StudioAction 
-                            icon={Filter}
-                            label="CONFIG"
-                            active={isFiltersOpen}
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            title="Toggle Label Config"
-                        />
-                    </div>
-
-                    {/* Label Size Indicator */}
-                    <div className="hidden xl:flex flex-col items-center justify-center px-3 border-l border-white/5">
-                        <span className="text-[7px] font-black text-white/20 uppercase tracking-widest leading-none mb-1">Size</span>
-                        <span className="text-[10px] font-mono font-black text-white/60">{labelSize}mm</span>
-                    </div>
-                </div>
+                </>
             )}
         </div>
     );

@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
-import { inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, inventoryArtifactConfigAtom, isDummyModeAtom } from '../../lib/atoms';
+import { 
+    inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, 
+    inventoryArtifactConfigAtom, isDummyModeAtom, isPackingFiltersOpenAtom 
+} from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import {
     Package, ChevronRight, Check, Loader2, X,
-    PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus
+    PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus, Trash2,
+    ArrowUp, ArrowDown, ArrowUpDown
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
@@ -154,25 +158,71 @@ const LargeCrateWireframe: React.FC<{ w?: number; l?: number; h?: number; type?:
     );
 };
 
+// Format components for space-separated tags
+function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[], allInventory: any[]) {
+    if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
+    
+    const d = crate.updated_at ? new Date(crate.updated_at) : new Date();
+    const mm = d.getMonth() + 1;
+    const yy = String(d.getFullYear()).slice(-2);
+    const datePrefix = `${mm}${yy}`;
+    
+    const vSet = new Set<string>();
+    crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+        const [id] = entry.split(':');
+        const inv = allInventory.find((i: any) => String(i.row) === id);
+        if (inv?.data) {
+            const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+            if (p) vSet.add(p.toUpperCase());
+        }
+    });
+    const vendorsList = Array.from(vSet).sort();
+    const vendorsStr = vendorsList.join('');
+    
+    const matchingCrates = allCrates.filter(c => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        const cVSet = new Set<string>();
+        c.inventory_ids.split(',').filter(Boolean).forEach(entry => {
+            const [id] = entry.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) {
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0];
+                if (p) cVSet.add(p.toUpperCase());
+            }
+        });
+        return Array.from(cVSet).sort().join('') === vendorsStr;
+    });
+
+    matchingCrates.sort((a, b) => {
+        const tA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const tB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return tA === tB ? a.id.localeCompare(b.id) : tA - tB;
+    });
+    
+    const index = matchingCrates.findIndex(c => c.id === crate.id);
+    return {
+        date: datePrefix,
+        vendors: vendorsList,
+        sequence: String(index >= 0 ? index + 1 : 1)
+    };
+}
+
 // ─── ActiveCrateSidebar ───────────────────────────────────────────────────────
-// VOLUME FORMULAS:
-//   Internal crate  = (W_ext−15) × (L_ext−15) × (H_ext−15) cm³  [7.5cm walls]
-//   Item net        = W × H × L  cm³
-//   Item padded     = (W+3) × (H+3) × (L+3) cm³  [1.5cm clearance/face]
-//   Fill %          = Σ(padded item cm³) / internalCrate cm³ × 100
-//   Bar shows net (solid) + padding (translucent) segments of filled volume.
-const ActiveCrateSidebar: React.FC<{
+// ─── ActiveCrateDashboard (Top Panel) ─────────────────────────────────────────
+const ActiveCrateDashboard: React.FC<{
     crate: CrateRecord;
     selectedItemIds: Set<string>;
     selectedQtys: Record<string, number>;
     allInventory: any[];
-    crates: CrateRecord[];
     exchangeRate: number;
     onClear: () => void;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, crates: _crates, exchangeRate, onClear }) => {
-    const [collapsed, setCollapsed] = useState(false);
-    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
-
+    onClearStaged: () => void;
+    onPack: () => void;
+    onUnpack: () => void;
+    isSaving: boolean;
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onClearStaged, onPack, onUnpack, isSaving, isCollapsed, onToggleCollapse }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -190,10 +240,7 @@ const ActiveCrateSidebar: React.FC<{
         })
     , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
 
-    // Internal crate volume: subtract 7.5cm walls per side (−15cm per axis)
     const internalCrateCm3 = getCrateInternalVolume(crate);
-
-    // Already-packed padded volume (items saved to this crate)
     const alreadyPackedMap = useMemo(() => parseInventoryIds(crate.inventory_ids), [crate.inventory_ids]);
     const alreadyPackedPaddedVol = useMemo(() => {
         let v = 0;
@@ -205,7 +252,6 @@ const ActiveCrateSidebar: React.FC<{
         return v;
     }, [alreadyPackedMap, allInventory]);
 
-    // Pending (staged, not yet saved)
     const pendingNetVol     = selectedItems.reduce((s, i) => s + i.netVol, 0);
     const pendingPaddingVol = selectedItems.reduce((s, i) => s + i.paddingVol, 0);
     const pendingPaddedVol  = pendingNetVol + pendingPaddingVol;
@@ -219,193 +265,189 @@ const ActiveCrateSidebar: React.FC<{
     const totalQty    = selectedItems.reduce((s, i) => s + i.qty, 0);
     const totalWeight = selectedItems.reduce((s, i) => s + i.weight, 0);
 
-    // ── Collapsed state: mini strip
-    if (collapsed) {
-        return (
-            <div className="flex flex-col h-full overflow-hidden">
-                <div className="px-3 pt-3 pb-3 border-b border-white/5 shrink-0 flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[8px] font-black uppercase tracking-widest text-(--main-color) truncate">Active {crate.type === 'pallet' ? 'Pallet' : 'Crate'}</p>
-                        <p className="text-[7px] font-mono text-white/25 truncate">{fmtDims(crate)} cm</p>
-                    </div>
-                    <span className="text-[10px] font-black tabular-nums shrink-0" style={{ color: barColor }}>{fillPct.toFixed(0)}%</span>
-                    <button onClick={() => setCollapsed(false)} className="text-white/40 hover:text-white transition cursor-pointer shrink-0 p-1" title="Expand">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    </button>
-                </div>
-                <div className="h-1 w-full bg-white/5 shrink-0 flex">
-                    <div className="h-full" style={{ width: `${netFillPct}%`, backgroundColor: barColor }} />
-                    <div className="h-full opacity-35" style={{ width: `${padFillPct}%`, backgroundColor: barColor }} />
-                </div>
-                <div className="flex-1 flex items-center justify-center">
-                    <button onClick={() => setCollapsed(false)} className="text-[7px] font-black uppercase tracking-widest text-white/20 hover:text-white/50 transition cursor-pointer">Expand panel</button>
-                </div>
-            </div>
-        );
-    }
-
-    // ── Expanded state
     return (
-        <div className="flex flex-col h-full overflow-hidden">
-            {/* Header */}
-            <div className="px-4 pt-3 pb-3 border-b border-white/5 shrink-0 flex items-center justify-between">
-                <div>
-                    <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Active {crate.type === 'pallet' ? 'Pallet' : 'Crate'}</h3>
-                    <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{fmtDims(crate)} cm</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <button onClick={() => setCollapsed(true)} className="text-white/30 hover:text-white transition cursor-pointer p-1" title="Collapse">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    </button>
-                    <button onClick={onClear} className="text-[7px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition cursor-pointer">Deselect Crate</button>
-                </div>
-            </div>
-
-            {/* Wireframe */}
-            <div className="flex items-center justify-center py-4 relative shrink-0">
-                <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(ellipse_at_center,var(--main-color)_0%,transparent_70%)]" />
-                <LargeCrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={130} />
-            </div>
-            <div className="px-4 pb-2 shrink-0"><p className="text-[7px] font-mono text-white/25 truncate">{crate.id.slice(0, 12).toUpperCase()}</p></div>
-
-            {/* Fill gauge */}
-            <div className="px-4 pb-3 shrink-0">
-                <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">Vol. Fill</span>
-                    <span className="text-[11px] font-black tabular-nums" style={{ color: barColor }}>{fillPct.toFixed(1)}%</span>
-                </div>
-                {/* Stacked bar: solid = net item vol, faded = padding vol */}
-                <div className="h-2.5 bg-white/5 rounded-full overflow-hidden flex">
-                    <div className="h-full transition-all duration-300" style={{ width: `${netFillPct}%`, backgroundColor: barColor, borderRadius: netFillPct < 98 ? '9999px 0 0 9999px' : '9999px' }} />
-                    <div className="h-full transition-all duration-300 opacity-35" style={{ width: `${padFillPct}%`, backgroundColor: barColor, borderRadius: padFillPct > 0 ? '0 9999px 9999px 0' : '0' }} />
-                </div>
-                {/* Legend */}
-                <div className="flex items-center gap-3 mt-1.5">
-                    <div className="flex items-center gap-1">
-                        <div className="w-2 h-1.5 rounded-sm" style={{ backgroundColor: barColor }} />
-                        <span className="text-[6px] text-white/30 font-mono">item {(pendingNetVol/1000).toFixed(1)}L</span>
+        <div className={`w-full transition-all duration-700 overflow-hidden ${isCollapsed ? 'h-[60px]' : 'h-[140px] sm:h-[120px]'} bg-transparent backdrop-blur-2xl border-b border-white/5`}>
+            <div className="flex flex-col lg:flex-row h-full">
+                {/* Visual Section */}
+                <div className={`flex items-center gap-8 px-8 transition-all ${isCollapsed ? 'w-full lg:w-[280px]' : 'w-full lg:w-[400px]'}`}>
+                    <div className="shrink-0 scale-75 lg:scale-90 opacity-60">
+                        <LargeCrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={isCollapsed ? 60 : 110} />
                     </div>
-                    <div className="flex items-center gap-1">
-                        <div className="w-2 h-1.5 rounded-sm opacity-35" style={{ backgroundColor: barColor }} />
-                        <span className="text-[6px] text-white/30 font-mono">+pad {(pendingPaddingVol/1000).toFixed(1)}L</span>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 opacity-20">
+                            <span className="text-[7px] font-mono uppercase tracking-[0.3em]">{crate.id.toUpperCase()}</span>
+                        </div>
+                        <p className="text-[28px] lg:text-[32px] font-black text-white uppercase tracking-tighter truncate leading-none mb-2">
+                            {fmtDims(crate)}<span className="text-white/10 text-[9px] font-black uppercase ml-1 tracking-widest">cm</span>
+                        </p>
+                        {!isCollapsed && (
+                             <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 pr-3 border-r border-white/5">
+                                    <div className={`w-1 h-1 rounded-full ${statusDot(crate.status)}`} />
+                                    <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${statusText(crate.status)}`}>{crate.status}</span>
+                                </div>
+                                <button 
+                                    onClick={onClear} 
+                                    className="text-[8px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-rose-400 transition-all cursor-pointer"
+                                >
+                                    Release Unit
+                                </button>
+                             </div>
+                        )}
                     </div>
-                    <span className="text-[6px] text-white/20 font-mono ml-auto">/{(internalCrateCm3/1000).toFixed(0)}L int.</span>
                 </div>
-                {fillPct >= 90 && <p className="text-[7px] font-black uppercase tracking-widest text-rose-400 mt-1.5 animate-pulse">⚠ Near capacity</p>}
-            </div>
 
-            {/* Formula chip */}
-            <div className="mx-3 mb-3 px-3 py-2 bg-white/2 border border-white/5 rounded-xl shrink-0">
-                <p className="text-[6px] font-mono text-white/20 leading-relaxed">
-                    Internal = (W−15)×(L−15)×(H−15) cm³<br />
-                    Each item = (W+3)×(H+3)×(L+3) cm³<br />
-                    Fill % = Σ padded ÷ internal × 100
-                </p>
-            </div>
+                {/* Data Matrix Section (High Density) */}
+                <div className="flex-1 flex items-center justify-between px-10 relative min-w-0">
+                    <div className="flex items-center gap-12">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Volumetric Fill</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-[32px] font-black tabular-nums leading-none tracking-tighter" style={{ color: barColor }}>
+                                    {fillPct.toFixed(0)}<span className="text-[10px] ml-0.5 opacity-30">%</span>
+                                </span>
+                                <span className="text-[9px] font-mono text-white/10 tracking-widest">{(totalUsedPaddedVol/1000).toFixed(0)} / {(internalCrateCm3/1000).toFixed(0)}L</span>
+                            </div>
+                        </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-1.5 px-3 pb-3 shrink-0">
-                <div className="bg-white/3 border border-white/5 rounded-xl px-3 py-2">
-                    <p className="text-[7px] font-black uppercase tracking-widest text-white/25">Units</p>
-                    <p className="text-[15px] font-black text-white tabular-nums">{totalQty}</p>
-                </div>
-                <div className="bg-white/3 border border-white/5 rounded-xl px-3 py-2">
-                    <p className="text-[7px] font-black uppercase tracking-widest text-white/25">Weight</p>
-                    <p className="text-[15px] font-black text-white tabular-nums">{totalWeight.toFixed(1)}<span className="text-[8px] text-white/30 ml-0.5">kg</span></p>
-                </div>
-            </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Staged Units</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-[32px] font-black text-white leading-none tracking-tighter">{totalQty}</span>
+                                <span className="text-[9px] font-mono text-white/10 tracking-widest">{selectedItemIds.size} SKUs</span>
+                            </div>
+                        </div>
 
-            {/* Staged items */}
-            <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col gap-1 custom-scrollbar">
-                <div className="flex items-center justify-between mb-1">
-                    <p className="text-[7px] font-black uppercase tracking-widest text-white/20">Staged ({selectedItems.length})</p>
-                    {selectedItems.length > 0 && (
-                        <button 
-                            onClick={() => setArtifactConfig({ isOpen: true, itemIds: selectedItems.map(i => i.id), title: 'Staged Items' })}
-                            className="text-[6.5px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition-colors"
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Total Weight</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-[32px] font-black text-white leading-none tracking-tighter">{totalWeight.toFixed(0)}</span>
+                                <span className="text-[9px] text-white/10 font-mono tracking-widest">kg total</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            onClick={onUnpack}
+                            disabled={!crate.inventory_ids || crate.inventory_ids.length === 0 || isSaving}
+                            className={`flex items-center gap-2 px-4 h-[40px] rounded-lg text-[8px] font-black uppercase tracking-[0.2em] transition-all border ${(!crate.inventory_ids || crate.inventory_ids.length === 0 || isSaving) ? 'opacity-10 cursor-not-allowed' : 'text-white/20 hover:text-rose-400 border-white/5 hover:border-rose-400/20 bg-white/2 cursor-pointer'}`}
                         >
-                            View All
+                            <Trash2 size={10} strokeWidth={2.5} />
+                            Unpack All
                         </button>
+
+                        <button
+                            onClick={onPack}
+                            disabled={selectedItemIds.size === 0 || isSaving}
+                            className={`flex items-center gap-2.5 px-8 h-[40px] rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all ${selectedItemIds.size === 0 || isSaving ? 'bg-white/5 text-white/5 cursor-not-allowed border border-white/5' : 'bg-(--main-color) text-black hover:bg-white shadow-lg shadow-(--main-color)/5 cursor-pointer'}`}
+                        >
+                            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Package size={12} strokeWidth={2.5} />}
+                            {selectedItemIds.size > 0 ? `Commit ${selectedItemIds.size} items` : 'Commit Packing'}
+                        </button>
+                    </div>
+
+                    {!isCollapsed && (
+                        <div className="absolute bottom-4 left-10 right-10">
+                            <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden flex">
+                                <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${netFillPct}%`, backgroundColor: barColor }} />
+                                <div className="h-full transition-all duration-1000 ease-out opacity-20" style={{ width: `${padFillPct}%`, backgroundColor: barColor }} />
+                            </div>
+                        </div>
                     )}
                 </div>
-                {selectedItems.map(item => (
-                    <div key={item.id} className="flex items-start gap-2 px-2.5 py-2 bg-white/3 border border-white/5 rounded-xl">
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded shrink-0 text-black mt-0.5" style={{ backgroundColor: item.tagColor }}>
-                            {item.calc.bookBardcode || item.vendorPrefix || '—'}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-[8px] font-black text-white truncate leading-none">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
-                            <p className="text-[7px] text-white/30 font-mono mt-0.5">{item.norm.widthCm || '?'}×{item.norm.heightCm || '?'}×{item.norm.lengthCm || '?'}cm · {item.weight.toFixed(1)}kg</p>
-                            <p className="text-[6px] text-white/15 font-mono">{(item.paddedVol/1000).toFixed(2)}L padded ×{item.qty}</p>
-                        </div>
-                        <span className="text-[9px] font-black text-(--main-color) shrink-0">×{item.qty}</span>
-                    </div>
-                ))}
+
+                <button onClick={onToggleCollapse} className={`absolute top-3 right-4 p-1.5 rounded-md hover:bg-white/5 text-white/5 hover:text-white transition-all ${isCollapsed ? 'rotate-0' : 'rotate-180'}`}>
+                    <Maximize2 size={12} />
+                </button>
             </div>
         </div>
     );
 };
 
 
+
 // ─── Compact Crate Card (left panel) ─────────────────────────────────────────
+// ─── Compact Crate Card (Horizontal Top Ribbon) ─────────────────────────────────
+// ─── Unified Crate/Pallet Selection Card ───────────────────────────────────────
 const CrateSelectCard: React.FC<{
-    crate: CrateRecord;
+    crate: GroupedCrateRecord;
     isSelected: boolean;
     onClick: () => void;
-}> = ({ crate, isSelected, onClick }) => {
-    const packedCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
-    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    allCrates: CrateRecord[];
+    allInventory: any[];
+}> = ({ crate, isSelected, onClick, allCrates, allInventory }) => {
+    const isPallet = crate.type === 'pallet';
+    const partialCount = crate.children.filter(c => c.status === 'Partial' || (c.inventory_ids && c.inventory_ids.length > 0)).length;
+    const emptyCount = crate.children.length - partialCount;
+    
+    const dynamicParts = useMemo(() => {
+        if (crate.status === 'Partial') return getDynamicCrateIdComponents(crate, allCrates, allInventory);
+        return null;
+    }, [crate, allCrates, allInventory]);
+
     return (
         <button
             onClick={onClick}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all text-left cursor-pointer group ${
-                isSelected
-                    ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-xl shadow-(--main-color)/5 scale-[1.02] z-10'
-                    : 'bg-white/2 border-white/5 hover:border-white/12 hover:bg-white/4'
-            }`}
+            className={`flex flex-col gap-2 transition-all cursor-pointer min-w-[140px] shrink-0 relative group select-none`}
         >
-            {/* Wireframe crate icon */}
-            <div className="w-16 h-14 shrink-0 flex items-center justify-center bg-black/20 rounded-xl">
-                <WireframeCrate
-                    w={crate.width_cm}
-                    l={crate.length_cm}
-                    h={crate.height_cm}
-                    selected={isSelected}
-                    type={crate.type}
-                />
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[9px] font-mono text-white/30 truncate uppercase tracking-widest">{crate.id.slice(0, 10)}</p>
-                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse" />}
+            {/* Visual & Tags Area */}
+            <div className="relative flex flex-col gap-2">
+                <div className="h-16 flex items-center justify-center relative overflow-visible">
+                    <div className="scale-90 group-hover:scale-100 transition-transform duration-500">
+                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} selected={isSelected} type={crate.type} />
+                    </div>
+                    
+                    {/* Selection Indicator (Bottom Bar) */}
+                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 transition-all duration-500 rounded-full ${
+                        isSelected ? 'w-full bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]' : 'w-0 bg-white/20'
+                    }`} />
                 </div>
-                <p className={`text-[12px] font-black text-white truncate leading-tight ${isSelected ? 'text-(--main-color)' : ''}`}>
-                    {fmtDims(crate)} <span className="text-white/30 text-[9px] font-black">CM</span>
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(crate.status)}`} />
-                    <p className={`text-[8px] font-black uppercase tracking-widest ${statusText(crate.status)}`}>
-                        {crate.status}
+
+                {/* Tag Cluster */}
+                {dynamicParts && (
+                    <div className="absolute top-0 left-0 flex items-center gap-1 flex-wrap">
+                        {dynamicParts.vendors.map(v => (
+                            <div 
+                                key={v}
+                                style={{ backgroundColor: (vendors as any)[v]?.color || 'var(--main-color)' }}
+                                className="px-1.5 py-0.5 rounded-sm text-black text-[7px] font-black shadow-sm"
+                            >
+                                {v}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                {crate.groupedCount > 1 && (
+                    <div className="absolute top-0 right-0 text-[8px] font-black text-white/40 uppercase tracking-tighter">
+                        {crate.groupedCount}×
+                    </div>
+                )}
+            </div>
+            
+            {/* Metadata Area */}
+            <div className="flex flex-col gap-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                    <p className={`text-[11px] font-black uppercase tracking-tight font-mono ${isSelected ? 'text-(--main-color)' : 'text-white/80'}`}>
+                        {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
                     </p>
-                    <span className="text-[9px] text-white/30 font-mono flex items-center gap-1">
-                        · 
-                        <span 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const ids = crate.inventory_ids ? crate.inventory_ids.split(',').map(entry => entry.split(':')[0].trim()).filter(Boolean) : [];
-                                if (ids.length) setArtifactConfig({ isOpen: true, itemIds: ids, title: `Crate Contents` });
-                            }}
-                            className="hover:text-(--main-color) cursor-pointer transition-colors underline decoration-white/10 underline-offset-2"
-                        >
-                            {packedCount}
-                        </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em]">
+                        {isPallet ? 'Pallet' : 'Crate'}
                     </span>
+                    {partialCount > 0 && (
+                        <div className="flex items-center gap-1">
+                            <div className="w-1 h-1 rounded-full bg-amber-400" />
+                            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+                                {crate.children.reduce((acc, c) => acc + (c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0), 0)} items
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            <ChevronRight size={14} className={`shrink-0 transition-all ${isSelected ? 'text-(--main-color) translate-x-1' : 'text-white/10 group-hover:text-white/30'}`} />
         </button>
     );
 };
@@ -495,23 +537,23 @@ const PackingInventoryRow: React.FC<{
                 {/* Main content row */}
                 <div className="flex-1 overflow-x-auto no-scrollbar flex items-center px-3 gap-3 min-w-0">
                     {/* Name + Description */}
-                    <div className="flex flex-col justify-center min-w-[130px] max-w-[220px] shrink-0 border-r border-white/5 pr-3 h-full py-1">
-                        <h3 className="text-xs font-bold text-white truncate">
-                            {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || '')}
+                    <div className="flex flex-col justify-center min-w-[150px] max-w-[260px] shrink-0 border-r border-white/10 pr-3 h-full py-2">
+                        <h3 className="text-[16px] font-black text-white truncate uppercase tracking-tight leading-none mb-1">
+                            {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled Item')}
                         </h3>
-                        <div className="flex items-center gap-1.5 text-[10px] text-white/40 mt-0.5">
+                        <div className="flex items-center gap-2 text-[12px] text-white/80 font-bold uppercase tracking-widest">
                             {norm.color && <span className="truncate">{norm.color}</span>}
-                            {norm.material && <><span className="text-white/20">·</span><span className="truncate">{norm.material}</span></>}
+                            {norm.material && <><span className="text-white/40">·</span><span className="truncate">{norm.material}</span></>}
                         </div>
                     </div>
 
                     {/* Tag ID */}
-                    <div className="flex flex-col min-w-[100px] shrink-0 sm:border-r border-white/5 sm:pr-4 justify-center h-full gap-1 group/tag">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Tag ID</span>
+                    <div className="flex flex-col min-w-[110px] shrink-0 sm:border-r border-white/10 sm:pr-4 justify-center h-full gap-1 group/tag">
+                        <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] leading-none">Tag ID</span>
                         <div className="flex items-center gap-2">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(calculated.bookBarcode); toast.success(`Copied: ${calculated.bookBarcode}`, { icon: '📋' }); }}
-                                className="inline-flex items-center px-2 py-1 rounded text-black text-[11px] font-black uppercase shadow-md w-fit hover:scale-105 active:scale-95 transition-all"
+                                className="inline-flex items-center px-3 py-1.5 rounded text-black text-[14px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
                                 style={{ backgroundColor: vendorColor }}
                             >
                                 {calculated.bookBarcodeDisplay || vendorPrefix || 'N/A'}
@@ -520,20 +562,20 @@ const PackingInventoryRow: React.FC<{
                     </div>
 
                     {/* Price / Qty / Stats */}
-                    <div className="flex flex-col min-w-[110px] shrink-0 sm:border-r border-white/5 sm:pr-4 justify-center h-full gap-1">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Status & Availability</span>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-[12px] font-black text-white">{itemQuantity}</span>
-                                <span className="text-[8px] text-white/40 uppercase font-black">Total</span>
+                    <div className="flex flex-col min-w-[120px] shrink-0 sm:border-r border-white/10 sm:pr-4 justify-center h-full gap-1">
+                        <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] leading-none">Availability</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-[18px] font-black text-white leading-none">{itemQuantity}</span>
+                                <span className="text-[10px] text-white/70 uppercase font-black tracking-widest">Total</span>
                             </div>
                             {totalPackedQty > 0 && (
-                                <span className="text-[8px] px-1.5 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/20 text-rose-400 font-black">
+                                <span className="text-[10px] px-2 py-1 rounded bg-rose-500/20 border border-rose-500/30 text-rose-300 font-black uppercase">
                                     {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} Here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} Other` : ''}
                                 </span>
                             )}
                             {availableForThisCrate > 0 && (
-                                <span className="text-[8px] px-1.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black">
+                                <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-black uppercase">
                                     {availableForThisCrate} Avail
                                 </span>
                             )}
@@ -619,16 +661,19 @@ export const CratePackingManager: React.FC = () => {
     const search = useAtomValue(TOP_BAR_SEARCH_ATOM);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
+    const [isFiltersOpen, setIsFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
 
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Acquisition' | 'Production' | 'Shipped'>('All');
     const [vendorFilter, setVendorFilter] = useState('All');
+    const [sortBy, setSortBy] = useState<'date' | 'status' | 'vendor' | 'qty'>('date');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     // Map of itemId -> qty user wants to pack into this crate
     const [selectedQtys, setSelectedQtys] = useState<Record<string, number>>({});
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
+    const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
 
     const handleSelectCrate = useCallback((id: string | null) => {
         setSelectedCrateId(id);
@@ -636,6 +681,7 @@ export const CratePackingManager: React.FC = () => {
         if (!id) {
             setSelectedItemIds(new Set());
             setSelectedQtys({});
+            setActiveGroupKey(null); // Reset grouping when releasing unit
             return;
         }
         const crate = crates.find(c => c.id === id);
@@ -664,20 +710,48 @@ export const CratePackingManager: React.FC = () => {
     const activeCrates = useMemo(() => crates.filter(c => c.status !== 'Packed'), [crates]);
 
     const groupedAvailableCrates = useMemo(() => {
-        const groups: Record<string, GroupedCrateRecord> = {};
+        const individualPartials: any[] = [];
+        const emptyGroups: Record<string, any> = {};
+        
         for (const c of activeCrates) {
-            const dimTypeKey = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
-            if (!groups[dimTypeKey]) {
-                groups[dimTypeKey] = { ...c, groupedCount: 0, children: [] };
+            if (c.status === 'Partial') {
+                const parts = getDynamicCrateIdComponents(c, crates, allInventory);
+                const vKey = parts.vendors.length > 0 ? parts.vendors.join(',') : 'PARTIAL';
+                individualPartials.push({
+                    ...c,
+                    groupedCount: 1,
+                    children: [c],
+                    groupKey: `ID_${c.id}`,
+                    vendorKey: vKey
+                });
+            } else {
+                // Group empty by dimensions
+                const dimTypeKey = `${c.width_cm}x${c.length_cm}x${c.height_cm}x${c.type}`;
+                if (!emptyGroups[dimTypeKey]) {
+                    emptyGroups[dimTypeKey] = {
+                        ...c,
+                        groupedCount: 0,
+                        children: [],
+                        groupKey: `EMPTY_${dimTypeKey}`,
+                        vendorKey: 'EMPTY'
+                    };
+                }
+                emptyGroups[dimTypeKey].groupedCount += 1;
+                emptyGroups[dimTypeKey].children.push(c);
             }
-            groups[dimTypeKey].groupedCount += 1;
-            groups[dimTypeKey].children.push(c);
         }
-        return Object.values(groups).sort((a, b) => b.groupedCount - a.groupedCount);
-    }, [activeCrates]);
+        
+        return [
+            ...individualPartials.sort((a, b) => a.vendorKey.localeCompare(b.vendorKey)),
+            ...Object.values(emptyGroups).sort((a, b) => {
+                if (a.width_cm !== b.width_cm) return b.width_cm - a.width_cm;
+                return b.length_cm - a.length_cm;
+            })
+        ];
+    }, [activeCrates, crates, allInventory]);
 
     const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
-    const activeGroup = useMemo(() => activeGroupKey ? groupedAvailableCrates.find(g => `${g.width_cm}x${g.length_cm}x${g.height_cm}x${g.type}` === activeGroupKey) : null, [activeGroupKey, groupedAvailableCrates]);
+    const activeGroup = useMemo(() => activeGroupKey ? groupedAvailableCrates.find(g => (g as any).groupKey === activeGroupKey) : null, [activeGroupKey, groupedAvailableCrates]);
 
     const selectedCrate = useMemo(() => crates.find(c => c.id === selectedCrateId) ?? null, [crates, selectedCrateId]);
 
@@ -700,17 +774,25 @@ export const CratePackingManager: React.FC = () => {
         return ['All', ...Array.from(vs)];
     }, [allInventory]);
 
-    // Smart multi-term search — mirrors inventory module
+    // Smart multi-term search and sorting
     const filteredInventory = useMemo(() => {
-        return allInventory.filter(i => {
+        let items = allInventory.filter(i => {
             const d = i.data;
             if ((d as any).is_hidden) return false;
-            const statusMatch = statusFilter === 'All' || (d.status || '').toLowerCase() === statusFilter.toLowerCase();
+
+            const iid = String(i.row);
+            const norm = normalizeInventoryData(d);
+            const totalQty = Number(norm.quantity || 1);
+            const totalPacked = getTotalPackedForItem(iid, crates);
+            const isInCurrentCrate = currentCratePackedMap.has(iid);
+            
+            // Hide if fully packed and not in the current crate
+            if (totalPacked >= totalQty && !isInCurrentCrate) return false;
+
             const vendorId = d.vendor_id || d.vendorId || (d.itemId || '').split('-')[0];
             const vendorMatch = vendorFilter === 'All' || vendorId === vendorFilter;
-            if (!statusMatch || !vendorMatch) return false;
+            if (!vendorMatch) return false;
             if (search) {
-                const norm = normalizeInventoryData(d);
                 const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                 const fields = [
                     norm.itemId, norm.itemNumber, norm.color, norm.material,
@@ -725,7 +807,38 @@ export const CratePackingManager: React.FC = () => {
             }
             return true;
         });
-    }, [allInventory, search, statusFilter, vendorFilter, exchangeRate]);
+
+        // Sorting logic
+        items.sort((a, b) => {
+            let valA: any = '';
+            let valB: any = '';
+
+            switch (sortBy) {
+                case 'date':
+                    valA = a.data?.updated_at || a.data?.createdAt || '';
+                    valB = b.data?.updated_at || b.data?.createdAt || '';
+                    break;
+                case 'status':
+                    valA = a.data?.status || '';
+                    valB = b.data?.status || '';
+                    break;
+                case 'vendor':
+                    valA = a.data?.vendor_id || a.data?.vendorId || '';
+                    valB = b.data?.vendor_id || b.data?.vendorId || '';
+                    break;
+                case 'qty':
+                    valA = Number(a.data?.quantity || 1);
+                    valB = Number(b.data?.quantity || 1);
+                    break;
+            }
+
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        return items;
+    }, [allInventory, search, vendorFilter, exchangeRate, sortBy, sortOrder]);
 
     const toggleItem = useCallback((id: string, maxQty: number) => {
         setSelectedItemIds(prev => {
@@ -906,34 +1019,52 @@ export const CratePackingManager: React.FC = () => {
         return getCrateInternalVolume(selectedCrate);
     }, [selectedCrate]);
 
-    return (
-        <div className="flex h-full w-full overflow-hidden bg-transparent">
 
-            {/* ── Left Pane: Active Crate Panel ✔ Size Selector ── */}
-            <div className="w-[240px] shrink-0 border-r border-white/5 flex flex-col bg-black/40 backdrop-blur-3xl overflow-hidden">
-                {selectedCrate && selectedItemIds.size > 0 ? (
-                    <ActiveCrateSidebar
+    return (
+        <div className="flex flex-col h-full w-full overflow-hidden bg-transparent">
+            {/* ─── Top Panel: Crate Dashboard / Selector ─── */}
+            <div className="shrink-0 border-b border-white/5 bg-black/40 backdrop-blur-3xl overflow-hidden">
+                {selectedCrate ? (
+                    <ActiveCrateDashboard
                         crate={selectedCrate}
                         selectedItemIds={selectedItemIds}
                         selectedQtys={selectedQtys}
                         allInventory={allInventory}
-                        crates={crates}
                         exchangeRate={exchangeRate}
                         onClear={() => handleSelectCrate(null)}
+                        onClearStaged={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }}
+                        onPack={handlePackItems}
+                        onUnpack={handleUnpackAll}
+                        isSaving={isSaving}
+                        isCollapsed={isDashboardCollapsed}
+                        onToggleCollapse={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
                     />
                 ) : (
-                    <>
-                        <div className="px-4 pt-4 pb-2.5 border-b border-white/5 shrink-0 flex items-center justify-between">
+                    <div className="px-5 py-4">
+                        <div className="flex items-center justify-between mb-3">
                             <div>
-                                <h3 className="text-[9px] font-black uppercase tracking-widest text-(--main-color)">Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Sizes'}</h3>
-                                <p className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">{activeCrates.length} ready to pack</p>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--main-color)">
+                                    Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}
+                                </h3>
+                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">
+                                    {activeCrates.length} units ready for packing
+                                </p>
                             </div>
+                            {activeGroup && (
+                                <button
+                                    onClick={() => setActiveGroupKey(null)}
+                                    className="text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition cursor-pointer"
+                                >
+                                    ← Back to sizes
+                                </button>
+                            )}
                         </div>
-                        <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-1.5 custom-scrollbar">
+
+                        <div className="flex items-center gap-8 overflow-x-auto no-scrollbar pb-2">
                             {activeCrates.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-3 py-8">
-                                    <Inbox size={28} className="text-white/20" strokeWidth={1} />
-                                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/30 max-w-[120px] leading-relaxed">No empty sizes.<br />Create some in the Crates tab.</span>
+                                <div className="flex items-center gap-3 py-4 opacity-30">
+                                    <Inbox size={20} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">No empty units available</span>
                                 </div>
                             ) : !activeGroup ? (
                                 groupedAvailableCrates.map(group => {
@@ -943,8 +1074,10 @@ export const CratePackingManager: React.FC = () => {
                                             key={group.id}
                                             crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
                                             isSelected={!!isSelected}
+                                            allCrates={crates}
+                                            allInventory={allInventory}
                                             onClick={() => {
-                                                setActiveGroupKey(`${group.width_cm}x${group.length_cm}x${group.height_cm}x${group.type}`);
+                                                setActiveGroupKey((group as any).groupKey);
                                                 const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
                                                 handleSelectCrate(targetCrate.id);
                                             }}
@@ -952,176 +1085,136 @@ export const CratePackingManager: React.FC = () => {
                                     );
                                 })
                             ) : (
-                                <div className="flex flex-col gap-2 relative">
-                                    <button onClick={() => setActiveGroupKey(null)} className="absolute -top-1 right-0 text-[8px] font-black uppercase tracking-widest text-white/30 hover:text-white px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition z-10 cursor-pointer">Back</button>
-                                    <div className="w-full aspect-2/1 mt-6 flex flex-col justify-center relative bg-white/2 border border-white/5 rounded-2xl overflow-hidden shadow-inner px-2 pt-2 pb-6">
-                                        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.2)_1px,transparent_1px)] bg-size-[10px_10px]" />
-                                        <div className="grid grid-cols-5 gap-2 relative z-10">
-                                            {Array.from({ length: 10 }).map((_, i) => (
-                                                <div key={i} className="flex items-center justify-center">
-                                                    <LargeCrateWireframe w={activeGroup.width_cm} l={activeGroup.length_cm} h={activeGroup.height_cm} type={activeGroup.type} size={32} />
+                                <div className="flex items-center gap-4">
+                                    {activeGroup.children.map(c => {
+                                        const isSelected = selectedCrateId === c.id;
+                                        return (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => handleSelectCrate(c.id)}
+                                                className={`min-w-[100px] flex flex-col gap-1.5 transition-all cursor-pointer relative group`}
+                                            >
+                                                <div className="flex items-center justify-between w-full px-1">
+                                                    <span className={`text-[9px] font-mono leading-none tracking-tight ${isSelected ? 'text-(--main-color)' : 'text-white/60'}`}>
+                                                        {c.id.slice(0,8).toUpperCase()}
+                                                    </span>
+                                                    <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                                                 </div>
-                                            ))}
-                                        </div>
-                                        <div className="absolute bottom-2 left-0 right-0 text-center">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color) drop-shadow-md bg-black/40 px-2 py-1 rounded-full border border-(--main-color)/20 backdrop-blur-md">{activeGroup.groupedCount} AVAILABLE</span>
-                                        </div>
-                                    </div>
-                                    <p className="text-[7px] font-black uppercase tracking-widest text-white/20 mt-2 pl-1">Select a unit</p>
-                                    <div className="flex flex-col gap-1 px-1">
-                                        {activeGroup.children.map(c => {
-                                            const packedItems = c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0;
-                                            return (
-                                                <button key={c.id} onClick={() => handleSelectCrate(c.id)}
-                                                    className={`flex items-center justify-between px-3 py-2 border rounded-xl cursor-pointer transition ${
-                                                        selectedCrateId === c.id
-                                                            ? 'bg-(--main-color)/10 border-(--main-color)/30 shadow-md'
-                                                            : 'bg-white/3 border-white/5 hover:bg-white/5 hover:border-white/10 text-white/50'
-                                                    }`}
-                                                >
-                                                    <div className="flex flex-col items-start gap-1">
-                                                        <span className={`text-[9px] font-mono leading-none ${selectedCrateId === c.id ? 'text-white' : ''}`}>{c.id.slice(0,8).toUpperCase()}</span>
-                                                        <div className="flex items-center gap-1.5 opacity-80">
-                                                            <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                                                            <span className={`text-[7px] font-black uppercase tracking-widest ${c.status === 'Partial' ? 'text-amber-400' : 'text-emerald-400'}`}>{c.status}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">{packedItems} items</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                                <div className={`h-0.5 rounded-full transition-all duration-500 ${isSelected ? 'w-full bg-(--main-color)' : 'w-0 bg-white/10'}`} />
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
-            {/* ── Right Pane: Inventory List ── */}
-            <div className="flex-1 flex flex-col min-w-0 bg-black/10">
+            {/* ── Main Area: Inventory List ── */}
+            <div className="flex-1 flex flex-col min-w-0 bg-black/10 min-h-0">
 
-                {/* Toolbar */}
-                <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-white/5 bg-black/20 backdrop-blur-xl shrink-0">
-                    <div className="flex items-center gap-3">
-                        {selectedCrate ? (
-                            <div className="flex items-center gap-2">
-                                <WireframeCrate w={selectedCrate.width_cm} l={selectedCrate.length_cm} h={selectedCrate.height_cm} selected />
-                                <div>
-                                    <p className="text-[10px] font-black text-white uppercase tracking-widest">
-                                        {fmtDims(selectedCrate)} <span className="text-white/30 text-[8px]">cm</span>
-                                    </p>
-                                    <p className="text-[7px] font-mono text-white/25">{selectedCrate.id.slice(0, 12).toUpperCase()}</p>
+                {/* Config & Sort Panel */}
+                {isFiltersOpen && (
+                    <div className="border-b border-white/10 bg-white/2 backdrop-blur-3xl flex flex-col gap-0 animate-in slide-in-from-top duration-300 shrink-0">
+                        {/* Sort Bar */}
+                        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/5">
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Sort By</span>
+                                    <div className="flex items-center gap-3">
+                                        {[
+                                            { id: 'date', label: 'Date' },
+                                            { id: 'status', label: 'Status' },
+                                            { id: 'vendor', label: 'Vendor' },
+                                            { id: 'qty', label: 'Qty' },
+                                        ].map(s => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => {
+                                                    if (sortBy === s.id) {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortBy(s.id as any);
+                                                        setSortOrder('desc');
+                                                    }
+                                                }}
+                                                className={`text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5 group/sort ${
+                                                    sortBy === s.id
+                                                        ? 'text-(--main-color)'
+                                                        : 'text-white/25 hover:text-white/60'
+                                                }`}
+                                            >
+                                                {s.label}
+                                                {sortBy === s.id ? (
+                                                    sortOrder === 'asc' ? <ArrowUp size={10} className="text-(--main-color)" /> : <ArrowDown size={10} className="text-(--main-color)" />
+                                                ) : (
+                                                    <ArrowUpDown size={10} className="opacity-0 group-hover/sort:opacity-100 transition-opacity" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="flex items-center gap-2 text-white/25">
-                                <PackagePlus size={13} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Select a crate first</span>
-                            </div>
-                        )}
 
-                        {selectedItemIds.size > 0 && selectedCrate && (
-                            <div className="flex items-center gap-2 px-2.5 py-1 bg-(--main-color)/10 border border-(--main-color)/20 rounded-xl">
-                                <span className="text-[10px] font-black text-(--main-color)">{selectedItemIds.size} selected</span>
-                                <button onClick={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }} className="text-(--main-color)/60 hover:text-(--main-color) cursor-pointer">
-                                    <X size={10} />
-                                </button>
+                            <div className="flex items-center gap-4">
+                                {!selectedCrate && (
+                                    <div className="flex items-center gap-3 text-white/20 ml-2">
+                                        <PackagePlus size={16} strokeWidth={2.5} />
+                                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">SELECT DESTINATION UNIT</span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* Status filter — pill chips */}
-                        <div className="flex items-center gap-1">
-                            {(['All', 'Acquisition', 'Production', 'Shipped'] as const).map(s => (
-                                <button
-                                    key={s}
-                                    onClick={() => setStatusFilter(s)}
-                                    className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all border cursor-pointer ${
-                                        statusFilter === s
-                                            ? 'bg-(--main-color) text-black border-(--main-color) shadow-md shadow-(--main-color)/20'
-                                            : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
-                                    }`}
-                                >
-                                    {s}
-                                </button>
-                            ))}
                         </div>
 
-                        <div className="w-px h-4 bg-white/10 mx-1" />
-
-                        {/* Unpack all button */}
-                        {selectedCrate && (
-                            <button
-                                onClick={handleUnpackAll}
-                                disabled={!selectedCrate || !selectedCrate.inventory_ids || selectedCrate.inventory_ids.length === 0 || isSaving}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${(!selectedCrate || !selectedCrate.inventory_ids || selectedCrate.inventory_ids.length === 0 || isSaving) ? 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed' : 'bg-white/5 border-white/10 text-white/60 hover:text-rose-400 hover:border-rose-400/30 cursor-pointer'}`}
-                            >
-                                <X size={12} />
-                                Unpack all
-                            </button>
-                        )}
-
-                        {/* Pack Action */}
-                        <button
-                            onClick={handlePackItems}
-                            disabled={!selectedCrate || selectedItemIds.size === 0 || isSaving}
-                            className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${(!selectedCrate || selectedItemIds.size === 0 || isSaving) ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5' : 'bg-(--main-color) text-black hover:scale-105 active:scale-95 shadow-lg shadow-(--main-color)/20 cursor-pointer'}`}
-                        >
-                            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Package size={12} />}
-                            Pack {selectedItemIds.size > 0 ? selectedItemIds.size : ''} Item{selectedItemIds.size !== 1 ? 's' : ''}
-                        </button>
+                        {/* Vendor Filters */}
+                        <div className="px-6 py-4 flex flex-col gap-2">
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20">Source Vendor</span>
+                            <div className="flex flex-wrap gap-2">
+                                {vendorOptions.map(v => {
+                                    const color = v === 'All' ? undefined : (vendors as any)[v]?.color;
+                                    const isActive = vendorFilter === v;
+                                    return (
+                                        <button
+                                            key={v}
+                                            onClick={() => setVendorFilter(v)}
+                                            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 cursor-pointer ${
+                                                isActive
+                                                    ? 'bg-white text-black border-white shadow-md'
+                                                    : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white/70'
+                                            }`}
+                                        >
+                                            {color && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
+                                            {v}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                {/* Vendor filter strip — pill chips with color dots, mirrors Inventory vendor filter */}
-                <div className="flex items-center gap-1.5 px-5 py-2 border-b border-white/5 bg-black/10 overflow-x-auto no-scrollbar shrink-0">
-                    <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-1">Vendor</span>
-                    {vendorOptions.map(v => {
-                        const color = v === 'All' ? undefined : (vendors as any)[v]?.color;
-                        const isActive = vendorFilter === v;
-                        return (
-                            <button
-                                key={v}
-                                onClick={() => setVendorFilter(v)}
-                                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all border shrink-0 cursor-pointer ${
-                                    isActive
-                                        ? 'bg-white text-black border-white shadow-md'
-                                        : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20 hover:text-white/70'
-                                }`}
-                            >
-                                {color && (
-                                    <div
-                                        className="w-1.5 h-1.5 rounded-full shrink-0"
-                                        style={{ backgroundColor: color }}
-                                    />
-                                )}
-                                {v}
-                            </button>
-                        );
-                    })}
-                </div>
+                )}
 
                 {/* Inventory List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                     {!selectedCrate ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-4">
-                            <Package size={44} className="text-white/15" strokeWidth={1} />
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30 max-w-xs leading-loose">
-                                Select a destination crate<br />to activate item selection.
+                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-6">
+                            <div className="p-8 bg-white/2 rounded-full border border-white/5">
+                                <Package size={64} className="text-white/10" strokeWidth={0.5} />
+                            </div>
+                            <p className="text-[12px] font-black uppercase tracking-[0.4em] text-white/30 max-w-sm leading-loose">
+                                SELECT A DESTINATION CRATE<br />TO ACTIVATE ITEM SELECTION.
                             </p>
                         </div>
                     ) : filteredInventory.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-4">
-                            <ListFilter size={36} className="text-white/15" strokeWidth={1} />
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/30">No items match the current filters.</p>
+                            <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">NO ITEMS MATCH FILTERS</p>
                         </div>
                     ) : (
-                        <div className="p-4 flex flex-col gap-1">
+                        <div className="p-6 flex flex-col gap-1.5">
                             {/* Stats bar */}
-                            <div className="flex items-center justify-between mb-2 px-1">
-                                <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{filteredInventory.length} items</span>
+                            <div className="flex items-center justify-between mb-4 px-2">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/25">{filteredInventory.length} ITEMS FOUND</span>
                                 {filteredInventory.length > 0 && (
                                     <button
                                         onClick={() => {
@@ -1138,9 +1231,9 @@ export const CratePackingManager: React.FC = () => {
                                             setSelectedItemIds(newIds);
                                             setSelectedQtys(newQtys);
                                         }}
-                                        className="text-[8px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition cursor-pointer"
+                                        className="text-[10px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition cursor-pointer"
                                     >
-                                        Select all with remaining
+                                        SELECT ALL REMAINING
                                     </button>
                                 )}
                             </div>
@@ -1174,31 +1267,38 @@ export const CratePackingManager: React.FC = () => {
 
                 {/* Confirm Pack summary bar */}
                 {selectedCrate && selectedItemIds.size > 0 && (
-                    <div className="flex items-center justify-between px-5 py-3 border-t border-white/5 bg-black/30 backdrop-blur-xl shrink-0 animate-in slide-in-from-bottom-2 duration-200">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-                                {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} unit(s) · {selectedItemIds.size} SKU(s)
-                            </span>
-                            <span className="text-[8px] font-mono text-(--main-color)/70 mt-0.5">
-                                → {fmtDims(selectedCrate)} {selectedCrate.type === 'pallet' ? 'pallet' : 'crate'} cm
-                            </span>
+                    <div className="flex items-center justify-between px-8 py-5 border-t border-white/5 bg-black/40 backdrop-blur-3xl shrink-0 animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-center gap-6">
+                            <div className="flex flex-col">
+                                <span className="text-[13px] font-black uppercase tracking-[0.1em] text-white">
+                                    {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} TOTAL UNITS
+                                </span>
+                                <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">
+                                    → {selectedItemIds.size} UNIQUE SKU(s)
+                                </span>
+                            </div>
+                            <div className="w-px h-8 bg-white/10" />
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color)/60">DESTINATION</span>
+                                <span className="text-[12px] font-black text-white mt-0.5">{fmtDims(selectedCrate)} {selectedCrate.type.toUpperCase()}</span>
+                            </div>
                         </div>
                         <button
                             onClick={handlePackItems}
                             disabled={isSaving}
-                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-3 px-8 py-3 rounded-2xl bg-(--main-color) text-black text-[12px] font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-2xl shadow-(--main-color)/30"
                         >
-                            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={3} />}
-                            {selectedCrate.inventory_ids && selectedCrate.inventory_ids.length > 0 ? 'Update Crate Contents' : 'Confirm Pack'}
+                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={16} strokeWidth={4} />}
+                            {selectedCrate.inventory_ids && selectedCrate.inventory_ids.length > 0 ? 'UPDATE CONTENTS' : 'CONFIRM PACK'}
                         </button>
                     </div>
                 )}
             </div>
 
             <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #F97316); }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

@@ -41,28 +41,7 @@ export const LogisticsView: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            {/* ── Contextual status strip ── */}
-            {/* ── Contextual status strip ── */}
-            <div className="flex items-center gap-6 px-4 sm:px-6 py-2.5 bg-black/40 border-b border-white/5 shrink-0 overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-2 h-2 rounded-full bg-[#FFED00] shadow-[0_0_8px_rgba(255,237,0,0.3)]" />
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">WHSE</span>
-                    <span className="text-sm font-mono font-black text-[#FFED00] ml-1">{counts.warehouse}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 border-l border-white/5 pl-4">
-                    <div className="w-2 h-2 rounded-full bg-[#00AEEF] shadow-[0_0_8px_rgba(0,174,239,0.3)]" />
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">TRANS</span>
-                    <span className="text-sm font-mono font-black text-[#00AEEF] ml-1">{counts.transit}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 border-l border-white/5 pl-4">
-                    <div className="w-2 h-2 rounded-full bg-[#8DC63F] shadow-[0_0_8px_rgba(141,198,63,0.3)]" />
-                    <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">DLVRD</span>
-                    <span className="text-sm font-mono font-black text-[#8DC63F] ml-1">{counts.delivered}</span>
-                </div>
-                <div className="ml-auto shrink-0 pl-4 border-l border-white/5 hidden sm:block">
-                    <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">{docs.length} total shipments</span>
-                </div>
-            </div>
+
             {/* ── Content ── */}
             <div className="flex-1 overflow-hidden">
                 {activeTab === 'packing' ? (
@@ -96,14 +75,7 @@ const ShipmentTrackingPanel: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     return (
         <div className="flex flex-col h-full overflow-hidden">
             <div className="flex items-center gap-2 p-4 border-b border-white/5 shrink-0">
-                {[
-                    { val: 'All', label: 'ALL' },
-                    { val: 'Warehouse', label: 'WHSE' },
-                    { val: 'In Transit', label: 'TRANS' },
-                    { val: 'Delivered', label: 'DLVRD' }
-                ].map(s => (
-                    <button key={s.val} onClick={() => setFilter(s.val)} className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${filter === s.val ? 'bg-[#F7941D] text-black' : 'bg-white/5 text-(--text-color)/30 hover:text-(--text-color)/60'}`}>{s.label}</button>
-                ))}
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Shipment Log</span>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
                 {/* Desktop Table View */}
