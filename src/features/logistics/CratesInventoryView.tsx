@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -225,6 +225,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
     const [exportNotes, setExportNotes] = useState('');
     const [exportBruteWeight, setExportBruteWeight] = useState('');
     const [exportProgress, setExportProgress] = useState(0);
+    const [exportStatus, setExportStatus] = useState('');
     const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
     const liveRate = useAtomValue(liveExchangeRateAtom) || 18.0;
 
