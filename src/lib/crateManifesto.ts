@@ -503,30 +503,36 @@ export async function exportCrateManifesto(
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         
-        // Include Imperial Fractions
         const dimStr = item.dims || '';
+        doc.text(dimStr || '—', COL_DIMS.x + 2, ry + 7);
+        
+        // Imperial Dimensions (stacked below metric)
         const cmMatch = dimStr.match(/([\d.]+)\s*[x×]\s*([\d.]+)\s*[x×]\s*([\d.]+)/);
-        let displayDim = dimStr;
         if (cmMatch) {
             const w = parseFloat(cmMatch[1]);
             const l = parseFloat(cmMatch[2]);
             const h = parseFloat(cmMatch[3]);
             const imp = [w, l, h].map(v => cmToImperial(v)).join(' × ');
-            displayDim = `${dimStr} (${imp})`;
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...TEXT_LO);
+            doc.text(imp, COL_DIMS.x + 2, ry + 10.5);
         }
-        doc.text(displayDim || '—', COL_DIMS.x + 2, ry + 7.5);
 
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         if (item.weightKg > 0) {
             const kgText = `${item.weightKg} kg`;
-            doc.text(kgText, COL_DIMS.x + 2, ry + 13);
+            doc.setTextColor(...TEXT_MID);
+            doc.text(kgText, COL_DIMS.x + 2, ry + 14.5);
             const kgW = doc.getTextWidth(kgText);
             doc.setTextColor(...TEXT_LO);
-            doc.text(` · ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2 + kgW, ry + 13);
+            doc.text(` · ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2 + kgW, ry + 14.5);
         } else {
-            doc.text('—', COL_DIMS.x + 2, ry + 13);
+            doc.setTextColor(...TEXT_LO);
+            doc.text('—', COL_DIMS.x + 2, ry + 14.5);
         }
+
 
         // ── Qty ───────────────────────────────────────────────────────────────
         doc.setTextColor(0, 0, 0);
