@@ -4,6 +4,7 @@
  * Each row includes a live QR code linking to the item's inventory record.
  */
 import { jsPDF } from 'jspdf';
+import { cmToImperial } from './utils';
 
 export interface ManifestoItem {
     index: number;            // DB item number (numeric portion from itemId)
@@ -501,15 +502,30 @@ export async function exportCrateManifesto(
         doc.setTextColor(...TEXT_MID);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.text(item.dims || '—', COL_DIMS.x + 2, ry + 7.5);
+        
+        // Include Imperial Fractions
+        const dimStr = item.dims || '';
+        const cmMatch = dimStr.match(/([\d.]+)\s*[x×]\s*([\d.]+)\s*[x×]\s*([\d.]+)/);
+        let displayDim = dimStr;
+        if (cmMatch) {
+            const w = parseFloat(cmMatch[1]);
+            const l = parseFloat(cmMatch[2]);
+            const h = parseFloat(cmMatch[3]);
+            const imp = [w, l, h].map(v => cmToImperial(v)).join(' × ');
+            displayDim = `${dimStr} (${imp})`;
+        }
+        doc.text(displayDim || '—', COL_DIMS.x + 2, ry + 7.5);
+
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         if (item.weightKg > 0) {
-            doc.text(`${item.weightKg} kg`, COL_DIMS.x + 2, ry + 12);
+            const kgText = `${item.weightKg} kg`;
+            doc.text(kgText, COL_DIMS.x + 2, ry + 13);
+            const kgW = doc.getTextWidth(kgText);
             doc.setTextColor(...TEXT_LO);
-            doc.text(`${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, ry + 16);
+            doc.text(` · ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2 + kgW, ry + 13);
         } else {
-            doc.text('—', COL_DIMS.x + 2, ry + 12);
+            doc.text('—', COL_DIMS.x + 2, ry + 13);
         }
 
         // ── Qty ───────────────────────────────────────────────────────────────
