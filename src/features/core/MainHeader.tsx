@@ -95,7 +95,7 @@ import {
     ChevronLeft, Plus, Trash2, Grid, FileText, Database, Calendar, DollarSign, 
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
-    Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc
+    Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -622,19 +622,18 @@ const PackingBar: React.FC = () => {
                                 onClick={cycleView}
                                 title="Toggle View Mode"
                             />
-                            <button 
-                                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                                className={`flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white/60'}`}
-                            >
-                                <Filter size={13} />
-                                Config
-                            </button>
+                                <button 
+                                    onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                                    className={`flex items-center gap-2 px-3 text-[10px] font-black uppercase tracking-[0.4em] transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                                >
+                                    <ListFilter size={14} />
+                                    Config
+                                </button>
+                            </div>
                         </div>
-
-                    </div>
-                </>
-            )}
-        </div>
+                    </>
+                )}
+            </div>
     );
 };
 

@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       minify: true,
+      chunkSizeWarningLimit: 4000,
       rollupOptions: {
         input: {
           main: fileURLToPath(new URL('./index.html', import.meta.url)),
@@ -51,6 +52,11 @@ export default defineConfig(({ mode }) => {
             'vendor-charts': ['echarts-for-react', 'echarts'],
             'vendor-db': ['rxdb', 'rxjs'],
             'vendor-utils': ['lucide-react', 'gsap', 'xlsx', 'exceljs'],
+            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
+            'vendor-3d': ['three'],
+            'vendor-ai': ['@google/genai', '@google/generative-ai'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-qrcode': ['html5-qrcode', 'qrcode.react', 'react-barcode']
           }
         }
       }

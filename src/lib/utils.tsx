@@ -847,8 +847,8 @@ export const onyxRound = (n: number) => {
 
 export const calculateCodesAndPrices = (data: any, exchangeRate: number, workbookPrefix: string) => {
   const norm = normalizeInventoryData(data);
-
   const costMxn = round2(parseFloat(norm.price) || 0);
+  
   if (costMxn === 0 || !exchangeRate || isNaN(exchangeRate)) {
     return {
       bookAcquisition: '-',
@@ -857,40 +857,59 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookAqCode: '-',
       bookLandCode: '-',
       bookBarcode: '-',
+      bookBarcodeDisplay: '-',
+      bookBardcode: '-', // Legacy typo alias
+      vendorColor: '#555',
     };
   }
 
-  // Formula: Acquisition USD = MXN Price / Rate
-  const costUsd     = round2(costMxn / exchangeRate);
-  // Formula: Landed USD = Acquisition USD * 1.4
-  const landedCost  = round2(costUsd * 1.4);
-  // Formula: Retail USD = Landed USD * 12
-  const retailPrice = round2(landedCost * 12);
+  try {
+    // Formula: Acquisition USD = MXN Price / Rate
+    const costUsd     = round2(costMxn / exchangeRate);
+    // Formula: Landed USD = Acquisition USD * 1.4
+    const landedCost  = round2(costUsd * 1.4);
+    // Formula: Retail USD = Landed USD * 12
+    const retailPrice = round2(landedCost * 12);
 
-  // Codes are based on the custom rounded integer value of USD costs (.40 threshold)
-  const costUsdRounded    = onyxRound(costUsd);
-  const landedCostRounded = onyxRound(landedCost);
+    // Codes are based on the custom rounded integer value of USD costs (.40 threshold)
+    const costUsdRounded    = onyxRound(costUsd);
+    const landedCostRounded = onyxRound(landedCost);
 
-  const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
-  const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
-  const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
-  const itemCountStr = itemCountNumber.toString();
+    const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
+    const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
+    const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
+    const itemCountStr = itemCountNumber.toString();
 
-  const cypherString = numberToCypher(landedCostRounded);
-  const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
-  const displayTagId = `${vendorPrefix}${bookStr} ${itemCountStr}${cypherString}`;
+    const cypherString = isNaN(landedCostRounded) ? 'XXXX' : numberToCypher(landedCostRounded);
+    const newTagId = `${vendorPrefix}${bookStr}${itemCountStr}${cypherString}`;
+    const displayTagId = `${vendorPrefix}${bookStr} ${itemCountStr}${cypherString}`;
 
-  return {
-    bookAcquisition: onyxRound(costUsd).toString(),
-    bookLanded:   onyxRound(landedCost).toString(),
-    bookRetail:   onyxRound(retailPrice).toString(),
-    bookAqCode:   numberToCypher(costUsdRounded),
-    bookLandCode: cypherString,
-    bookBarcode: newTagId,
-    bookBarcodeDisplay: displayTagId,
-    bookBardcode: newTagId, // Legacy typo alias
-    vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
-  };
+    return {
+      bookAcquisition: isNaN(costUsd) ? '-' : onyxRound(costUsd).toString(),
+      bookLanded:   isNaN(landedCost) ? '-' : onyxRound(landedCost).toString(),
+      bookRetail:   isNaN(retailPrice) ? '-' : onyxRound(retailPrice).toString(),
+      bookAqCode:   isNaN(costUsdRounded) ? '-' : numberToCypher(costUsdRounded),
+      bookLandCode: cypherString,
+      bookBarcode: newTagId,
+      bookTagId: norm.itemId || '-', // The original workbook tag ID (e.g. EM-001-T)
+      bookBarcodeDisplay: displayTagId,
+      bookBardcode: newTagId, // Legacy typo alias
+      vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
+    };
+  } catch (e) {
+    console.error('calculateCodesAndPrices error:', e);
+    return {
+      bookAcquisition: '-',
+      bookLanded: '-',
+      bookRetail: '-',
+      bookAqCode: '-',
+      bookLandCode: '-',
+      bookBarcode: '-',
+      bookBarcodeDisplay: '-',
+      bookBardcode: '-',
+      vendorColor: '#555',
+    };
+  }
 };
 
 /**

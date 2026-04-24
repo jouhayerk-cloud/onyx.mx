@@ -2,14 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { 
     inventoryAtom, cratesVersionAtom, TOP_BAR_SEARCH_ATOM, exchangeRateAtom, 
-    inventoryArtifactConfigAtom, isDummyModeAtom, isPackingFiltersOpenAtom 
+    inventoryArtifactConfigAtom, isDummyModeAtom, isPackingFiltersOpenAtom,
+    packingVendorFilterAtom, packingSortKeyAtom, packingSortOrderAtom
 } from '../../lib/atoms';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, isVideoFile, getCrateInternalVolume, getItemPaddedVolume } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import {
-    Package, ChevronRight, Check, Loader2, X,
+    Package, ChevronRight, Check, Loader2, X, CheckCircle2,
     PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus, Trash2,
     ArrowUp, ArrowDown, ArrowUpDown, ArrowLeft
 } from 'lucide-react';
@@ -328,34 +329,33 @@ const CrateSelectCard: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`flex flex-col items-center gap-4 transition-all duration-500 cursor-pointer p-4 rounded-3xl min-w-[150px] shrink-0 relative group select-none ${
-                isSelected ? 'bg-white/5 shadow-2xl scale-105' : 'hover:bg-white/3 hover:scale-102'
+            className={`flex flex-col items-center gap-6 transition-all duration-500 cursor-pointer p-8 rounded-none min-w-[180px] shrink-0 relative group select-none border-2 ${
+                isSelected ? 'bg-black border-(--main-color) shadow-[0_0_50px_rgba(249,115,22,0.1)] z-10 scale-105' : 'bg-black border-white/5 hover:border-white/20'
             }`}
         >
             {/* Visual Section */}
-            <div className="relative h-20 flex items-center justify-center w-full">
-                <div className={`transition-all duration-700 ${isSelected ? 'scale-110' : 'scale-90 opacity-40 group-hover:opacity-100'}`}>
-                    <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} selected={isSelected} type={crate.type} />
+            <div className="relative h-24 flex items-center justify-center w-full">
+                <div className={`transition-all duration-700 ${isSelected ? 'scale-110' : 'scale-90 opacity-60 group-hover:opacity-100'}`}>
+                    <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} selected={isSelected} type={crate.type} size={100} />
                 </div>
                 
                 {/* Dynamic Tags */}
                 {dynamicParts && (
-                    <div className="absolute -top-1 -left-1 flex flex-wrap gap-1 max-w-[80px]">
-                        {dynamicParts.vendors.slice(0, 2).map(v => (
+                    <div className="absolute top-0 left-0 flex flex-wrap gap-1.5 max-w-[100px]">
+                        {dynamicParts.vendors.slice(0, 3).map(v => (
                             <div 
                                 key={v}
                                 style={{ backgroundColor: (vendors as any)[v]?.color || 'var(--main-color)' }}
-                                className="px-1.5 py-0.5 rounded text-black text-[7px] font-black shadow-lg"
+                                className="px-2 py-0.5 rounded-none text-black text-[8px] font-black uppercase tracking-widest"
                             >
                                 {v}
                             </div>
                         ))}
-                        {dynamicParts.vendors.length > 2 && <span className="text-[7px] font-black text-white/40">+{dynamicParts.vendors.length-2}</span>}
                     </div>
                 )}
 
                 {crate.groupedCount > 1 && (
-                    <div className="absolute -top-1 -right-1 bg-white/10 backdrop-blur-md px-1.5 py-0.5 rounded-full text-[8px] font-black text-white/60">
+                    <div className="absolute top-0 right-0 bg-white/10 px-2 py-1 rounded-none text-[9px] font-black text-white/60 font-mono">
                         {crate.groupedCount}×
                     </div>
                 )}
@@ -363,16 +363,16 @@ const CrateSelectCard: React.FC<{
             
             {/* Metadata Area */}
             <div className="text-center">
-                <p className={`text-xs font-black uppercase tracking-widest font-mono mb-1 transition-colors ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
+                <p className={`text-lg font-black uppercase tracking-[0.2em] font-mono mb-2 transition-colors ${isSelected ? 'text-(--main-color)' : 'text-white/80'}`}>
                     {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
                 </p>
-                <div className="flex items-center justify-center gap-2">
-                    <span className="text-[7px] font-black text-white/10 uppercase tracking-[0.3em]">
+                <div className="flex items-center justify-center gap-3">
+                    <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em]">
                         {isPallet ? 'Pallet' : 'Crate'}
                     </span>
                     {partialCount > 0 && (
-                        <div className="flex items-center gap-1">
-                            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-none bg-amber-400" />
                             <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Active</span>
                         </div>
                     )}
@@ -381,7 +381,7 @@ const CrateSelectCard: React.FC<{
 
             {/* Selection Indicator Glow */}
             {isSelected && (
-                <div className="absolute inset-0 rounded-3xl ring-2 ring-(--main-color)/20 shadow-[0_0_30px_rgba(var(--main-color-rgb),0.1)] pointer-events-none" />
+                <div className="absolute inset-0 rounded-none ring-2 ring-(--main-color)/20 pointer-events-none" />
             )}
         </button>
     );
@@ -443,7 +443,6 @@ const PackingInventoryRow: React.FC<{
                         {/* Integrated Selection Button */}
                         <button
                             onClick={(e) => { e.stopPropagation(); !fullyPacked && onToggle(); }}
-                            disabled={fullyPacked}
                             className={`absolute bottom-6 right-6 w-14 h-14 flex items-center justify-center transition-all z-30 ${
                                 fullyPacked
                                     ? 'opacity-0 pointer-events-none'
@@ -556,9 +555,9 @@ export const CratePackingManager: React.FC = () => {
 
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [selectedCrateId, setSelectedCrateId] = useState<string | null>(null);
-    const [vendorFilter, setVendorFilter] = useState('All');
-    const [sortBy, setSortBy] = useState<'date' | 'status' | 'vendor' | 'qty'>('date');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [vendorFilter, setVendorFilter] = useAtom(packingVendorFilterAtom);
+    const [sortBy, setSortKey] = useAtom(packingSortKeyAtom);
+    const [sortOrder, setSortOrder] = useAtom(packingSortOrderAtom);
     const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
     // Map of itemId -> qty user wants to pack into this crate
     const [selectedQtys, setSelectedQtys] = useState<Record<string, number>>({});
@@ -592,13 +591,13 @@ export const CratePackingManager: React.FC = () => {
     // Subscribe to RxDB crates
     useEffect(() => {
         if (!db) return;
-        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet'] } } }).$.subscribe((data: any[]) => {
+        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet', 'cardboard'] } } }).$.subscribe((data: any[]) => {
             setCrates(data.map(c => c.toJSON()));
         });
         return () => sub.unsubscribe();
     }, [db, cratesVersion]);
 
-    const activeCrates = useMemo(() => crates.filter(c => c.status !== 'Packed'), [crates]);
+    const activeCrates = useMemo(() => crates.filter(c => c.status !== 'Packed' && (c.type === 'crate' || c.type === 'pallet' || c.type === 'cardboard')), [crates]);
 
     const groupedAvailableCrates = useMemo(() => {
         const individualPartials: any[] = [];
@@ -705,19 +704,19 @@ export const CratePackingManager: React.FC = () => {
             let valB: any = '';
 
             switch (sortBy) {
-                case 'date':
+                case 'Date':
                     valA = a.data?.updated_at || a.data?.createdAt || '';
                     valB = b.data?.updated_at || b.data?.createdAt || '';
                     break;
-                case 'status':
+                case 'Status':
                     valA = a.data?.status || '';
                     valB = b.data?.status || '';
                     break;
-                case 'vendor':
+                case 'Vendor':
                     valA = a.data?.vendor_id || a.data?.vendorId || '';
                     valB = b.data?.vendor_id || b.data?.vendorId || '';
                     break;
-                case 'qty':
+                case '#':
                     valA = Number(a.data?.quantity || 1);
                     valB = Number(b.data?.quantity || 1);
                     break;
@@ -912,9 +911,9 @@ export const CratePackingManager: React.FC = () => {
 
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden bg-transparent">
+        <div className="flex flex-col h-full w-full overflow-hidden bg-black/95">
             {/* ─── Top Panel: Floating HUD / Unit Picker ─── */}
-            <div className="shrink-0">
+            <div className="shrink-0 flex flex-col min-h-0">
                 {selectedCrate ? (
                     <ActiveCrateHUD
                         crate={selectedCrate}
@@ -928,74 +927,89 @@ export const CratePackingManager: React.FC = () => {
                         isSaving={isSaving}
                     />
                 ) : (
-                    <div className="px-6 py-8 sm:px-10">
-                        <div className="max-w-7xl mx-auto">
-                            <div className="flex items-center justify-between mb-8">
-                                <div className="flex flex-col gap-1">
-                                    <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--main-color)">
+                    <div className="flex-1 flex flex-col bg-black">
+                        {/* Header Section */}
+                        <div className="px-6 pt-12 pb-10 sm:px-10 shrink-0">
+                            <div className="max-w-7xl mx-auto flex items-center justify-between">
+                                <div className="flex flex-col gap-2">
+                                    <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
                                         Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}
                                     </h3>
-                                    <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">
-                                        {activeCrates.length} precision units ready for assignment
+                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">
+                                        {activeCrates.length} Precision Units Ready for Assignment
                                     </p>
                                 </div>
                                 {activeGroup && (
                                     <button
                                         onClick={() => setActiveGroupKey(null)}
-                                        className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all cursor-pointer flex items-center gap-2 group"
+                                        className="text-[10px] font-black uppercase tracking-[0.2em] text-white hover:text-black px-8 py-3 bg-white/5 hover:bg-(--main-color) border border-white/10 hover:border-(--main-color) transition-all cursor-pointer flex items-center gap-3 group rounded-none font-mono"
                                     >
-                                        <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
-                                        Sizes
+                                        <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                        Root Catalog
                                     </button>
                                 )}
                             </div>
+                        </div>
 
-                            <div className="flex items-center gap-8 overflow-x-auto no-scrollbar pb-6 mask-fade-right">
-                                {activeCrates.length === 0 ? (
-                                    <div className="flex items-center gap-4 py-8 opacity-20">
-                                        <Inbox size={32} strokeWidth={1} />
-                                        <span className="text-sm font-black uppercase tracking-widest">No empty units available</span>
-                                    </div>
-                                ) : !activeGroup ? (
-                                    groupedAvailableCrates.map(group => {
-                                        const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
-                                        return (
-                                            <CrateSelectCard
-                                                key={group.id}
-                                                crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
-                                                isSelected={!!isSelected}
-                                                allCrates={crates}
-                                                allInventory={allInventory}
-                                                onClick={() => {
-                                                    setActiveGroupKey((group as any).groupKey);
-                                                    const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
-                                                    handleSelectCrate(targetCrate.id);
-                                                }}
-                                            />
-                                        );
-                                    })
-                                ) : (
-                                    <div className="flex items-center gap-6">
-                                        {activeGroup.children.map(c => {
+                        {/* Free-Floating Grid Section - FULL SCROLLABILITY */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-32 sm:px-10">
+                            <div className="max-w-7xl mx-auto">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-10">
+                                    {activeCrates.length === 0 ? (
+                                        <div className="flex flex-col items-center gap-6 py-24 opacity-20 col-span-full justify-center">
+                                            <Inbox size={48} strokeWidth={0.5} />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.5em] font-mono">No Available Logistics Hardware</span>
+                                        </div>
+                                    ) : !activeGroup ? (
+                                        groupedAvailableCrates.map(group => {
+                                            const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
+                                            return (
+                                                <CrateSelectCard
+                                                    key={group.id}
+                                                    crate={{ ...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty' } as any}
+                                                    isSelected={!!isSelected}
+                                                    allCrates={crates}
+                                                    allInventory={allInventory}
+                                                    onClick={() => {
+                                                        setActiveGroupKey((group as any).groupKey);
+                                                        const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
+                                                        handleSelectCrate(targetCrate.id);
+                                                    }}
+                                                />
+                                            );
+                                        })
+                                    ) : (
+                                        activeGroup.children.map(c => {
                                             const isSelected = selectedCrateId === c.id;
                                             return (
                                                 <button
                                                     key={c.id}
                                                     onClick={() => handleSelectCrate(c.id)}
-                                                    className={`min-w-[120px] flex flex-col gap-3 transition-all cursor-pointer relative group p-4 rounded-3xl ${isSelected ? 'bg-white/5' : 'hover:bg-white/2'}`}
+                                                    className={`flex flex-col gap-6 transition-all cursor-pointer relative group p-8 border-2 ${isSelected ? 'bg-black border-(--main-color) shadow-[0_0_60px_rgba(249,115,22,0.2)] scale-[1.05] z-10' : 'bg-black border-white/5 hover:border-white/20'}`}
                                                 >
                                                     <div className="flex items-center justify-between w-full">
-                                                        <span className={`text-[10px] font-mono leading-none tracking-tighter ${isSelected ? 'text-(--main-color) font-black' : 'text-white/40'}`}>
-                                                            {c.id.slice(0,8).toUpperCase()}
+                                                        <span className={`text-[14px] font-mono font-black leading-none tracking-[0.2em] ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
+                                                            {c.id.slice(0, 8).toUpperCase()}
                                                         </span>
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'} ${isSelected ? 'animate-pulse' : ''}`} />
+                                                        <div className={`w-3 h-3 rounded-none ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'} ${isSelected ? 'shadow-[0_0_15px_currentColor]' : ''}`} />
                                                     </div>
-                                                    <div className={`h-0.5 rounded-full transition-all duration-700 ${isSelected ? 'w-full bg-(--main-color)' : 'w-4 bg-white/10'}`} />
+                                                    <div className="flex flex-col gap-2 text-left">
+                                                        <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isSelected ? 'text-white' : 'text-white/20'}`}>
+                                                            {c.status}
+                                                        </span>
+                                                        <div className={`h-2 transition-all duration-1000 ${isSelected ? 'w-full bg-(--main-color)' : 'w-10 bg-white/10'}`} />
+                                                    </div>
+
+                                                    {isSelected && (
+                                                        <div className="absolute -top-3 -right-3 bg-(--main-color) text-black p-1.5 z-20">
+                                                            <CheckCircle2 size={16} strokeWidth={4} />
+                                                        </div>
+                                                    )}
                                                 </button>
                                             );
-                                        })}
-                                    </div>
-                                )}
+                                        })
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1004,9 +1018,73 @@ export const CratePackingManager: React.FC = () => {
 
             {/* ── Main Area: Inventory List ── */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
-                {/* Inventory List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 px-4 sm:px-12 lg:px-20">
-                    <div className="py-8">
+                {/* INDUSTRIAL CONFIG DRAWER - Stick to top of list area */}
+                <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="max-w-7xl mx-auto px-8 py-10">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            <div className="flex flex-col gap-6">
+                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Source Vendor Identity</span>
+                                <div className="flex flex-wrap gap-3">
+                                    <button
+                                        onClick={() => setVendorFilter(null)}
+                                        className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${
+                                            !vendorFilter ? 'bg-white text-black border-white' : 'text-white/30 hover:text-white hover:border-white/30 border-white/10'
+                                        }`}
+                                    >All Vendors</button>
+                                    {vendorOptions.filter(v => v !== 'All').map(v => {
+                                        const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
+                                        const isActive = vendorFilter === v;
+                                        return (
+                                            <button
+                                                key={v}
+                                                onClick={() => setVendorFilter(v)}
+                                                style={{ 
+                                                    backgroundColor: isActive ? vColor : 'transparent',
+                                                    borderColor: isActive ? vColor : 'rgba(255,255,255,0.1)'
+                                                }}
+                                                className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${
+                                                    isActive ? 'text-black shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'text-white/30 hover:text-white hover:border-white/30'
+                                                }`}
+                                            >
+                                                {v}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-6">
+                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sort Parameters</span>
+                                <div className="flex gap-4">
+                                    {(['Date', 'Status', 'Vendor', '#'] as const).map(s => (
+                                        <button
+                                            key={s}
+                                            onClick={() => {
+                                                if (sortBy === s) {
+                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                } else {
+                                                    setSortKey(s);
+                                                }
+                                            }}
+                                            className={`flex-1 py-3 border-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${
+                                                sortBy === s ? 'bg-white text-black border-white' : 'bg-transparent text-white/20 border-white/5 hover:border-white/20'
+                                            }`}
+                                        >
+                                            {s}
+                                            {sortBy === s && (
+                                                <div className="flex flex-col -space-y-1">
+                                                    <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/20'}`} />
+                                                    <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/20'}`} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         {!selectedCrate ? (
                             <div className="flex flex-col items-center justify-center py-32 text-center opacity-40 gap-10">
                                 <div className="p-12 bg-white/[0.02] rounded-full border border-white/5 relative">
@@ -1028,24 +1106,14 @@ export const CratePackingManager: React.FC = () => {
                                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
                             </div>
                         ) : (
-                    <div className="flex flex-col gap-4">
-                                {/* Header / Controls */}
+                            <div className="flex flex-col gap-4">
                                 <div className="flex items-center justify-between mb-12 px-6">
                                     <div className="flex items-center gap-10">
                                         <div className="flex flex-col gap-1">
                                             <h4 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-none">
                                                 {filteredInventory.length} Items
                                             </h4>
-                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">Available for packing sequence</span>
                                         </div>
-                                        <div className="w-px h-12 bg-white/10" />
-                                        <button
-                                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                                            className={`flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.4em] transition-all ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}
-                                        >
-                                            <ListFilter size={16} />
-                                            Filters
-                                        </button>
                                     </div>
                                     <button
                                         onClick={() => {
@@ -1068,45 +1136,7 @@ export const CratePackingManager: React.FC = () => {
                                     </button>
                                 </div>
 
-                                {/* Floating Filters Panel */}
-                                {isFiltersOpen && (
-                                    <div className="mb-8 p-6 bg-white/[0.03] backdrop-blur-3xl rounded-[32px] border border-white/5 animate-in slide-in-from-top-4 duration-500">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="flex flex-col gap-4">
-                                                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor</span>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {vendorOptions.map(v => (
-                                                        <button
-                                                            key={v}
-                                                            onClick={() => setVendorFilter(v)}
-                                                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === v ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
-                                                        >
-                                                            {v}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-4">
-                                                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
-                                                <div className="flex flex-wrap gap-3">
-                                                    {['date', 'status', 'vendor', 'qty'].map(s => (
-                                                        <button
-                                                            key={s}
-                                                            onClick={() => { if (sortBy === s) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); else { setSortBy(s as any); setSortOrder('desc'); } }}
-                                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s ? 'text-(--main-color) bg-(--main-color)/10' : 'text-white/40 hover:text-white'}`}
-                                                        >
-                                                            {s}
-                                                            {sortBy === s && (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* List Grid */}
-                                <div className="flex flex-col gap-2 pb-32">
+                                <div className="flex flex-col gap-2 pb-48">
                                     {filteredInventory.map(item => {
                                         const iid = String(item.row);
                                         const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
@@ -1136,12 +1166,10 @@ export const CratePackingManager: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                    </div>
-                </div>
 
-                {/* ─── Floating Action Button (FAB) ─── */}
+                {/* FAB */}
                 {selectedCrate && selectedItemIds.size > 0 && (
-                    <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none px-6">
+                    <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none px-6 z-50">
                         <button
                             onClick={handlePackItems}
                             disabled={isSaving}
@@ -1170,11 +1198,8 @@ export const CratePackingManager: React.FC = () => {
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #F97316); }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .mask-fade-right { mask-image: linear-gradient(to right, black 85%, transparent 100%); }
             `}</style>
         </div>
     );

@@ -232,13 +232,14 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
                             <button 
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    navigator.clipboard.writeText(codes.bookBarcode); 
-                                    toast.success(`Tag ID Copied: ${codes.bookBarcode}`, { icon: '📋' }); 
+                                    const tag = codes.bookTagId || codes.bookBarcode;
+                                    navigator.clipboard.writeText(tag); 
+                                    toast.success(`Tag ID Copied: ${tag}`, { icon: '📋' }); 
                                 }}
                                 className="px-3 py-1 rounded text-xs font-black uppercase tracking-wider shrink-0 hover:scale-105 active:scale-95 transition-all shadow-md" 
                                 style={{ background: vendorColor, color: 'black' }}
                             >
-                                {codes.bookBarcode || '—'}
+                                {codes.bookTagId || codes.bookBarcode || '—'}
                             </button>
                             {detailStr && (
                                 <div className="px-2 py-1 rounded bg-white/5 border border-white/8 text-[9px] font-black text-white/50 uppercase tracking-widest">{detailStr}</div>

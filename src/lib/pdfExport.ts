@@ -50,7 +50,7 @@ const toImp = (val: any, type: 'in' | 'lbs' | 'ft' = 'in') => {
 function drawHeader(doc: any, item: CatalogArtifact, M: number, PW: number, startY: number, exportType: 'regular' | 'catalog' = 'regular'): number {
     const norm = normalizeInventoryData(item.data); 
     const codes = item.codes; const hY = startY + 4;
-    const barcode = codes.bookBardcode || codes.bookBarcode || '—';
+    const barcode = codes.bookTagId || codes.bookBardcode || codes.bookBarcode || '—';
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(barcode, M + 4, hY);
     
     const aqld = [codes.bookAqCode, codes.bookLandCode].filter(c => c && c !== '-').join('  ·  ');
@@ -113,7 +113,7 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
     const norm = normalizeInventoryData(item.data);
     const hY = startY + 4;
     doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 180, 180);
-    doc.text(`${item.codes.bookBardcode || item.codes.bookBarcode || '—'}  \xb7  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
+    doc.text(`${item.codes.bookTagId || item.codes.bookBardcode || item.codes.bookBarcode || '—'}  \xb7  PAGE ${pageNum} OF ${totalPages}`, M + 4, hY);
     doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(80, 80, 80);
     doc.text((norm.shortDescription || norm.shape || 'Stone Piece').toUpperCase(), M + 4, hY + 6);
     doc.setDrawColor(245, 245, 245); doc.setLineWidth(0.2); doc.line(M + 4, hY + 9, PW - M, hY + 9);
@@ -197,7 +197,7 @@ export async function exportCatalogPdf(
                 onProgress?.(Math.round(5 + (processedCount / totalItems) * 85), `Processing Item ${processedCount}/${totalItems}...`);
                 const norm = normalizeInventoryData(item.data); 
                 const codes = item.codes; const sx = M + slot * (HW + HG);
-                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(codes.bookBardcode || codes.bookBarcode || '—', sx + 2, M + 6);
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(130, 100, 15); doc.text(codes.bookTagId || codes.bookBardcode || codes.bookBarcode || '—', sx + 2, M + 6);
                 const shape = norm.shape || '';
                 const desc = norm.shortDescription || '';
                 const nameStr = (shape && desc && shape !== desc) ? `${shape} - ${desc}` : (shape || desc || 'Stone Piece');
