@@ -267,23 +267,25 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-(--main-color)/10 text-(--main-color)">
-                        <Nfc size={24} />
+            <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center gap-6">
+                    <div className="w-14 h-14 rounded-2xl bg-(--main-color)/10 text-(--main-color) flex items-center justify-center shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]">
+                        <Nfc size={28} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-widest">
-                            {isReviewStep ? 'Batch Review' : 'NFC Tag Programming'}
+                        <h2 className="text-2xl font-black text-white uppercase tracking-[0.1em] leading-none">
+                            {isReviewStep ? 'Batch Review' : 'NFC Programming'}
                         </h2>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mt-1">
-                            {isReviewStep ? `${items.length} items selected` : `Item ${currentIndex + 1} of ${items.length}`}
+                        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mt-2">
+                            {isReviewStep ? `${items.length} items in queue` : `Programming item ${currentIndex + 1} / ${items.length}`}
                         </p>
                     </div>
                 </div>
                 <button 
                     onClick={onClose}
-                    className="p-3 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                    className="w-12 h-12 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all flex items-center justify-center group"
                 >
-                    <X size={24} />
+                    <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                 </button>
             </div>
 
@@ -291,35 +293,51 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             <div className="flex-1 overflow-hidden">
                 {isReviewStep ? (
                     <div className="h-full flex flex-col p-8 gap-8">
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 -mr-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 gap-10 pb-8">
                                 {items.map((item, idx) => (
-                                    <div key={idx} className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 flex flex-col gap-8 animate-in slide-in-from-bottom-8 duration-500 hover:bg-white/[0.05] transition-all group" style={{ animationDelay: `${idx * 50}ms` }}>
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-24 h-24 rounded-3xl overflow-hidden bg-black/40 shrink-0 border border-white/10 shadow-2xl transition-transform group-hover:scale-105 duration-500">
+                                    <div 
+                                        key={idx} 
+                                        className="relative group bg-white/[0.03] border border-white/10 rounded-[3rem] p-10 flex flex-col gap-10 animate-in slide-in-from-bottom-8 duration-500 hover:bg-white/[0.05] hover:border-white/20 transition-all shadow-2xl" 
+                                        style={{ animationDelay: `${idx * 80}ms` }}
+                                    >
+                                        {/* Artifact Header Section */}
+                                        <div className="flex items-start gap-8">
+                                            <div className="w-32 h-32 rounded-[2rem] overflow-hidden bg-black/60 shrink-0 border border-white/10 shadow-inner group-hover:scale-105 transition-transform duration-700">
                                                 {item.imageUrl ? (
                                                     <img src={item.imageUrl} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={32} /></div>
+                                                    <div className="w-full h-full flex items-center justify-center opacity-10"><Package size={40} /></div>
                                                 )}
                                             </div>
-                                            <div className="flex flex-col gap-1.5 min-w-0">
-                                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em]">{item.codes.vendorPrefix || 'ONYX'} REGISTRY</span>
-                                                <h3 className="text-2xl font-black text-white uppercase tracking-tighter truncate">{item.codes.bookBarcode}</h3>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/40 uppercase tracking-widest">{item.normData.shape}</span>
-                                                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold text-white/40 uppercase tracking-widest">{item.normData.color}</span>
+                                            
+                                            <div className="flex-1 flex flex-col gap-3 min-w-0 pt-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.5em]">{item.codes.vendorPrefix || 'ONYX'} REGISTRY</span>
+                                                </div>
+                                                <h3 className="text-3xl font-black text-white uppercase tracking-tighter truncate leading-none">{item.codes.bookBarcode}</h3>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/40 uppercase tracking-widest">{item.normData.shape}</span>
+                                                    <span className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/40 uppercase tracking-widest">{item.normData.color}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        <div className="relative w-full flex justify-center">
-                                            <div className="scale-[0.6] sm:scale-[0.75] md:scale-[0.85] origin-top transform-gpu">
-                                                <NFCTagCard item={item} />
+                                        {/* Label Preview Section */}
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-px flex-1 bg-white/5" />
+                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Label Visualization</span>
+                                                <div className="h-px flex-1 bg-white/5" />
                                             </div>
-                                            {/* Spacer to maintain height for the scaled absolute-ish element */}
-                                            <div className="invisible" style={{ height: '210px' }} aria-hidden="true">
-                                                <NFCTagCard item={item} />
+                                            
+                                            <div className="relative w-full flex justify-center bg-black/40 rounded-[2rem] p-8 border border-white/5 overflow-hidden">
+                                                <div className="absolute inset-0 bg-linear-to-b from-white/[0.02] to-transparent pointer-events-none" />
+                                                <div className="scale-[0.7] sm:scale-[0.8] md:scale-[0.9] lg:scale-[0.85] xl:scale-[0.8] origin-center transform-gpu drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                                                    <NFCTagCard item={item} />
+                                                </div>
+                                                {/* Spacer to maintain height for the scaled card (400x250) */}
+                                                <div className="invisible" style={{ height: '250px', width: '400px' }} aria-hidden="true" />
                                             </div>
                                         </div>
                                     </div>
@@ -338,84 +356,107 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         </div>
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center p-8 max-w-4xl mx-auto w-full">
+                    <div className="h-full flex flex-col items-center justify-center p-12 max-w-5xl mx-auto w-full animate-in fade-in duration-700">
                         {!isSupported && (
-                            <div className="flex flex-col items-center gap-6 p-12 rounded-3xl bg-red-500/10 border border-red-500/20 text-center animate-in zoom-in duration-500">
-                                <ShieldAlert size={64} className="text-red-500" />
+                            <div className="flex flex-col items-center gap-8 p-16 rounded-[3rem] bg-red-500/5 border border-red-500/10 text-center animate-in zoom-in duration-500">
+                                <ShieldAlert size={80} className="text-red-500/50" />
                                 <div>
-                                    <h3 className="text-2xl font-black text-white uppercase mb-2">Web NFC Not Supported</h3>
-                                    <p className="text-sm text-white/60 leading-relaxed max-w-md">
-                                        Your browser does not support the Web NFC API. Please use Chrome on Android or a compatible desktop version with NFC hardware.
+                                    <h3 className="text-3xl font-black text-white uppercase mb-3">Hardware Incompatibility</h3>
+                                    <p className="text-base text-white/40 leading-relaxed max-w-md font-medium">
+                                        Web NFC is currently limited to Chrome on Android. Please ensure your device has NFC enabled.
                                     </p>
                                 </div>
                             </div>
                         )}
 
                         {isSupported && currentItem && (
-                            <div className="w-full flex flex-col items-center gap-12">
-                                {/* High-Fidelity Tag Preview with Responsive Scaling */}
-                                <div className="animate-in zoom-in-95 duration-700 w-full flex flex-col items-center">
-                                    <div className="scale-75 sm:scale-90 md:scale-100 origin-center">
-                                        <NFCTagCard item={currentItem} />
+                            <div className="w-full flex flex-col items-center gap-16">
+                                {/* High-Fidelity Tag Preview centered and framed */}
+                                <div className="animate-in zoom-in-95 duration-1000 w-full flex flex-col items-center">
+                                    <div className="relative group p-12 bg-white/[0.02] border border-white/5 rounded-[4rem] shadow-2xl">
+                                        <div className="absolute inset-0 bg-linear-to-b from-white/[0.03] to-transparent pointer-events-none rounded-[4rem]" />
+                                        <div className="scale-90 sm:scale-100 origin-center transform-gpu drop-shadow-[0_40px_80px_rgba(0,0,0,0.6)]">
+                                            <NFCTagCard item={currentItem} />
+                                        </div>
                                     </div>
-                                    <div className="mt-2 flex flex-col items-center gap-1">
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Physical Label Preview</span>
+                                    
+                                    <div className="mt-8 flex flex-col items-center gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-px w-12 bg-white/10" />
+                                            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.5em]">Active Label Matrix</span>
+                                            <div className="h-px w-12 bg-white/10" />
+                                        </div>
+                                        
                                         {targetCopies > 1 && (
-                                            <div className="flex gap-1 mt-2">
+                                            <div className="flex gap-2">
                                                 {Array.from({ length: targetCopies }).map((_, i) => (
-                                                    <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${i < currentCopiesWritten ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-white/10'}`} />
+                                                    <div 
+                                                        key={i} 
+                                                        className={`w-3 h-3 rounded-full transition-all duration-700 ${i < currentCopiesWritten ? 'bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)] scale-110' : 'bg-white/5 border border-white/10'}`} 
+                                                    />
                                                 ))}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-                                    <div className="flex flex-col items-center text-center gap-2">
+                                <div className="flex flex-col items-center gap-8 w-full max-w-md">
+                                    <div className="flex flex-col items-center text-center gap-4">
                                         {status === 'idle' && (
-                                            <div className="flex items-center gap-4 bg-white/5 p-2 rounded-3xl border border-white/10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                            <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-[2rem] border border-white/10 shadow-inner group">
                                                 <button 
                                                     onClick={() => setTargetCopies(Math.max(1, targetCopies - 1))}
-                                                    className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all active:scale-90"
+                                                    className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all active:scale-90 flex items-center justify-center text-xl font-bold"
                                                 >
                                                     -
                                                 </button>
-                                                <div className="flex flex-col items-center px-4">
-                                                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Copies</span>
-                                                    <span className="text-xl font-black text-white">{targetCopies}</span>
+                                                <div className="flex flex-col items-center px-8 min-w-[120px]">
+                                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Target Multiplier</span>
+                                                    <span className="text-2xl font-black text-white tracking-tighter">{targetCopies}x</span>
                                                 </div>
                                                 <button 
                                                     onClick={() => setTargetCopies(Math.min(10, targetCopies + 1))}
-                                                    className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all active:scale-90"
+                                                    className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all active:scale-90 flex items-center justify-center text-xl font-bold"
                                                 >
                                                     +
                                                 </button>
                                             </div>
                                         )}
-                                        {status === 'writing' && <p className="text-[11px] font-black text-(--main-color) uppercase tracking-[0.3em] animate-pulse">Hold tag near device</p>}
-                                        {status === 'success' && <p className="text-[11px] font-black text-green-500 uppercase tracking-[0.3em]">Written Successfully</p>}
-                                        {status === 'error' && <p className="text-[11px] font-black text-red-500 uppercase tracking-[0.3em]">{error}</p>}
+                                        
+                                        <div className="h-6 flex items-center justify-center">
+                                            {status === 'writing' && (
+                                                <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] animate-pulse">Contact sequence initiated... Hold near tag</span>
+                                            )}
+                                            {status === 'success' && (
+                                                <div className="flex items-center gap-2 animate-in slide-in-from-bottom-2">
+                                                    <CheckCircle size={14} className="text-green-500" />
+                                                    <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.4em]">Matrix encoded successfully</span>
+                                                </div>
+                                            )}
+                                            {status === 'error' && (
+                                                <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.4em]">{error}</span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <button
                                         disabled={isWriting || status === 'success'}
                                         onClick={handleWrite}
-                                        className={`w-full py-6 rounded-[2.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-2xl
-                                            ${status === 'writing' ? 'bg-white/10 text-white/50 cursor-wait' : 
+                                        className={`w-full py-8 rounded-[2.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-2xl relative overflow-hidden group
+                                            ${status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
                                               status === 'success' ? 'bg-green-500 text-black' :
                                               'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
                                     >
-                                        <div className="flex items-center gap-4">
+                                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="flex items-center gap-4 relative z-10">
                                             {status === 'writing' ? (
-                                                <div className="animate-spin-slow"><Nfc size={24} /></div>
-                                            ) : <Zap size={24} strokeWidth={3} />}
-                                            <span>{status === 'writing' ? 'SCANNING...' : 'WRITE TAG'}</span>
+                                                <div className="animate-spin-slow"><Nfc size={28} /></div>
+                                            ) : <Zap size={28} strokeWidth={3} className={status === 'success' ? '' : 'group-hover:fill-current'} />}
+                                            <span>{status === 'writing' ? 'SCANNING...' : status === 'success' ? 'ENCODED' : 'WRITE NFC TAG'}</span>
                                         </div>
+                                        
                                         {targetCopies > 1 && status === 'idle' && (
-                                            <span className="text-[10px] opacity-40 font-bold uppercase tracking-widest">Write {targetCopies} Copies</span>
-                                        )}
-                                        {targetCopies > 1 && status === 'success' && (
-                                            <span className="text-[10px] opacity-60 font-bold uppercase tracking-widest">Next Copy in 0.8s</span>
+                                            <span className="text-[9px] opacity-40 font-black uppercase tracking-[0.3em] mt-1">Ready for {targetCopies} copies</span>
                                         )}
                                     </button>
                                 </div>
