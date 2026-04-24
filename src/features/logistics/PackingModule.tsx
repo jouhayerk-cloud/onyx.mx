@@ -288,7 +288,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {isReviewStep ? (
                     <div className="h-full flex flex-col p-8 gap-8">
                         <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 -mr-4">
@@ -354,7 +354,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         </div>
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center p-12 max-w-5xl mx-auto w-full animate-in fade-in duration-700">
+                    <div className="min-h-full flex flex-col items-center justify-start py-12 px-6 sm:px-12 max-w-5xl mx-auto w-full animate-in fade-in duration-700">
                         {!currentItem ? (
                             <div className="flex flex-col items-center gap-8 p-16 rounded-[3rem] bg-white/5 border border-white/10 text-center animate-in zoom-in duration-500">
                                 <Package size={80} className="text-white/10" />
@@ -576,6 +576,12 @@ export const PackingModule: React.FC = () => {
 
                 const term = (deferredSearch || '').toLowerCase().trim();
                 if (term) {
+                    const barcode = String(codes.bookBarcode || '').toLowerCase();
+                    const terms = term.split(/\s+/).filter(Boolean);
+                    
+                    // If any search term matches the barcode EXACTLY, we include this item (Batch Search)
+                    if (terms.some(t => barcode === t)) return true;
+
                     const fields = [
                         normData.itemId, normData.itemNumber, normData.color, normData.material,
                         normData.shape, normData.shortDescription, normData.description,
@@ -584,7 +590,8 @@ export const PackingModule: React.FC = () => {
                         normData.status, normData.workbook,
                     ].map(v => String(v || '').toLowerCase());
                     const haystack = fields.join(' ');
-                    const terms = term.split(/\s+/).filter(Boolean);
+                    
+                    // Standard multi-term search (AND logic)
                     if (!terms.every(t => haystack.includes(t))) return false;
                 }
 
