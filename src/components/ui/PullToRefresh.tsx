@@ -5,33 +5,62 @@ export function PullToRefresh() {
     const [pullDistance, setPullDistance] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     
-    // threshold in px to trigger refresh
-    const PULL_THRESHOLD = 80;
+    // threshold in px to trigger refresh - increased for more deliberate action
+    const PULL_THRESHOLD = 150;
+    const MIN_PULL_FOR_INDICATOR = 20;
     
-    // We use refs to track touch state synchronously without re-rendering the whole tree
-    const touchStartRef = useRef<number | null>(null);
+    const touchStartRef = useRef<{ x: number, y: number } | null>(null);
     const activeRef = useRef(false);
 
     useEffect(() => {
+        // Disable native browser pull-to-refresh
+        document.body.style.overscrollBehaviorY = 'contain';
+
         const handleTouchStart = (e: TouchEvent) => {
-            // Only activate if we are at the very top of the page
-            if (window.scrollY <= 5 || document.documentElement.scrollTop <= 5) {
-                touchStartRef.current = e.touches[0].clientY;
+            // Ignore if already refreshing or multi-touch (zooming)
+            if (isRefreshing || e.touches.length > 1) {
+                activeRef.current = false;
+                return;
+            }
+
+            // Only activate if we are at the absolute top of the page
+            if (window.scrollY === 0 && document.documentElement.scrollTop === 0) {
+                touchStartRef.current = { 
+                    x: e.touches[0].clientX, 
+                    y: e.touches[0].clientY 
+                };
                 activeRef.current = true;
             }
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (!activeRef.current || touchStartRef.current === null) return;
+            if (!activeRef.current || touchStartRef.current === null || e.touches.length > 1) {
+                activeRef.current = false;
+                setPullDistance(0);
+                return;
+            }
 
-            const pull = e.touches[0].clientY - touchStartRef.current;
-            
-            // If they are pulling down and are at the top of the viewport
-            if (pull > 0 && (window.scrollY <= 5 || document.documentElement.scrollTop <= 5)) {
-                // Add some friction so it doesn't pull down too fast
-                const frictionPull = Math.min(pull * 0.4, PULL_THRESHOLD + 40);
-                setPullDistance(frictionPull);
-            } else {
+            const touch = e.touches[0];
+            const pullY = touch.clientY - touchStartRef.current.y;
+            const pullX = touch.clientX - touchStartRef.current.x;
+
+            // Ensure the pull is primarily vertical and downward
+            if (pullY > 0 && Math.abs(pullY) > Math.abs(pullX) * 1.5) {
+                // Check if we are still at the top (in case momentum scrolling changed it)
+                if (window.scrollY === 0 && document.documentElement.scrollTop === 0) {
+                    // Apply exponential friction for a more "elastic" feel
+                    // The further we pull, the harder it gets
+                    const frictionPull = Math.pow(pullY, 0.85) * 1.5;
+                    
+                    // Cap the pull distance to avoid excessive stretching
+                    const cappedPull = Math.min(frictionPull, PULL_THRESHOLD + 60);
+                    setPullDistance(cappedPull);
+                } else {
+                    activeRef.current = false;
+                    setPullDistance(0);
+                }
+            } else if (pullY < -10) {
+                // If they are scrolling UP, deactivate immediately
                 activeRef.current = false;
                 setPullDistance(0);
             }
@@ -45,13 +74,12 @@ export function PullToRefresh() {
             setPullDistance(current => {
                 if (current >= PULL_THRESHOLD) {
                     setIsRefreshing(true);
-                    // trigger refresh
                     setTimeout(() => {
                         window.location.reload();
-                    }, 500); // give it time to show the spinning animation
-                    return PULL_THRESHOLD; // hold it at the threshold position
+                    }, 800); // Slightly longer for a more premium transition
+                    return PULL_THRESHOLD;
                 }
-                return 0; // snap back if they didn't pull enough
+                return 0;
             });
         };
 
@@ -60,42 +88,48 @@ export function PullToRefresh() {
         document.addEventListener('touchend', handleTouchEnd, { passive: true });
 
         return () => {
+            document.body.style.overscrollBehaviorY = 'auto';
             document.removeEventListener('touchstart', handleTouchStart);
             document.removeEventListener('touchmove', handleTouchMove);
             document.removeEventListener('touchend', handleTouchEnd);
         };
-    }, []);
+    }, [isRefreshing]);
 
-    // Only render if there's pull or refresh state
-    if (pullDistance === 0 && !isRefreshing) return null;
+    // Don't show indicator for very small pulls to avoid flickering during fast taps
+    if (pullDistance < MIN_PULL_FOR_INDICATOR && !isRefreshing) return null;
 
     const pullPct = Math.min(pullDistance / PULL_THRESHOLD, 1);
-    const opacity = Math.max(0, pullPct - 0.1); // fade in after pulling a bit
-    const rotation = pullPct * 180; // half rotation while pulling
+    const opacity = Math.min(1, Math.max(0, (pullDistance - MIN_PULL_FOR_INDICATOR) / 40));
+    const rotation = pullPct * 180;
 
     return (
         <div 
-            className="fixed top-0 left-0 w-full flex justify-center z-[9999] pointer-events-none"
+            className="fixed top-0 left-0 w-full flex justify-center z-[10000] pointer-events-none"
             style={{ 
-                transform: `translateY(${Math.max(0, pullDistance - 40)}px)`,
-                transition: activeRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                transform: `translateY(${Math.max(0, pullDistance - 60)}px)`,
+                transition: activeRef.current ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
             }}
         >
             <div 
-                className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-full h-11 w-11 flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.5)] transition-opacity duration-300 relative overflow-hidden"
-                style={{ opacity: isRefreshing ? 1 : opacity }}
+                className="bg-black/90 backdrop-blur-2xl border border-white/20 rounded-full h-12 w-12 flex items-center justify-center shadow-2xl shadow-black/50 transition-all duration-300"
+                style={{ 
+                    opacity: isRefreshing ? 1 : opacity,
+                    scale: isRefreshing ? 1 : 0.8 + (pullPct * 0.2)
+                }}
             >
-                {/* Subtle sheen */}
                 <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
                 
                 {isRefreshing ? (
-                    <Loader2 className="text-(--main-color) h-5 w-5 animate-spin" />
+                    <Loader2 className="text-[#b8860b] h-6 w-6 animate-spin" />
                 ) : (
                     <ArrowDown 
-                        className="text-white h-5 w-5 transition-transform" 
+                        className="transition-all duration-200" 
                         style={{ 
+                            height: '20px',
+                            width: '20px',
                             transform: `rotate(${rotation}deg)`,
-                            color: pullPct >= 1 ? 'var(--main-color, #10b981)' : 'rgba(255,255,255,0.7)'
+                            color: pullPct >= 1 ? '#b8860b' : 'rgba(255,255,255,0.4)',
+                            opacity: pullPct > 0.2 ? 1 : 0
                         }}
                     />
                 )}
