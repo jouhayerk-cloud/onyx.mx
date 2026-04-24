@@ -265,8 +265,6 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
-                <div className="flex items-center gap-4">
             <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-6">
                     <div className="w-14 h-14 rounded-2xl bg-(--main-color)/10 text-(--main-color) flex items-center justify-center shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]">
@@ -357,19 +355,17 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                     </div>
                 ) : (
                     <div className="h-full flex flex-col items-center justify-center p-12 max-w-5xl mx-auto w-full animate-in fade-in duration-700">
-                        {!isSupported && (
-                            <div className="flex flex-col items-center gap-8 p-16 rounded-[3rem] bg-red-500/5 border border-red-500/10 text-center animate-in zoom-in duration-500">
-                                <ShieldAlert size={80} className="text-red-500/50" />
+                        {!currentItem ? (
+                            <div className="flex flex-col items-center gap-8 p-16 rounded-[3rem] bg-white/5 border border-white/10 text-center animate-in zoom-in duration-500">
+                                <Package size={80} className="text-white/10" />
                                 <div>
-                                    <h3 className="text-3xl font-black text-white uppercase mb-3">Hardware Incompatibility</h3>
+                                    <h3 className="text-3xl font-black text-white uppercase mb-3">No Item Selected</h3>
                                     <p className="text-base text-white/40 leading-relaxed max-w-md font-medium">
-                                        Web NFC is currently limited to Chrome on Android. Please ensure your device has NFC enabled.
+                                        Please return to the review step or close the wizard and select an item.
                                     </p>
                                 </div>
                             </div>
-                        )}
-
-                        {isSupported && currentItem && (
+                        ) : (
                             <div className="w-full flex flex-col items-center gap-16">
                                 {/* High-Fidelity Tag Preview centered and framed */}
                                 <div className="animate-in zoom-in-95 duration-1000 w-full flex flex-col items-center">
@@ -401,6 +397,16 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                                 </div>
 
                                 <div className="flex flex-col items-center gap-8 w-full max-w-md">
+                                    {!isSupported && (
+                                        <div className="flex items-center gap-4 p-5 rounded-3xl bg-red-500/10 border border-red-500/20 text-red-500 animate-in slide-in-from-top-4">
+                                            <ShieldAlert size={20} strokeWidth={2.5} />
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black uppercase tracking-widest">Hardware Incompatible</span>
+                                                <span className="text-[8px] font-bold uppercase tracking-wider opacity-60">Web NFC is limited to Chrome on Android</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex flex-col items-center text-center gap-4">
                                         {status === 'idle' && (
                                             <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-[2rem] border border-white/10 shadow-inner group">
@@ -440,10 +446,11 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                                     </div>
 
                                     <button
-                                        disabled={isWriting || status === 'success'}
+                                        disabled={!isSupported || isWriting || status === 'success'}
                                         onClick={handleWrite}
                                         className={`w-full py-8 rounded-[2.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-2xl relative overflow-hidden group
-                                            ${status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
+                                            ${!isSupported ? 'bg-white/5 text-white/10 cursor-not-allowed' :
+                                              status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
                                               status === 'success' ? 'bg-green-500 text-black' :
                                               'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
                                     >
@@ -451,11 +458,15 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                                         <div className="flex items-center gap-4 relative z-10">
                                             {status === 'writing' ? (
                                                 <div className="animate-spin-slow"><Nfc size={28} /></div>
-                                            ) : <Zap size={28} strokeWidth={3} className={status === 'success' ? '' : 'group-hover:fill-current'} />}
-                                            <span>{status === 'writing' ? 'SCANNING...' : status === 'success' ? 'ENCODED' : 'WRITE NFC TAG'}</span>
+                                            ) : <Zap size={28} strokeWidth={3} className={status === 'success' || !isSupported ? '' : 'group-hover:fill-current'} />}
+                                            <span>
+                                                {!isSupported ? 'NFC UNSUPPORTED' : 
+                                                 status === 'writing' ? 'SCANNING...' : 
+                                                 status === 'success' ? 'ENCODED' : 'WRITE NFC TAG'}
+                                            </span>
                                         </div>
                                         
-                                        {targetCopies > 1 && status === 'idle' && (
+                                        {targetCopies > 1 && status === 'idle' && isSupported && (
                                             <span className="text-[9px] opacity-40 font-black uppercase tracking-[0.3em] mt-1">Ready for {targetCopies} copies</span>
                                         )}
                                     </button>
