@@ -26,6 +26,7 @@ const WireframeCrate: React.FC<{ w?: number; l?: number; h?: number; status?: st
     const accentColor =
         status === 'Packed' ? '#f87171'
         : status === 'Partial' ? '#fbbf24'
+        : type === 'cardboard' ? '#d97706' // Cardboard brown
         : 'var(--main-color)';
 
     const maxCount = Math.min(count, 5);
@@ -501,7 +502,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                                     <p className="text-[10px] font-bold text-white truncate">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
                                     <p className="text-[8px] font-mono text-white/40">{item.norm.itemId || 'UNK'}</p>
                                 </div>
-                                <div className="w-auto px-2 py-1 bg-white/5 rounded text-[10px] font-black font-mono text-(--main-color)">
+                                <div className="w-auto px-2 py-1 bg-white/5 text-[10px] font-black font-mono text-(--main-color)">
                                     x{item.qty}
                                 </div>
                             </div>
@@ -535,23 +536,22 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
         if (!w || !l || !h) return toast.error('Enter all three dimensions.');
 
         setLoading(true);
-        const tid = toast.loading(`Initializing ${qty} crate(s)…`);
+        const tid = toast.loading(`Initializing ${qty} ${form.type}(s)…`);
         try {
             if (isDummyMode) {
                 await new Promise(r => setTimeout(r, 1000));
-                toast.success(`${qty} crate(s) initialized. (Demo Mode)`, { id: tid, icon: '🧪' });
+                toast.success(`${qty} ${form.type}(s) initialized. (Demo Mode)`, { id: tid, icon: '🧪' });
                 onRefresh();
                 onClose();
                 return;
             }
             const now = new Date().toISOString();
-            // Build crate rows
             const crateRows = Array.from({ length: qty }, (_, i) => ({
                 type: form.type,
                 status: 'Empty',
                 width_cm: w, length_cm: l, height_cm: h,
                 cost_mxn: price,
-                description: form.description || `${form.type === 'pallet' ? 'Pallet' : 'Crate'} ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
+                description: form.description || `${form.type.charAt(0).toUpperCase() + form.type.slice(1)} ${i + 1}/${qty}: ${w}×${l}×${h} cm`,
                 contents_summary: '',
                 quantity: 1,
                 date: now,
@@ -559,21 +559,16 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                 inventory_ids: '',
             }));
 
-            // Insert into Supabase logistics
             const { data: logData, error: logErr } = await supabase.from('logistics').insert(crateRows).select();
             if (logErr) throw logErr;
 
-            // Sync to local RxDB
             if (db && logData) {
                 for (const row of logData) {
-                    try { await db.logistics.insert({ ...row, id: String(row.id) }); } catch (_) { /* already exists */ }
+                    try { await db.logistics.insert({ ...row, id: String(row.id) }); } catch (_) {}
                 }
             }
 
-            // Skip auto-generating finance payment record
-            // It is now handled by the UI bubble in Payments.
-
-            toast.success(`${qty} crate(s) initialized. Navigate to Payments to request it.`, { id: tid });
+            toast.success(`${qty} ${form.type}(s) initialized.`, { id: tid });
             onRefresh();
             onClose();
             setForm({ type: 'crate', width: '', length: '', height: '', quantity: '1', price: '', description: '' });
@@ -586,37 +581,35 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
 
     return (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xl animate-in fade-in duration-200">
-            <div className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-4xl overflow-hidden shadow-2xl flex flex-col relative">
-                {/* Accent line */}
+            <div className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 overflow-hidden shadow-2xl flex flex-col relative">
                 <div className="absolute top-0 inset-x-0 h-0.5 bg-linear-to-r from-transparent via-(--main-color)/60 to-transparent" />
 
-                {/* Header */}
                 <div className="flex items-center justify-between px-8 py-6 border-b border-white/5">
                     <div className="flex items-center gap-3">
                         <Package size={18} className="text-(--main-color)" />
                         <div>
-                            <h2 className="text-sm font-black uppercase tracking-widest text-white">Initialize Crate Protocol</h2>
+                            <h2 className="text-sm font-black uppercase tracking-widest text-white">Initialize Storage Protocol</h2>
                             <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em] mt-0.5">Dimensional constraints + cost basis</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                    <button onClick={onClose} className="p-2 text-white/30 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="px-8 py-7 flex flex-col gap-6">
-                    {/* Crate or Pallet Toggle */}
-                    <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl">
-                        <button type="button" onClick={() => set('type', 'crate')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition ${form.type === 'crate' ? 'bg-(--main-color) text-black shadow-md' : 'text-white/40 hover:text-white cursor-pointer'}`}>
+                    <div className="flex bg-white/5 border border-white/10 p-1">
+                        <button type="button" onClick={() => set('type', 'crate')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'crate' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
                             Crate
                         </button>
-                        <button type="button" onClick={() => set('type', 'pallet')} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition ${form.type === 'pallet' ? 'bg-(--main-color) text-black shadow-md' : 'text-white/40 hover:text-white cursor-pointer'}`}>
+                        <button type="button" onClick={() => set('type', 'pallet')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'pallet' ? 'bg-(--main-color) text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
                             Pallet
+                        </button>
+                        <button type="button" onClick={() => set('type', 'cardboard')} className={`flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest transition ${form.type === 'cardboard' ? 'bg-[#d97706] text-black' : 'text-white/40 hover:text-white cursor-pointer'}`}>
+                            Box
                         </button>
                     </div>
 
-                    {/* Dimensions */}
                     <div>
                         <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-3">Dimensions (cm)</p>
                         <div className="grid grid-cols-3 gap-3">
@@ -628,14 +621,13 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                         value={form[key as keyof typeof form]}
                                         onChange={e => set(key as any, e.target.value)}
                                         placeholder="0"
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
+                                        className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
                                     />
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* Quantity + Price */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">Quantity</label>
@@ -643,7 +635,7 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                 type="number" min="1" required
                                 value={form.quantity}
                                 onChange={e => set('quantity', e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition"
+                                className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition"
                             />
                         </div>
                         <div>
@@ -655,13 +647,12 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                                     value={form.price}
                                     onChange={e => set('price', e.target.value)}
                                     placeholder="0.00"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-7 pr-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
+                                    className="w-full bg-white/5 border border-white/10 pl-7 pr-3 py-3 text-sm font-mono text-white focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Description */}
                     <div>
                         <label className="text-[8px] font-black uppercase tracking-widest text-white/20 block mb-1.5">Notes (optional)</label>
                         <input
@@ -669,34 +660,27 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
                             value={form.description}
                             onChange={e => set('description', e.target.value)}
                             placeholder="Internal reference..."
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-sm text-white/70 focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
+                            className="w-full bg-white/5 border border-white/10 px-3 py-3 text-sm text-white/70 focus:outline-none focus:border-(--main-color)/50 transition placeholder:text-white/15"
                         />
                     </div>
 
-                    {/* Total preview */}
                     {totalCost > 0 && (
-                        <div className="flex items-center justify-between px-4 py-3 bg-(--main-color)/5 border border-(--main-color)/15 rounded-2xl">
+                        <div className="flex items-center justify-between px-4 py-3 bg-(--main-color)/5 border border-(--main-color)/15">
                             <span className="text-[9px] font-black uppercase tracking-widest text-(--main-color)/70">Total Acquisition Cost</span>
                             <span className="font-mono font-black text-(--main-color) text-sm">${totalCost.toLocaleString()} MXN</span>
                         </div>
                     )}
 
-                    {/* Notes about payment */}
-                    <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] leading-relaxed">
-                        ⚡ A payment request will be auto-generated in the Finance module upon creation.
-                    </p>
-
-                    {/* Actions */}
                     <div className="flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white border border-white/8 hover:border-white/20 transition-all cursor-pointer">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white border border-white/8 hover:border-white/20 transition-all cursor-pointer">
                             Cancel
                         </button>
                         <button
                             type="submit" disabled={loading}
-                            className={`flex-2 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer ${loading ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-(--main-color) text-black hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-(--main-color)/20'}`}
+                            className={`flex-2 py-3 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer ${loading ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-(--main-color) text-black hover:scale-[1.01] active:scale-[0.99] shadow-xl shadow-(--main-color)/20'}`}
                         >
                             {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                            {loading ? 'Initializing…' : 'Deploy Crates'}
+                            {loading ? 'Initializing…' : 'Deploy Units'}
                         </button>
                     </div>
                 </form>
@@ -705,7 +689,6 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
     );
 };
 
-// --- Main CratesInventoryView ---
 export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
@@ -716,11 +699,10 @@ export const CratesInventoryView: React.FC = () => {
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const allInventory = useAtomValue(inventoryAtom);
 
-    // Subscribe to RxDB logistics collection
     useEffect(() => {
         if (!db) return;
         let timer: any;
-        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet'] } } }).$.subscribe((data: any[]) => {
+        const sub = db.logistics.find({ selector: { type: { $in: ['crate', 'pallet', 'cardboard'] } } }).$.subscribe((data: any[]) => {
             clearTimeout(timer);
             timer = setTimeout(() => setCrates(data.map(c => c.toJSON())), 150);
         });
@@ -729,7 +711,6 @@ export const CratesInventoryView: React.FC = () => {
 
     const handleRefresh = () => setCratesVersion(v => v + 1);
 
-    // Filter crates
     const filteredCrates = useMemo(() => {
         return crates.filter(c => {
             const matchesTab = activeTab === 'empty'
@@ -744,7 +725,6 @@ export const CratesInventoryView: React.FC = () => {
         });
     }, [crates, activeTab, searchQuery]);
 
-    // Group logic for 'empty' crates
     const displayCrates = useMemo(() => {
         if (activeTab === 'packed') {
             const getVendors = (c: CrateRecord) => {
@@ -786,7 +766,6 @@ export const CratesInventoryView: React.FC = () => {
         return Object.values(groups);
     }, [filteredCrates, activeTab, allInventory]);
 
-    // Status counters
     const summary = useMemo(() => ({
         empty: crates.filter(c => c.status === 'Empty').length,
         packed: crates.filter(c => c.status === 'Packed').length,
@@ -794,14 +773,12 @@ export const CratesInventoryView: React.FC = () => {
     }), [crates]);
 
     const handlePack = (crate: CrateRecord) => {
-        // Switch to packing tab and pass crate ID (could be via atom if needed)
-        toast.success(`Selected crate ${crate.id.slice(0, 8).toUpperCase()} — switching to packing…`, { icon: '📦' });
+        toast.success(`Selected ${crate.type} ${crate.id.slice(0, 8).toUpperCase()} — switching to packing…`, { icon: '📦' });
         setSubTab('packing');
     };
 
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
-            {/* Top bar - Horizontally scrollable app style */}
             <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10 w-full overflow-x-auto no-scrollbar gap-4 lg:gap-8">
                 <div className="flex items-center gap-4 sm:gap-8 shrink-0">
                     <div className="shrink-0">
@@ -823,13 +800,12 @@ export const CratesInventoryView: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/8 rounded-2xl shrink-0">
+                    <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/8 shrink-0">
                         {[['empty', 'Empty Inventory'], ['packed', 'Packed Crates']].map(([val, label]) => (
                             <button
                                 key={val}
                                 onClick={() => setActiveTab(val as any)}
-                                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black shadow-sm' : 'text-white/40 hover:text-white'}`}
+                                className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}
                             >
                                 {label}
                             </button>
@@ -838,68 +814,66 @@ export const CratesInventoryView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 ml-auto">
-                    {/* Search */}
                     <div className="relative shrink-0">
                         <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25" />
                         <input
                             type="text"
-                            placeholder="SEARCH CRATES…"
+                            placeholder="SEARCH UNITS…"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="bg-white/5 border border-white/8 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition w-40 sm:w-52"
+                            className="bg-white/5 border border-white/8 pl-9 pr-4 py-2.5 text-[10px] font-mono text-white uppercase tracking-widest outline-none focus:border-(--main-color)/50 focus:bg-white/8 transition w-40 sm:w-52"
                         />
                     </div>
 
-                    {/* New Crate */}
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer shrink-0 whitespace-nowrap"
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-(--main-color)/20 cursor-pointer shrink-0 whitespace-nowrap"
                     >
-                        <Plus size={14} strokeWidth={3} /> New Crate
+                        <Plus size={14} strokeWidth={3} /> New Unit
                     </button>
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 lg:py-7 custom-scrollbar pb-[120px] lg:pb-8">
-                {displayCrates.length > 0 ? (
-                    <div className="flex flex-col gap-4 content-start pb-8">
-                        {displayCrates.map(crate => (
-                            <CrateCard key={crate.id} crate={crate} allCrates={crates} allInventory={allInventory} onPack={handlePack} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center gap-6">
-                        <div className="relative">
-                            <div className="w-28 h-28 rounded-full border border-dashed border-white/10 flex items-center justify-center bg-white/2">
-                                <Box size={44} className="text-white/15" strokeWidth={1} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 relative">
+                <div className="px-4 lg:px-8 py-4 lg:py-7 pb-32">
+                    {displayCrates.length > 0 ? (
+                        <div className="flex flex-col gap-4 content-start">
+                            {displayCrates.map(crate => (
+                                <CrateCard key={crate.id} crate={crate} allCrates={crates} allInventory={allInventory} onPack={handlePack} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-6">
+                            <div className="relative">
+                                <div className="w-28 h-28 border border-dashed border-white/10 flex items-center justify-center bg-white/2">
+                                    <Box size={44} className="text-white/15" strokeWidth={1} />
+                                </div>
+                                <div className="absolute inset-0 bg-(--main-color)/5 blur-3xl" />
                             </div>
-                            <div className="absolute inset-0 bg-(--main-color)/5 rounded-full blur-3xl" />
+                            <div>
+                                <h3 className="text-3xl font-black uppercase tracking-tighter italic text-white mb-2">
+                                    No {activeTab} units
+                                </h3>
+                                <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
+                                    {activeTab === 'empty'
+                                        ? 'No empty units available. Create new storage to begin packing.'
+                                        : 'No packed units yet. Select items in the packing flow.'}
+                                </p>
+                            </div>
+                            {activeTab === 'empty' && (
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="group flex items-center gap-2.5 px-6 py-3 border border-white/8 bg-white/3 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all cursor-pointer"
+                                >
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">Initialize Storage Protocol</span>
+                                    <ArrowRight size={13} className="text-white/20 group-hover:text-(--main-color) group-hover:translate-x-1 transition-all" />
+                                </button>
+                            )}
                         </div>
-                        <div>
-                            <h3 className="text-3xl font-black uppercase tracking-tighter italic text-white mb-2">
-                                No {activeTab} crates
-                            </h3>
-                            <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
-                                {activeTab === 'empty'
-                                    ? 'No empty crates available. Create new crates to begin packing.'
-                                    : 'No packed crates yet. Select items in the packing flow.'}
-                            </p>
-                        </div>
-                        {activeTab === 'empty' && (
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="group flex items-center gap-2.5 px-6 py-3 rounded-2xl border border-white/8 bg-white/3 hover:border-(--main-color)/40 hover:bg-(--main-color)/5 transition-all cursor-pointer"
-                            >
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">Initialize Crate Protocol</span>
-                                <ArrowRight size={13} className="text-white/20 group-hover:text-(--main-color) group-hover:translate-x-1 transition-all" />
-                            </button>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
-            {/* Crate Creation Modal */}
             {isModalOpen && (
                 <CrateCreationModal
                     isOpen={isModalOpen}
@@ -911,7 +885,7 @@ export const CratesInventoryView: React.FC = () => {
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #F97316); }
             `}</style>
         </div>

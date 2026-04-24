@@ -677,7 +677,10 @@ export const PackingModule: React.FC = () => {
             const manifestoItems: ManifestoItem[] = selectedItems.map((item, idx) => {
                 const d = item.normData;
                 const c = item.codes;
-                const vendorPrefix = String(c.bookBarcode || '').substring(0, 2);
+                
+                // Properly derive vendor prefix for color coding (e.g. "EM" from "EM-001-T" or "R" from "R-001-T")
+                const vendorPrefix = String(d.itemId || c.bookBarcode || '').split('-')[0].toUpperCase();
+                
                 const rawUrls = d.mediaUrls ? String(d.mediaUrls).split(',').map((u: string) => u.trim()).filter(Boolean) : [item.imageUrl];
                 const imageUrls = rawUrls.map(u => getCleanImageUrl(u));
                 
@@ -685,7 +688,7 @@ export const PackingModule: React.FC = () => {
                     index: idx + 1,
                     vendorPrefix,
                     qty: Number(d.quantity) || 1,
-                    itemId: c.bookBarcode,
+                    itemId: d.itemId || c.bookBarcode, // Use the BOOK barcode tag ID (e.g. EM-001-T)
                     rowId: item.id || String(item.row),
                     name: `${d.shape || ''} ${d.shortDescription || ''}`.trim() || 'ONYX PIECE',
                     material: d.material || 'ONYX',
@@ -872,74 +875,83 @@ export const PackingModule: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3">
                          <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Ready for studio actions in top bar</span>
-                         <ArrowUpRight size={14} className="opacity-40" />
                     </div>
                 </div>
             )}
 
-            {/* ── FILTER DRAWER ── */}
-            <div className={`shrink-0 z-40 overflow-hidden transition-all duration-500 bg-black/60 backdrop-blur-3xl border-b border-white/5 ${isConfigExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
-                <div className="px-4 sm:px-8 py-5 flex flex-col gap-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={selectAll}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/8 text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all flex-1 sm:flex-none justify-center"
-                            >
-                                {selectedIds.size === processedItems.length ? <CheckSquare size={13} className="text-(--main-color)" /> : <Square size={13} />}
-                                {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
-                            </button>
-                        </div>
-                        {/* Sort by UI - Free Floating Tags */}
-                        <div className="flex items-center gap-4 ml-2">
-                            <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20">Sort by</span>
+            {/* ── INDUSTRIAL CONFIG DRAWER ── */}
+            <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
+                <div className="max-w-7xl mx-auto px-8 py-10">
+                    <div className="flex flex-col gap-8">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                {['Date', 'Status', 'Vendor', '#'].map((key) => {
-                                    const isActive = sortKey === key;
+                                <button
+                                    onClick={selectAll}
+                                    className="flex items-center gap-2 px-6 py-3 border-2 border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-white/50 hover:text-white hover:border-white/30 transition-all"
+                                >
+                                    {selectedIds.size === processedItems.length ? <CheckSquare size={14} className="text-(--main-color)" /> : <Square size={14} />}
+                                    {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
+                                </button>
+                            </div>
+                            
+                            {/* Sort by UI */}
+                            <div className="flex flex-col gap-4">
+                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sort Parameters</span>
+                                <div className="flex items-center gap-4">
+                                    {['Date', 'Status', 'Vendor', '#'].map((key) => {
+                                        const isActive = sortKey === key;
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => {
+                                                    if (isActive) {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortKey(key as any);
+                                                    }
+                                                }}
+                                                className={`px-6 py-3 border-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 ${isActive ? 'bg-white text-black border-white' : 'bg-transparent text-white/20 border-white/5 hover:border-white/20'}`}
+                                            >
+                                                {key}
+                                                {isActive && (
+                                                    <div className="flex flex-col -space-y-1">
+                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/20'}`} />
+                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/20'}`} />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Vendor chips */}
+                        <div className="flex flex-col gap-6">
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Source Vendor Identity</span>
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    onClick={() => setVendorFilter(null)}
+                                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${!vendorFilter ? 'bg-white text-black border-white' : 'text-white/30 hover:text-white border-white/10'}`}
+                                >All Vendors</button>
+                                {availableVendors.map(v => {
+                                    const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
+                                    const isActive = vendorFilter === v;
                                     return (
                                         <button
-                                            key={key}
-                                            onClick={() => {
-                                                if (isActive) {
-                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                                                } else {
-                                                    setSortKey(key as any);
-                                                }
+                                            key={v}
+                                            onClick={() => setVendorFilter(v)}
+                                            style={{ 
+                                                backgroundColor: isActive ? vColor : 'transparent',
+                                                borderColor: isActive ? vColor : 'rgba(255,255,255,0.1)'
                                             }}
-                                            className={`group flex items-center gap-1.5 transition-all duration-300 ${isActive ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                                            className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${isActive ? 'text-black shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'text-white/30 hover:text-white hover:border-white/30'}`}
                                         >
-                                            <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : ''}`}>{key}</span>
-                                            {isActive && (
-                                                <div className="flex flex-col items-center justify-center -space-y-1">
-                                                    <ChevronRight size={8} className={`-rotate-90 transition-all duration-300 ${sortOrder === 'asc' ? 'text-(--main-color) scale-125' : 'text-white/10 opacity-0'}`} />
-                                                    <ChevronRight size={8} className={`rotate-90 transition-all duration-300 ${sortOrder === 'desc' ? 'text-(--main-color) scale-125' : 'text-white/10 opacity-0'}`} />
-                                                </div>
-                                            )}
+                                            {v}
                                         </button>
                                     );
                                 })}
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Vendor chips */}
-                    <div className="flex flex-col gap-2">
-                        <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Filter by Vendor</span>
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => setVendorFilter(null)}
-                                className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${!vendorFilter ? 'bg-white text-black border-white' : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20'}`}
-                            >All Vendors</button>
-                            {availableVendors.map(v => (
-                                <button
-                                    key={v}
-                                    onClick={() => setVendorFilter(v)}
-                                    className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 ${vendorFilter === v ? 'bg-(--main-color) text-black border-(--main-color)' : 'bg-white/5 border-white/8 text-white/40 hover:border-white/20'}`}
-                                >
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: (vendors as any)[v]?.color || '#FFF' }} />
-                                    {v}
-                                </button>
-                            ))}
                         </div>
                     </div>
                 </div>
