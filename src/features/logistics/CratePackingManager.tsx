@@ -11,12 +11,13 @@ import toast from 'react-hot-toast';
 import {
     Package, ChevronRight, Check, Loader2, X,
     PackagePlus, ListFilter, Inbox, Video, Maximize2, Minus, Plus, Trash2,
-    ArrowUp, ArrowDown, ArrowUpDown
+    ArrowUp, ArrowDown, ArrowUpDown, ArrowLeft
 } from 'lucide-react';
 import { InventoryItem } from '../../lib/Types';
 import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
+import { NFCTagCard } from '../../components/LabelVisuals';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -203,26 +204,23 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
     return {
         date: datePrefix,
         vendors: vendorsList,
-        sequence: String(index >= 0 ? index + 1 : 1)
+        sequence: String(index + 1).padStart(2, '0')
     };
 }
+    
 
-// ─── ActiveCrateSidebar ───────────────────────────────────────────────────────
-// ─── ActiveCrateDashboard (Top Panel) ─────────────────────────────────────────
-const ActiveCrateDashboard: React.FC<{
+// ─── ActiveCrateHUD (Floating Top Panel) ─────────────────────────────────────────
+const ActiveCrateHUD: React.FC<{
     crate: CrateRecord;
     selectedItemIds: Set<string>;
     selectedQtys: Record<string, number>;
     allInventory: any[];
     exchangeRate: number;
     onClear: () => void;
-    onClearStaged: () => void;
     onPack: () => void;
     onUnpack: () => void;
     isSaving: boolean;
-    isCollapsed: boolean;
-    onToggleCollapse: () => void;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onClearStaged, onPack, onUnpack, isSaving, isCollapsed, onToggleCollapse }) => {
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onPack, onUnpack, isSaving }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -230,13 +228,10 @@ const ActiveCrateDashboard: React.FC<{
             const norm = normalizeInventoryData(inv.data);
             const calc = calculateCodesAndPrices(norm, exchangeRate, '326');
             const qty = selectedQtys[id] ?? 1;
-            const vendorPrefix = String(norm.itemId || inv.data?.vendor_id || '').split('-')[0] || '';
-            const tagColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
             const netVol     = itemNetCm3(norm) * qty;
             const paddedVol  = getItemPaddedVolume(inv.data, qty);
-            const paddingVol = paddedVol - netVol;
             const weight     = (Number(norm.weightKg) || 0) * qty;
-            return [{ id, norm, calc, qty, netVol, paddedVol, paddingVol, weight, tagColor, vendorPrefix }];
+            return [{ id, norm, calc, qty, netVol, paddedVol, weight }];
         })
     , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
 
@@ -252,124 +247,69 @@ const ActiveCrateDashboard: React.FC<{
         return v;
     }, [alreadyPackedMap, allInventory]);
 
-    const pendingNetVol     = selectedItems.reduce((s, i) => s + i.netVol, 0);
-    const pendingPaddingVol = selectedItems.reduce((s, i) => s + i.paddingVol, 0);
-    const pendingPaddedVol  = pendingNetVol + pendingPaddingVol;
-
+    const pendingPaddedVol = selectedItems.reduce((s, i) => s + i.paddedVol, 0);
     const totalUsedPaddedVol = alreadyPackedPaddedVol + pendingPaddedVol;
-    const fillPct    = internalCrateCm3 > 0 ? clampN(totalUsedPaddedVol / internalCrateCm3 * 100, 0, 100) : 0;
-    const netFillPct = internalCrateCm3 > 0 ? clampN((alreadyPackedPaddedVol + pendingNetVol) / internalCrateCm3 * 100, 0, 100) : 0;
-    const padFillPct = Math.max(0, fillPct - netFillPct);
-    const barColor   = fillBarColor(fillPct);
+    const fillPct = internalCrateCm3 > 0 ? clampN(totalUsedPaddedVol / internalCrateCm3 * 100, 0, 100) : 0;
+    const barColor = fillBarColor(fillPct);
 
-    const totalQty    = selectedItems.reduce((s, i) => s + i.qty, 0);
+    const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
     const totalWeight = selectedItems.reduce((s, i) => s + i.weight, 0);
 
     return (
-        <div className={`w-full transition-all duration-700 overflow-hidden ${isCollapsed ? 'h-[60px]' : 'h-[140px] sm:h-[120px]'} bg-transparent backdrop-blur-2xl border-b border-white/5`}>
-            <div className="flex flex-col lg:flex-row h-full">
-                {/* Visual Section */}
-                <div className={`flex items-center gap-8 px-8 transition-all ${isCollapsed ? 'w-full lg:w-[280px]' : 'w-full lg:w-[400px]'}`}>
-                    <div className="shrink-0 scale-75 lg:scale-90 opacity-60">
-                        <LargeCrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={isCollapsed ? 60 : 110} />
+        <div className="w-full bg-black border-b border-white/5 py-4 sm:py-8 px-4 sm:px-12 lg:px-20 sticky top-0 z-50">
+            <div className="flex flex-row items-center justify-between gap-4 sm:gap-8">
+                {/* Visual Identity */}
+                <div className="flex items-center gap-6 sm:gap-10">
+                    <div className="shrink-0 relative group scale-90 sm:scale-125 origin-left">
+                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={80} vibrant />
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 opacity-20">
-                            <span className="text-[7px] font-mono uppercase tracking-[0.3em]">{crate.id.toUpperCase()}</span>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{crate.type}</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${statusDot(crate.status)}`} />
                         </div>
-                        <p className="text-[28px] lg:text-[32px] font-black text-white uppercase tracking-tighter truncate leading-none mb-2">
-                            {fmtDims(crate)}<span className="text-white/10 text-[9px] font-black uppercase ml-1 tracking-widest">cm</span>
-                        </p>
-                        {!isCollapsed && (
-                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 pr-3 border-r border-white/5">
-                                    <div className={`w-1 h-1 rounded-full ${statusDot(crate.status)}`} />
-                                    <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${statusText(crate.status)}`}>{crate.status}</span>
-                                </div>
-                                <button 
-                                    onClick={onClear} 
-                                    className="text-[8px] font-black uppercase tracking-[0.2em] text-white/10 hover:text-rose-400 transition-all cursor-pointer"
-                                >
-                                    Release Unit
+                        <h2 className="text-2xl sm:text-5xl font-black text-white tracking-tighter leading-none flex items-baseline gap-1">
+                            {fmtDims(crate)}
+                            <span className="text-[10px] sm:text-[14px] text-white/20 uppercase tracking-widest font-black ml-2">cm</span>
+                        </h2>
+                        <div className="flex items-center gap-6 mt-4">
+                            <button onClick={onClear} className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-white transition-colors flex items-center gap-2 group">
+                                <X size={12} className="opacity-40 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
+                                Release
+                            </button>
+                            {crate.inventory_ids && (
+                                <button onClick={onUnpack} disabled={isSaving} className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-amber-400 transition-colors flex items-center gap-2 group">
+                                    <Trash2 size={12} className="opacity-40 group-hover:opacity-100 group-hover:-translate-y-0.5 transition-all" />
+                                    Unpack
                                 </button>
-                             </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Data Matrix Section (High Density) */}
-                <div className="flex-1 flex items-center justify-between px-10 relative min-w-0">
-                    <div className="flex items-center gap-12">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Volumetric Fill</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-[32px] font-black tabular-nums leading-none tracking-tighter" style={{ color: barColor }}>
-                                    {fillPct.toFixed(0)}<span className="text-[10px] ml-0.5 opacity-30">%</span>
-                                </span>
-                                <span className="text-[9px] font-mono text-white/10 tracking-widest">{(totalUsedPaddedVol/1000).toFixed(0)} / {(internalCrateCm3/1000).toFixed(0)}L</span>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Staged Units</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-[32px] font-black text-white leading-none tracking-tighter">{totalQty}</span>
-                                <span className="text-[9px] font-mono text-white/10 tracking-widest">{selectedItemIds.size} SKUs</span>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[7px] font-black uppercase tracking-[0.4em] text-white/10 leading-none">Total Weight</span>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-[32px] font-black text-white leading-none tracking-tighter">{totalWeight.toFixed(0)}</span>
-                                <span className="text-[9px] text-white/10 font-mono tracking-widest">kg total</span>
-                            </div>
+                {/* Performance Matrix */}
+                <div className="flex items-center gap-8 sm:gap-20">
+                    <div className="flex flex-col items-end">
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-3xl sm:text-6xl font-black tabular-nums tracking-tighter text-(--main-color)">
+                                {fillPct.toFixed(0)}
+                            </span>
+                            <span className="text-lg sm:text-2xl font-black text-(--main-color)/40">%</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
-                        <button
-                            onClick={onUnpack}
-                            disabled={!crate.inventory_ids || crate.inventory_ids.length === 0 || isSaving}
-                            className={`flex items-center gap-2 px-4 h-[40px] rounded-lg text-[8px] font-black uppercase tracking-[0.2em] transition-all border ${(!crate.inventory_ids || crate.inventory_ids.length === 0 || isSaving) ? 'opacity-10 cursor-not-allowed' : 'text-white/20 hover:text-rose-400 border-white/5 hover:border-rose-400/20 bg-white/2 cursor-pointer'}`}
-                        >
-                            <Trash2 size={10} strokeWidth={2.5} />
-                            Unpack All
-                        </button>
-
-                        <button
-                            onClick={onPack}
-                            disabled={selectedItemIds.size === 0 || isSaving}
-                            className={`flex items-center gap-2.5 px-8 h-[40px] rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all ${selectedItemIds.size === 0 || isSaving ? 'bg-white/5 text-white/5 cursor-not-allowed border border-white/5' : 'bg-(--main-color) text-black hover:bg-white shadow-lg shadow-(--main-color)/5 cursor-pointer'}`}
-                        >
-                            {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Package size={12} strokeWidth={2.5} />}
-                            {selectedItemIds.size > 0 ? `Commit ${selectedItemIds.size} items` : 'Commit Packing'}
-                        </button>
+                    <div className="flex flex-col items-end">
+                        <span className="text-3xl sm:text-6xl font-black text-white tabular-nums tracking-tighter">
+                            {totalQty}
+                        </span>
                     </div>
-
-                    {!isCollapsed && (
-                        <div className="absolute bottom-4 left-10 right-10">
-                            <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden flex">
-                                <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${netFillPct}%`, backgroundColor: barColor }} />
-                                <div className="h-full transition-all duration-1000 ease-out opacity-20" style={{ width: `${padFillPct}%`, backgroundColor: barColor }} />
-                            </div>
-                        </div>
-                    )}
                 </div>
-
-                <button onClick={onToggleCollapse} className={`absolute top-3 right-4 p-1.5 rounded-md hover:bg-white/5 text-white/5 hover:text-white transition-all ${isCollapsed ? 'rotate-0' : 'rotate-180'}`}>
-                    <Maximize2 size={12} />
-                </button>
             </div>
         </div>
     );
 };
 
-
-
-// ─── Compact Crate Card (left panel) ─────────────────────────────────────────
-// ─── Compact Crate Card (Horizontal Top Ribbon) ─────────────────────────────────
-// ─── Unified Crate/Pallet Selection Card ───────────────────────────────────────
+// ─── CrateSelectCard (Floating Borderless) ───────────────────────────────────────
 const CrateSelectCard: React.FC<{
     crate: GroupedCrateRecord;
     isSelected: boolean;
@@ -379,7 +319,6 @@ const CrateSelectCard: React.FC<{
 }> = ({ crate, isSelected, onClick, allCrates, allInventory }) => {
     const isPallet = crate.type === 'pallet';
     const partialCount = crate.children.filter(c => c.status === 'Partial' || (c.inventory_ids && c.inventory_ids.length > 0)).length;
-    const emptyCount = crate.children.length - partialCount;
     
     const dynamicParts = useMemo(() => {
         if (crate.status === 'Partial') return getDynamicCrateIdComponents(crate, allCrates, allInventory);
@@ -389,70 +328,67 @@ const CrateSelectCard: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`flex flex-col gap-2 transition-all cursor-pointer min-w-[140px] shrink-0 relative group select-none`}
+            className={`flex flex-col items-center gap-4 transition-all duration-500 cursor-pointer p-4 rounded-3xl min-w-[150px] shrink-0 relative group select-none ${
+                isSelected ? 'bg-white/5 shadow-2xl scale-105' : 'hover:bg-white/3 hover:scale-102'
+            }`}
         >
-            {/* Visual & Tags Area */}
-            <div className="relative flex flex-col gap-2">
-                <div className="h-16 flex items-center justify-center relative overflow-visible">
-                    <div className="scale-90 group-hover:scale-100 transition-transform duration-500">
-                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} selected={isSelected} type={crate.type} />
-                    </div>
-                    
-                    {/* Selection Indicator (Bottom Bar) */}
-                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 h-0.5 transition-all duration-500 rounded-full ${
-                        isSelected ? 'w-full bg-(--main-color) shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]' : 'w-0 bg-white/20'
-                    }`} />
+            {/* Visual Section */}
+            <div className="relative h-20 flex items-center justify-center w-full">
+                <div className={`transition-all duration-700 ${isSelected ? 'scale-110' : 'scale-90 opacity-40 group-hover:opacity-100'}`}>
+                    <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} selected={isSelected} type={crate.type} />
                 </div>
-
-                {/* Tag Cluster */}
+                
+                {/* Dynamic Tags */}
                 {dynamicParts && (
-                    <div className="absolute top-0 left-0 flex items-center gap-1 flex-wrap">
-                        {dynamicParts.vendors.map(v => (
+                    <div className="absolute -top-1 -left-1 flex flex-wrap gap-1 max-w-[80px]">
+                        {dynamicParts.vendors.slice(0, 2).map(v => (
                             <div 
                                 key={v}
                                 style={{ backgroundColor: (vendors as any)[v]?.color || 'var(--main-color)' }}
-                                className="px-1.5 py-0.5 rounded-sm text-black text-[7px] font-black shadow-sm"
+                                className="px-1.5 py-0.5 rounded text-black text-[7px] font-black shadow-lg"
                             >
                                 {v}
                             </div>
                         ))}
+                        {dynamicParts.vendors.length > 2 && <span className="text-[7px] font-black text-white/40">+{dynamicParts.vendors.length-2}</span>}
                     </div>
                 )}
-                
+
                 {crate.groupedCount > 1 && (
-                    <div className="absolute top-0 right-0 text-[8px] font-black text-white/40 uppercase tracking-tighter">
+                    <div className="absolute -top-1 -right-1 bg-white/10 backdrop-blur-md px-1.5 py-0.5 rounded-full text-[8px] font-black text-white/60">
                         {crate.groupedCount}×
                     </div>
                 )}
             </div>
             
             {/* Metadata Area */}
-            <div className="flex flex-col gap-0.5">
-                <div className="flex items-baseline justify-between gap-2">
-                    <p className={`text-[11px] font-black uppercase tracking-tight font-mono ${isSelected ? 'text-(--main-color)' : 'text-white/80'}`}>
-                        {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
-                    </p>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <span className="text-[7px] font-black text-white/20 uppercase tracking-[0.2em]">
+            <div className="text-center">
+                <p className={`text-xs font-black uppercase tracking-widest font-mono mb-1 transition-colors ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
+                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                    <span className="text-[7px] font-black text-white/10 uppercase tracking-[0.3em]">
                         {isPallet ? 'Pallet' : 'Crate'}
                     </span>
                     {partialCount > 0 && (
                         <div className="flex items-center gap-1">
-                            <div className="w-1 h-1 rounded-full bg-amber-400" />
-                            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
-                                {crate.children.reduce((acc, c) => acc + (c.inventory_ids ? c.inventory_ids.split(',').filter(Boolean).length : 0), 0)} items
-                            </span>
+                            <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">Active</span>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Selection Indicator Glow */}
+            {isSelected && (
+                <div className="absolute inset-0 rounded-3xl ring-2 ring-(--main-color)/20 shadow-[0_0_30px_rgba(var(--main-color-rgb),0.1)] pointer-events-none" />
+            )}
         </button>
     );
 };
 
-// ─── Inventory Row (quantity-aware) ──────────────────────────────────────────────
+
+// ─── Inventory Row (Minimalist & Borderless) ───────────────────────────────────────
 const PackingInventoryRow: React.FC<{
     item: InventoryItem;
     isSelected: boolean;
@@ -470,7 +406,6 @@ const PackingInventoryRow: React.FC<{
     const vendorPrefix = String(norm.itemId || d.vendor_id || '').split('-')[0] || '';
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
-    const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
 
     const mediaUrls = useMemo(() => {
         const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
@@ -482,177 +417,129 @@ const PackingInventoryRow: React.FC<{
     const imageUrl = getCleanImageUrl(rawImageUrl);
     const isVideo = rawImageUrl ? isVideoFile(rawImageUrl) : false;
 
-    const itemPriceMXN = Math.ceil(Number(norm.price || 0));
     const itemQuantity = Number(norm.quantity || 1);
     const availableForThisCrate = Math.max(0, itemQuantity - (totalPackedQty - packedQtyInCurrentCrate));
     const fullyPacked = availableForThisCrate === 0;
-    const partiallyPacked = totalPackedQty > 0 && availableForThisCrate > 0;
 
     const dimsCm = [norm.widthCm, norm.heightCm, norm.lengthCm].filter(Boolean).join('×');
     const weightKg = norm.weightKg ? parseFloat(String(norm.weightKg)) : null;
 
     return (
-        <div className="flex flex-col gap-0">
-            <div
-                className={`flex flex-col sm:flex-row items-stretch overflow-hidden border rounded-2xl transition-all group shadow-sm ${
-                    fullyPacked
-                        ? 'bg-white/1 border-white/3 opacity-40'
-                        : isSelected
-                            ? 'bg-(--main-color)/8 border-(--main-color)/30 ring-1 ring-(--main-color)/20'
-                            : partiallyPacked
-                                ? 'bg-amber-500/5 border-amber-500/20 hover:border-amber-500/30'
-                                : 'bg-white/3 border-white/6 hover:border-white/12 hover:bg-white/5'
-                }`}
-            >
-                {/* Selection checkbox - click anywhere except stepper */}
-                <div
-                    className={`w-10 shrink-0 flex items-center justify-center border-r border-white/5 cursor-pointer ${ fullyPacked ? 'cursor-not-allowed' : ''}`}
-                    onClick={() => !fullyPacked && onToggle()}
-                >
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all border ${
-                        fullyPacked
-                            ? 'bg-white/5 border-white/10'
-                            : isSelected
-                                ? 'bg-(--main-color) border-(--main-color) shadow-md shadow-(--main-color)/30'
-                                : 'border-white/15 group-hover:border-white/30'
-                    }`}>
-                        {(fullyPacked || isSelected) && <Check size={8} className={fullyPacked ? 'text-white/30' : 'text-black'} strokeWidth={3} />}
-                    </div>
-                </div>
-
-                {/* Image thumb */}
-                <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 bg-black/40 relative">
-                    {imageUrl ? (
-                        <>
-                            <img src={imageUrl} className="w-full h-full object-cover" />
-                            {isVideo && <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white"><Video className="w-3 h-3" /></div>}
-                        </>
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center opacity-20">
-                            <OnyxMiniLogo className="w-7 h-7 object-contain" />
-                        </div>
-                    )}
-                </div>
-
-                {/* Main content row */}
-                <div className="flex-1 overflow-x-auto no-scrollbar flex items-center px-3 gap-3 min-w-0">
-                    {/* Name + Description */}
-                    <div className="flex flex-col justify-center min-w-[150px] max-w-[260px] shrink-0 border-r border-white/10 pr-3 h-full py-2">
-                        <h3 className="text-[16px] font-black text-white truncate uppercase tracking-tight leading-none mb-1">
-                            {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled Item')}
-                        </h3>
-                        <div className="flex items-center gap-2 text-[12px] text-white/80 font-bold uppercase tracking-widest">
-                            {norm.color && <span className="truncate">{norm.color}</span>}
-                            {norm.material && <><span className="text-white/40">·</span><span className="truncate">{norm.material}</span></>}
-                        </div>
-                    </div>
-
-                    {/* Tag ID */}
-                    <div className="flex flex-col min-w-[110px] shrink-0 sm:border-r border-white/10 sm:pr-4 justify-center h-full gap-1 group/tag">
-                        <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] leading-none">Tag ID</span>
-                            <button 
-                                onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    const wbStr = String(norm.workbook || '').replace(/v/gi, '');
-                                    const fullText = `${calculated.bookBarcode}|${(norm.color || '')} ${(norm.material || '')}`.trim() + `|${(norm.shape || '')} ${(norm.shortDescription || (norm as any).description || 'Untitled Item')}`.trim() + `|${calculated.bookAqCode || ''}${wbStr}${calculated.bookRetail || ''}`;
-                                    navigator.clipboard.writeText(fullText); 
-                                    toast.success(`Full Metadata Copied`, { icon: '📋' }); 
-                                }}
-                                className="inline-flex items-center px-3 py-1.5 rounded text-black text-[14px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
-                                style={{ backgroundColor: vendorColor }}
-                            >
-                                {calculated.bookBarcodeDisplay || vendorPrefix || 'N/A'}
-                            </button>
-                    </div>
-
-                    {/* Price / Qty / Stats */}
-                    <div className="flex flex-col min-w-[120px] shrink-0 sm:border-r border-white/10 sm:pr-4 justify-center h-full gap-1">
-                        <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] leading-none">Availability</span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-[18px] font-black text-white leading-none">{itemQuantity}</span>
-                                <span className="text-[10px] text-white/70 uppercase font-black tracking-widest">Total</span>
-                            </div>
-                            {totalPackedQty > 0 && (
-                                <span className="text-[10px] px-2 py-1 rounded bg-rose-500/20 border border-rose-500/30 text-rose-300 font-black uppercase">
-                                    {packedQtyInCurrentCrate > 0 ? `+${packedQtyInCurrentCrate} Here` : ''}{totalPackedQty - packedQtyInCurrentCrate > 0 ? ` ${totalPackedQty - packedQtyInCurrentCrate} Other` : ''}
-                                </span>
-                            )}
-                            {availableForThisCrate > 0 && (
-                                <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-black uppercase">
-                                    {availableForThisCrate} Avail
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Dims & AQ (Hidden on mobile, moved to expanded) */}
-                    <div className="hidden lg:flex flex-col min-w-[80px] shrink-0 border-r border-white/5 pr-4 justify-center h-full gap-1">
-                        <span className="text-[7px] font-black text-white/25 uppercase tracking-widest leading-none">Details</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-white/70 font-mono">{calculated.bookAqCode || '—'}</span>
-                            <span className="text-[11px] text-white/50 font-mono">{dimsCm ? `${dimsCm}cm` : '—'}</span>
-                        </div>
-                    </div>
-
-                    {weightKg && (
-                        <div className="flex flex-col min-w-[50px] shrink-0 justify-center h-full gap-0.5">
-                            <span className="text-[7px] font-black uppercase tracking-widest leading-none">Wt</span>
-                            <span className="text-[10px] text-white/50 font-mono">{weightKg}kg</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Right action area */}
-                <div className="flex items-center gap-1 px-2 py-2 shrink-0 bg-white/2 border-l border-white/5">
-                    {fullyPacked && <span className="text-[7px] font-black uppercase tracking-widest text-white/20 px-1.5">Done</span>}
-                    {isSelected && !fullyPacked && (
-                        // Qty stepper — stops click propagation so it doesn't toggle selection
-                        <div
-                            className="flex items-center gap-1 bg-black/30 border border-white/10 rounded-lg overflow-hidden"
-                            onClick={e => e.stopPropagation()}
+        <div 
+            className={`group relative flex flex-col gap-6 py-10 border-b border-white/5 last:border-0 transition-all duration-700 ${
+                isSelected ? 'bg-white/[0.02]' : ''
+            }`}
+        >
+            {/* Unified Visual Matrix Tier */}
+            <div className="flex items-start gap-8">
+                <div className="relative flex-1 max-w-2xl">
+                    <div className="relative aspect-square overflow-hidden bg-black/40 transition-all duration-700 group-hover:shadow-[0_0_60px_rgba(var(--main-color-rgb),0.15)]">
+                        {imageUrl ? (
+                            <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-1000 ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`} />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo className="w-24 h-24" /></div>
+                        )}
+                        
+                        {/* Integrated Selection Button */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); !fullyPacked && onToggle(); }}
+                            disabled={fullyPacked}
+                            className={`absolute bottom-6 right-6 w-14 h-14 flex items-center justify-center transition-all z-30 ${
+                                fullyPacked
+                                    ? 'opacity-0 pointer-events-none'
+                                    : isSelected
+                                        ? 'bg-(--main-color) text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.6)]'
+                                        : 'bg-black/60 backdrop-blur-xl border border-white/20 text-white/40 hover:text-white hover:border-white/40'
+                            }`}
                         >
+                            {isSelected ? <Check size={28} strokeWidth={4} /> : <Plus size={28} />}
+                        </button>
+
+                        {/* Top Metadata Layer */}
+                        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-20">
+                            <div className="flex flex-col gap-1">
+                                <span 
+                                    className="px-3 py-1 text-black text-[10px] font-black uppercase tracking-widest shadow-xl"
+                                    style={{ backgroundColor: vendorColor }}
+                                >
+                                    {calculated.bookBarcode}
+                                </span>
+                                <span className="px-3 py-1 bg-black/80 backdrop-blur-md text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">
+                                    {vendorPrefix || 'UNKNOWN VENDOR'}
+                                </span>
+                            </div>
+                            
+                            <div className={`px-4 py-2 bg-black/80 backdrop-blur-xl border border-white/10 text-[11px] font-black uppercase tracking-widest ${fullyPacked ? 'text-white/20' : 'text-emerald-400'}`}>
+                                {availableForThisCrate}/{itemQuantity}
+                            </div>
+                        </div>
+
+                        {/* Bottom Information Matrix Overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 p-8 bg-linear-to-t from-black/95 via-black/80 to-transparent z-10">
+                            <div className="flex flex-col gap-4">
+                                <h3 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-none max-w-[80%]">
+                                    {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled Item')}
+                                </h3>
+                                
+                                <div className="flex flex-wrap items-center gap-x-10 gap-y-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/30">
+                                    <div className="flex items-center gap-2">
+                                        <span className="opacity-40 text-emerald-500/50">SIZE:</span>
+                                        <span className="text-white/60">{dimsCm ? `${dimsCm} CM` : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="opacity-40 text-emerald-500/50">WGT:</span>
+                                        <span className="text-white/60">{weightKg ? `${weightKg} KG` : 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Desktop Quantity Controls */}
+                <div className="hidden sm:flex flex-col items-end gap-6 pt-10 shrink-0">
+                     {isSelected && !fullyPacked && (
+                        <div className="flex flex-col items-center gap-4 bg-black/40 backdrop-blur-xl p-4 border border-white/5">
                             <button
-                                type="button"
-                                onClick={() => onQtyChange(Math.max(1, selectedQty - 1))}
-                                className="w-6 h-7 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                                onClick={e => { e.stopPropagation(); onQtyChange(Math.max(1, selectedQty - 1)); }}
+                                className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-white transition-all border border-white/10"
                             >
-                                <Minus size={9} strokeWidth={3} />
+                                <Minus size={24} />
                             </button>
-                            <span className="text-[11px] font-black text-white font-mono w-5 text-center">{selectedQty}</span>
+                            <span className="text-3xl font-black text-white font-mono w-16 text-center">{selectedQty}</span>
                             <button
-                                type="button"
-                                onClick={() => onQtyChange(Math.min(availableForThisCrate, selectedQty + 1))}
-                                className="w-6 h-7 flex items-center justify-center text-white/50 hover:text-(--main-color) hover:bg-(--main-color)/10 transition cursor-pointer"
+                                onClick={e => { e.stopPropagation(); onQtyChange(Math.min(availableForThisCrate, selectedQty + 1)); }}
+                                className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-(--main-color) transition-all border border-white/10"
                             >
-                                <Plus size={9} strokeWidth={3} />
+                                <Plus size={24} />
                             </button>
                         </div>
                     )}
-                    <button
-                        onClick={e => { e.stopPropagation(); onToggleExpand(); }}
-                        className={`p-1.5 hover:text-white hover:bg-white/10 rounded-md transition-colors ${isExpanded ? 'text-(--main-color)' : 'text-white/30'}`}
-                    >
-                        <Maximize2 className={`w-3 h-3 stroke-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                    </button>
                 </div>
             </div>
 
-            {/* Expanded Detail Panel */}
-            {isExpanded && (
-                <div className="ml-4 sm:ml-[94px] mr-1 px-4 pb-4 pt-3 bg-black/40 border-x border-b border-white/5 rounded-b-2xl animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-6 gap-y-4">
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Material</p><p className="text-[11px] font-black text-(--text-color)/80 uppercase tracking-wide">{norm.material || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Dimensions</p><p className="text-[11px] font-mono font-black text-white/70">{dimsCm ? `${dimsCm}cm` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Weight</p><p className="text-[11px] font-mono font-black text-white/70">{weightKg ? `${weightKg}kg` : '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">Status</p><p className="text-[11px] font-black text-white/70 uppercase tracking-wide">{norm.status || '—'}</p></div>
-                        <div><p className="text-[8px] font-black uppercase tracking-widest text-white/25 mb-1">LD Code</p><p className="text-[12px] font-mono font-black text-yellow-400/80">{calculated.bookLandCode || '—'}</p></div>
+            {/* Expansion Logic */}
+            <div className="flex flex-col gap-8">
+                <button
+                    onClick={e => { e.stopPropagation(); onToggleExpand(); }}
+                    className={`w-14 h-14 transition-all flex items-center justify-center ${
+                        isExpanded ? 'text-(--main-color)' : 'text-white/10 hover:text-white'
+                    }`}
+                >
+                    <Maximize2 size={28} className={`transition-transform duration-700 ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isExpanded && (
+                    <div className="w-full max-w-3xl animate-in fade-in duration-700 pt-4">
+                        <div className="relative group/label transform-gpu transition-all duration-700">
+                            <div className="absolute inset-0 bg-(--main-color)/5 blur-[100px] opacity-40" />
+                            <div className="drop-shadow-[0_60px_120px_rgba(0,0,0,0.9)]">
+                                <NFCTagCard item={{ normData: norm, codes: calculated }} />
+                            </div>
+                        </div>
                     </div>
-                    {norm.description && (
-                        <p className="text-[10px] text-white/40 mt-2 italic leading-relaxed border-t border-white/5 pt-2">{norm.description}</p>
-                    )}
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
@@ -1026,200 +913,140 @@ export const CratePackingManager: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-transparent">
-            {/* ─── Top Panel: Crate Dashboard / Selector ─── */}
-            <div className="shrink-0 border-b border-white/5 bg-black/40 backdrop-blur-3xl overflow-hidden">
+            {/* ─── Top Panel: Floating HUD / Unit Picker ─── */}
+            <div className="shrink-0">
                 {selectedCrate ? (
-                    <ActiveCrateDashboard
+                    <ActiveCrateHUD
                         crate={selectedCrate}
                         selectedItemIds={selectedItemIds}
                         selectedQtys={selectedQtys}
                         allInventory={allInventory}
                         exchangeRate={exchangeRate}
                         onClear={() => handleSelectCrate(null)}
-                        onClearStaged={() => { setSelectedItemIds(new Set()); setSelectedQtys({}); }}
                         onPack={handlePackItems}
                         onUnpack={handleUnpackAll}
                         isSaving={isSaving}
-                        isCollapsed={isDashboardCollapsed}
-                        onToggleCollapse={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
                     />
                 ) : (
-                    <div className="px-5 py-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <div>
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-(--main-color)">
-                                    Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}
-                                </h3>
-                                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mt-0.5">
-                                    {activeCrates.length} units ready for packing
-                                </p>
+                    <div className="px-6 py-8 sm:px-10">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="flex flex-col gap-1">
+                                    <h3 className="text-[12px] font-black uppercase tracking-[0.4em] text-(--main-color)">
+                                        Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}
+                                    </h3>
+                                    <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">
+                                        {activeCrates.length} precision units ready for assignment
+                                    </p>
+                                </div>
+                                {activeGroup && (
+                                    <button
+                                        onClick={() => setActiveGroupKey(null)}
+                                        className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all cursor-pointer flex items-center gap-2 group"
+                                    >
+                                        <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+                                        Sizes
+                                    </button>
+                                )}
                             </div>
-                            {activeGroup && (
-                                <button
-                                    onClick={() => setActiveGroupKey(null)}
-                                    className="text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition cursor-pointer"
-                                >
-                                    ← Back to sizes
-                                </button>
-                            )}
-                        </div>
 
-                        <div className="flex items-center gap-8 overflow-x-auto no-scrollbar pb-2">
-                            {activeCrates.length === 0 ? (
-                                <div className="flex items-center gap-3 py-4 opacity-30">
-                                    <Inbox size={20} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">No empty units available</span>
-                                </div>
-                            ) : !activeGroup ? (
-                                groupedAvailableCrates.map(group => {
-                                    const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
-                                    return (
-                                        <CrateSelectCard
-                                            key={group.id}
-                                            crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
-                                            isSelected={!!isSelected}
-                                            allCrates={crates}
-                                            allInventory={allInventory}
-                                            onClick={() => {
-                                                setActiveGroupKey((group as any).groupKey);
-                                                const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
-                                                handleSelectCrate(targetCrate.id);
-                                            }}
-                                        />
-                                    );
-                                })
-                            ) : (
-                                <div className="flex items-center gap-4">
-                                    {activeGroup.children.map(c => {
-                                        const isSelected = selectedCrateId === c.id;
+                            <div className="flex items-center gap-8 overflow-x-auto no-scrollbar pb-6 mask-fade-right">
+                                {activeCrates.length === 0 ? (
+                                    <div className="flex items-center gap-4 py-8 opacity-20">
+                                        <Inbox size={32} strokeWidth={1} />
+                                        <span className="text-sm font-black uppercase tracking-widest">No empty units available</span>
+                                    </div>
+                                ) : !activeGroup ? (
+                                    groupedAvailableCrates.map(group => {
+                                        const isSelected = selectedCrateId && group.children.some(c => c.id === selectedCrateId);
                                         return (
-                                            <button
-                                                key={c.id}
-                                                onClick={() => handleSelectCrate(c.id)}
-                                                className={`min-w-[100px] flex flex-col gap-1.5 transition-all cursor-pointer relative group`}
-                                            >
-                                                <div className="flex items-center justify-between w-full px-1">
-                                                    <span className={`text-[9px] font-mono leading-none tracking-tight ${isSelected ? 'text-(--main-color)' : 'text-white/60'}`}>
-                                                        {c.id.slice(0,8).toUpperCase()}
-                                                    </span>
-                                                    <div className={`w-1 h-1 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-                                                </div>
-                                                <div className={`h-0.5 rounded-full transition-all duration-500 ${isSelected ? 'w-full bg-(--main-color)' : 'w-0 bg-white/10'}`} />
-                                            </button>
+                                            <CrateSelectCard
+                                                key={group.id}
+                                                crate={{...group, status: group.children.some(c => c.status === 'Partial') ? 'Partial' : 'Empty'}}
+                                                isSelected={!!isSelected}
+                                                allCrates={crates}
+                                                allInventory={allInventory}
+                                                onClick={() => {
+                                                    setActiveGroupKey((group as any).groupKey);
+                                                    const targetCrate = [...group.children].sort((a, b) => a.status === 'Partial' ? -1 : 1)[0];
+                                                    handleSelectCrate(targetCrate.id);
+                                                }}
+                                            />
                                         );
-                                    })}
-                                </div>
-                            )}
+                                    })
+                                ) : (
+                                    <div className="flex items-center gap-6">
+                                        {activeGroup.children.map(c => {
+                                            const isSelected = selectedCrateId === c.id;
+                                            return (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => handleSelectCrate(c.id)}
+                                                    className={`min-w-[120px] flex flex-col gap-3 transition-all cursor-pointer relative group p-4 rounded-3xl ${isSelected ? 'bg-white/5' : 'hover:bg-white/2'}`}
+                                                >
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <span className={`text-[10px] font-mono leading-none tracking-tighter ${isSelected ? 'text-(--main-color) font-black' : 'text-white/40'}`}>
+                                                            {c.id.slice(0,8).toUpperCase()}
+                                                        </span>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'} ${isSelected ? 'animate-pulse' : ''}`} />
+                                                    </div>
+                                                    <div className={`h-0.5 rounded-full transition-all duration-700 ${isSelected ? 'w-full bg-(--main-color)' : 'w-4 bg-white/10'}`} />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* ── Main Area: Inventory List ── */}
-            <div className="flex-1 flex flex-col min-w-0 bg-black/10 min-h-0">
-
-                {/* Config & Sort Panel */}
-                {isFiltersOpen && (
-                    <div className="border-b border-white/10 bg-white/2 backdrop-blur-3xl flex flex-col gap-0 animate-in slide-in-from-top duration-300 shrink-0">
-                        {/* Sort Bar */}
-                        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-white/5">
-                            <div className="flex items-center gap-6">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Sort By</span>
-                                    <div className="flex items-center gap-3">
-                                        {[
-                                            { id: 'date', label: 'Date' },
-                                            { id: 'status', label: 'Status' },
-                                            { id: 'vendor', label: 'Vendor' },
-                                            { id: 'qty', label: 'Qty' },
-                                        ].map(s => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => {
-                                                    if (sortBy === s.id) {
-                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                                                    } else {
-                                                        setSortBy(s.id as any);
-                                                        setSortOrder('desc');
-                                                    }
-                                                }}
-                                                className={`text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5 group/sort ${
-                                                    sortBy === s.id
-                                                        ? 'text-(--main-color)'
-                                                        : 'text-white/25 hover:text-white/60'
-                                                }`}
-                                            >
-                                                {s.label}
-                                                {sortBy === s.id ? (
-                                                    sortOrder === 'asc' ? <ArrowUp size={10} className="text-(--main-color)" /> : <ArrowDown size={10} className="text-(--main-color)" />
-                                                ) : (
-                                                    <ArrowUpDown size={10} className="opacity-0 group-hover/sort:opacity-100 transition-opacity" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
+            <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+                {/* Inventory List */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 px-4 sm:px-12 lg:px-20">
+                    <div className="py-8">
+                        {!selectedCrate ? (
+                            <div className="flex flex-col items-center justify-center py-32 text-center opacity-40 gap-10">
+                                <div className="p-12 bg-white/[0.02] rounded-full border border-white/5 relative">
+                                    <div className="absolute inset-0 bg-(--main-color)/5 blur-3xl rounded-full" />
+                                    <Package size={80} className="text-white/10 relative" strokeWidth={0.5} />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[14px] font-black uppercase tracking-[0.5em] text-white/30">
+                                        Initialize Packing Sequence
+                                    </p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/10">
+                                        Select a destination unit to begin item assignment
+                                    </p>
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-4">
-                                {!selectedCrate && (
-                                    <div className="flex items-center gap-3 text-white/20 ml-2">
-                                        <PackagePlus size={16} strokeWidth={2.5} />
-                                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">SELECT DESTINATION UNIT</span>
-                                    </div>
-                                )}
+                        ) : filteredInventory.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 gap-4">
+                                <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
                             </div>
-                        </div>
-
-                        {/* Vendor Filters */}
-                        <div className="px-6 py-4 flex flex-col gap-2">
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20">Source Vendor</span>
-                            <div className="flex flex-wrap gap-2">
-                                {vendorOptions.map(v => {
-                                    const color = v === 'All' ? undefined : (vendors as any)[v]?.color;
-                                    const isActive = vendorFilter === v;
-                                    return (
+                        ) : (
+                    <div className="flex flex-col gap-4">
+                                {/* Header / Controls */}
+                                <div className="flex items-center justify-between mb-12 px-6">
+                                    <div className="flex items-center gap-10">
+                                        <div className="flex flex-col gap-1">
+                                            <h4 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-none">
+                                                {filteredInventory.length} Items
+                                            </h4>
+                                            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">Available for packing sequence</span>
+                                        </div>
+                                        <div className="w-px h-12 bg-white/10" />
                                         <button
-                                            key={v}
-                                            onClick={() => setVendorFilter(v)}
-                                            className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 cursor-pointer ${
-                                                isActive
-                                                    ? 'bg-white text-black border-white shadow-md'
-                                                    : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20 hover:text-white/70'
-                                            }`}
+                                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                                            className={`flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.4em] transition-all ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}
                                         >
-                                            {color && <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
-                                            {v}
+                                            <ListFilter size={16} />
+                                            Filters
                                         </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Inventory List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                    {!selectedCrate ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-6">
-                            <div className="p-8 bg-white/2 rounded-full border border-white/5">
-                                <Package size={64} className="text-white/10" strokeWidth={0.5} />
-                            </div>
-                            <p className="text-[12px] font-black uppercase tracking-[0.4em] text-white/30 max-w-sm leading-loose">
-                                SELECT A DESTINATION CRATE<br />TO ACTIVATE ITEM SELECTION.
-                            </p>
-                        </div>
-                    ) : filteredInventory.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center opacity-40 gap-4">
-                            <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
-                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">NO ITEMS MATCH FILTERS</p>
-                        </div>
-                    ) : (
-                        <div className="p-6 flex flex-col gap-1.5">
-                            {/* Stats bar */}
-                            <div className="flex items-center justify-between mb-4 px-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/25">{filteredInventory.length} ITEMS FOUND</span>
-                                {filteredInventory.length > 0 && (
+                                    </div>
                                     <button
                                         onClick={() => {
                                             const newIds = new Set<string>();
@@ -1235,65 +1062,106 @@ export const CratePackingManager: React.FC = () => {
                                             setSelectedItemIds(newIds);
                                             setSelectedQtys(newQtys);
                                         }}
-                                        className="text-[10px] font-black uppercase tracking-widest text-(--main-color)/60 hover:text-(--main-color) transition cursor-pointer"
+                                        className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white transition-colors cursor-pointer"
                                     >
-                                        SELECT ALL REMAINING
+                                        Select All
                                     </button>
+                                </div>
+
+                                {/* Floating Filters Panel */}
+                                {isFiltersOpen && (
+                                    <div className="mb-8 p-6 bg-white/[0.03] backdrop-blur-3xl rounded-[32px] border border-white/5 animate-in slide-in-from-top-4 duration-500">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="flex flex-col gap-4">
+                                                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor</span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {vendorOptions.map(v => (
+                                                        <button
+                                                            key={v}
+                                                            onClick={() => setVendorFilter(v)}
+                                                            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${vendorFilter === v ? 'bg-white text-black border-white' : 'bg-white/5 border-white/10 text-white/40 hover:border-white/20'}`}
+                                                        >
+                                                            {v}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-4">
+                                                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
+                                                <div className="flex flex-wrap gap-3">
+                                                    {['date', 'status', 'vendor', 'qty'].map(s => (
+                                                        <button
+                                                            key={s}
+                                                            onClick={() => { if (sortBy === s) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); else { setSortBy(s as any); setSortOrder('desc'); } }}
+                                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s ? 'text-(--main-color) bg-(--main-color)/10' : 'text-white/40 hover:text-white'}`}
+                                                        >
+                                                            {s}
+                                                            {sortBy === s && (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
+
+                                {/* List Grid */}
+                                <div className="flex flex-col gap-2 pb-32">
+                                    {filteredInventory.map(item => {
+                                        const iid = String(item.row);
+                                        const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
+                                        const totalPacked = getTotalPackedForItem(iid, crates);
+                                        const isSelected = selectedItemIds.has(iid);
+                                        return (
+                                            <PackingInventoryRow
+                                                key={item.row}
+                                                item={item as InventoryItem}
+                                                isSelected={isSelected}
+                                                packedQtyInCurrentCrate={inCurrentCrate}
+                                                totalPackedQty={totalPacked}
+                                                selectedQty={selectedQtys[iid] ?? 1}
+                                                onToggle={() => {
+                                                    const norm = normalizeInventoryData(item.data);
+                                                    const totalQty = Number(norm.quantity || 1);
+                                                    const avail = Math.max(0, totalQty - (totalPacked - inCurrentCrate));
+                                                    toggleItem(iid, avail);
+                                                }}
+                                                onQtyChange={qty => setSelectedQtys(q => ({ ...q, [iid]: qty }))}
+                                                isExpanded={expandedIds.has(iid)}
+                                                onToggleExpand={() => toggleExpand(iid)}
+                                                exchangeRate={exchangeRate}
+                                            />
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            {filteredInventory.map(item => {
-                                const iid = String(item.row);
-                                const norm = normalizeInventoryData(item.data);
-                                const totalQty = Number(norm.quantity || 1);
-                                const totalPacked = getTotalPackedForItem(iid, crates);
-                                const inCurrentCrate = (() => { const q = currentCratePackedMap.get(iid); return q === -1 ? 1 : (q ?? 0); })();
-                                const availableForThisCrate = Math.max(0, totalQty - (totalPacked - inCurrentCrate));
-                                const isSelected = selectedItemIds.has(iid);
-                                return (
-                                    <PackingInventoryRow
-                                        key={item.row}
-                                        item={item as InventoryItem}
-                                        isSelected={isSelected}
-                                        packedQtyInCurrentCrate={inCurrentCrate}
-                                        totalPackedQty={totalPacked}
-                                        selectedQty={selectedQtys[iid] ?? 1}
-                                        onToggle={() => toggleItem(iid, availableForThisCrate)}
-                                        onQtyChange={qty => setSelectedQtys(q => ({ ...q, [iid]: qty }))}
-                                        isExpanded={expandedIds.has(iid)}
-                                        onToggleExpand={() => toggleExpand(iid)}
-                                        exchangeRate={exchangeRate}
-                                    />
-                                );
-                            })}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
-                {/* Confirm Pack summary bar */}
+                {/* ─── Floating Action Button (FAB) ─── */}
                 {selectedCrate && selectedItemIds.size > 0 && (
-                    <div className="flex items-center justify-between px-8 py-5 border-t border-white/5 bg-black/40 backdrop-blur-3xl shrink-0 animate-in slide-in-from-bottom-4 duration-300">
-                        <div className="flex items-center gap-6">
-                            <div className="flex flex-col">
-                                <span className="text-[13px] font-black uppercase tracking-[0.1em] text-white">
-                                    {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} TOTAL UNITS
-                                </span>
-                                <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">
-                                    → {selectedItemIds.size} UNIQUE SKU(s)
-                                </span>
-                            </div>
-                            <div className="w-px h-8 bg-white/10" />
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-(--main-color)/60">DESTINATION</span>
-                                <span className="text-[12px] font-black text-white mt-0.5">{fmtDims(selectedCrate)} {selectedCrate.type.toUpperCase()}</span>
-                            </div>
-                        </div>
+                    <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none px-6">
                         <button
                             onClick={handlePackItems}
                             disabled={isSaving}
-                            className="flex items-center gap-3 px-8 py-3 rounded-2xl bg-(--main-color) text-black text-[12px] font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-98 transition-all cursor-pointer disabled:opacity-50 shadow-2xl shadow-(--main-color)/30"
+                            className="pointer-events-auto flex items-center gap-6 px-10 py-5 rounded-[40px] bg-white text-black shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all duration-500 group"
                         >
-                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={16} strokeWidth={4} />}
-                            {selectedCrate.inventory_ids && selectedCrate.inventory_ids.length > 0 ? 'UPDATE CONTENTS' : 'CONFIRM PACK'}
+                            <div className="flex flex-col items-start">
+                                <span className="text-[14px] font-black uppercase tracking-tighter leading-none">
+                                    {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} Units
+                                </span>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-black/40 mt-1">
+                                    {selectedItemIds.size} Unique SKU(s)
+                                </span>
+                            </div>
+                            <div className="w-px h-8 bg-black/10" />
+                            <div className="flex items-center gap-3">
+                                <span className="text-[12px] font-black uppercase tracking-[0.2em]">Confirm Pack</span>
+                                <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center transition-transform group-hover:rotate-12">
+                                    {isSaving ? <Loader2 size={14} className="animate-spin text-white" /> : <Package size={16} className="text-white" />}
+                                </div>
+                            </div>
                         </button>
                     </div>
                 )}
@@ -1302,10 +1170,11 @@ export const CratePackingManager: React.FC = () => {
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--main-color, #F97316); }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .mask-fade-right { mask-image: linear-gradient(to right, black 85%, transparent 100%); }
             `}</style>
         </div>
     );

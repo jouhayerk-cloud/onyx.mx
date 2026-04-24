@@ -1,6 +1,49 @@
 # Changelog
 # 
-## [1.68.6] - 2026-04-07
+## [1.79.0] - 2026-04-24
+### Added
+- **Multi-Window Independence [Desktop]**: Re-engineered state management to support multiple independent browser windows. Navigation, filters, and view-states now utilize `sessionStorage`, allowing side-by-side operation of different modules (e.g., Logistics and Finance) without interference.
+- **Modernized Crates Packing Module**: Completely overhauled the packing interface with a high-fidelity "containerless" design.
+- **Unified Image-Centric Intelligence Matrix**: Integrated all item metadata (Type, Size, Weight, and Barcodes) directly into high-fidelity image overlays for zero-clutter information retrieval.
+- **Vendor Color-Coded Identity**: Implemented dynamic color-coding for Tag IDs based on vendor palettes for instant visual sorting during batch operations.
+- **Zero-Container Aesthetic**: Removed all borders, rounding, and card frames for a sharp, "free-floating" professional interface.
+- **Floating HUD & FAB**: Integrated a glassmorphic `ActiveCrateHUD` for real-time volume metrics and a persistent Floating Action Button (FAB) for streamlined packing confirmation.
+- **Borderless Unit Picker**: Refactored crate selection into a vibrant, borderless unit grid with elastic hover effects and selection glows.
+
+### Refined
+- **Navigation Persistence**: Global settings (User, Theme, Language) remain shared across all windows, while UI-specific state is isolated per tab.
+- **Logistics UX**: Cleaned up legacy syntax errors and optimized touch targets for warehouse handheld devices.
+
+## [1.78.54] - 2026-04-13
+### Added
+- **PDF Presentation Suite**: Integrated a configurable export dialog allowing for custom PDF titles and layout choices.
+- **High-Fidelity Export Modes**: Users can now choose between a compact "Catalog Grid" or a "One Image per Page" format for professional inventory documentation.
+
+## [1.78.53] - 2026-04-13
+### Added
+- **Dashboard Analytics v2**: Implemented smart clustering for financial metrics and store-exclusion logic for more accurate procurement reporting.
+- **Automated Title Casing**: Enforced professional title casing across all dashboard labels and chart axes.
+
+## [1.78.52] - 2026-04-11
+### Added
+- **Inventory Selection Suite**: Launched "Batch Select" mode with single-click "Select All" and "Copy Tags" utilities, enabling rapid data extraction for external auditing.
+
+## [1.78.49] - 2026-04-11
+### Added
+- **Logistics Density Visualization**: Integrated real-time fill-level indicators for crates and pallets, providing visual feedback on warehouse throughput and storage efficiency.
+
+## [1.70.1] - 2026-04-20
+### Added
+- **Nexys Database Interface**: Modernized the low-level database management HUD with high-contrast UI elements and improved query responsiveness.
+
+## [1.70.0] - 2026-04-18
+### Added
+- **Control Center HUD**: Centralized administrative tools and RBAC (Role Based Access Control) refinements into a unified, glassmorphic management panel.
+
+## [1.69.0] - 2026-04-16
+### Added
+- **Store Interaction Suite**: Fully migrated store bag management to a high-performance interactive system with improved visibility and feedback during acquisition workflows.
+
 ### Added
 - **Cinematic Full-Width Parallax**: The primary artifact image in the Store module now spans edge-to-edge behind the frosted details panel, utilizing dynamic `vh` scrolling logic for immersive parallax scaling.
 - **Precision Keyboard Dismissals**: Fully integrated the `Escape` key to intelligently dismiss upper-layer modals, fullscreen viewers, and the details panel natively for desktop users.
