@@ -295,7 +295,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                     index: idx + 1,
                     vendorPrefix,
                     qty: item.qty,
-                    itemId: d.itemId || 'N/A',
+                    itemId: c.bookBarcode || d.itemId || 'N/A',
                     rowId: item.id,
                     name: `${d.shape || ''} ${d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE',
                     material: d.material || 'ONYX',
