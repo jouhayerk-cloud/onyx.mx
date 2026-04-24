@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import { atom } from 'jotai';
-import { atomWithStorage } from 'jotai/utils';
+import { atomWithStorage, createJSONStorage } from 'jotai/utils';
+const sessionJSONStorage = createJSONStorage<any>(() => sessionStorage);
 import { colors } from './consts';
 
 import {
@@ -98,10 +99,12 @@ export const IsLoadingAtom = atom(false);
 export const SelectedItemRowAtom = atomWithStorage<number | string | null>(
   'selectedItemRow',
   null,
+  sessionJSONStorage
 );
 export const SelectedItemDataAtom = atomWithStorage<InventoryItemData | null>(
   'selectedItemData',
   null,
+  sessionJSONStorage
 );
 
 export const isInventoryPanelOpenAtom = atom(true);
@@ -112,7 +115,7 @@ export const editedMaskPointsAtom = atom(
   null as { x: number; y: number }[] | null,
 );
 export const imageDimensionsAtom = atom({ width: 1, height: 1 });
-export const activeSubMenuAtom = atomWithStorage<string | null>('activeSubMenu', 'catalog');
+export const activeSubMenuAtom = atomWithStorage<string | null>('activeSubMenu', 'catalog', sessionJSONStorage);
 
 export const isEditingMaskAtom = atom(
   (get) => get(editingMaskIndexAtom) !== null,
@@ -152,23 +155,23 @@ export const batchActionItemsDataAtom = atom<InventoryItem[]>([]);
 export const isMarketMultiSelectModeAtom = atom(false);
 export const marketMultiSelectItemsAtom = atom<InventoryItem[]>([]);
 
-export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory');
+export const activeViewAtom = atomWithStorage<'create' | 'inventory' | 'logistics' | 'packing' | 'finance' | 'upload' | 'control' | 'dashboard' | 'overview' | 'store' | 'process' | 'viewer'>('activeView', 'inventory', sessionJSONStorage);
 export const createViewActiveTabAtom = atom<'new' | 'voice' | 'batch' | 'video' | 'videoBatch' | 'batchEntry'>('new');
-export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All');
-export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date');
-export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc');
-export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All');
+export const inventoryStatusFilterAtom = atomWithStorage<'All' | 'Partial' | 'Requested' | 'Paid' | 'Production' | 'Acquired' | 'New'>('inventoryStatusFilter', 'All', sessionJSONStorage);
+export const inventorySortKeyAtom = atomWithStorage<'Date' | 'Vendor' | 'Status' | 'Number' | 'Shape+Type' | 'Color+Material'>('inventorySortKey', 'Date', sessionJSONStorage);
+export const inventorySortOrderAtom = atomWithStorage<'asc' | 'desc'>('inventorySortOrder', 'desc', sessionJSONStorage);
+export const inventoryCategoryFilterAtom = atomWithStorage<string>('inventoryCategoryFilter', 'All', sessionJSONStorage);
 export const isInventoryCategoryFilterOpenAtom = atom<boolean>(false);
-export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All');
+export const inventoryMaterialFilterAtom = atomWithStorage<string>('inventoryMaterialFilter', 'All', sessionJSONStorage);
 export const isInventoryMaterialFilterOpenAtom = atom<boolean>(false);
 export const isInventorySortMenuOpenAtom = atom<boolean>(false);
-export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list');
+export const inventoryViewModeAtom = atomWithStorage<'grid' | 'list' | 'gallery'>('inventoryViewMode', 'list', sessionJSONStorage);
 export const showFinancialsAtom = atomWithStorage<boolean>('showFinancials', true);
-export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates');
-export const financeSubTabAtom = atomWithStorage<'payments' | 'tracking' | 'expenses'>('financeSubTab', 'payments');
+export const logisticsSubTabAtom = atomWithStorage<'crates' | 'packing' | 'shipping'>('logisticsSubTab', 'crates', sessionJSONStorage);
+export const financeSubTabAtom = atomWithStorage<'payments' | 'tracking' | 'expenses'>('financeSubTab', 'payments', sessionJSONStorage);
 export const isDashboardOpenAtom = atom(false);
 export const isCatalogViewOpenAtom = atom(false);
-export const catalogMarketViewModeAtom = atomWithStorage<'catalog' | 'market'>('catalogMarketViewMode', 'catalog');
+export const catalogMarketViewModeAtom = atomWithStorage<'catalog' | 'market'>('catalogMarketViewMode', 'catalog', sessionJSONStorage);
 export const isShippingOpenAtom = atom(false);
 export const marketActiveTabAtom = atom<'description' | 'images'>('images');
 
@@ -196,7 +199,7 @@ export const uploadItemDataAtom = atom<Partial<InventoryItemData> & {
 
 export const uploadCurrentStepAtom = atom<'media' | 'details' | 'review'>('media');
 
-export const dashboardActiveTabAtom = atomWithStorage<'acquisitions' | 'payments' | 'shipping'>('dashboardActiveTab', 'acquisitions');
+export const dashboardActiveTabAtom = atomWithStorage<'acquisitions' | 'payments' | 'shipping'>('dashboardActiveTab', 'acquisitions', sessionJSONStorage);
 export const acquisitionsVersionAtom = atom(0);
 export const paymentsVersionAtom = atom(0);
 export const withdrawalsVersionAtom = atom(0);
@@ -251,8 +254,8 @@ export const isDummyModeAtom = atom<boolean>(false);
 export const workbookVersionAtom = atom<'825' | '326'>('825');
 export const workbookSearchTermAtom = atom('');
 export const storeSearchTermAtom = atom('');
-export const storeActiveVendorFilterAtom = atomWithStorage<string>('storeActiveVendorFilter', 'All');
-export const storeViewModeAtom = atomWithStorage<'grid' | 'gallery' | 'list'>('storeViewMode', 'grid');
+export const storeActiveVendorFilterAtom = atomWithStorage<string>('storeActiveVendorFilter', 'All', sessionJSONStorage);
+export const storeViewModeAtom = atomWithStorage<'grid' | 'gallery' | 'list'>('storeViewMode', 'grid', sessionJSONStorage);
 export const storeVendorOptionsAtom = atom((get) => {
   const inventory = get(storeInventoryAtom);
   const detected = new Set<string>();
@@ -270,9 +273,9 @@ export const storeVendorOptionsAtom = atom((get) => {
 
 export const filtersPanelOpenAtom = atom<boolean>(false);
 export const workbookSelectedItemsAtom = atom<Set<string>>(new Set<string>());
-export const workbookActiveTabAtom = atomWithStorage<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('workbookActiveTab', 'inventory');
-export const workbookViewModeAtom = atomWithStorage<'table' | 'gallery' | 'kanban'>('workbookViewMode', 'table');
-export const workbookDensityAtom = atomWithStorage<'compact' | 'comfortable'>('workbookDensity', 'compact');
+export const workbookActiveTabAtom = atomWithStorage<'inventory' | 'archive' | 'finance' | 'production' | 'logistics' | 'database'>('workbookActiveTab', 'inventory', sessionJSONStorage);
+export const workbookViewModeAtom = atomWithStorage<'table' | 'gallery' | 'kanban'>('workbookViewMode', 'table', sessionJSONStorage);
+export const workbookDensityAtom = atomWithStorage<'compact' | 'comfortable'>('workbookDensity', 'compact', sessionJSONStorage);
 export const workbookMetricScopeAtom = atom<'all' | 'filtered'>('all');
 export const workbookAtom = atom(null as any);
 export const workbookActiveSheetAtom = atom<string>('');
@@ -331,18 +334,18 @@ export type Notification = {
 export const notificationsAtom = atom<Notification[]>([]);
 
 // Top-bar deployable panel states
-export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false);
-export const inventoryVendorFilterAtom = atomWithStorage<string>('inventoryVendorFilter', 'All');
-export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false);
-export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false);
+export const isInventoryVendorFilterOpenAtom = atomWithStorage<boolean>('invVendorFilter', false, sessionJSONStorage);
+export const inventoryVendorFilterAtom = atomWithStorage<string>('inventoryVendorFilter', 'All', sessionJSONStorage);
+export const isInventoryFiltersPanelOpenAtom = atomWithStorage<boolean>('invFiltersPanel', false, sessionJSONStorage);
+export const isInventoryStatusFilterOpenAtom = atomWithStorage<boolean>('invStatusFilter', false, sessionJSONStorage);
 export const isPaymentsSearchOpenAtom = atom<boolean>(false);
 export const isPaymentsDestFilterOpenAtom = atom<boolean>(false);
 export const isPaymentsDispFilterOpenAtom = atom<boolean>(false);
 export const isPaymentsAddPanelOpenAtom = atom<boolean>(false);
-export const isPaymentsDetailOpenAtom = atomWithStorage<boolean>('paymentsDetail', false);
+export const isPaymentsDetailOpenAtom = atomWithStorage<boolean>('paymentsDetail', false, sessionJSONStorage);
 export const paymentsSearchTermAtom = atom<string>('');
 export const isStoreBagOpenAtom = atom<boolean>(false);
-export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('controlPanel', 'users');
+export const controlPanelAtom = atomWithStorage<'users' | 'db' | 'store'>('controlPanel', 'users', sessionJSONStorage);
 export const TOP_BAR_SEARCH_ATOM = atom<string>('');
 
 // Process Module Atoms
@@ -386,7 +389,7 @@ export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({
 });
 
 // Viewer & Artifact Atoms
-export const viewerSearchQueryAtom = atomWithStorage<string>('viewerSearchQuery', '');
+export const viewerSearchQueryAtom = atomWithStorage<string>('viewerSearchQuery', '', sessionJSONStorage);
 export const tagIdAtom = atom<string | null, [string | null], void>(null, (get, set, update) => set(tagIdAtom, update));
 const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' => {
   if (typeof window === 'undefined') return 'app';
@@ -399,11 +402,11 @@ export const universalViewAtom = atom<'app' | 'tag' | 'viewer', ['app' | 'tag' |
 
 // Packing Module Atoms
 // Packing Module Atoms
-export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list');
-export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null);
-export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30');
-export const packingSortKeyAtom = atomWithStorage<'Date' | 'Status' | 'Vendor' | '#'>('packingSortKey', 'Date');
-export const packingSortOrderAtom = atomWithStorage<'asc' | 'desc'>('packingSortOrder', 'asc');
+export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list', sessionJSONStorage);
+export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null, sessionJSONStorage);
+export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30', sessionJSONStorage);
+export const packingSortKeyAtom = atomWithStorage<'Date' | 'Status' | 'Vendor' | '#'>('packingSortKey', 'Date', sessionJSONStorage);
+export const packingSortOrderAtom = atomWithStorage<'asc' | 'desc'>('packingSortOrder', 'asc', sessionJSONStorage);
 export const isPackingPrintWizardOpenAtom = atom<boolean>(false);
 export const packingExportPDFTriggerAtom = atom<number>(0);
 export const packingExportXLSXTriggerAtom = atom<number>(0);

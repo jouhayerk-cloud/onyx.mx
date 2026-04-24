@@ -285,8 +285,9 @@ const ViewerCard: React.FC<{ item: ResolvedArtifact; onOpenFull: (idx: number) =
 const ScannerCenter: React.FC<{
     initialMode?: 'qr' | 'nfc';
     onComplete: (ids: string[]) => void;
+    onStepCapture?: (allIds: string[]) => void;
     onClose: () => void;
-}> = ({ initialMode = 'qr', onComplete, onClose }) => {
+}> = ({ initialMode = 'qr', onComplete, onStepCapture, onClose }) => {
     const [mode, setMode] = useState<'qr' | 'nfc'>(initialMode);
     const [scannedIds, setScannedIds] = useState<string[]>([]);
     const [isScanning, setIsScanning] = useState(false);
@@ -324,9 +325,11 @@ const ScannerCenter: React.FC<{
             playBeep();
             setLastScan(tagId);
             setTimeout(() => setLastScan(null), 1500);
-            return [...prev, tagId];
+            const next = [...prev, tagId];
+            onStepCapture?.(next);
+            return next;
         });
-    }, []);
+    }, [onStepCapture]);
 
     useEffect(() => {
         let isMounted = true;
@@ -626,6 +629,11 @@ export const ViewerView: React.FC<{ onOpenArtifact?: (id: string) => void }> = (
                 <ScannerCenter 
                     initialMode={scannerMode}
                     onClose={() => setScannerMode(null)}
+                    onStepCapture={(ids) => {
+                        const newQuery = ids.join(' ');
+                        setQuery(newQuery);
+                        performSearch(newQuery);
+                    }}
                     onComplete={(ids) => {
                         const newQuery = ids.join(' ');
                         setQuery(newQuery);

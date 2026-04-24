@@ -15,6 +15,7 @@ import {
     FileSpreadsheet, FileJson, Maximize2, Send, Eye, Download, X, Edit, Printer, 
     Video, Hash, Copy, FileText, ArrowUpRight, Nfc, ChevronLeft, Zap, ShieldAlert
 } from 'lucide-react';
+import { NFCTagCard } from '../../components/LabelVisuals';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Barcode from 'react-barcode';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
@@ -150,56 +151,6 @@ const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: s
         exportedAt: new Date().toISOString(),
         templateData   // ← 'templateData' is the key importDesign() reads
     };
-};
-const NFCTagCard = ({ item }: { item: any }) => {
-    const { normData, codes } = item;
-    
-    // Format dimensions
-    const dims = [normData.lengthCm, normData.widthCm, normData.heightCm].filter(Boolean).join('*');
-    const dimsStr = dims ? `${dims} CM` : '';
-    
-    // Retail Tag (ACQ-Workbook-Retail)
-    const retailTag = `${codes.bookAqCode || '??'}-${codes.bookLandCode || '???????'}`;
-
-    return (
-        <div className="w-[400px] h-[250px] bg-white text-black p-4 flex flex-col relative font-sans shadow-2xl border border-black/10">
-            {/* Left Vertical text */}
-            <div className="absolute left-1 top-0 bottom-0 flex items-center justify-center">
-                <span className="text-[10px] font-black uppercase tracking-[0.6em] rotate-180 whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
-                    MADE IN MEXICO
-                </span>
-            </div>
-
-            <div className="flex-1 ml-8 flex flex-col">
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-2xl font-black tracking-tighter leading-none">{retailTag}</span>
-                        <span className="text-base font-bold leading-tight mt-1">{normData.shape} {normData.shortDescription}</span>
-                        <span className="text-base font-medium leading-tight">{normData.color} {normData.material}</span>
-                        <span className="text-base font-bold leading-tight mt-1">{dimsStr}</span>
-                    </div>
-                    <div className="shrink-0">
-                        <QRCodeSVG value={codes.bookBarcode} size={80} level="H" includeMargin={false} />
-                    </div>
-                </div>
-
-                <div className="mt-auto flex flex-col items-center">
-                    <div className="w-full flex justify-center">
-                        <Barcode 
-                            value={codes.bookBarcode} 
-                            format="CODE128" 
-                            width={1.5} 
-                            height={50} 
-                            displayValue={false} 
-                            margin={0}
-                            background="transparent"
-                        />
-                    </div>
-                    <span className="text-lg font-black tracking-[0.4em] uppercase mt-1">{codes.bookBarcode}</span>
-                </div>
-            </div>
-        </div>
-    );
 };
 
 /* ─── NFC Tag Writing Wizard ─── */
