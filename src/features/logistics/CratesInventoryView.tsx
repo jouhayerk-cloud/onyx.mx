@@ -314,7 +314,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 dynamicId,
                 crateId: crate.id,
                 crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm} cm`,
-                crateType: crate.type === 'cardboard' ? 'box' : crate.type,
+                crateType: (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'box' : crate.type,
                 fillPct,
                 exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
                 exportNotes: cfg.notes?.trim() || '',
@@ -474,7 +474,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                                 onStart={handleStartExport}
                                 progress={exportProgress}
                                 status={exportStatus}
-                                moduleName={crate.type === 'pallet' ? 'Pallet' : crate.type === 'cardboard' ? 'Box' : 'Crate'}
+                                moduleName={crate.type === 'pallet' ? 'Pallet' : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'Box' : 'Crate'}
                                 showBruteWeight={true}
                             />
                         </div>
