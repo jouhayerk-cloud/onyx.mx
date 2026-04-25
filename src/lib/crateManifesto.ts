@@ -201,7 +201,7 @@ export async function exportCrateManifesto(
             doc.setTextColor(...TEXT_LO);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.text(`${meta.crateType.toUpperCase()}: ${meta.crateId.toUpperCase()}  ·  Exported: ${meta.exportedAt}`, PW - MR, 18, { align: 'right' });
+            doc.text(`Exported: ${meta.exportedAt}`, PW - MR, 18, { align: 'right' });
 
             // Wireframe Icon
             try {
