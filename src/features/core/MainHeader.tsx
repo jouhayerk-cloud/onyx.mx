@@ -142,6 +142,7 @@ const iconToLucide: Record<string, React.FC<any>> = {
     'truck': Truck,
     'package': Package,
     'map-pin': MapPin,
+    'download': Download,
 };
 
 
@@ -498,9 +499,9 @@ const LogisticsBar: React.FC = () => {
     const [isPackingFiltersOpen, setIsPackingFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
 
     const tabs = [
-        { id: 'crates', label: 'CRATES', icon: 'truck' },
-        { id: 'packing', label: 'PACK', icon: 'package' },
-        { id: 'shipping', label: 'TRK', icon: 'map-pin' },
+        { id: 'crates', label: 'CRATES', icon: 'package' },
+        { id: 'packing', label: 'PACK', icon: 'download' },
+        { id: 'shipping', label: 'TRK', icon: 'truck' },
     ];
 
     return (
