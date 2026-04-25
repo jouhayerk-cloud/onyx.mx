@@ -777,7 +777,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         if (truckReadyTrigger > 0 && truckReadyTrigger !== prevTriggerRef.current) {
             prevTriggerRef.current = truckReadyTrigger;
             handleReadyTruck();
-        }\n    }, [truckReadyTrigger]);
+        }
+    }, [truckReadyTrigger]);
 
     // ── Draft handlers ──
     const handleSaveDraft = useCallback((name: string) => {
