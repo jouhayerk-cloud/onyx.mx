@@ -72,7 +72,7 @@ export function ActionPanel() {
         }).select().single();
 
         if (error) throw error;
-        
+
         console.log(`[Backend] Initial item created with ID ${data.id}.`);
         setSelectedItemRow(data.id);
         setSelectedItemData(data as any);
@@ -83,20 +83,17 @@ export function ActionPanel() {
         return;
       }
     }
-    
+
     console.log(`[AI Workflow] Step '${workflowStep}': Starting request.`);
-    const fullPromptText = `${
-      workflowStep === 'idle'
+    const fullPromptText = `${workflowStep === 'idle'
         ? `${t.detectAndTagPromptPrefix} ${prompt}`
         : `${t.generateMaskPromptPrefix} ${prompt}`
-    }${
-      negPrompt ? `. ${t.ignoreFollowing}: ${negPrompt}` : ''
-    }${
-      workflowStep === 'idle'
+      }${negPrompt ? `. ${t.ignoreFollowing}: ${negPrompt}` : ''
+      }${workflowStep === 'idle'
         ? t.detectAndTagPromptSuffix
         : t.generateMaskPromptSuffix
-    }`;
-    
+      }`;
+
     console.log('[AI Workflow] Full prompt being sent:', fullPromptText);
 
     try {
@@ -109,7 +106,7 @@ export function ActionPanel() {
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/png');
-      
+
       console.log(`[AI Workflow] Image prepared for API. Size: ${Math.round(dataUrl.length / 1024)} KB`);
 
       const imagePart = {
@@ -133,7 +130,7 @@ export function ActionPanel() {
 
       const jsonText = response.text.trim();
       console.log(`[AI Workflow] Received raw JSON response (${Math.round(jsonText.length / 1024)} KB).`);
-      
+
       const json = JSON.parse(jsonText);
 
       if (workflowStep === 'idle') {
@@ -162,8 +159,8 @@ export function ActionPanel() {
           const maskData = m.mask.startsWith('data:image')
             ? m.mask
             : `data:image/png;base64,${m.mask}`;
-          console.log(`[Mask Process #${index}] Base64 size: ${Math.round(maskData.length/1024)} KB`);
-          
+          console.log(`[Mask Process #${index}] Base64 size: ${Math.round(maskData.length / 1024)} KB`);
+
           const maskImage = await loadImage(maskData);
           const maskCanvas = document.createElement('canvas');
           maskCanvas.width = maskImage.width;
@@ -171,10 +168,10 @@ export function ActionPanel() {
           const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true })!;
           maskCtx.drawImage(maskImage, 0, 0);
           const imageData = maskCtx.getImageData(0, 0, maskImage.width, maskImage.height);
-          
+
           const contour = findContour(imageData);
           console.log(`[Mask Process #${index}] Found ${contour.length} contour points.`);
-          
+
           const simplified = simplifyContour(contour, 1.5);
           const path = createCurvePath(simplified);
 
@@ -190,7 +187,7 @@ export function ActionPanel() {
             points: simplified,
           };
         });
-        
+
         const masks: BoundingBoxMaskType[] = await Promise.all(masksPromises);
         console.log(`[AI Workflow] Successfully processed ${masks.length} masks into vector paths.`);
         setAllAnnotationData((prev) => ({ ...prev, masks }));
@@ -223,56 +220,56 @@ export function ActionPanel() {
 
   return (
     <div className="flex flex-col gap-3 h-full">
-        <h3 className="text-sm font-bold uppercase text-(--text-color-secondary)">
-          {`Image ${creationGalleryIndex + 1} - ${currentStep.title}`}
-        </h3>
-        <div className="flex flex-col gap-2 grow">
-          <textarea
-            className="w-full text-sm rounded-lg"
-            placeholder={
-              workflowStep === 'idle'
-                ? t.promptPlaceholderItems
-                : t.promptPlaceholderObjects
-            }
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-          <textarea
-            className="w-full text-xs rounded-lg"
-            placeholder={t.thingsToIgnore}
-            value={negPrompt}
-            onChange={(e) => setNegPrompt(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2 items-center">
-            <button
-                className="button bg-transparent! grow flex items-center justify-center gap-2"
-                onClick={handleSend}
-                disabled={isLoading}
-            >
-                <GeminiIcon />
-                {isLoading ? t.processing : currentStep.button}
-            </button>
-            <button
-                className="button secondary"
-                onClick={handleNextStep}
-                disabled={isLoading}
-            >
-                {workflowStep === 'processing' ? t.editMasks : t.skip}
-            </button>
-        </div>
-        {workflowStep === 'processing' && (
-             <button
-                className="button w-full"
-                onClick={() => {
-                  console.log('[App State] Workflow step changed: processing -> formReview');
-                  setWorkflowStep('formReview');
-                }}
-                disabled={isLoading}
-            >
-                {t.finishAndReview}
-            </button>
-        )}
+      <h3 className="text-sm font-bold uppercase text-(--text-color-secondary)">
+        {`Image ${creationGalleryIndex + 1} - ${currentStep.title}`}
+      </h3>
+      <div className="flex flex-col gap-2 grow">
+        <textarea
+          className="w-full text-sm rounded-lg"
+          placeholder={
+            workflowStep === 'idle'
+              ? t.promptPlaceholderItems
+              : t.promptPlaceholderObjects
+          }
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        <textarea
+          className="w-full text-xs rounded-lg"
+          placeholder={t.thingsToIgnore}
+          value={negPrompt}
+          onChange={(e) => setNegPrompt(e.target.value)}
+        />
+      </div>
+      <div className="flex gap-2 items-center">
+        <button
+          className="button bg-transparent! grow flex items-center justify-center gap-2"
+          onClick={handleSend}
+          disabled={isLoading}
+        >
+          <GeminiIcon />
+          {isLoading ? t.processing : currentStep.button}
+        </button>
+        <button
+          className="button secondary"
+          onClick={handleNextStep}
+          disabled={isLoading}
+        >
+          {workflowStep === 'processing' ? t.editMasks : t.skip}
+        </button>
+      </div>
+      {workflowStep === 'processing' && (
+        <button
+          className="button w-full"
+          onClick={() => {
+            console.log('[App State] Workflow step changed: processing -> formReview');
+            setWorkflowStep('formReview');
+          }}
+          disabled={isLoading}
+        >
+          {t.finishAndReview}
+        </button>
+      )}
     </div>
   );
 }
