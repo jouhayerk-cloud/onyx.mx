@@ -73,7 +73,9 @@ import {
     packingExportXLSXTriggerAtom,
     packingExportJSONTriggerAtom,
     isPackingFiltersOpenAtom,
-    isPackingNFCWizardOpenAtom
+    isPackingNFCWizardOpenAtom,
+    truckReadyTriggerAtom,
+    truckIsBusyAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -497,6 +499,8 @@ const LogisticsBar: React.FC = () => {
     const [search, setSearch] = useAtom(TOP_BAR_SEARCH_ATOM);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isPackingFiltersOpen, setIsPackingFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
+    const setTruckReady = useSetAtom(truckReadyTriggerAtom);
+    const truckBusy = useAtomValue(truckIsBusyAtom);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'package' },
@@ -533,6 +537,24 @@ const LogisticsBar: React.FC = () => {
                             >
                                 <Filter size={13} />
                                 Config
+                            </button>
+                        </>
+                    )}
+
+                    {subTab === 'shipping' && (
+                        <>
+                            <div className="w-px h-6 bg-white/5 mx-1" />
+                            <button
+                                onClick={() => setTruckReady(n => n + 1)}
+                                disabled={truckBusy}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-40"
+                                style={{ background: 'var(--main-color)', color: '#000' }}
+                                title="Ready Truck — sync manifest + export PDF &amp; CSV"
+                            >
+                                {truckBusy
+                                    ? <span className="w-3 h-3 border border-black/40 border-t-transparent rounded-full animate-spin" />
+                                    : <Truck size={13} />}
+                                <span>Ready Truck</span>
                             </button>
                         </>
                     )}

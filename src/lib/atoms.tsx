@@ -413,3 +413,7 @@ export const packingExportXLSXTriggerAtom = atom<number>(0);
 export const packingExportJSONTriggerAtom = atom<number>(0);
 export const isPackingFiltersOpenAtom = atom<boolean>(false);
 export const isPackingNFCWizardOpenAtom = atom<boolean>(false);
+
+// Trucking Module Atoms
+export const truckReadyTriggerAtom = atom<number>(0); // increment to fire Ready Truck workflow
+export const truckIsBusyAtom = atom<boolean>(false);  // true while handleReadyTruck is running
