@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom } from '../../lib/atoms';
@@ -419,6 +419,138 @@ const SideView: React.FC<{
     );
 };
 
+// ─── Draft Save / Load System ─────────────────────────────────────────────────
+const DRAFTS_KEY = 'onyx_truck_drafts';
+interface TruckDraft {
+    id: string;
+    name: string;
+    savedAt: number;
+    crateCount: number;
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+}
+function getDrafts(): TruckDraft[] {
+    try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]'); } catch { return []; }
+}
+function saveDraft(draft: TruckDraft) {
+    const existing = getDrafts().filter(d => d.id !== draft.id);
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify([draft, ...existing]));
+}
+function deleteDraft(id: string) {
+    localStorage.setItem(DRAFTS_KEY, JSON.stringify(getDrafts().filter(d => d.id !== id)));
+}
+
+// Save Draft Modal
+const SaveDraftModal: React.FC<{
+    crateCount: number;
+    onSave: (name: string) => void;
+    onClose: () => void;
+}> = ({ crateCount, onSave, onClose }) => {
+    const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}`);
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-5"
+                style={{ background: 'rgba(12,12,18,0.95)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Save Draft</h3>
+                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates loaded · positions preserved</p>
+                    </div>
+                    <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-white/40">Draft Name</label>
+                    <input
+                        autoFocus
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onSave(name.trim()); if (e.key === 'Escape') onClose(); }}
+                        className="w-full bg-white/8 border border-white/15 rounded-lg px-3 py-2.5 text-[13px] font-black text-white outline-none focus:border-white/40 transition-colors"
+                        placeholder="e.g. Monday AM Load"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-white/10 text-[10px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => name.trim() && onSave(name.trim())}
+                        disabled={!name.trim()}
+                        className="flex-2 flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40"
+                        style={{ background: 'var(--main-color)', color: '#000' }}
+                    >
+                        Save Draft
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Open Draft Modal
+const OpenDraftModal: React.FC<{
+    onLoad: (draft: TruckDraft) => void;
+    onClose: () => void;
+}> = ({ onLoad, onClose }) => {
+    const [drafts, setDrafts] = React.useState<TruckDraft[]>(getDrafts);
+    const handleDelete = (id: string) => { deleteDraft(id); setDrafts(getDrafts()); };
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
+                style={{ background: 'rgba(12,12,18,0.95)', maxHeight: '80vh' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+                    <div>
+                        <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Load Drafts</h3>
+                        <p className="text-[10px] text-white/40">{drafts.length} saved configurations</p>
+                    </div>
+                    <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
+                </div>
+                {/* List */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {drafts.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-white/20">
+                            <Truck size={32} strokeWidth={0.8} />
+                            <p className="text-[11px] font-black uppercase tracking-widest mt-3">No saved drafts</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col divide-y divide-white/5">
+                            {drafts.map(draft => (
+                                <div key={draft.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/3 transition-colors group">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[13px] font-black text-white truncate">{draft.name}</p>
+                                        <div className="flex items-center gap-3 mt-0.5">
+                                            <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
+                                            <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={() => handleDelete(draft.id)}
+                                            className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer"
+                                            title="Delete draft"
+                                        ><Trash2 size={13} /></button>
+                                        <button
+                                            onClick={() => { onLoad(draft); onClose(); }}
+                                            className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all"
+                                            style={{ background: 'var(--main-color)', color: '#000' }}
+                                        >Load</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const db = useDatabase();
@@ -432,6 +564,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [zoom, setZoom] = useState(1.0);
     const [viewMode, setViewMode] = useAtom(truckViewModeAtom);
     const [isCompact, setIsCompact] = useAtom(truckIsCompactAtom);
+    const [showSaveDraft, setShowSaveDraft] = useState(false);
+    const [showOpenDraft, setShowOpenDraft] = useState(false);
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -643,8 +777,26 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         if (truckReadyTrigger > 0 && truckReadyTrigger !== prevTriggerRef.current) {
             prevTriggerRef.current = truckReadyTrigger;
             handleReadyTruck();
-        }
-    }, [truckReadyTrigger]);
+        }\n    }, [truckReadyTrigger]);
+
+    // ── Draft handlers ──
+    const handleSaveDraft = useCallback((name: string) => {
+        const draft: TruckDraft = {
+            id: `draft_${Date.now()}`,
+            name,
+            savedAt: Date.now(),
+            crateCount: truckCrates.length,
+            positions: { ...positions },
+        };
+        saveDraft(draft);
+        setShowSaveDraft(false);
+        toast.success(`Draft "${name}" saved`);
+    }, [positions, truckCrates.length]);
+
+    const handleLoadDraft = useCallback((draft: TruckDraft) => {
+        setPositions(draft.positions as any);
+        toast.success(`Loaded draft "${draft.name}"`);
+    }, []);
 
     const canvasW = TRUCK_L_CM * BASE_SCALE;
     const canvasH = TRUCK_W_CM * BASE_SCALE;
@@ -757,6 +909,26 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
                         </div>
                         <div className="flex items-center gap-3">
+                            {/* Draft buttons */}
+                            <button
+                                onClick={() => setShowOpenDraft(true)}
+                                title="Open saved draft"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:border-white/25 transition-all cursor-pointer"
+                                style={{ background: 'rgba(255,255,255,0.04)' }}
+                            >
+                                <FolderOpen size={13} />
+                                Drafts
+                            </button>
+                            <button
+                                onClick={() => setShowSaveDraft(true)}
+                                disabled={truckCrates.length === 0}
+                                title="Save current load as draft"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all cursor-pointer disabled:opacity-30"
+                                style={{ background: 'rgba(255,255,255,0.04)' }}
+                            >
+                                <Save size={13} />
+                                Save
+                            </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
@@ -966,6 +1138,19 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
                 .custom-scrollbar::-webkit-scrollbar-corner { background: transparent; }
             `}</style>
+            {showSaveDraft && (
+                <SaveDraftModal
+                    crateCount={truckCrates.length}
+                    onSave={handleSaveDraft}
+                    onClose={() => setShowSaveDraft(false)}
+                />
+            )}
+            {showOpenDraft && (
+                <OpenDraftModal
+                    onLoad={handleLoadDraft}
+                    onClose={() => setShowOpenDraft(false)}
+                />
+            )}
         </div>
     );
 };
