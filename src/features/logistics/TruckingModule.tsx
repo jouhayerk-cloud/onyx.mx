@@ -450,8 +450,8 @@ function generateTrailerThumbnail(
     allCrates: any[],
     allInventory: any[]
 ): string {
-    const scale = 800 / TRUCK_L_CM;
-    const W = 800;
+    const W = 2400;
+    const scale = W / TRUCK_L_CM;
     const H = Math.round(TRUCK_W_CM * scale);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
