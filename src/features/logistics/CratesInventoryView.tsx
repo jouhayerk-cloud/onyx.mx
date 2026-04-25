@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2 } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -218,7 +218,7 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void; onDelete: (c: CrateRecord) => void }) => {
+const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeployedView = false, isPackedView = false }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void; onDelete: (c: CrateRecord) => void; isDeployedView?: boolean; isPackedView?: boolean }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
@@ -481,9 +481,21 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete }: { crate
                     )}
                     <button
                         onClick={() => onPack(crate)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white/5 border border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color) text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer ${crate.status === 'Packed' ? 'opacity-50 hover:opacity-100' : ''}`}
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer border ${
+                            isDeployedView
+                                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/60'
+                                : isPackedView
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/60'
+                                : 'bg-white/5 border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color)'
+                        }`}
                     >
-                        Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                        {isDeployedView ? (
+                            <><RotateCcw size={14} />Return to Packing</>
+                        ) : isPackedView ? (
+                            <><RotateCcw size={14} />Re-open &amp; Pack More</>
+                        ) : (
+                            <>Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></>
+                        )}
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(crate); }}
@@ -700,7 +712,7 @@ export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
     const [, setSubTab] = useAtom(logisticsSubTabAtom);
-    const [activeTab, setActiveTab] = useState<'empty' | 'packed'>('empty');
+    const [activeTab, setActiveTab] = useState<'empty' | 'packed' | 'deployed'>('empty');
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
@@ -765,11 +777,38 @@ export const CratesInventoryView: React.FC = () => {
         }
     };
 
+    const handleReturnToPacking = async (crate: CrateRecord) => {
+        const tid = toast.loading('Returning crate to packing state...');
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 800));
+                toast.success('Crate returned to Packed (Demo Mode)', { id: tid, icon: '🧪' });
+                handleRefresh();
+                return;
+            }
+            // Reset status to Packed so it re-appears in Packed Crates and can be re-loaded
+            const { error } = await supabase
+                .from('logistics')
+                .update({ status: 'Packed', description: null })
+                .eq('id', crate.id);
+            if (error) throw error;
+            if (db) {
+                const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                if (lDoc) await lDoc.patch({ status: 'Packed', description: null });
+            }
+            toast.success('Crate returned to Packed Crates', { id: tid });
+            handleRefresh();
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to reset crate', { id: tid });
+        }
+    };
+
     const filteredCrates = useMemo(() => {
         return crates.filter(c => {
-            const matchesTab = activeTab === 'empty'
-                ? c.status === 'Empty'
-                : (c.status === 'Packed' || c.status === 'Partial');
+            const matchesTab =
+                activeTab === 'empty'    ? c.status === 'Empty' :
+                activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') :
+                /* deployed */             (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
                 || c.id?.toLowerCase().includes(q)
@@ -822,13 +861,42 @@ export const CratesInventoryView: React.FC = () => {
 
     const summary = useMemo(() => ({
         empty: crates.filter(c => c.status === 'Empty').length,
-        packed: crates.filter(c => c.status === 'Packed').length,
-        partial: crates.filter(c => c.status === 'Partial').length,
+        packed: crates.filter(c => c.status === 'Packed' || c.status === 'Partial').length,
+        deployed: crates.filter(c => c.status === 'In Transit' || c.status === 'Deployed').length,
     }), [crates]);
 
+    // For empty/partial crates — just switch tab
     const handlePack = (crate: CrateRecord) => {
         toast.success(`Selected ${crate.type} ${crate.id.slice(0, 8).toUpperCase()} — switching to packing…`, { icon: '📦' });
         setSubTab('packing');
+    };
+
+    // For Packed crates — reset to Partial so the packing module can load them, then navigate
+    const handleReopenForPacking = async (crate: CrateRecord) => {
+        const tid = toast.loading('Re-opening crate for packing...');
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 600));
+                toast.success('Crate re-opened (Demo Mode)', { id: tid, icon: '🧪' });
+                setSubTab('packing');
+                return;
+            }
+            const { error } = await supabase
+                .from('logistics')
+                .update({ status: 'Partial' })
+                .eq('id', crate.id);
+            if (error) throw error;
+            if (db) {
+                const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                if (lDoc) await lDoc.patch({ status: 'Partial' });
+            }
+            toast.success('Crate re-opened — add more items in packing view', { id: tid });
+            handleRefresh();
+            // Short delay so RxDB reactive subscription propagates before tab switch
+            setTimeout(() => setSubTab('packing'), 300);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to re-open crate', { id: tid });
+        }
     };
 
     return (
@@ -842,8 +910,8 @@ export const CratesInventoryView: React.FC = () => {
                         <div className="flex items-center gap-5 mt-1">
                             {[
                                 { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
-                                { label: 'Partial', value: summary.partial, dot: 'bg-amber-400', color: 'text-amber-400' },
                                 { label: 'Packed', value: summary.packed, dot: 'bg-rose-400', color: 'text-rose-400' },
+                                { label: 'Deployed', value: summary.deployed, dot: 'bg-blue-400', color: 'text-blue-400' },
                             ].map(s => (
                                 <div key={s.label} className="flex items-center gap-1.5">
                                     <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
@@ -855,13 +923,26 @@ export const CratesInventoryView: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1 p-1 bg-white/5 border border-white/8 shrink-0">
-                        {[['empty', 'Empty Inventory'], ['packed', 'Packed Crates']].map(([val, label]) => (
+                        {[
+                            ['empty',    'Empty Inventory'],
+                            ['packed',   'Packed Crates'],
+                            ['deployed', 'Deployed'],
+                        ].map(([val, label]) => (
                             <button
                                 key={val}
                                 onClick={() => setActiveTab(val as any)}
-                                className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap ${activeTab === val ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}
+                                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap relative ${
+                                    activeTab === val
+                                        ? val === 'deployed' ? 'bg-blue-500 text-white' : 'bg-white text-black'
+                                        : 'text-white/40 hover:text-white'
+                                }`}
                             >
                                 {label}
+                                {val === 'deployed' && summary.deployed > 0 && activeTab !== 'deployed' && (
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-500 text-white text-[8px] font-black flex items-center justify-center">
+                                        {summary.deployed}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -898,8 +979,14 @@ export const CratesInventoryView: React.FC = () => {
                                     crate={crate} 
                                     allCrates={crates} 
                                     allInventory={allInventory} 
-                                    onPack={handlePack} 
+                                    onPack={
+                                        activeTab === 'deployed' ? handleReturnToPacking
+                                        : activeTab === 'packed'  ? handleReopenForPacking
+                                        : handlePack
+                                    }
                                     onDelete={handleDeleteCrate}
+                                    isDeployedView={activeTab === 'deployed'}
+                                    isPackedView={activeTab === 'packed'}
                                 />
                             ))}
                         </div>
@@ -918,6 +1005,8 @@ export const CratesInventoryView: React.FC = () => {
                                 <p className="text-[10px] font-black text-white/25 uppercase tracking-[0.3em] font-mono max-w-xs">
                                     {activeTab === 'empty'
                                         ? 'No empty units available. Create new storage to begin packing.'
+                                        : activeTab === 'deployed'
+                                        ? 'No deployed crates found. Crates appear here after Ready Truck is executed.'
                                         : 'No packed units yet. Select items in the packing flow.'}
                                 </p>
                             </div>
