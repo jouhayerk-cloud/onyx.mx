@@ -443,53 +443,48 @@ interface TruckloadFile {
     thumbnail?: string;
 }
 
-// ── Thumbnail generator — draws trailer map to a 600×150 canvas ──────────────
+// ── Thumbnail generator — draws exact trailer map without padding ─────────────
 function generateTrailerThumbnail(
     truckCrates: any[],
     positions: Record<string, { x: number; y: number; r: number; z?: number }>
 ): string {
-    const W = 600, H = 150;
+    const scale = 800 / TRUCK_L_CM;
+    const W = 800;
+    const H = Math.round(TRUCK_W_CM * scale);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    const trailerPxW = TRUCK_L_CM * BASE_SCALE;
-    const trailerPxH = TRUCK_W_CM * BASE_SCALE;
-    const scale = Math.min((W * 0.96) / trailerPxW, (H * 0.88) / trailerPxH);
-    const offX = (W - trailerPxW * scale) / 2;
-    const offY = (H - trailerPxH * scale) / 2;
-    // Dark background
-    ctx.fillStyle = '#08080f';
-    ctx.fillRect(0, 0, W, H);
-    // Trailer floor
+    
+    // Trailer floor (Dark background)
     ctx.fillStyle = '#13131e';
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    (ctx as any).roundRect(offX, offY, trailerPxW * scale, trailerPxH * scale, 3);
-    ctx.fill(); ctx.stroke();
+    ctx.fillRect(0, 0, W, H);
+    
     // Cab end marker
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(offX, offY, 6 * scale, trailerPxH * scale);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, 0, 6, H);
+    
     // Crates
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
-        const lenX = (crate.length_cm || 120) * BASE_SCALE;
-        const lenY = (crate.width_cm || 80) * BASE_SCALE;
+        const lenX = (crate.length_cm || 120) * scale;
+        const lenY = (crate.width_cm || 80) * scale;
         ctx.fillStyle = crate.color || '#6366f1';
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        (ctx as any).roundRect(offX + pos.x * scale, offY + pos.y * scale, lenX * scale, lenY * scale, 1.5);
+        (ctx as any).roundRect(pos.x * scale, pos.y * scale, lenX, lenY, 1.5);
         ctx.fill(); ctx.stroke();
     }
+    
     // Watermark
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
     ctx.font = 'bold 9px monospace';
-    ctx.fillText('ONYX · TRUCKLOAD', offX + 5, offY + H * 0.08 + 5);
-    return canvas.toDataURL('image/jpeg', 0.82);
+    ctx.fillText('ONYX · TRUCKLOAD', 10, H - 10);
+    
+    return canvas.toDataURL('image/jpeg', 0.85);
 }
 
 function getDrafts(): TruckDraft[] {
