@@ -119,9 +119,9 @@ export async function exportCrateManifesto(
 
     // Universal Safe Landscape: Fits inside both US Letter (279.4 width) and A4 (210 height)
     // This prevents ANY tiling on mobile AirPrint regardless of regional paper defaults.
-    const PW = 279.4;
-    const PH = 210;
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [PW, PH] });
+    const PW = 210;
+    const PH = 279.4;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PW, PH] });
     const ML = 10; // margin left
     const MR = 10; // margin right
     const MT = 10; // margin top for continuation pages
@@ -136,13 +136,13 @@ export async function exportCrateManifesto(
     const TEXT_MID: [number, number, number] = [70, 70, 70];
     const TEXT_LO : [number, number, number] = [150, 150, 150];
 
-    // ─── Column definitions (Restored to Landscape Widths) ───────────────────
+    // ─── Column definitions (Adjusted for Portrait Width) ───────────────────
     const TABLE_END = PW - MR;
     const COL_QR   = { x: ML,       w: 18  }; 
     const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 38  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 100 + (meta.excludeImages ? 18 : 0)  }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 50  }; 
+    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 35  }; 
+    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 65 + (meta.excludeImages ? 18 : 0)  }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 35  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
     const HDR_H = meta.excludeHeader ? 0 : 25;
@@ -289,7 +289,7 @@ export async function exportCrateManifesto(
 
         // Check for page break
         if (y + totalRowH > PH - FOOTER_H) {
-            doc.addPage([PW, PH], 'landscape');
+            doc.addPage([PW, PH], 'portrait');
             page++;
             y = MT;
             await drawPageChrome(page);
