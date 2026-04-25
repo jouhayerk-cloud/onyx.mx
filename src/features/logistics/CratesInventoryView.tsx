@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -218,7 +218,7 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void }) => {
+const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void; onDelete: (c: CrateRecord) => void }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
@@ -485,6 +485,13 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                     >
                         Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                     </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(crate); }}
+                        className="flex items-center justify-center w-12 h-12 bg-white/5 border border-white/8 hover:bg-rose-500/10 hover:border-rose-500/40 text-white/20 hover:text-rose-500 rounded-2xl transition-all duration-300 cursor-pointer"
+                        title="Delete Crate"
+                    >
+                        <Trash2 size={18} />
+                    </button>
                 </div>
             </div>
 
@@ -698,6 +705,7 @@ export const CratesInventoryView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const allInventory = useAtomValue(inventoryAtom);
+    const isDummyMode = useAtomValue(isDummyModeAtom);
 
     useEffect(() => {
         if (!db) return;
@@ -710,6 +718,52 @@ export const CratesInventoryView: React.FC = () => {
     }, [db]);
 
     const handleRefresh = () => setCratesVersion(v => v + 1);
+
+    const handleDeleteCrate = async (crate: CrateRecord) => {
+        if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE this ${crate.type}? This action cannot be undone.`)) return;
+
+        const tid = toast.loading(`Deleting ${crate.type}...`);
+
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1000));
+                toast.success("Crate deleted (Demo Mode)", { id: tid, icon: '🧪' });
+                handleRefresh();
+                return;
+            }
+
+            // 1. If it has items, release them first (update inventory crate_id to null)
+            if (crate.inventory_ids) {
+                const itemIds = crate.inventory_ids.split(',').filter(Boolean).map(entry => entry.split(':')[0]);
+                if (itemIds.length > 0) {
+                    await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
+                    if (db) {
+                        for (const id of itemIds) {
+                            try {
+                                const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
+                                if (lDoc) await lDoc.patch({ crate_id: null });
+                            } catch (_) {}
+                        }
+                    }
+                }
+            }
+
+            // 2. Delete from Supabase
+            const { error: delErr } = await supabase.from('logistics').delete().eq('id', crate.id);
+            if (delErr) throw delErr;
+
+            // 3. Delete from RxDB
+            if (db) {
+                const localCrate = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                if (localCrate) await localCrate.remove();
+            }
+
+            toast.success("Crate permanently deleted", { id: tid });
+            handleRefresh();
+        } catch (err: any) {
+            toast.error(err.message || 'Delete failed.', { id: tid });
+        }
+    };
 
     const filteredCrates = useMemo(() => {
         return crates.filter(c => {
@@ -839,7 +893,14 @@ export const CratesInventoryView: React.FC = () => {
                     {displayCrates.length > 0 ? (
                         <div className="flex flex-col gap-4 content-start">
                             {displayCrates.map(crate => (
-                                <CrateCard key={crate.id} crate={crate} allCrates={crates} allInventory={allInventory} onPack={handlePack} />
+                                <CrateCard 
+                                    key={crate.id} 
+                                    crate={crate} 
+                                    allCrates={crates} 
+                                    allInventory={allInventory} 
+                                    onPack={handlePack} 
+                                    onDelete={handleDeleteCrate}
+                                />
                             ))}
                         </div>
                     ) : (

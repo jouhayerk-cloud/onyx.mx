@@ -220,19 +220,18 @@ const ActiveCrateHUD: React.FC<{
     onClear: () => void;
     onPack: () => void;
     onUnpack: () => void;
+    onDelete: () => void;
     isSaving: boolean;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onPack, onUnpack, isSaving }) => {
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onPack, onUnpack, onDelete, isSaving }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
             if (!inv) return [];
             const norm = normalizeInventoryData(inv.data);
-            const calc = calculateCodesAndPrices(norm, exchangeRate, '326');
             const qty = selectedQtys[id] ?? 1;
-            const netVol     = itemNetCm3(norm) * qty;
             const paddedVol  = getItemPaddedVolume(inv.data, qty);
             const weight     = (Number(norm.weightKg) || 0) * qty;
-            return [{ id, norm, calc, qty, netVol, paddedVol, weight }];
+            return [{ id, norm, qty, paddedVol, weight }];
         })
     , [selectedItemIds, selectedQtys, allInventory, exchangeRate]);
 
@@ -251,56 +250,72 @@ const ActiveCrateHUD: React.FC<{
     const pendingPaddedVol = selectedItems.reduce((s, i) => s + i.paddedVol, 0);
     const totalUsedPaddedVol = alreadyPackedPaddedVol + pendingPaddedVol;
     const fillPct = internalCrateCm3 > 0 ? clampN(totalUsedPaddedVol / internalCrateCm3 * 100, 0, 100) : 0;
-    const barColor = fillBarColor(fillPct);
 
     const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
-    const totalWeight = selectedItems.reduce((s, i) => s + i.weight, 0);
 
     return (
-        <div className="w-full bg-black border-b border-white/5 py-4 sm:py-8 px-4 sm:px-12 lg:px-20 sticky top-0 z-50">
-            <div className="flex flex-row items-center justify-between gap-4 sm:gap-8">
-                {/* Visual Identity */}
-                <div className="flex items-center gap-6 sm:gap-10">
-                    <div className="shrink-0 relative group scale-90 sm:scale-125 origin-left">
-                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={80} vibrant />
+        <div className="w-full bg-black/90 backdrop-blur-xl border-b border-white/10 py-3 px-6 sm:px-12 sticky top-0 z-50 shadow-2xl">
+            <div className="w-full flex items-center justify-between gap-4">
+                {/* Left: Crate Info */}
+                <div className="flex items-center gap-6">
+                    <div className="shrink-0 scale-75 origin-left">
+                        <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={60} vibrant />
                     </div>
                     <div className="flex flex-col">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">{crate.type}</span>
-                            <div className={`w-1.5 h-1.5 rounded-full ${statusDot(crate.status)}`} />
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                                {fmtDims(crate)}
+                                <span className="text-[10px] text-white/30 uppercase tracking-widest font-black ml-2">cm</span>
+                            </h2>
+                            <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-black uppercase tracking-widest text-white/40">
+                                {crate.type}
+                            </span>
                         </div>
-                        <h2 className="text-2xl sm:text-5xl font-black text-white tracking-tighter leading-none flex items-baseline gap-1">
-                            {fmtDims(crate)}
-                            <span className="text-[10px] sm:text-[14px] text-white/20 uppercase tracking-widest font-black ml-2">cm</span>
-                        </h2>
-                        <div className="flex items-center gap-6 mt-4">
-                            <button onClick={onClear} className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-white transition-colors flex items-center gap-2 group">
-                                <X size={12} className="opacity-40 group-hover:opacity-100 group-hover:rotate-90 transition-all" />
-                                Release
+                        <div className="flex items-center gap-3 mt-2">
+                            <button 
+                                onClick={onClear} 
+                                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all flex items-center gap-2 group shadow-lg"
+                            >
+                                <X size={14} className="group-hover:rotate-90 transition-transform" />
+                                Release Unit
                             </button>
                             {crate.inventory_ids && (
-                                <button onClick={onUnpack} disabled={isSaving} className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 hover:text-amber-400 transition-colors flex items-center gap-2 group">
-                                    <Trash2 size={12} className="opacity-40 group-hover:opacity-100 group-hover:-translate-y-0.5 transition-all" />
-                                    Unpack
+                                <button 
+                                    onClick={onUnpack} 
+                                    disabled={isSaving} 
+                                    className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest text-rose-400 hover:text-rose-300 transition-all flex items-center gap-2 group shadow-lg"
+                                >
+                                    <Trash2 size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                                    Unpack All
                                 </button>
                             )}
+                            <button 
+                                onClick={onDelete} 
+                                disabled={isSaving} 
+                                className="px-4 py-2 bg-white/5 hover:bg-rose-600 border border-white/10 hover:border-rose-600 rounded-lg text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-all flex items-center gap-2 group shadow-lg"
+                            >
+                                <Trash2 size={14} className="opacity-40 group-hover:opacity-100" />
+                                Delete Crate
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Performance Matrix */}
-                <div className="flex items-center gap-8 sm:gap-20">
+                {/* Right: Metrics */}
+                <div className="flex items-center gap-10 sm:gap-16">
                     <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">Fill Level</span>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-3xl sm:text-6xl font-black tabular-nums tracking-tighter text-(--main-color)">
+                            <span className="text-2xl sm:text-3xl font-black tabular-nums tracking-tighter text-(--main-color)">
                                 {fillPct.toFixed(0)}
                             </span>
-                            <span className="text-lg sm:text-2xl font-black text-(--main-color)/40">%</span>
+                            <span className="text-xs font-black text-(--main-color)/40">%</span>
                         </div>
                     </div>
 
                     <div className="flex flex-col items-end">
-                        <span className="text-3xl sm:text-6xl font-black text-white tabular-nums tracking-tighter">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">Units Staged</span>
+                        <span className="text-2xl sm:text-3xl font-black text-white tabular-nums tracking-tighter">
                             {totalQty}
                         </span>
                     </div>
@@ -407,15 +422,7 @@ const PackingInventoryRow: React.FC<{
     const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
-    const mediaUrls = useMemo(() => {
-        const raw = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-        const main = norm.generatedPngUrl || (raw.length > 0 ? raw[0] : null);
-        return [main, ...raw.filter(u => u !== main)].filter(Boolean) as string[];
-    }, [norm.mediaUrls, norm.generatedPngUrl]);
-
-    const rawImageUrl = mediaUrls[0] || null;
-    const imageUrl = getCleanImageUrl(rawImageUrl);
-    const isVideo = rawImageUrl ? isVideoFile(rawImageUrl) : false;
+    const imageUrl = getCleanImageUrl(norm.generatedPngUrl || (norm.mediaUrls ? String(norm.mediaUrls).split(',')[0] : null));
 
     const itemQuantity = Number(norm.quantity || 1);
     const availableForThisCrate = Math.max(0, itemQuantity - (totalPackedQty - packedQtyInCurrentCrate));
@@ -426,119 +433,94 @@ const PackingInventoryRow: React.FC<{
 
     return (
         <div 
-            className={`group relative flex flex-col gap-6 py-10 border-b border-white/5 last:border-0 transition-all duration-700 ${
-                isSelected ? 'bg-white/[0.02]' : ''
+            className={`group relative flex flex-col gap-2 p-3 sm:p-5 border-b border-white/5 transition-all duration-300 ${
+                isSelected ? 'bg-(--main-color)/5 border-(--main-color)/20' : 'hover:bg-white/[0.02]'
             }`}
         >
-            {/* Unified Visual Matrix Tier */}
-            <div className="flex items-start gap-8">
-                <div className="relative flex-1 max-w-2xl">
-                    <div className="relative aspect-square overflow-hidden bg-black/40 transition-all duration-700 group-hover:shadow-[0_0_60px_rgba(var(--main-color-rgb),0.15)]">
-                        {imageUrl ? (
-                            <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-1000 ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`} />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo className="w-24 h-24" /></div>
-                        )}
-                        
-                        {/* Integrated Selection Button */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); !fullyPacked && onToggle(); }}
-                            className={`absolute bottom-6 right-6 w-14 h-14 flex items-center justify-center transition-all z-30 ${
-                                fullyPacked
-                                    ? 'opacity-0 pointer-events-none'
-                                    : isSelected
-                                        ? 'bg-(--main-color) text-black shadow-[0_0_30px_rgba(var(--main-color-rgb),0.6)]'
-                                        : 'bg-black/60 backdrop-blur-xl border border-white/20 text-white/40 hover:text-white hover:border-white/40'
-                            }`}
-                        >
-                            {isSelected ? <Check size={28} strokeWidth={4} /> : <Plus size={28} />}
-                        </button>
+            <div className="flex items-center gap-4 sm:gap-6">
+                {/* Compact Image Viewer */}
+                <div className="relative shrink-0 w-20 h-20 sm:w-28 sm:h-28 overflow-hidden bg-black/40 rounded shadow-lg">
+                    {imageUrl ? (
+                        <img src={imageUrl} className={`w-full h-full object-cover transition-transform duration-500 ${isSelected ? 'scale-110' : 'group-hover:scale-105'}`} />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center opacity-10"><OnyxMiniLogo className="w-10 h-10" /></div>
+                    )}
+                    
+                    {/* Tiny Selection Overlay */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); !fullyPacked && onToggle(); }}
+                        className={`absolute inset-0 flex items-center justify-center transition-all z-30 ${
+                            fullyPacked ? 'bg-black/60 cursor-not-allowed' : 'opacity-0 group-hover:opacity-100 hover:bg-black/40'
+                        }`}
+                    >
+                        {!fullyPacked && (isSelected ? <CheckCircle2 className="text-(--main-color)" size={32} /> : <Plus className="text-white" size={32} />)}
+                        {fullyPacked && <span className="text-[8px] font-black uppercase tracking-widest text-white/40">FULL</span>}
+                    </button>
+                </div>
 
-                        {/* Top Metadata Layer */}
-                        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-20">
-                            <div className="flex flex-col gap-1">
-                                <span 
-                                    className="px-3 py-1 text-black text-[10px] font-black uppercase tracking-widest shadow-xl"
-                                    style={{ backgroundColor: vendorColor }}
-                                >
-                                    {calculated.bookBarcode}
-                                </span>
-                                <span className="px-3 py-1 bg-black/80 backdrop-blur-md text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">
-                                    {vendorPrefix || 'UNKNOWN VENDOR'}
-                                </span>
-                            </div>
-                            
-                            <div className={`px-4 py-2 bg-black/80 backdrop-blur-xl border border-white/10 text-[11px] font-black uppercase tracking-widest ${fullyPacked ? 'text-white/20' : 'text-emerald-400'}`}>
-                                {availableForThisCrate}/{itemQuantity}
-                            </div>
-                        </div>
+                {/* Core Metadata */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="px-1.5 py-0.5 text-[8px] font-black text-black uppercase tracking-widest" style={{ backgroundColor: vendorColor }}>
+                            {calculated.bookBarcode}
+                        </span>
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">
+                            {vendorPrefix}
+                        </span>
+                    </div>
+                    
+                    <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-tight truncate mb-1">
+                        {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled')}
+                    </h3>
 
-                        {/* Bottom Information Matrix Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-8 bg-linear-to-t from-black/95 via-black/80 to-transparent z-10">
-                            <div className="flex flex-col gap-4">
-                                <h3 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tighter leading-none max-w-[80%]">
-                                    {(norm.shape || '') + ' ' + (norm.shortDescription || norm.description || 'Untitled Item')}
-                                </h3>
-                                
-                                <div className="flex flex-wrap items-center gap-x-10 gap-y-2 text-[10px] font-black uppercase tracking-[0.4em] text-white/30">
-                                    <div className="flex items-center gap-2">
-                                        <span className="opacity-40 text-emerald-500/50">SIZE:</span>
-                                        <span className="text-white/60">{dimsCm ? `${dimsCm} CM` : 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="opacity-40 text-emerald-500/50">WGT:</span>
-                                        <span className="text-white/60">{weightKg ? `${weightKg} KG` : 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-white/30">
+                        <span className="flex items-center gap-1.5">
+                            <span className="text-emerald-500/50">DIMS</span>
+                            <span className="text-white/60">{dimsCm || '—'}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="text-emerald-500/50">QTY</span>
+                            <span className={fullyPacked ? 'text-rose-500' : 'text-emerald-400'}>{availableForThisCrate}/{itemQuantity}</span>
+                        </span>
                     </div>
                 </div>
 
-                {/* Desktop Quantity Controls */}
-                <div className="hidden sm:flex flex-col items-end gap-6 pt-10 shrink-0">
-                     {isSelected && !fullyPacked && (
-                        <div className="flex flex-col items-center gap-4 bg-black/40 backdrop-blur-xl p-4 border border-white/5">
+                {/* Right Actions: Quantity & Expand */}
+                <div className="flex items-center gap-4 sm:gap-8">
+                    {isSelected && !fullyPacked && (
+                        <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded overflow-hidden">
                             <button
                                 onClick={e => { e.stopPropagation(); onQtyChange(Math.max(1, selectedQty - 1)); }}
-                                className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-white transition-all border border-white/10"
+                                className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all"
                             >
-                                <Minus size={24} />
+                                <Minus size={14} />
                             </button>
-                            <span className="text-3xl font-black text-white font-mono w-16 text-center">{selectedQty}</span>
+                            <span className="text-sm font-black text-white font-mono min-w-[20px] text-center">{selectedQty}</span>
                             <button
                                 onClick={e => { e.stopPropagation(); onQtyChange(Math.min(availableForThisCrate, selectedQty + 1)); }}
-                                className="w-12 h-12 flex items-center justify-center text-white/20 hover:text-(--main-color) transition-all border border-white/10"
+                                className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-(--main-color) hover:bg-white/5 transition-all"
                             >
-                                <Plus size={24} />
+                                <Plus size={14} />
                             </button>
                         </div>
                     )}
+
+                    <button
+                        onClick={e => { e.stopPropagation(); onToggleExpand(); }}
+                        className={`w-10 h-10 flex items-center justify-center transition-all ${
+                            isExpanded ? 'text-(--main-color)' : 'text-white/10 hover:text-white'
+                        }`}
+                    >
+                        <Maximize2 size={18} className={`transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
                 </div>
             </div>
 
-            {/* Expansion Logic */}
-            <div className="flex flex-col gap-8">
-                <button
-                    onClick={e => { e.stopPropagation(); onToggleExpand(); }}
-                    className={`w-14 h-14 transition-all flex items-center justify-center ${
-                        isExpanded ? 'text-(--main-color)' : 'text-white/10 hover:text-white'
-                    }`}
-                >
-                    <Maximize2 size={28} className={`transition-transform duration-700 ${isExpanded ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isExpanded && (
-                    <div className="w-full max-w-3xl animate-in fade-in duration-700 pt-4">
-                        <div className="relative group/label transform-gpu transition-all duration-700">
-                            <div className="absolute inset-0 bg-(--main-color)/5 blur-[100px] opacity-40" />
-                            <div className="drop-shadow-[0_60px_120px_rgba(0,0,0,0.9)]">
-                                <NFCTagCard item={{ normData: norm, codes: calculated }} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            {isExpanded && (
+                <div className="w-full max-w-2xl animate-in slide-in-from-top-2 duration-300 pt-2 pl-4 border-l border-white/5 ml-10 sm:ml-14">
+                    <NFCTagCard item={{ normData: norm, codes: calculated }} />
+                </div>
+            )}
         </div>
     );
 };
@@ -680,8 +662,21 @@ export const CratePackingManager: React.FC = () => {
             if (totalPacked >= totalQty && !isInCurrentCrate) return false;
 
             const vendorId = d.vendor_id || d.vendorId || (d.itemId || '').split('-')[0];
-            const vendorMatch = vendorFilter === 'All' || vendorId === vendorFilter;
+            
+            // Fix: Handle null/undefined vendorFilter correctly
+            const isAllMode = !vendorFilter || vendorFilter === 'All';
+            const vendorMatch = isAllMode || vendorId === vendorFilter;
+            
             if (!vendorMatch) return false;
+
+            // If in "All Vendors" mode, the user specifically requested "all unpacked items"
+            // We interpret this as prioritizing items that have NO units packed yet if in All mode
+            // and search is empty. Otherwise, we show all available items.
+            if (isAllMode && !search && totalPacked > 0 && !isInCurrentCrate) {
+                // Optional: We could hide partially packed items in "All Vendors" view to focus on backlog
+                // But it's safer to just keep them. Let's see if we can just sort them lower.
+            }
+
             if (search) {
                 const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
                 const fields = [
@@ -698,10 +693,19 @@ export const CratePackingManager: React.FC = () => {
             return true;
         });
 
-        // Sorting logic
+        // Sorting logic - Priority to unpacked items when in All Vendors mode
         items.sort((a, b) => {
+            if (!vendorFilter || vendorFilter === 'All') {
+                const totalPackedA = getTotalPackedForItem(String(a.row), crates);
+                const totalPackedB = getTotalPackedForItem(String(b.row), crates);
+                // Unpacked items (totalPacked === 0) come first
+                if (totalPackedA === 0 && totalPackedB > 0) return -1;
+                if (totalPackedA > 0 && totalPackedB === 0) return 1;
+            }
+
             let valA: any = '';
             let valB: any = '';
+            // ... rest of sorting stays the same
 
             switch (sortBy) {
                 case 'Date':
@@ -897,8 +901,58 @@ export const CratePackingManager: React.FC = () => {
             setSelectedItemIds(new Set());
             setSelectedQtys({});
             setCratesVersion(v => v + 1);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteCrate = async () => {
+        if (!selectedCrate) return;
+        if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE this ${selectedCrate.type}? This action cannot be undone.`)) return;
+
+        setIsSaving(true);
+        const tid = toast.loading(`Deleting ${selectedCrate.type}...`);
+
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1500));
+                toast.success("Crate deleted (Demo Mode)", { id: tid, icon: '🧪' });
+                handleSelectCrate(null);
+                setCratesVersion(v => v + 1);
+                setIsSaving(false);
+                return;
+            }
+
+            // 1. If it has items, release them first (update inventory crate_id to null)
+            const currentIds = parseInventoryIds(selectedCrate.inventory_ids);
+            if (currentIds.size > 0) {
+                const itemIds = Array.from(currentIds.keys());
+                await supabase.from('inventory').update({ crate_id: null }).in('id', itemIds);
+                if (db) {
+                    for (const id of itemIds) {
+                        try {
+                            const lDoc = await db.inventory.findOne({ selector: { id } }).exec();
+                            if (lDoc) await lDoc.patch({ crate_id: null });
+                        } catch (_) {}
+                    }
+                }
+            }
+
+            // 2. Delete from Supabase
+            const { error: delErr } = await supabase.from('logistics').delete().eq('id', selectedCrate.id);
+            if (delErr) throw delErr;
+
+            // 3. Delete from RxDB
+            if (db) {
+                const localCrate = await db.logistics.findOne({ selector: { id: selectedCrate.id } }).exec();
+                if (localCrate) await localCrate.remove();
+            }
+
+            toast.success("Crate permanently deleted", { id: tid });
+            handleSelectCrate(null);
+            setCratesVersion(v => v + 1);
         } catch (err: any) {
-            toast.error(err.message || 'Unpack failed.', { id: tid });
+            toast.error(err.message || 'Delete failed.', { id: tid });
         } finally {
             setIsSaving(false);
         }
@@ -924,6 +978,7 @@ export const CratePackingManager: React.FC = () => {
                         onClear={() => handleSelectCrate(null)}
                         onPack={handlePackItems}
                         onUnpack={handleUnpackAll}
+                        onDelete={handleDeleteCrate}
                         isSaving={isSaving}
                     />
                 ) : (
@@ -953,8 +1008,8 @@ export const CratePackingManager: React.FC = () => {
 
                         {/* Free-Floating Grid Section - FULL SCROLLABILITY */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-32 sm:px-10">
-                            <div className="max-w-7xl mx-auto">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-10">
+                            <div className="w-full">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 sm:gap-10">
                                     {activeCrates.length === 0 ? (
                                         <div className="flex flex-col items-center gap-6 py-24 opacity-20 col-span-full justify-center">
                                             <Inbox size={48} strokeWidth={0.5} />
@@ -1017,10 +1072,10 @@ export const CratePackingManager: React.FC = () => {
             </div>
 
             {/* ── Main Area: Inventory List ── */}
-            <div className={`flex-1 flex flex-col min-w-0 min-h-0 relative ${!selectedCrate ? 'hidden' : ''}`}>
+            <div className={`flex-1 flex flex-col min-w-0 min-h-0 relative overflow-y-auto custom-scrollbar ${!selectedCrate ? 'hidden' : ''}`}>
                 {/* INDUSTRIAL CONFIG DRAWER - Stick to top of list area */}
                 <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="max-w-7xl mx-auto px-8 py-10">
+                    <div className="w-full px-8 py-10">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             <div className="flex flex-col gap-6">
                                 <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Source Vendor Identity</span>
@@ -1106,8 +1161,8 @@ export const CratePackingManager: React.FC = () => {
                                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center justify-between mb-12 px-6">
+                            <div className="flex flex-col gap-4 w-full">
+                                <div className="flex items-center justify-between mb-8 px-6 pt-8">
                                     <div className="flex items-center gap-10">
                                         <div className="flex flex-col gap-1">
                                             <h4 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter leading-none">
@@ -1167,33 +1222,34 @@ export const CratePackingManager: React.FC = () => {
                             </div>
                         )}
 
-                {/* FAB */}
-                {selectedCrate && selectedItemIds.size > 0 && (
-                    <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-none px-6 z-50">
-                        <button
-                            onClick={handlePackItems}
-                            disabled={isSaving}
-                            className="pointer-events-auto flex items-center gap-6 px-10 py-5 rounded-[40px] bg-white text-black shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all duration-500 group"
-                        >
-                            <div className="flex flex-col items-start">
-                                <span className="text-[14px] font-black uppercase tracking-tighter leading-none">
-                                    {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} Units
-                                </span>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-black/40 mt-1">
-                                    {selectedItemIds.size} Unique SKU(s)
-                                </span>
-                            </div>
-                            <div className="w-px h-8 bg-black/10" />
-                            <div className="flex items-center gap-3">
-                                <span className="text-[12px] font-black uppercase tracking-[0.2em]">Confirm Pack</span>
-                                <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center transition-transform group-hover:rotate-12">
-                                    {isSaving ? <Loader2 size={14} className="animate-spin text-white" /> : <Package size={16} className="text-white" />}
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                )}
             </div>
+
+            {/* FAB - Fixed to bottom of the entire view */}
+            {selectedCrate && selectedItemIds.size > 0 && (
+                <div className="fixed bottom-10 left-0 right-0 sm:left-auto sm:right-12 flex justify-center pointer-events-none px-6 z-[100]">
+                    <button
+                        onClick={handlePackItems}
+                        disabled={isSaving}
+                        className="pointer-events-auto flex items-center gap-6 px-10 py-5 rounded-[40px] bg-white text-black shadow-[0_30px_60px_rgba(0,0,0,0.5)] hover:scale-105 active:scale-95 transition-all duration-500 group"
+                    >
+                        <div className="flex flex-col items-start">
+                            <span className="text-[14px] font-black uppercase tracking-tighter leading-none">
+                                {Array.from(selectedItemIds).reduce((s, id) => s + (selectedQtys[id] ?? 1), 0)} Units
+                            </span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-black/40 mt-1">
+                                {selectedItemIds.size} Unique SKU(s)
+                            </span>
+                        </div>
+                        <div className="w-px h-8 bg-black/10" />
+                        <div className="flex items-center gap-3">
+                            <span className="text-[12px] font-black uppercase tracking-[0.2em]">Confirm Pack</span>
+                            <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center transition-transform group-hover:rotate-12">
+                                {isSaving ? <Loader2 size={14} className="animate-spin text-white" /> : <Package size={16} className="text-white" />}
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            )}
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
