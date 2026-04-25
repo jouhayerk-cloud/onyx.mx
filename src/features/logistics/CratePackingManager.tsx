@@ -913,7 +913,7 @@ export const CratePackingManager: React.FC = () => {
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-black/95">
             {/* ─── Top Panel: Floating HUD / Unit Picker ─── */}
-            <div className="shrink-0 flex flex-col min-h-0">
+            <div className={`flex flex-col min-h-0 ${selectedCrate ? 'shrink-0' : 'flex-1'}`}>
                 {selectedCrate ? (
                     <ActiveCrateHUD
                         crate={selectedCrate}
@@ -1017,7 +1017,7 @@ export const CratePackingManager: React.FC = () => {
             </div>
 
             {/* ── Main Area: Inventory List ── */}
-            <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
+            <div className={`flex-1 flex flex-col min-w-0 min-h-0 relative ${!selectedCrate ? 'hidden' : ''}`}>
                 {/* INDUSTRIAL CONFIG DRAWER - Stick to top of list area */}
                 <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="max-w-7xl mx-auto px-8 py-10">
