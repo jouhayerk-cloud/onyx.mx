@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3 } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom } from '../../lib/atoms';
@@ -415,6 +415,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number }>>({});
     const [zoom, setZoom] = useState(1.0);
     const [viewMode, setViewMode] = useState<'top' | 'side'>('top');
+    const [isCompact, setIsCompact] = useState(false);
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -680,11 +681,37 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         <Truck size={14} strokeWidth={0.8} />
                         <span className="text-[9px] font-black uppercase tracking-[0.3em]">All units loaded</span>
                     </div>
+                ) : isCompact ? (
+                    /* ── COMPACT dock strip: small pill chips ── */
+                    <div className="flex items-center gap-1.5 overflow-x-auto px-4 py-2" style={{ scrollbarWidth: 'none' }}>
+                        <div className="flex flex-col items-center justify-center px-3 shrink-0 border-r border-white/8 mr-1">
+                            <span className="text-lg font-black tracking-tighter text-white/60">{dockCrates.length}</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">stg</span>
+                        </div>
+                        {dockCrates.map(c => {
+                            const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+                            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
+                            const w = c.weight_kg || Math.round((c.width_cm * c.length_cm * (c.height_cm || c.width_cm)) / 5000);
+                            const typeLabel = c.type === 'pallet' ? 'PLT' : c.type === 'cardboard' ? 'BOX' : 'CRT';
+                            return (
+                                <button key={c.id} onClick={() => handleLoad(c.id)}
+                                    title={`Load ${label}`}
+                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border shrink-0 cursor-pointer active:scale-95 transition-all"
+                                    style={{ background: `${col}12`, borderColor: `${col}35` }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${col}28`; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${col}12`; }}
+                                >
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col }} />
+                                    <span className="text-[11px] font-black uppercase tracking-tight" style={{ color: col }}>{label}</span>
+                                    <span className="text-[8px] font-black text-white/30">{typeLabel}</span>
+                                    <span className="text-[8px] text-white/20 font-black">{w}KG</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 ) : (
-                    <div
-                        className="flex items-stretch gap-1 overflow-x-auto px-4 py-3"
-                        style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
-                    >
+                    /* ── EXPANDED dock strip: large DockCards ── */
+                    <div className="flex items-stretch gap-1 overflow-x-auto px-4 py-3" style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}>
                         {/* Count badge */}
                         <div className="flex flex-col items-center justify-center px-4 shrink-0 border-r border-white/8 mr-2">
                             <span className="text-3xl font-black tracking-tighter text-white/60">{dockCrates.length}</span>
@@ -735,6 +762,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <Layers size={11} />Side
                                 </button>
                             </div>
+                            {/* Compact toggle */}
+                            <button
+                                onClick={() => setIsCompact(c => !c)}
+                                title={isCompact ? 'Expand panels' : 'Compact panels'}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                    isCompact ? 'border-white/30 text-white bg-white/10' : 'border-white/10 text-white/40 hover:text-white'
+                                }`}
+                                style={{ background: isCompact ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)' }}
+                            >
+                                {isCompact ? <PanelTopClose size={12} /> : <PanelTop size={12} />}
+                                {isCompact ? 'Expanded' : 'Compact'}
+                            </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
@@ -744,8 +783,45 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         </div>
                     </div>
 
-                    {/* Row 2: stats — flex nowrap, fixed min-widths, NEVER collapses or wraps */}
-                    <div className="flex items-start gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                    {/* Row 2: stats — compact = single row chips, expanded = full metrics */}
+                    {isCompact ? (
+                        /* ── COMPACT stats row ── */
+                        <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <span className="text-[9px] text-white/40 font-black uppercase">Units</span>
+                                <span className="text-[13px] font-black text-emerald-400">{truckCrates.length}</span>
+                                <span className="text-[9px] text-white/30">/ {allCrates.length}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <span className="text-[9px] text-white/40 font-black uppercase">KG</span>
+                                <span className="text-[13px] font-black" style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
+                                <span className="text-[9px] text-white/30">{panelStats.payloadPct}%</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <span className="text-[9px] text-white/40 font-black uppercase">Floor</span>
+                                <span className="text-[13px] font-black text-white/80">{floorPct}%</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <span className="text-[9px] text-white/40 font-black uppercase">Vol</span>
+                                <span className="text-[13px] font-black text-white/80">{panelStats.volPct}%</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shrink-0" style={{ background: 'rgba(255,255,255,0.04)', borderColor: `${panelStats.statusColor}40` }}>
+                                <span className="text-[11px] font-black uppercase" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                            </div>
+                            {/* Mini dist bar */}
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0 min-w-[120px]" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <span className="text-[9px] text-white/40 font-black uppercase">Dist</span>
+                                <div className="flex h-1.5 gap-0.5 rounded overflow-hidden flex-1">
+                                    <div className="h-full bg-emerald-500/80 rounded-l" style={{ flex: panelStats.rPct || 1 }} />
+                                    <div className="h-full bg-emerald-400/50" style={{ flex: panelStats.mPct || 1 }} />
+                                    <div className="h-full bg-emerald-300/30 rounded-r" style={{ flex: panelStats.fPct || 1 }} />
+                                </div>
+                                <span className="text-[8px] text-white/30 shrink-0">{panelStats.rPct}/{panelStats.mPct}/{panelStats.fPct}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        /* ── EXPANDED stats row ── */
+                        <div className="flex items-start gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
                         {/* Units */}
                         <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 90 }}>
                             <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Units</span>
@@ -808,16 +884,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[7px] font-black text-white/20 whitespace-nowrap">{panelStats.remaining > 0 ? `${Math.round(panelStats.remaining).toLocaleString()} KG rem.` : 'AT MAX'}</span>
                         </div>
                         <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Distribution — larger chart, bigger labels */}
+                        {/* Distribution */}
                         <div className="flex flex-col gap-2 shrink-0" style={{ minWidth: 320 }}>
                             <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Load Distribution</span>
-                            {/* Bar */}
-                            <div className="flex h-3 gap-0.5 rounded overflow-hidden" style={{ width: '100%' }}>
+                            <div className="flex h-3 gap-0.5 rounded overflow-hidden">
                                 <div className="h-full bg-emerald-500/80 rounded-l transition-all duration-700" style={{ flex: panelStats.rPct || 1 }} />
                                 <div className="h-full bg-emerald-400/50 transition-all duration-700" style={{ flex: panelStats.mPct || 1 }} />
                                 <div className="h-full bg-emerald-300/30 rounded-r transition-all duration-700" style={{ flex: panelStats.fPct || 1 }} />
                             </div>
-                            {/* Labels */}
                             <div className="flex items-center justify-between">
                                 <div className="flex flex-col items-start">
                                     <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">◀ Rear</span>
@@ -833,7 +907,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        </div>
+                    )}
 
                  </div>
 
