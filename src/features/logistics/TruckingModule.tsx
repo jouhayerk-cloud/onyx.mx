@@ -423,7 +423,7 @@ const SideView: React.FC<{
 const DRAFTS_KEY = 'onyx_truck_drafts';
 const TRUCKLOAD_EXT = '.truckload';
 const TRUCKLOAD_MIME = 'application/json';
-const TRUCKLOAD_VERSION = 1;
+const TRUCKLOAD_VERSION = 3; // v3 is a JPEG+JSON hybrid file for native OS thumbnails
 
 interface TruckDraft {
     id: string;
@@ -431,6 +431,7 @@ interface TruckDraft {
     savedAt: number;
     crateCount: number;
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+    thumbnail?: string; // base64 JPEG data URL
 }
 interface TruckloadFile {
     version: number;
@@ -439,6 +440,56 @@ interface TruckloadFile {
     savedAt: number;
     crateCount: number;
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+    thumbnail?: string;
+}
+
+// ── Thumbnail generator — draws trailer map to a 600×150 canvas ──────────────
+function generateTrailerThumbnail(
+    truckCrates: any[],
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>
+): string {
+    const W = 600, H = 150;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    const trailerPxW = TRUCK_L_CM * BASE_SCALE;
+    const trailerPxH = TRUCK_W_CM * BASE_SCALE;
+    const scale = Math.min((W * 0.96) / trailerPxW, (H * 0.88) / trailerPxH);
+    const offX = (W - trailerPxW * scale) / 2;
+    const offY = (H - trailerPxH * scale) / 2;
+    // Dark background
+    ctx.fillStyle = '#08080f';
+    ctx.fillRect(0, 0, W, H);
+    // Trailer floor
+    ctx.fillStyle = '#13131e';
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    (ctx as any).roundRect(offX, offY, trailerPxW * scale, trailerPxH * scale, 3);
+    ctx.fill(); ctx.stroke();
+    // Cab end marker
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(offX, offY, 6 * scale, trailerPxH * scale);
+    // Crates
+    const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+    for (const [id, pos] of Object.entries(positions)) {
+        const crate = crateMap.get(id) as any;
+        if (!crate) continue;
+        const lenX = (crate.length_cm || 120) * BASE_SCALE;
+        const lenY = (crate.width_cm || 80) * BASE_SCALE;
+        ctx.fillStyle = crate.color || '#6366f1';
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        (ctx as any).roundRect(offX + pos.x * scale, offY + pos.y * scale, lenX * scale, lenY * scale, 1.5);
+        ctx.fill(); ctx.stroke();
+    }
+    // Watermark
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('ONYX · TRUCKLOAD', offX + 5, offY + H * 0.08 + 5);
+    return canvas.toDataURL('image/jpeg', 0.82);
 }
 
 function getDrafts(): TruckDraft[] {
@@ -452,8 +503,32 @@ function deleteDraft(id: string) {
     localStorage.setItem(DRAFTS_KEY, JSON.stringify(getDrafts().filter(d => d.id !== id)));
 }
 function exportDraftFile(draft: TruckDraft) {
-    const payload: TruckloadFile = { version: TRUCKLOAD_VERSION, type: 'onyx-truckload', name: draft.name, savedAt: draft.savedAt, crateCount: draft.crateCount, positions: draft.positions };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: TRUCKLOAD_MIME });
+    const payload: TruckloadFile = {
+        version: TRUCKLOAD_VERSION,
+        type: 'onyx-truckload',
+        name: draft.name,
+        savedAt: draft.savedAt,
+        crateCount: draft.crateCount,
+        positions: draft.positions
+    };
+    const jsonString = JSON.stringify(payload, null, 2);
+    let blob: Blob;
+
+    if (draft.thumbnail && draft.thumbnail.startsWith('data:image/jpeg;base64,')) {
+        const b64Data = draft.thumbnail.split(',')[1];
+        const binaryString = atob(b64Data);
+        const jpegBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            jpegBytes[i] = binaryString.charCodeAt(i);
+        }
+        const jsonBytes = new TextEncoder().encode('\n' + jsonString);
+        // Hybrid file: JPEG bytes followed by JSON text (OS readers stop at JPEG EOI)
+        blob = new Blob([jpegBytes, jsonBytes], { type: 'image/jpeg' });
+    } else {
+        payload.thumbnail = draft.thumbnail; // fallback
+        blob = new Blob([JSON.stringify(payload, null, 2)], { type: TRUCKLOAD_MIME });
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -463,25 +538,60 @@ function exportDraftFile(draft: TruckDraft) {
 }
 async function importDraftFile(file: File): Promise<TruckDraft | null> {
     try {
-        const text = await file.text();
-        const data = JSON.parse(text) as TruckloadFile;
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let jsonText = '';
+        let thumbnailBase64: string | undefined = undefined;
+
+        // Check for JPEG magic bytes (0xFF 0xD8)
+        if (bytes.length > 2 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
+            const searchSeq = new TextEncoder().encode('{"version"');
+            let jsonStartIndex = -1;
+            // Search backwards to find JSON start
+            for (let i = bytes.length - searchSeq.length; i >= 0; i--) {
+                let match = true;
+                for (let j = 0; j < searchSeq.length; j++) {
+                    if (bytes[i + j] !== searchSeq[j]) { match = false; break; }
+                }
+                if (match) { jsonStartIndex = i; break; }
+            }
+            if (jsonStartIndex !== -1) {
+                const jsonBytes = bytes.slice(jsonStartIndex);
+                jsonText = new TextDecoder().decode(jsonBytes);
+                const jpegBytes = bytes.slice(0, jsonStartIndex);
+                const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
+                thumbnailBase64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                });
+            } else return null; // Invalid hybrid
+        } else {
+            // Pure JSON text fallback
+            jsonText = new TextDecoder().decode(bytes);
+        }
+
+        const data = JSON.parse(jsonText) as TruckloadFile;
         if (data.type !== 'onyx-truckload' || !data.positions) return null;
-        return { id: `draft_${Date.now()}`, name: data.name || file.name.replace(TRUCKLOAD_EXT, ''), savedAt: data.savedAt || Date.now(), crateCount: data.crateCount || Object.keys(data.positions).length, positions: data.positions };
-    } catch { return null; }
+        return {
+            id: `draft_${Date.now()}`,
+            name: data.name || file.name.replace(TRUCKLOAD_EXT, ''),
+            savedAt: data.savedAt || Date.now(),
+            crateCount: data.crateCount || Object.keys(data.positions).length,
+            positions: data.positions,
+            thumbnail: data.thumbnail || thumbnailBase64
+        };
+    } catch (e) { console.error('Draft import failed', e); return null; }
 }
 
 // Save Draft Modal
 const SaveDraftModal: React.FC<{
     crateCount: number;
-    positions: Record<string, any>;
     onSave: (name: string) => void;
+    onExport: (name: string) => void;
     onClose: () => void;
-}> = ({ crateCount, positions, onSave, onClose }) => {
+}> = ({ crateCount, onSave, onExport, onClose }) => {
     const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}`);
-    const handleExport = () => {
-        if (!name.trim()) return;
-        exportDraftFile({ id: `draft_${Date.now()}`, name: name.trim(), savedAt: Date.now(), crateCount, positions });
-    };
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -492,7 +602,7 @@ const SaveDraftModal: React.FC<{
                 <div className="flex items-start justify-between">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Save Draft</h3>
-                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates · positions preserved</p>
+                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates · positions + thumbnail</p>
                     </div>
                     <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
                 </div>
@@ -506,17 +616,17 @@ const SaveDraftModal: React.FC<{
                         className="w-full bg-white/8 border border-white/15 rounded-lg px-3 py-2.5 text-[13px] font-black text-white outline-none focus:border-white/40 transition-colors"
                         placeholder="e.g. Monday AM Load"
                     />
-                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exports as <span className="text-white/40">.truckload</span> — shareable between users</p>
+                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exports as <span className="text-white/40">.truckload</span> · includes map thumbnail · shareable</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-white/10 text-[10px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
                         Cancel
                     </button>
                     <button
-                        onClick={handleExport}
+                        onClick={() => name.trim() && onExport(name.trim())}
                         disabled={!name.trim()}
                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-all cursor-pointer disabled:opacity-30"
-                        title="Export as .truckload file"
+                        title="Export as .truckload file (includes thumbnail)"
                     >
                         <Download size={12} />Export
                     </button>
@@ -540,6 +650,7 @@ const OpenDraftModal: React.FC<{
     onClose: () => void;
 }> = ({ onLoad, onClose }) => {
     const [drafts, setDrafts] = React.useState<TruckDraft[]>(getDrafts);
+    const [preview, setPreview] = React.useState<string | null>(null); // thumbnail on hover import
     const importRef = React.useRef<HTMLInputElement>(null);
     const handleDelete = (id: string) => { deleteDraft(id); setDrafts(getDrafts()); };
     const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -555,8 +666,8 @@ const OpenDraftModal: React.FC<{
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
-                style={{ background: 'rgba(12,12,18,0.95)', maxHeight: '80vh' }}
+            <div className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
+                style={{ background: 'rgba(12,12,18,0.95)', maxHeight: '82vh' }}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
@@ -566,15 +677,12 @@ const OpenDraftModal: React.FC<{
                         <p className="text-[10px] text-white/40">{drafts.length} saved · <span className="text-white/20">.truckload</span></p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* Import */}
                         <input ref={importRef} type="file" accept={`${TRUCKLOAD_EXT},.json`} className="hidden" onChange={handleImport} />
                         <button
                             onClick={() => importRef.current?.click()}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 text-[9px] font-black uppercase tracking-widest text-white/50 hover:text-white hover:border-white/30 transition-all cursor-pointer"
                             title="Import a .truckload file"
-                        >
-                            <Upload size={12} />Import
-                        </button>
+                        ><Upload size={12} />Import</button>
                         <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
                     </div>
                 </div>
@@ -589,30 +697,39 @@ const OpenDraftModal: React.FC<{
                     ) : (
                         <div className="flex flex-col divide-y divide-white/5">
                             {drafts.map(draft => (
-                                <div key={draft.id} className="flex items-center gap-4 px-6 py-4 hover:bg-white/3 transition-colors group">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[13px] font-black text-white truncate">{draft.name}</p>
-                                        <div className="flex items-center gap-3 mt-0.5">
-                                            <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
-                                            <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                                <div key={draft.id}
+                                    className="flex flex-col hover:bg-white/3 transition-colors group cursor-default"
+                                    onMouseEnter={() => draft.thumbnail ? setPreview(draft.thumbnail) : setPreview(null)}
+                                    onMouseLeave={() => setPreview(null)}
+                                >
+                                    {/* Thumbnail strip — shown on hover if available */}
+                                    {draft.thumbnail && (
+                                        <div className="overflow-hidden transition-all" style={{ maxHeight: preview === draft.thumbnail ? '90px' : '0', opacity: preview === draft.thumbnail ? 1 : 0 }}>
+                                            <img src={draft.thumbnail} alt={draft.name} className="w-full object-cover" style={{ height: '88px', filter: 'brightness(0.9)' }} />
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            onClick={() => exportDraftFile(draft)}
-                                            className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white transition-all cursor-pointer"
-                                            title="Export as .truckload file"
-                                        ><Download size={13} /></button>
-                                        <button
-                                            onClick={() => handleDelete(draft.id)}
-                                            className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer"
-                                            title="Delete draft"
-                                        ><Trash2 size={13} /></button>
-                                        <button
-                                            onClick={() => { onLoad(draft); onClose(); }}
-                                            className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all"
-                                            style={{ background: 'var(--main-color)', color: '#000' }}
-                                        >Load</button>
+                                    )}
+                                    <div className="flex items-center gap-4 px-5 py-3">
+                                        {/* Mini thumbnail badge */}
+                                        {draft.thumbnail ? (
+                                            <img src={draft.thumbnail} alt="" className="w-14 h-7 rounded object-cover shrink-0 border border-white/10" />
+                                        ) : (
+                                            <div className="w-14 h-7 rounded shrink-0 border border-white/8 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                                                <Truck size={12} className="text-white/20" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] font-black text-white truncate">{draft.name}</p>
+                                            <div className="flex items-center gap-3 mt-0.5">
+                                                <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
+                                                <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                                                {draft.thumbnail && <span className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest">📷 thumb</span>}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button onClick={() => exportDraftFile(draft)} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white transition-all cursor-pointer" title="Export .truckload"><Download size={13} /></button>
+                                            <button onClick={() => handleDelete(draft.id)} className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer" title="Delete"><Trash2 size={13} /></button>
+                                            <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ background: 'var(--main-color)', color: '#000' }}>Load</button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -623,6 +740,8 @@ const OpenDraftModal: React.FC<{
         </div>
     );
 };
+
+
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
@@ -854,18 +973,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [truckReadyTrigger]);
 
     // ── Draft handlers ──
+    const buildDraft = useCallback((name: string): TruckDraft => {
+        const thumbnail = generateTrailerThumbnail(truckCrates, positions);
+        return { id: `draft_${Date.now()}`, name, savedAt: Date.now(), crateCount: truckCrates.length, positions: { ...positions }, thumbnail: thumbnail || undefined };
+    }, [positions, truckCrates]);
+
     const handleSaveDraft = useCallback((name: string) => {
-        const draft: TruckDraft = {
-            id: `draft_${Date.now()}`,
-            name,
-            savedAt: Date.now(),
-            crateCount: truckCrates.length,
-            positions: { ...positions },
-        };
-        saveDraft(draft);
+        saveDraft(buildDraft(name));
         setShowSaveDraft(false);
         toast.success(`Draft "${name}" saved`);
-    }, [positions, truckCrates.length]);
+    }, [buildDraft]);
+
+    const handleExportDraft = useCallback((name: string) => {
+        exportDraftFile(buildDraft(name));
+        setShowSaveDraft(false);
+    }, [buildDraft]);
 
     const handleLoadDraft = useCallback((draft: TruckDraft) => {
         setPositions(draft.positions as any);
@@ -1203,8 +1325,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             {showSaveDraft && (
                 <SaveDraftModal
                     crateCount={truckCrates.length}
-                    positions={positions}
                     onSave={handleSaveDraft}
+                    onExport={handleExportDraft}
                     onClose={() => setShowSaveDraft(false)}
                 />
             )}
