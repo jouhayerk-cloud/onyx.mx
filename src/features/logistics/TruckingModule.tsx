@@ -446,7 +446,9 @@ interface TruckloadFile {
 // ── Thumbnail generator — draws exact trailer map without padding ─────────────
 function generateTrailerThumbnail(
     truckCrates: any[],
-    positions: Record<string, { x: number; y: number; r: number; z?: number }>
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>,
+    allCrates: any[],
+    allInventory: any[]
 ): string {
     const scale = 800 / TRUCK_L_CM;
     const W = 800;
@@ -471,7 +473,9 @@ function generateTrailerThumbnail(
         if (!crate) continue;
         const lenX = (crate.length_cm || 120) * scale;
         const lenY = (crate.width_cm || 80) * scale;
-        ctx.fillStyle = crate.color || '#6366f1';
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        ctx.fillStyle = primaryColor;
         ctx.strokeStyle = 'rgba(0,0,0,0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -969,9 +973,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     // ── Draft handlers ──
     const buildDraft = useCallback((name: string): TruckDraft => {
-        const thumbnail = generateTrailerThumbnail(truckCrates, positions);
+        const thumbnail = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
         return { id: `draft_${Date.now()}`, name, savedAt: Date.now(), crateCount: truckCrates.length, positions: { ...positions }, thumbnail: thumbnail || undefined };
-    }, [positions, truckCrates]);
+    }, [positions, truckCrates, allCrates, allInventory]);
 
     const handleSaveDraft = useCallback((name: string) => {
         saveDraft(buildDraft(name));
