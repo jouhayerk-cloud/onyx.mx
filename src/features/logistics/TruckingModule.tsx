@@ -98,43 +98,50 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
     );
 };
 
-// ─── Data-Dense Dock Card (horizontal layout) ───────────────────────────────────────
+// ─── Data-Dense Dock Card (larger, high-contrast) ────────────────────────────
 const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; onLoad: () => void }> = ({ crate, allCrates, allInventory, onLoad }) => {
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
-    const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#fff') : '#fff';
+    const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
     const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
     const w = crate.weight_kg || Math.round((crate.width_cm * crate.length_cm * (crate.height_cm || crate.width_cm)) / 5000);
+    const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     return (
         <button
             onClick={onLoad}
-            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/8 active:scale-[0.98] transition-all group shrink-0 text-left border border-white/0 hover:border-white/5"
-            style={{ minWidth: 180, maxWidth: 220 }}
+            title={`Load ${label} onto truck`}
+            className="flex flex-col gap-2 p-3 rounded-xl transition-all group shrink-0 text-left border cursor-pointer active:scale-[0.97]"
+            style={{
+                minWidth: 160, maxWidth: 190,
+                background: `${primaryColor}10`,
+                borderColor: `${primaryColor}30`,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}22`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}60`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}10`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}30`; }}
         >
-            {/* Wireframe */}
-            <div className="shrink-0 relative">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={48} />
-            </div>
-            {/* Data */}
-            <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                {/* Label + type */}
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-black uppercase tracking-tight truncate leading-none" style={{ color: primaryColor }}>
-                        {label}
-                    </span>
-                    {crate.type && <span className="text-[7px] font-black text-white/20 uppercase shrink-0">{crate.type.slice(0,2)}</span>}
-                </div>
-                {/* Dims */}
-                <span className="text-[9px] font-black text-white/30 uppercase tracking-wide whitespace-nowrap">
-                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} cm
+            {/* Top row: wireframe + type badge */}
+            <div className="flex items-start justify-between w-full">
+                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={52} />
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${primaryColor}25`, color: primaryColor }}>
+                    {typeLabel}
                 </span>
-                {/* Bottom row: vendors + count */}
-                <div className="flex items-center gap-1 mt-0.5">
-                    {vendorList.slice(0, 3).map(v => (
-                        <span key={v} className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
-                    ))}
-                    {itemCount > 0 && <span className="text-[8px] font-black text-white/20 ml-0.5">{itemCount} items</span>}
-                    {w > 0 && <span className="text-[8px] font-black text-white/15 ml-auto">{w}KG</span>}
-                </div>
+            </div>
+            {/* Label */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+                {vendorList.slice(0,3).map(v => (
+                    <span key={v} className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
+                ))}
+                <span className="text-[13px] font-black uppercase tracking-tight leading-none truncate" style={{ color: primaryColor }}>
+                    {label}
+                </span>
+            </div>
+            {/* Dims */}
+            <span className="text-[10px] font-black uppercase tracking-wide whitespace-nowrap" style={{ color: `${primaryColor}99` }}>
+                {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} cm
+            </span>
+            {/* Bottom stats */}
+            <div className="flex items-center justify-between w-full pt-1 border-t" style={{ borderColor: `${primaryColor}20` }}>
+                <span className="text-[10px] font-black text-white/60">{itemCount} <span className="text-white/30 font-normal">items</span></span>
+                <span className="text-[10px] font-black" style={{ color: primaryColor }}>{w}<span className="text-white/30 font-normal text-[8px]"> KG</span></span>
             </div>
         </button>
     );
@@ -221,87 +228,174 @@ const TruckCrate: React.FC<{
     );
 };
 
-// ─── Side View (lateral 2-D cross-section) ────────────────────────────────────
-const TRUCK_H_CM = 279; // internal trailer height
-const SideView: React.FC<{ truckCrates: any[]; positions: Record<string, {x:number;y:number;r:number}>; allCrates: any[]; allInventory: any[]; zoom: number }> =
-    ({ truckCrates, positions, allCrates, allInventory, zoom }) => {
+// ─── Side View (interactive 2-D lateral view) ────────────────────────────────
+const TRUCK_H_CM = 279;
+const SideView: React.FC<{
+    truckCrates: any[];
+    positions: Record<string, {x:number;y:number;r:number;z?:number}>;
+    allCrates: any[]; allInventory: any[];
+    zoom: number;
+    selectedId: string | null;
+    onSelect: (id: string) => void;
+    onUpdateXZ: (id: string, x: number, z: number) => void;
+    onStack: (id: string) => void;
+    onUnload: (id: string) => void;
+}> = ({ truckCrates, positions, allCrates, allInventory, zoom, selectedId, onSelect, onUpdateXZ, onStack, onUnload }) => {
     const SVG_W = TRUCK_L_CM * BASE_SCALE;
     const SVG_H = TRUCK_H_CM * BASE_SCALE;
-    // Each crate rendered as a rect: x=pos.x (longitudinal), y from floor up by height
-    const crates = truckCrates.map(c => {
+    const svgRef = useRef<SVGSVGElement>(null);
+
+    // Build crate draw list with z support
+    const crateItems = useMemo(() => truckCrates.map(c => {
         const pos = positions[c.id];
         if (!pos) return null;
         const rotated = pos.r === 90;
-        const lenX = rotated ? c.length_cm : c.width_cm; // footprint along truck length
+        // r=0: length_cm goes along truck X axis (same as TruckCrate top-view)
+        const lenX = rotated ? c.width_cm : c.length_cm;
         const h = c.height_cm || 100;
+        const zOff = pos.z || 0;
         const px = pos.x * BASE_SCALE;
         const pw = lenX * BASE_SCALE;
         const ph = h * BASE_SCALE;
-        const py = SVG_H - ph; // floor-up
+        const py = SVG_H - (zOff + h) * BASE_SCALE;
         const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
-        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
-        return { px, py, pw, ph, label, col, h, lenX };
-    }).filter(Boolean) as any[];
+        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#a1a1aa') : '#a1a1aa';
+        const isSelected = c.id === selectedId;
+        return { id: c.id, px, py, pw, ph, label, col, h, lenX, zOff, isSelected, crate: c };
+    }).filter(Boolean) as any[], [truckCrates, positions, allCrates, allInventory, selectedId]);
+
+    // SVG mouse drag
+    const dragRef = useRef<{ id: string; startX: number; startZ: number; mouseX: number; mouseY: number } | null>(null);
+
+    const getSVGPoint = (e: MouseEvent | React.MouseEvent): {x: number; y: number} => {
+        const svg = svgRef.current;
+        if (!svg) return { x: 0, y: 0 };
+        const rect = svg.getBoundingClientRect();
+        const clientX = 'clientX' in e ? e.clientX : 0;
+        const clientY = 'clientY' in e ? e.clientY : 0;
+        return {
+            x: (clientX - rect.left) / zoom / BASE_SCALE,
+            y: (clientY - rect.top) / zoom / BASE_SCALE,
+        };
+    };
+
+    const handleCrateMouseDown = (e: React.MouseEvent, item: any) => {
+        e.preventDefault(); e.stopPropagation();
+        onSelect(item.id);
+        const pt = getSVGPoint(e);
+        dragRef.current = { id: item.id, startX: positions[item.id].x, startZ: positions[item.id].z || 0, mouseX: pt.x, mouseY: pt.y };
+        const onMove = (me: MouseEvent) => {
+            if (!dragRef.current) return;
+            const p = getSVGPoint(me);
+            // SVG point is already in cm-space (divided by BASE_SCALE in getSVGPoint)
+            const dx = p.x - dragRef.current.mouseX;
+            const dy = -(p.y - dragRef.current.mouseY); // inverted: up = positive z
+            onUpdateXZ(dragRef.current.id, dragRef.current.startX + dx, Math.max(0, dragRef.current.startZ + dy));
+        };
+        const onUp = () => { dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    };
 
     return (
-        <div className="flex-1 overflow-auto custom-scrollbar" style={{ background: 'rgba(0,0,0,0.2)' }}>
-            <div className="p-8" style={{ minWidth: SVG_W * zoom + 64, minHeight: SVG_H * zoom + 64 }}>
-                {/* Labels */}
-                <div className="flex items-center gap-3 mb-2 text-white/40 text-[8px] font-black uppercase tracking-widest">
-                    <span>◀ Rear Door</span>
+        <div className="flex-1 overflow-auto custom-scrollbar" style={{ background: 'rgba(3,3,6,0.9)' }}>
+            <div className="p-6" style={{ minWidth: SVG_W * zoom + 48, minHeight: SVG_H * zoom + 120 }}>
+                {/* Header bar */}
+                <div className="flex items-center gap-4 mb-3">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">◀ Rear</span>
                     <div className="flex-1 h-px bg-white/10" />
-                    <span>Side View — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H</span>
+                    <span className="text-[9px] font-black text-white/70 uppercase tracking-widest">
+                        Side View — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H
+                    </span>
                     <div className="flex-1 h-px bg-white/10" />
-                    <span>Cab Front ▶</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">Front ▶</span>
                 </div>
+                {/* Selected crate toolbar */}
+                {selectedId && positions[selectedId] && (() => {
+                    const sel = truckCrates.find(c => c.id === selectedId);
+                    const pos = positions[selectedId];
+                    return sel ? (
+                        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-white/15 backdrop-blur-sm" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                            <span className="text-[10px] font-black text-white/80 uppercase tracking-wide flex-1">
+                                {getCrateDisplayName(sel, allCrates, allInventory).label}
+                                <span className="text-white/30 ml-2">X:{Math.round(pos.x)}cm  Z:{Math.round(pos.z||0)}cm</span>
+                            </span>
+                            <button onClick={() => onStack(selectedId)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border border-amber-500/30 text-amber-400 hover:bg-amber-500/15">
+                                ⬆ Stack on Top
+                            </button>
+                            <button onClick={() => onUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z||0) - (sel.height_cm||100)))}
+                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">↓</button>
+                            <button onClick={() => onUpdateXZ(selectedId, pos.x, (pos.z||0) + (sel.height_cm||100))}
+                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">↑</button>
+                            <button onClick={() => onUpdateXZ(selectedId, Math.max(0, pos.x - 50), pos.z||0)}
+                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">◀</button>
+                            <button onClick={() => onUpdateXZ(selectedId, pos.x + 50, pos.z||0)}
+                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">▶</button>
+                            <button onClick={() => onUnload(selectedId)}
+                                className="px-3 py-1.5 rounded-md text-[9px] font-black text-rose-400 border border-rose-500/20 hover:bg-rose-500/10 cursor-pointer">Remove</button>
+                        </div>
+                    ) : null;
+                })()}
                 <div style={{ width: SVG_W * zoom, height: SVG_H * zoom, position: 'relative' }}>
-                    <svg
-                        width={SVG_W} height={SVG_H}
-                        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-                        style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
-                    >
+                    <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+                        style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible', cursor: 'default' }}>
                         {/* Trailer shell */}
-                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.2)" strokeWidth={2} />
+                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.25)" strokeWidth={2} />
                         {/* Floor */}
-                        <rect x={0} y={SVG_H - 6} width={SVG_W} height={6} fill="rgba(255,255,255,0.08)" />
+                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.12)" />
                         {/* Height grid every 50cm */}
                         {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
                             <g key={y}>
                                 <line x1={0} y1={SVG_H - y * BASE_SCALE} x2={SVG_W} y2={SVG_H - y * BASE_SCALE}
-                                    stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
-                                <text x={4} y={SVG_H - y * BASE_SCALE - 2} fill="rgba(255,255,255,0.2)" fontSize={8} fontFamily="monospace">{y}cm</text>
+                                    stroke={y % 100 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'} strokeWidth={y % 100 === 0 ? 1 : 0.5} />
+                                <text x={6} y={SVG_H - y * BASE_SCALE - 3} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="monospace" fontWeight="bold">{y}cm</text>
                             </g>
                         ))}
                         {/* Axle lines */}
                         {[0.72, 0.82, 0.90].map(f => (
                             <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
-                                stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="4,4" />
+                                stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="5,4" />
                         ))}
-                        {/* Crates */}
-                        {crates.map((cr, i) => (
-                            <g key={i}>
+                        {/* Crates — non-selected first, selected on top */}
+                        {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
+                            <g key={cr.id} style={{ cursor: 'grab' }} onMouseDown={e => handleCrateMouseDown(e, cr)}>
+                                {/* Shadow */}
+                                {cr.isSelected && <rect x={cr.px + 3} y={cr.py + 3} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.4)" rx={3} />}
+                                {/* Body — full solid color */}
                                 <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
-                                    fill={`${cr.col}22`} stroke={cr.col} strokeWidth={1.2} rx={2} />
-                                {/* Height dimension */}
-                                {cr.ph > 20 && (
+                                    fill={cr.col}
+                                    stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
+                                    strokeWidth={cr.isSelected ? 2.5 : 1.5}
+                                    rx={3} opacity={cr.isSelected ? 1 : 0.92} />
+                                {/* Selection ring */}
+                                {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
+                                    fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
+                                {/* Label — dark text over solid fill for contrast */}
+                                {cr.pw > 18 && cr.ph > 16 && (
                                     <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 4}
-                                        textAnchor="middle" fontSize={Math.min(10, cr.pw / 4)} fill={cr.col}
-                                        fontFamily="monospace" fontWeight="bold">
+                                        textAnchor="middle" fontSize={Math.min(13, cr.pw / 3.5)} fill="rgba(0,0,0,0.85)"
+                                        fontFamily="monospace" fontWeight="900" opacity={0.95}>
                                         {cr.label}
                                     </text>
                                 )}
-                                {cr.ph > 32 && (
-                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 15}
-                                        textAnchor="middle" fontSize={7} fill="rgba(255,255,255,0.4)"
-                                        fontFamily="monospace">
-                                        {cr.h}cm H
+                                {cr.ph > 28 && (
+                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 17}
+                                        textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.6)"
+                                        fontFamily="monospace" opacity={0.9}>
+                                        {cr.h}H {cr.zOff > 0 ? `+${Math.round(cr.zOff)}Z` : ''}
                                     </text>
+                                )}
+                                {/* Stack level indicator dot */}
+                                {cr.zOff > 0 && (
+                                    <circle cx={cr.px + 8} cy={cr.py + 8} r={5} fill={cr.col} opacity={0.9} />
                                 )}
                             </g>
                         ))}
-                        {/* Cab cab block */}
-                        <rect x={SVG_W - 8} y={0} width={8} height={SVG_H}
-                            fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+                        {/* Cab block */}
+                        <rect x={SVG_W - 10} y={0} width={10} height={SVG_H} fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+                        <text x={SVG_W - 5} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.4)" fontFamily="monospace"
+                            transform={`rotate(-90, ${SVG_W - 5}, ${SVG_H / 2})`}>CAB</text>
                     </svg>
                 </div>
             </div>
@@ -323,11 +417,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [viewMode, setViewMode] = useState<'top' | 'side'>('top');
 
     useEffect(() => {
-        const map: Record<string, { x: number; y: number; r: number }> = {};
+        const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
         docs.forEach(d => {
             if (d.description?.includes('POS:')) {
-                const m = d.description.match(/POS:(\d+),(\d+),(\d+)/);
-                if (m) map[d.id] = { x: +m[1], y: +m[2], r: +m[3] };
+                const m = d.description.match(/POS:(\d+),(\d+),(\d+)(?:,Z(\d+))?/);
+                if (m) map[d.id] = { x: +m[1], y: +m[2], r: +m[3], z: m[4] ? +m[4] : 0 };
             }
         });
         setPositions(map);
@@ -397,11 +491,37 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const crate = allCrates.find(c => c.id === id);
         if (!crate) return;
         const pos = computeAutoPosition(crate, positions, allCrates);
-        setPositions(p => ({ ...p, [id]: pos }));
+        setPositions(p => ({ ...p, [id]: { ...pos, z: 0 } }));
         setSelectedId(id);
     };
     const handleUnload = (id: string) => { setPositions(p => { const n = { ...p }; delete n[id]; return n; }); setSelectedId(null); };
     const handleUpdatePos = (id: string, x: number, y: number) => setPositions(p => ({ ...p, [id]: { ...p[id], x, y } }));
+    // Side-view drag: updates longitudinal (x) and vertical stack (z)
+    const handleUpdateXZ = (id: string, x: number, z: number) => setPositions(p => ({ ...p, [id]: { ...p[id], x: Math.max(0, Math.min(TRUCK_L_CM - (p[id] ? (p[id].r === 90 ? allCrates.find(c=>c.id===id)?.length_cm : allCrates.find(c=>c.id===id)?.width_cm) || 0 : 0), x)), z: Math.max(0, z) } }));
+    // Stack: place selected crate on top of the tallest crate overlapping its x position
+    const handleStack = (id: string) => {
+        const crate = allCrates.find(c => c.id === id);
+        if (!crate || !positions[id]) return;
+        const rotated = positions[id].r === 90;
+        const myW = rotated ? crate.length_cm : crate.width_cm;
+        const myX = positions[id].x;
+        // Find highest z+h of any crate overlapping the same x zone
+        let topZ = 0;
+        truckCrates.forEach(c => {
+            if (c.id === id) return;
+            const p = positions[c.id];
+            if (!p) return;
+            const cRot = p.r === 90;
+            const cW = cRot ? c.length_cm : c.width_cm;
+            const overlap = myX < p.x + cW + 5 && myX + myW + 5 > p.x;
+            if (overlap) {
+                const top = (p.z || 0) + (c.height_cm || 100);
+                if (top > topZ) topZ = top;
+            }
+        });
+        setPositions(p => ({ ...p, [id]: { ...p[id], z: topZ } }));
+        toast.success(`Stacked at ${topZ}cm above floor`, { icon: '📦' });
+    };
     const handleRotate = (id: string) => setPositions(p => ({ ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } }));
     const handleWheel = useCallback((e: React.WheelEvent) => { e.preventDefault(); setZoom(z => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001))); }, []);
 
@@ -726,7 +846,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     onWheel={handleWheel}
                 >
                     {viewMode === 'side' ? (
-                        <SideView truckCrates={truckCrates} positions={positions} allCrates={allCrates} allInventory={allInventory} zoom={zoom} />
+                        <SideView
+                            truckCrates={truckCrates} positions={positions}
+                            allCrates={allCrates} allInventory={allInventory}
+                            zoom={zoom}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                            onUpdateXZ={handleUpdateXZ}
+                            onStack={handleStack}
+                            onUnload={handleUnload}
+                        />
                     ) : (
                     <div className="p-8" style={{ minWidth: canvasW * zoom + 64, minHeight: canvasH * zoom + 64 }}>
                         {/* Direction labels */}
