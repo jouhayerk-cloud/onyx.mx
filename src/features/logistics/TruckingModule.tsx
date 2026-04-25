@@ -910,19 +910,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {/* Top / Side view toggle */}
-                            <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                <button
-                                    onClick={() => setViewMode('top')}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${viewMode === 'top' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'}`}
-                                    title="Top View"
-                                ><Grid3x3 size={11} />Top</button>
-                                <button
-                                    onClick={() => setViewMode('side')}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${viewMode === 'side' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'}`}
-                                    title="Side View"
-                                ><Layers size={11} />Side</button>
-                            </div>
+                            {/* Top / Side single-icon toggle */}
+                            <button
+                                onClick={() => setViewMode(v => v === 'top' ? 'side' : 'top')}
+                                title={viewMode === 'top' ? 'Switch to Side View' : 'Switch to Top View'}
+                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                            >
+                                {viewMode === 'top' ? <Layers size={16} /> : <Grid3x3 size={16} />}
+                            </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
