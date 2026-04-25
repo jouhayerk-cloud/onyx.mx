@@ -38,6 +38,22 @@ function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[]) 
     return { label: `${datePrefix}${vendorsStr}${seq >= 0 ? seq + 1 : 1}`, vendorList };
 }
 
+// ─── Weight: sum item.weight_kg × qty from inventory_ids ─────────────────────
+function computeCrateWeight(crate: any, allInventory: any[]): number {
+    if (crate.inventory_ids) {
+        let total = 0; let hasData = false;
+        crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+            const [id, qtyStr] = e.split(':');
+            const qty = parseInt(qtyStr || '1', 10) || 1;
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            const w = inv?.data?.weight_kg ?? inv?.data?.weightKg;
+            if (w != null && !isNaN(Number(w))) { total += Number(w) * qty; hasData = true; }
+        });
+        if (hasData) return Math.round(total * 10) / 10;
+    }
+    return crate.weight_kg || Math.round((crate.width_cm * crate.length_cm * (crate.height_cm || crate.width_cm)) / 5000);
+}
+
 // ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
 const CmGrid: React.FC = () => {
     const minor = 50; const major = 100;
@@ -103,7 +119,7 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
     const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
-    const w = crate.weight_kg || Math.round((crate.width_cm * crate.length_cm * (crate.height_cm || crate.width_cm)) / 5000);
+    const w = computeCrateWeight(crate, allInventory);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     return (
         <button
@@ -431,7 +447,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const allCrates = useMemo(() => docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status)), [docs]);
     const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id]), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
-    const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + (c.weight_kg || (c.width_cm * c.length_cm * c.height_cm / 5000)), 0), [truckCrates]);
+    const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory), 0), [truckCrates, allInventory]);
     const floorPct = useMemo(() => Math.min(100, Math.round(truckCrates.reduce((s, c) => s + c.width_cm * c.length_cm, 0) / (TRUCK_W_CM * TRUCK_L_CM) * 100)), [truckCrates]);
 
     // ── Memoized panel stats — independent of zoom ──
@@ -557,7 +573,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const inv = allInventory.find((i: any) => String(i.row) === id);
                     return inv ? { sku: inv.data?.itemId || id, desc: inv.data?.description || inv.data?.itemId || id, qty: qty || 1, vendor: (inv.data?.vendor_id || '').split('-')[0] } : null;
                 }).filter(Boolean);
-                const w = c.weight_kg || Math.round(c.width_cm * c.length_cm * c.height_cm / 5000);
+                const w = computeCrateWeight(c, allInventory);
                 return { id: c.id, label, pos: `${Math.round(pos.x)}cm, ${Math.round(pos.y)}cm`, rot: pos.r === 90 ? '90°' : '0°', w_cm: c.width_cm, l_cm: c.length_cm, h_cm: c.height_cm, weight: w, type: c.type, items };
             });
 
@@ -691,7 +707,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         {dockCrates.map(c => {
                             const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
                             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
-                            const w = c.weight_kg || Math.round((c.width_cm * c.length_cm * (c.height_cm || c.width_cm)) / 5000);
+                            const w = computeCrateWeight(c, allInventory);
                             const typeLabel = c.type === 'pallet' ? 'PLT' : c.type === 'cardboard' ? 'BOX' : 'CRT';
                             return (
                                 <button key={c.id} onClick={() => handleLoad(c.id)}
@@ -762,17 +778,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <Layers size={11} />Side
                                 </button>
                             </div>
-                            {/* Compact toggle */}
+                            {/* Compact toggle — free-floating icon */}
                             <button
                                 onClick={() => setIsCompact(c => !c)}
                                 title={isCompact ? 'Expand panels' : 'Compact panels'}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                                    isCompact ? 'border-white/30 text-white bg-white/10' : 'border-white/10 text-white/40 hover:text-white'
-                                }`}
-                                style={{ background: isCompact ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)' }}
+                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
                             >
-                                {isCompact ? <PanelTopClose size={12} /> : <PanelTop size={12} />}
-                                {isCompact ? 'Expanded' : 'Compact'}
+                                {isCompact ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
                             </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
