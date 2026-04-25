@@ -540,20 +540,20 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
 
         // Check for JPEG magic bytes (0xFF 0xD8)
         if (bytes.length > 2 && bytes[0] === 0xFF && bytes[1] === 0xD8) {
-            const searchSeq = new TextEncoder().encode('{"version"');
-            let jsonStartIndex = -1;
-            // Search backwards to find JSON start
-            for (let i = bytes.length - searchSeq.length; i >= 0; i--) {
-                let match = true;
-                for (let j = 0; j < searchSeq.length; j++) {
-                    if (bytes[i + j] !== searchSeq[j]) { match = false; break; }
+            let eoiIndex = -1;
+            // Search backwards to find the End Of Image marker (0xFF 0xD9)
+            for (let i = bytes.length - 2; i >= 0; i--) {
+                if (bytes[i] === 0xFF && bytes[i + 1] === 0xD9) {
+                    eoiIndex = i;
+                    break;
                 }
-                if (match) { jsonStartIndex = i; break; }
             }
-            if (jsonStartIndex !== -1) {
-                const jsonBytes = bytes.slice(jsonStartIndex);
-                jsonText = new TextDecoder().decode(jsonBytes);
-                const jpegBytes = bytes.slice(0, jsonStartIndex);
+            if (eoiIndex !== -1) {
+                const jpegBytes = bytes.slice(0, eoiIndex + 2);
+                const jsonBytes = bytes.slice(eoiIndex + 2);
+                
+                jsonText = new TextDecoder().decode(jsonBytes).trim();
+                
                 const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
                 thumbnailBase64 = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
