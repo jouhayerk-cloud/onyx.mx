@@ -76,6 +76,8 @@ import {
     isPackingNFCWizardOpenAtom,
     truckReadyTriggerAtom,
     truckIsBusyAtom,
+    truckViewModeAtom,
+    truckIsCompactAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -97,7 +99,8 @@ import {
     ChevronLeft, Plus, Trash2, Grid, FileText, Database, Calendar, DollarSign, 
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
-    Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter
+    Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
+    Grid3x3, PanelTop, PanelTopClose
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -501,6 +504,8 @@ const LogisticsBar: React.FC = () => {
     const [isPackingFiltersOpen, setIsPackingFiltersOpen] = useAtom(isPackingFiltersOpenAtom);
     const setTruckReady = useSetAtom(truckReadyTriggerAtom);
     const truckBusy = useAtomValue(truckIsBusyAtom);
+    const [truckView, setTruckView] = useAtom(truckViewModeAtom);
+    const [truckCompact, setTruckCompact] = useAtom(truckIsCompactAtom);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'package' },
@@ -544,6 +549,27 @@ const LogisticsBar: React.FC = () => {
                     {subTab === 'shipping' && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1" />
+                            {/* Top / Side view toggle */}
+                            <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <button
+                                    onClick={() => setTruckView('top')}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${truckView === 'top' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'}`}
+                                    title="Top View"
+                                ><Grid3x3 size={11} />Top</button>
+                                <button
+                                    onClick={() => setTruckView('side')}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${truckView === 'side' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'}`}
+                                    title="Side View"
+                                ><Layers size={11} />Side</button>
+                            </div>
+                            {/* Compact toggle */}
+                            <button
+                                onClick={() => setTruckCompact(c => !c)}
+                                title={truckCompact ? 'Expand panels' : 'Compact panels'}
+                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                            >
+                                {truckCompact ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
+                            </button>
                             <button
                                 onClick={() => setTruckReady(n => n + 1)}
                                 disabled={truckBusy}
