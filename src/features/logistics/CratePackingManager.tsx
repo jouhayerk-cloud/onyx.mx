@@ -927,7 +927,7 @@ export const CratePackingManager: React.FC = () => {
                         isSaving={isSaving}
                     />
                 ) : (
-                    <div className="flex-1 flex flex-col bg-black">
+                    <div className="flex-1 flex flex-col bg-black min-h-0">
                         {/* Header Section */}
                         <div className="px-6 pt-12 pb-10 sm:px-10 shrink-0">
                             <div className="max-w-7xl mx-auto flex items-center justify-between">
