@@ -38,27 +38,27 @@ function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[]) 
     return { label: `${datePrefix}${vendorsStr}${seq >= 0 ? seq + 1 : 1}`, vendorList };
 }
 
-// ─── CM Grid (PORTRAIT: X=truck width 244cm, Y=truck length 1615cm) ──────────
+// ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
 const CmGrid: React.FC = () => {
     const minor = 50; const major = 100;
     const xLines: number[] = []; const yLines: number[] = [];
-    for (let x = 0; x <= TRUCK_W_CM; x += minor) xLines.push(x);
-    for (let y = 0; y <= TRUCK_L_CM; y += minor) yLines.push(y);
+    for (let x = 0; x <= TRUCK_L_CM; x += minor) xLines.push(x);
+    for (let y = 0; y <= TRUCK_W_CM; y += minor) yLines.push(y);
     return (
-        <svg className="absolute inset-0 pointer-events-none" width={TRUCK_W_CM * BASE_SCALE} height={TRUCK_L_CM * BASE_SCALE} style={{ overflow: 'visible' }}>
+        <svg className="absolute inset-0 pointer-events-none" width={TRUCK_L_CM * BASE_SCALE} height={TRUCK_W_CM * BASE_SCALE} style={{ overflow: 'visible' }}>
             {xLines.map(x => (
-                <line key={`x${x}`} x1={x * BASE_SCALE} y1={0} x2={x * BASE_SCALE} y2={TRUCK_L_CM * BASE_SCALE}
+                <line key={`x${x}`} x1={x * BASE_SCALE} y1={0} x2={x * BASE_SCALE} y2={TRUCK_W_CM * BASE_SCALE}
                     stroke={x % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} strokeWidth={x % major === 0 ? 1 : 0.5} />
             ))}
             {yLines.map(y => (
-                <line key={`y${y}`} x1={0} y1={y * BASE_SCALE} x2={TRUCK_W_CM * BASE_SCALE} y2={y * BASE_SCALE}
+                <line key={`y${y}`} x1={0} y1={y * BASE_SCALE} x2={TRUCK_L_CM * BASE_SCALE} y2={y * BASE_SCALE}
                     stroke={y % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} strokeWidth={y % major === 0 ? 1 : 0.5} />
             ))}
-            {yLines.filter(y => y % major === 0 && y > 0).map(y => (
-                <text key={`yl${y}`} x={3} y={y * BASE_SCALE - 3} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{y}cm</text>
-            ))}
             {xLines.filter(x => x % major === 0 && x > 0).map(x => (
-                <text key={`xl${x}`} x={x * BASE_SCALE + 2} y={12} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{x}</text>
+                <text key={`xl${x}`} x={x * BASE_SCALE + 3} y={12} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{x}cm</text>
+            ))}
+            {yLines.filter(y => y % major === 0 && y > 0).map(y => (
+                <text key={`yl${y}`} x={3} y={y * BASE_SCALE - 3} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{y}</text>
             ))}
         </svg>
     );
@@ -102,12 +102,12 @@ const TruckCrate: React.FC<{
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
     const isDraggingRef = useRef(false);
 
-    // PORTRAIT: X = truck width axis (244cm), Y = truck length axis (1615cm)
-    // r=0: crate width across X, crate length down Y
-    const pxX = (pos.r === 0 ? crate.width_cm : crate.length_cm) * BASE_SCALE;
-    const pxY = (pos.r === 0 ? crate.length_cm : crate.width_cm) * BASE_SCALE;
-    const dimX = pos.r === 0 ? crate.width_cm : crate.length_cm;
-    const dimY = pos.r === 0 ? crate.length_cm : crate.width_cm;
+    // LANDSCAPE: X = truck length axis (1615cm, scrolls), Y = truck width axis (244cm)
+    // r=0: crate length along X, crate width along Y
+    const pxX = (pos.r === 0 ? crate.length_cm : crate.width_cm) * BASE_SCALE;
+    const pxY = (pos.r === 0 ? crate.width_cm : crate.length_cm) * BASE_SCALE;
+    const dimX = pos.r === 0 ? crate.length_cm : crate.width_cm;
+    const dimY = pos.r === 0 ? crate.width_cm : crate.length_cm;
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         e.preventDefault(); e.stopPropagation(); onSelect();
@@ -116,8 +116,8 @@ const TruckCrate: React.FC<{
         const onMove = (me: MouseEvent) => {
             if (!isDraggingRef.current) return;
             // divide by zoom because parent is CSS-scaled
-            const nx = Math.max(0, Math.min(TRUCK_W_CM - dimX, ox + (me.clientX - sx) / (zoom * BASE_SCALE)));
-            const ny = Math.max(0, Math.min(TRUCK_L_CM - dimY, oy + (me.clientY - sy) / (zoom * BASE_SCALE)));
+            const nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox + (me.clientX - sx) / (zoom * BASE_SCALE)));
+            const ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + (me.clientY - sy) / (zoom * BASE_SCALE)));
             onUpdatePos(nx, ny);
         };
         const onUp = () => { isDraggingRef.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
@@ -130,10 +130,13 @@ const TruckCrate: React.FC<{
     return (
         <div className="absolute select-none" style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
             {isSelected && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#111] border border-white/20 p-1.5 rounded-2xl shadow-2xl z-50 whitespace-nowrap">
-                    <button onClick={e => { e.stopPropagation(); onRotate(); }} className="w-9 h-9 flex items-center justify-center hover:bg-white/10 rounded-xl text-white transition-all"><RotateCcw size={14} /></button>
-                    <div className="w-px h-5 bg-white/20" />
-                    <button onClick={e => { e.stopPropagation(); onUnload(); }} className="w-9 h-9 flex items-center justify-center hover:bg-rose-500/20 rounded-xl text-rose-400 transition-all"><Trash2 size={14} /></button>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 whitespace-nowrap">
+                    <button onClick={e => { e.stopPropagation(); onRotate(); }} className="text-white/50 hover:text-white transition-colors" title="Rotate">
+                        <RotateCcw size={16} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); onUnload(); }} className="text-rose-400/60 hover:text-rose-400 transition-colors" title="Unload">
+                        <Trash2 size={16} />
+                    </button>
                 </div>
             )}
             <div
@@ -216,9 +219,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         finally { setIsSaving(false); }
     };
 
-    // PORTRAIT: width=244cm horizontal, length=1615cm vertical (scrolls)
-    const canvasW = TRUCK_W_CM * BASE_SCALE; // 366px
-    const canvasH = TRUCK_L_CM * BASE_SCALE; // 2422px — scrolls vertically
+    // LANDSCAPE: length=horizontal(scrolls), width=vertical(fixed)
+    const canvasW = TRUCK_L_CM * BASE_SCALE; // 2422px — scrolls horizontally
+    const canvasH = TRUCK_W_CM * BASE_SCALE; // 366px
 
     return (
         <div className="flex flex-col lg:flex-row h-full text-white overflow-hidden relative" onClick={() => setSelectedId(null)}>
@@ -239,12 +242,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             {/* ── CANVAS ── */}
             <div className="flex-1 flex flex-col min-h-0 relative z-0" onClick={e => e.stopPropagation()}>
-                {/* Controls */}
-                <div className="flex items-center justify-between px-8 py-5 shrink-0 border-b border-white/5">
+                <div className="flex items-center justify-between px-8 py-5 shrink-0">
                     <div>
                         <div className="flex items-baseline gap-3">
                             <h2 className="text-xl font-black uppercase tracking-tighter">53' Trailer</h2>
-                            <span className="text-[9px] font-black text-white/30 border border-white/10 px-2 py-0.5 rounded">{Math.round(zoom * 100)}%</span>
+                            <span className="text-[9px] font-black text-white/20">{Math.round(zoom * 100)}%</span>
                         </div>
                         <div className="flex items-center gap-3 mt-0.5 text-[10px] font-black uppercase tracking-widest">
                             <span className="text-emerald-400">{truckCrates.length} Loaded</span>
@@ -254,14 +256,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-white/30">{floorPct}% Floor</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 border border-white/10 rounded-xl p-1">
-                            <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all"><ZoomOut size={14} /></button>
-                            <button onClick={() => setZoom(1.0)} className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all"><Maximize2 size={12} /></button>
-                            <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all"><ZoomIn size={14} /></button>
-                        </div>
-                        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all group">
-                            {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} className="group-hover:rotate-12 transition-transform" />}
+                    <div className="flex items-center gap-5">
+                        <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/30 hover:text-white transition-colors" title="Zoom out"><ZoomOut size={18} /></button>
+                        <button onClick={() => setZoom(1.0)} className="text-white/30 hover:text-white transition-colors" title="Reset zoom"><Maximize2 size={16} /></button>
+                        <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="text-white/30 hover:text-white transition-colors" title="Zoom in"><ZoomIn size={18} /></button>
+                        <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 text-white/60 hover:text-white transition-colors" title="Deploy manifest">
+                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                             <span className="text-[10px] font-black uppercase tracking-widest">Deploy</span>
                         </button>
                     </div>
@@ -270,12 +270,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 {/* Scrollable canvas */}
                 <div className="flex-1 overflow-auto custom-scrollbar bg-[#0a0a0a]" onWheel={handleWheel}>
                     <div className="p-8" style={{ minWidth: canvasW * zoom + 64, minHeight: canvasH * zoom + 64 }}>
-                        {/* Direction labels — portrait: rear=top, front=bottom */}
-                        <div className="flex items-center gap-3 mb-2 text-white/30" style={{ width: canvasW * zoom }}>
+                        {/* Direction labels — landscape: rear=left, front=right */}
+                        <div className="flex items-center gap-3 mb-2 text-white/30">
                             <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
                             <span className="text-[8px] font-black uppercase tracking-[0.4em]">Rear Door</span>
-                            <div className="flex-1 h-px bg-white/10" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] opacity-50">{TRUCK_W_CM}cm wide · {TRUCK_L_CM}cm deep</span>
+                            <div className="flex-1 h-px bg-white/10" style={{ width: canvasW * zoom * 0.3 }} />
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] opacity-50">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
+                            <div className="flex-1 h-px bg-white/10" style={{ width: canvasW * zoom * 0.3 }} />
+                            <span className="text-[8px] font-black uppercase tracking-[0.4em]">Cab Front</span>
+                            <div className="w-2 h-2 rounded-full bg-white/30 shrink-0" />
                         </div>
 
                         {/* Truck body — CSS scaled, items live in unscaled space */}
@@ -286,10 +289,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 onClick={e => e.stopPropagation()}
                             >
                                 <CmGrid />
-                                {/* Axle markers — at 72%, 82%, 90% of truck length (vertical) */}
+                                {/* Axle markers at 72%, 82%, 90% of truck length (vertical lines) */}
                                 {[0.72, 0.82, 0.90].map(frac => (
-                                    <div key={frac} className="absolute left-0 right-0 h-px bg-white/15 pointer-events-none" style={{ top: frac * canvasH }}>
-                                        <span className="absolute left-1 top-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
+                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/15 pointer-events-none" style={{ left: frac * canvasW }}>
+                                        <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
                                     </div>
                                 ))}
                                 {truckCrates.map(c => {
@@ -312,21 +315,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             {/* ── ANALYSIS ── */}
             <div className="w-full lg:w-[220px] flex flex-col shrink-0 relative z-10 lg:border-l border-white/5 p-6 gap-6">
-                <div className="flex items-center gap-2 text-emerald-400">
-                    <Gauge size={16} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Analysis</span>
-                </div>
-                <div className="flex flex-col gap-2">
+                <Gauge size={16} className="text-emerald-400" />
+                <div className="flex flex-col gap-2 mt-4">
                     <div className="flex justify-between items-center">
                         <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Floor</span>
                         <span className="text-sm font-black tabular-nums">{floorPct}%</span>
                     </div>
-                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${floorPct}%` }} />
                     </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-white/5 flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">Payload</span>
+                <div className="flex flex-col gap-1 mt-4">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Payload</span>
                     <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-black tracking-tighter">{(Math.round(totalWeight) / 1000).toFixed(2)}</span>
                         <span className="text-xs font-black text-white/30 uppercase">Tons</span>
