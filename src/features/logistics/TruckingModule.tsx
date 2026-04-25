@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom } from '../../lib/atoms';
@@ -221,6 +221,94 @@ const TruckCrate: React.FC<{
     );
 };
 
+// ─── Side View (lateral 2-D cross-section) ────────────────────────────────────
+const TRUCK_H_CM = 279; // internal trailer height
+const SideView: React.FC<{ truckCrates: any[]; positions: Record<string, {x:number;y:number;r:number}>; allCrates: any[]; allInventory: any[]; zoom: number }> =
+    ({ truckCrates, positions, allCrates, allInventory, zoom }) => {
+    const SVG_W = TRUCK_L_CM * BASE_SCALE;
+    const SVG_H = TRUCK_H_CM * BASE_SCALE;
+    // Each crate rendered as a rect: x=pos.x (longitudinal), y from floor up by height
+    const crates = truckCrates.map(c => {
+        const pos = positions[c.id];
+        if (!pos) return null;
+        const rotated = pos.r === 90;
+        const lenX = rotated ? c.length_cm : c.width_cm; // footprint along truck length
+        const h = c.height_cm || 100;
+        const px = pos.x * BASE_SCALE;
+        const pw = lenX * BASE_SCALE;
+        const ph = h * BASE_SCALE;
+        const py = SVG_H - ph; // floor-up
+        const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
+        return { px, py, pw, ph, label, col, h, lenX };
+    }).filter(Boolean) as any[];
+
+    return (
+        <div className="flex-1 overflow-auto custom-scrollbar" style={{ background: 'rgba(0,0,0,0.2)' }}>
+            <div className="p-8" style={{ minWidth: SVG_W * zoom + 64, minHeight: SVG_H * zoom + 64 }}>
+                {/* Labels */}
+                <div className="flex items-center gap-3 mb-2 text-white/40 text-[8px] font-black uppercase tracking-widest">
+                    <span>◀ Rear Door</span>
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span>Side View — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H</span>
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span>Cab Front ▶</span>
+                </div>
+                <div style={{ width: SVG_W * zoom, height: SVG_H * zoom, position: 'relative' }}>
+                    <svg
+                        width={SVG_W} height={SVG_H}
+                        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+                        style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
+                    >
+                        {/* Trailer shell */}
+                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.2)" strokeWidth={2} />
+                        {/* Floor */}
+                        <rect x={0} y={SVG_H - 6} width={SVG_W} height={6} fill="rgba(255,255,255,0.08)" />
+                        {/* Height grid every 50cm */}
+                        {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
+                            <g key={y}>
+                                <line x1={0} y1={SVG_H - y * BASE_SCALE} x2={SVG_W} y2={SVG_H - y * BASE_SCALE}
+                                    stroke="rgba(255,255,255,0.05)" strokeWidth={0.5} />
+                                <text x={4} y={SVG_H - y * BASE_SCALE - 2} fill="rgba(255,255,255,0.2)" fontSize={8} fontFamily="monospace">{y}cm</text>
+                            </g>
+                        ))}
+                        {/* Axle lines */}
+                        {[0.72, 0.82, 0.90].map(f => (
+                            <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
+                                stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="4,4" />
+                        ))}
+                        {/* Crates */}
+                        {crates.map((cr, i) => (
+                            <g key={i}>
+                                <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
+                                    fill={`${cr.col}22`} stroke={cr.col} strokeWidth={1.2} rx={2} />
+                                {/* Height dimension */}
+                                {cr.ph > 20 && (
+                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 4}
+                                        textAnchor="middle" fontSize={Math.min(10, cr.pw / 4)} fill={cr.col}
+                                        fontFamily="monospace" fontWeight="bold">
+                                        {cr.label}
+                                    </text>
+                                )}
+                                {cr.ph > 32 && (
+                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 15}
+                                        textAnchor="middle" fontSize={7} fill="rgba(255,255,255,0.4)"
+                                        fontFamily="monospace">
+                                        {cr.h}cm H
+                                    </text>
+                                )}
+                            </g>
+                        ))}
+                        {/* Cab cab block */}
+                        <rect x={SVG_W - 8} y={0} width={8} height={SVG_H}
+                            fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = ({ docs, onRefresh }) => {
     const db = useDatabase();
@@ -232,6 +320,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number }>>({});
     const [zoom, setZoom] = useState(1.0);
+    const [viewMode, setViewMode] = useState<'top' | 'side'>('top');
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number }> = {};
@@ -274,7 +363,43 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         return { MAX_KG, TRUCK_VOL_M3, usedVol, volPct, payloadPct, remaining, avgW, nCrates, nPallets, nBoxes, rPct, mPct, fPct, status, statusColor };
     }, [truckCrates, totalWeight, positions]);
 
-    const handleLoad = (id: string) => { setPositions(p => ({ ...p, [id]: { x: 10, y: 10, r: 0 } })); setSelectedId(id); };
+    // Smart auto-position: pack from FRONT (cab, right side x≈TRUCK_L_CM) toward rear, row-by-row
+    const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, {x:number;y:number;r:number}>, allCrates: any[]) => {
+        const W = crate.width_cm;
+        const D = crate.length_cm;
+        const PAD = 5; // 5cm padding between crates
+        const MARGIN = 10;
+        // Collect occupied rects [{x,y,w,d}] in canvas space
+        const occupied = allCrates
+            .filter(c => currentPositions[c.id])
+            .map(c => {
+                const p = currentPositions[c.id];
+                const rotated = p.r === 90;
+                return { x: p.x, y: p.y, w: rotated ? c.length_cm : c.width_cm, d: rotated ? c.width_cm : c.length_cm };
+            });
+        // Scan from front (high x) to rear (low x), left-to-right in y
+        const stepX = Math.max(10, Math.floor(W / 2));
+        const stepY = Math.max(10, Math.floor(D / 2));
+        for (let xi = TRUCK_L_CM - W - MARGIN; xi >= MARGIN; xi -= stepX) {
+            for (let yi = MARGIN; yi <= TRUCK_W_CM - D - MARGIN; yi += stepY) {
+                const fits = !occupied.some(o =>
+                    xi < o.x + o.w + PAD && xi + W + PAD > o.x &&
+                    yi < o.y + o.d + PAD && yi + D + PAD > o.y
+                );
+                if (fits) return { x: xi, y: yi, r: 0 };
+            }
+        }
+        // Fallback: stack at front edge
+        return { x: Math.max(MARGIN, TRUCK_L_CM - W - MARGIN), y: MARGIN, r: 0 };
+    }, []);
+
+    const handleLoad = (id: string) => {
+        const crate = allCrates.find(c => c.id === id);
+        if (!crate) return;
+        const pos = computeAutoPosition(crate, positions, allCrates);
+        setPositions(p => ({ ...p, [id]: pos }));
+        setSelectedId(id);
+    };
     const handleUnload = (id: string) => { setPositions(p => { const n = { ...p }; delete n[id]; return n; }); setSelectedId(null); };
     const handleUpdatePos = (id: string, x: number, y: number) => setPositions(p => ({ ...p, [id]: { ...p[id], x, y } }));
     const handleRotate = (id: string) => setPositions(p => ({ ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } }));
@@ -322,7 +447,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const crateRects = crateData.map(cd => {
                 const dimX = cd.rot === '90°' ? cd.l_cm : cd.w_cm;
                 const dimY = cd.rot === '90°' ? cd.w_cm : cd.l_cm;
-                const px = Math.round(cd.pos.split(',')[0].trim().replace('cm','')) * BASE_SCALE * svgScale;
+                const px = Math.round(parseFloat(cd.pos.split(',')[0].trim().replace('cm',''))) * BASE_SCALE * svgScale;
                 const py = Math.round(parseFloat(cd.pos.split(',')[1])) * BASE_SCALE * svgScale;
                 const pw = dimX * BASE_SCALE * svgScale;
                 const ph = dimY * BASE_SCALE * svgScale;
@@ -343,7 +468,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Trucking Manifest ${manifestId}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:monospace;font-size:11px;color:#111;padding:24px}h1{font-size:18px;font-weight:900;letter-spacing:-0.03em;margin-bottom:4px}h2{font-size:13px;font-weight:900;margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1px solid #999;padding-bottom:4px}table{width:100%;border-collapse:collapse}tr:nth-child(even){background:#f9f9f9}.kv{display:flex;gap:32px;margin-bottom:12px;flex-wrap:wrap}.kv span{font-size:10px;color:#666;display:block}.kv strong{font-size:13px;font-weight:900}@media print{body{padding:16px}}</style></head><body>
 <h1>■ TRUCKING MANIFEST</h1><p style="color:#999;font-size:9px;margin-bottom:14px">${manifestId} &bull; Generated ${ts}</p>
-<div class="kv"><div><span>TRAILER</span><strong>53' &mdash; ${TRUCK_L_CM}cm × ${TRUCK_W_CM}cm</strong></div><div><span>UNITS LOADED</span><strong>${truckCrates.length} / ${allCrates.length}</strong></div><div><span>TOTAL PAYLOAD</span><strong>${Math.round(panelStats.payloadPct < 1 ? 0 : (panelStats.payloadPct / 100 * panelStats.MAX_KG))} KG</strong></div><div><span>FLOOR USED</span><strong>${panelStats.floorPct}%</strong></div><div><span>STATUS</span><strong>${panelStats.status}</strong></div></div>
+<div class="kv"><div><span>TRAILER</span><strong>53' &mdash; ${TRUCK_L_CM}cm × ${TRUCK_W_CM}cm</strong></div><div><span>UNITS LOADED</span><strong>${truckCrates.length} / ${allCrates.length}</strong></div><div><span>TOTAL PAYLOAD</span><strong>${Math.round(panelStats.payloadPct < 1 ? 0 : (panelStats.payloadPct / 100 * panelStats.MAX_KG))} KG</strong></div><div><span>FLOOR USED</span><strong>${floorPct}%</strong></div><div><span>STATUS</span><strong>${panelStats.status}</strong></div></div>
 <h2>Trailer Load Map</h2><div style="overflow:auto">${truckSvg}</div>
 <h2>Crates Packing List</h2><table><thead><tr style="background:#111;color:#fff"><th style="padding:4px;text-align:left">Crate</th><th>Dims</th><th>Weight</th><th>Items</th><th></th></tr></thead><tbody>${crateRowsHTML}</tbody></table>
 <h2>Unified Items Index</h2><table><thead><tr style="background:#111;color:#fff"><th style="padding:4px;text-align:left">SKU</th><th>Description</th><th>Vendor</th><th>Crate</th><th style="text-align:right">Qty</th></tr></thead><tbody>${itemTableHTML}</tbody></table>
@@ -384,15 +509,50 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [truckReadyTrigger]);
 
-    const canvasW = TRUCK_L_CM * BASE_SCALE; // 2422px — scrolls horizontally
-    const canvasH = TRUCK_W_CM * BASE_SCALE; // 366px
+    const canvasW = TRUCK_L_CM * BASE_SCALE;
+    const canvasH = TRUCK_W_CM * BASE_SCALE;
+
+    // ── Touch pinch-zoom ──
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+    useEffect(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+        const onTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                pinchRef.current = { dist: Math.hypot(dx, dy), zoom };
+            }
+        };
+        const onTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 2 && pinchRef.current) {
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const newDist = Math.hypot(dx, dy);
+                const scale = newDist / pinchRef.current.dist;
+                setZoom(Math.max(0.2, Math.min(3, pinchRef.current.zoom * scale)));
+            }
+        };
+        const onTouchEnd = () => { pinchRef.current = null; };
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchmove', onTouchMove, { passive: false });
+        el.addEventListener('touchend', onTouchEnd);
+        return () => {
+            el.removeEventListener('touchstart', onTouchStart);
+            el.removeEventListener('touchmove', onTouchMove);
+            el.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [zoom]);
 
     return (
         <div className="flex flex-col h-full text-white overflow-hidden relative" onClick={() => setSelectedId(null)}>
 
-            {/* ── HORIZONTAL DOCK STRIP — above info panel, never zooms ── */}
+            {/* ── HORIZONTAL DOCK STRIP ── */}
             <div
-                className="shrink-0 border-b border-white/5 bg-[#080808]"
+                className="shrink-0 border-b border-white/8 backdrop-blur-xl"
+                style={{ background: 'rgba(255,255,255,0.03)' }}
                 onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
             >
                 {dockCrates.length === 0 ? (
@@ -420,23 +580,47 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             {/* ── CANVAS AREA (info panel + trailer viewer) ── */}
             <div className="flex-1 flex flex-col min-h-0 min-w-0 relative z-0" onClick={e => e.stopPropagation()}>
 
-                {/* ══ FIXED HEADER PANEL — never scrolls or zooms ══ */}
+                {/* ══ FIXED HEADER PANEL ══ */}
                 <div
-                    className="shrink-0 px-8 pt-4 pb-4 flex flex-col gap-3"
+                    className="shrink-0 px-6 pt-3 pb-3 flex flex-col gap-3 backdrop-blur-xl border-b border-white/6"
+                    style={{ background: 'rgba(10,10,15,0.7)' }}
                     onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
                 >
-
-                    {/* Row 1: title + controls */}
+                    {/* Row 1: title + view toggle + zoom controls */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-baseline gap-3">
-                            <h2 className="text-xl font-black uppercase tracking-tighter">53' Trailer</h2>
-                            <span className="text-[9px] font-black text-white/20">{Math.round(zoom * 100)}%</span>
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
+                            <h2 className="text-xl font-black uppercase tracking-tighter text-white">53' Trailer</h2>
+                            <span className="text-[9px] font-black text-white/40">{Math.round(zoom * 100)}%</span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/30 hover:text-white transition-colors" title="Zoom out"><ZoomOut size={16} /></button>
-                            <button onClick={() => setZoom(1.0)} className="text-white/30 hover:text-white transition-colors" title="Reset zoom"><Maximize2 size={14} /></button>
-                            <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="text-white/30 hover:text-white transition-colors" title="Zoom in"><ZoomIn size={16} /></button>
+                        <div className="flex items-center gap-3">
+                            {/* View toggle */}
+                            <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-white/10 backdrop-blur-sm" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <button
+                                    onClick={() => setViewMode('top')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                        viewMode === 'top' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'
+                                    }`}
+                                    title="Top View"
+                                >
+                                    <Grid3x3 size={11} />Top
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('side')}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                        viewMode === 'side' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'
+                                    }`}
+                                    title="Side View"
+                                >
+                                    <Layers size={11} />Side
+                                </button>
+                            </div>
+                            {/* Zoom controls */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
+                                <button onClick={() => setZoom(1.0)} className="text-white/30 hover:text-white transition-colors cursor-pointer text-[8px] font-black w-8 text-center" title="Reset">{Math.round(zoom*100)}%</button>
+                                <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom in"><ZoomIn size={15} /></button>
+                            </div>
                         </div>
                     </div>
 
@@ -534,25 +718,31 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                  </div>
 
 
-                {/* Scrollable canvas */}
-                <div className="flex-1 overflow-auto custom-scrollbar bg-[#0a0a0a]" onWheel={handleWheel}>
+                {/* Canvas / Side View */}
+                <div
+                    ref={canvasRef}
+                    className="flex-1 overflow-auto custom-scrollbar"
+                    style={{ background: 'rgba(5,5,8,0.85)', touchAction: 'pan-x pan-y' }}
+                    onWheel={handleWheel}
+                >
+                    {viewMode === 'side' ? (
+                        <SideView truckCrates={truckCrates} positions={positions} allCrates={allCrates} allInventory={allInventory} zoom={zoom} />
+                    ) : (
                     <div className="p-8" style={{ minWidth: canvasW * zoom + 64, minHeight: canvasH * zoom + 64 }}>
-                        {/* Direction labels — landscape: rear=left, front=right */}
-                        <div className="flex items-center gap-3 mb-2 text-white/30">
+                        {/* Direction labels */}
+                        <div className="flex items-center gap-3 mb-2">
                             <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.4em]">Rear Door</span>
-                            <div className="flex-1 h-px bg-white/10" style={{ width: canvasW * zoom * 0.3 }} />
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] opacity-50">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
-                            <div className="flex-1 h-px bg-white/10" style={{ width: canvasW * zoom * 0.3 }} />
-                            <span className="text-[8px] font-black uppercase tracking-[0.4em]">Cab Front</span>
-                            <div className="w-2 h-2 rounded-full bg-white/30 shrink-0" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/40">Rear Door</span>
+                            <div className="flex-1 h-px bg-white/8" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
+                            <div className="flex-1 h-px bg-white/8" />
+                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/40">Cab Front</span>
+                            <div className="w-2 h-2 rounded-full bg-white/40 shrink-0" />
                         </div>
-
-                        {/* Truck body — CSS scaled, items live in unscaled space */}
                         <div style={{ width: canvasW * zoom, height: canvasH * zoom, position: 'relative' }}>
                             <div
-                                className="absolute top-0 left-0 border-2 border-white/20 bg-[#111]"
-                                style={{ width: canvasW, height: canvasH, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                                className="absolute top-0 left-0 border border-white/15"
+                                style={{ width: canvasW, height: canvasH, transform: `scale(${zoom})`, transformOrigin: 'top left', background: 'rgba(255,255,255,0.025)' }}
                                 onClick={e => e.stopPropagation()}
                             >
                                 <CmGrid />
@@ -577,14 +767,17 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             </div>
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
 
 
             <style>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 99px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; border: 1px solid rgba(255,255,255,0.05); }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+                .custom-scrollbar::-webkit-scrollbar-corner { background: transparent; }
             `}</style>
         </div>
     );
