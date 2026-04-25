@@ -417,3 +417,5 @@ export const isPackingNFCWizardOpenAtom = atom<boolean>(false);
 // Trucking Module Atoms
 export const truckReadyTriggerAtom = atom<number>(0); // increment to fire Ready Truck workflow
 export const truckIsBusyAtom = atom<boolean>(false);  // true while handleReadyTruck is running
+export const truckViewModeAtom = atom<'top' | 'side'>('top'); // trailer view: top-down or lateral
+export const truckIsCompactAtom = atom<boolean>(false);       // compact dock/info panels

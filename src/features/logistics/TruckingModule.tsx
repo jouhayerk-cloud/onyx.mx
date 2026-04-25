@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom } from '../../lib/atoms';
+import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 
@@ -430,8 +430,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number }>>({});
     const [zoom, setZoom] = useState(1.0);
-    const [viewMode, setViewMode] = useState<'top' | 'side'>('top');
-    const [isCompact, setIsCompact] = useState(false);
+    const [viewMode, setViewMode] = useAtom(truckViewModeAtom);
+    const [isCompact, setIsCompact] = useAtom(truckIsCompactAtom);
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -757,35 +757,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {/* View toggle */}
-                            <div className="flex items-center gap-0.5 p-0.5 rounded-lg border border-white/10 backdrop-blur-sm" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                <button
-                                    onClick={() => setViewMode('top')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                                        viewMode === 'top' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'
-                                    }`}
-                                    title="Top View"
-                                >
-                                    <Grid3x3 size={11} />Top
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('side')}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                                        viewMode === 'side' ? 'bg-white text-black shadow' : 'text-white/40 hover:text-white'
-                                    }`}
-                                    title="Side View"
-                                >
-                                    <Layers size={11} />Side
-                                </button>
-                            </div>
-                            {/* Compact toggle — free-floating icon */}
-                            <button
-                                onClick={() => setIsCompact(c => !c)}
-                                title={isCompact ? 'Expand panels' : 'Compact panels'}
-                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
-                            >
-                                {isCompact ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
-                            </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
