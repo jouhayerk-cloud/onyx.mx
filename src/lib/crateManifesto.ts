@@ -329,11 +329,12 @@ export async function exportCrateManifesto(
         // Tag Badge
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         doc.setFillColor(tr, tg, tb);
-        const badgeW = Math.min(COL_TAG.w - 4, doc.getTextWidth(item.itemId) + 6);
-        doc.roundedRect(COL_TAG.x + 2, y + 5, badgeW, 7, 1, 1, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(9);
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
+        const textW = doc.getTextWidth(item.itemId);
+        const badgeW = Math.min(COL_TAG.w - 2, textW + 2);
+        doc.roundedRect(COL_TAG.x + 2, y + 5.5, badgeW, 6, 0.5, 0.5, 'F');
+        doc.setTextColor(255, 255, 255);
         doc.text(item.itemId, COL_TAG.x + 2 + badgeW/2, y + 9.8, { align: 'center' });
 
         // Name & Badges
