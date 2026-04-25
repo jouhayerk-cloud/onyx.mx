@@ -172,14 +172,14 @@ export async function exportCrateManifesto(
             }
 
             const ts = ML + 42;
-            doc.setFontSize(22);
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...TEXT_HI);
-            doc.text(meta.customTitle || "LOGISTICS MANIFESTO", ts, 12);
-
-            doc.setFontSize(9);
             doc.setTextColor(...TEXT_LO);
-            doc.text(`${meta.dynamicId.toUpperCase()}  ·  ${meta.exportedAt}`, ts, 18);
+            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), ts, 10);
+
+            doc.setFontSize(22);
+            doc.setTextColor(...TEXT_HI);
+            doc.text(`${meta.dynamicId.toUpperCase()}`, ts, 18);
 
             if (meta.exportNotes) {
                 doc.setFontSize(8);
