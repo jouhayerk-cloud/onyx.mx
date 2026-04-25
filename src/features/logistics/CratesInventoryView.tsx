@@ -474,7 +474,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                                 onStart={handleStartExport}
                                 progress={exportProgress}
                                 status={exportStatus}
-                                moduleName="Crate"
+                                moduleName={crate.type === 'pallet' ? 'Pallet' : crate.type === 'cardboard' ? 'Box' : 'Crate'}
                                 showBruteWeight={true}
                             />
                         </div>
