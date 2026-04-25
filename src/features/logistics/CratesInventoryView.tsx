@@ -317,7 +317,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 crateType: crate.type,
                 fillPct,
                 exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
-                exportNotes: cfg.notes?.trim() || `CRATE MANIFESTO — ${crate.id}`,
+                exportNotes: cfg.notes?.trim() || `${crate.type.toUpperCase()} MANIFESTO — ${crate.id}`,
                 exportBruteWeight: cfg.bruteWeight?.trim() || undefined,
                 excludeImages: !cfg.includeImages,
                 crateColor: (vendors as any)[dynamicId.split('-')[0]]?.color,
