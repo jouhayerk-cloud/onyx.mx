@@ -1,7 +1,14 @@
 # Changelog
 # 
-## [1.79.0] - 2026-04-24
+## [1.80.0] - 2026-04-24
 ### Added
+- **PDF Export Modernization**: Overhauled the PDF manifesto generator to use Portrait orientation.
+- **Dynamic Crate Typology**: Implemented legacy backward compatibility to automatically classify 38x41x38 crates as "Boxes" in PDF exports and UI.
+- **High-Visibility Formatting**: Detached the Crate/Box typology label from the metadata line in the manifesto header, upscaling it to a distinct 14pt bold format.
+- **Compact Scannability**: Re-engineered barcode tag ID badges on the PDF with minimized padding and increased text scaling for better scanning reliability.
+- **UI Stabilizations**: Resolved scrolling regression on available storage units panel in Logistics module.
+
+## [1.79.0] - 2026-04-24
 - **Multi-Window Independence [Desktop]**: Re-engineered state management to support multiple independent browser windows. Navigation, filters, and view-states now utilize `sessionStorage`, allowing side-by-side operation of different modules (e.g., Logistics and Finance) without interference.
 - **Modernized Crates Packing Module**: Completely overhauled the packing interface with a high-fidelity "containerless" design.
 - **Unified Image-Centric Intelligence Matrix**: Integrated all item metadata (Type, Size, Weight, and Barcodes) directly into high-fidelity image overlays for zero-clutter information retrieval.
