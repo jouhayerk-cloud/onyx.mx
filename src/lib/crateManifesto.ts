@@ -195,8 +195,17 @@ export async function exportCrateManifesto(
             doc.setFont('helvetica', 'bold');
             let weightStr = `${totalWeight.toFixed(1)} kg NET`;
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
-            const metaLine = `${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`;
-            doc.text(metaLine, PW - MR, 12, { align: 'right' });
+            
+            const part2 = `  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...TEXT_HI);
+            doc.text(part2, PW - MR, 12, { align: 'right' });
+            
+            const part2W = doc.getTextWidth(part2);
+            doc.setFontSize(14); // Larger tag
+            doc.setFont('helvetica', 'bold');
+            doc.text(meta.crateType.toUpperCase(), PW - MR - part2W, 12, { align: 'right' });
 
             doc.setTextColor(...TEXT_LO);
             doc.setFontSize(8);

@@ -368,7 +368,7 @@ const CrateSelectCard: React.FC<{
                 </p>
                 <div className="flex items-center justify-center gap-3">
                     <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em]">
-                        {isPallet ? 'Pallet' : crate.type === 'cardboard' ? 'Box' : 'Crate'}
+                        {isPallet ? 'Pallet' : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'Box' : 'Crate'}
                     </span>
                     {partialCount > 0 && (
                         <div className="flex items-center gap-1.5">
