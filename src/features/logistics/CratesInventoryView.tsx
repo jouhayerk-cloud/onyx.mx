@@ -314,7 +314,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack }: { crate: CrateRec
                 dynamicId,
                 crateId: crate.id,
                 crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm} cm`,
-                crateType: crate.type,
+                crateType: crate.type === 'cardboard' ? 'box' : crate.type,
                 fillPct,
                 exportedAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: '2-digit' }),
                 exportNotes: cfg.notes?.trim() || '',
