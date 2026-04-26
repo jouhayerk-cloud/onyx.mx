@@ -1347,12 +1347,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [zoom]);
 
     return (
-        <div className="flex flex-col h-full text-white overflow-hidden relative" onClick={() => setSelectedId(null)}>
+        <div className="flex flex-col text-white relative" onClick={() => setSelectedId(null)}>
 
             {/* ── HORIZONTAL DOCK STRIP ── */}
             <div
-                className="shrink-0 border-b border-white/8 backdrop-blur-xl"
-                style={{ background: 'rgba(255,255,255,0.03)' }}
+                className="sticky top-14 sm:top-16 z-[60] shrink-0 border-b border-white/10 backdrop-blur-3xl bg-black/40"
                 onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
             >
                 {dockCrates.length === 0 ? (

@@ -1258,177 +1258,194 @@ export const UnifiedInventoryView = () => {
         return copy;
     });
     return (
-        <div className="flex flex-col h-full overflow-hidden relative m-0 sm:m-4 mt-0 gap-0">
+        <div className="flex-1 flex flex-col relative m-0 gap-0">
             {/* ── INFO PANEL ── */}
-            <div className="z-40 shrink-0 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0a]/40">
-                {/* Row 1: Stats + Actions */}
-                <div className="flex items-center justify-between px-4 sm:px-6 py-3 gap-3 overflow-x-auto no-scrollbar">
-                    {/* Left: Stats */}
-                    <div className="flex items-center gap-6 shrink-0">
-                        {/* Payment Status cycle button */}
-                        <button
-                            onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
-                            className="flex items-center gap-3 transition-all group py-1 pr-2"
-                            title="Cycle payment status filter">
-                            <div className={`w-3 h-3 rounded-full border border-white/20 transition-all duration-500 ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-sm shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-sm shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-sm shadow-green-500/50' : 'bg-blue-400 shadow-sm shadow-blue-400/50'}`} />
-                            <span className="text-[10px] font-black tracking-widest text-white/40 uppercase group-hover:text-white">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
-                        </button>
-                    </div>
-
-                    {/* Center: Sort By pills (always visible) */}
-                    <div className="hidden md:flex items-center gap-4 flex-1 justify-center">
-                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/15 shrink-0">Sort By</span>
-                        {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: '#' }].map((o) => (
-                            <button key={o.key}
-                                onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
-                                className={`text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${sortKey === o.key ? 'text-(--main-color)' : 'text-white/30 hover:text-white'}`}>
-                                {o.label}
-                                {sortKey === o.key && <span className="text-[10px]">{sortOrder === 'asc' ? '↑' : '↓'}</span>}
+            <div className="flex-1 relative">
+                {/* ── STICKY GLASSMORPHIC HEADER (Tools + Filters) ── */}
+                <div className="sticky top-14 sm:top-16 z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
+                    {/* Row 1: Stats + Actions */}
+                    <div className="flex items-center justify-between px-4 sm:px-10 py-4 gap-3 overflow-x-auto no-scrollbar">
+                        {/* Left: Status Cycle */}
+                        <div className="flex items-center gap-6 shrink-0">
+                            <button
+                                onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
+                                className="flex items-center gap-4 transition-all group py-1.5 pr-4 border-r border-white/5"
+                                title="Cycle payment status filter"
+                            >
+                                <div className={`w-3.5 h-3.5 rounded-full border border-white/20 transition-all duration-500 shadow-lg ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-green-500/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
+                                <span className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase group-hover:text-white group-hover:tracking-[0.25em] transition-all">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
                             </button>
-                        ))}
+                        </div>
+
+                        {/* Center: Sort Pills */}
+                        <div className="hidden lg:flex items-center gap-6 flex-1 justify-center">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 shrink-0">Sort Criteria</span>
+                            <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
+                                {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: '#' }].map((o) => (
+                                    <button key={o.key}
+                                        onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
+                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${sortKey === o.key ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
+                                        {o.label}
+                                        {sortKey === o.key && (
+                                            <div className="flex flex-col -space-y-1">
+                                                <ChevronRight size={8} className={`-rotate-90 transition-opacity ${sortOrder === 'asc' ? 'opacity-100' : 'opacity-20'}`} />
+                                                <ChevronRight size={8} className={`rotate-90 transition-opacity ${sortOrder === 'desc' ? 'opacity-100' : 'opacity-20'}`} />
+                                            </div>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-5 shrink-0">
+                            {isSelectionMode && (
+                                <div className="flex items-center gap-3 animate-in slide-in-from-right duration-500">
+                                    <div className="flex flex-col items-end mr-4">
+                                        <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] leading-none">{selectedIds.length} SELECTED</span>
+                                        <button onClick={handleSelectAll} className="text-[8px] font-bold text-white/30 uppercase tracking-tighter hover:text-white transition-colors mt-1">
+                                            {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'Deselect All' : 'Select All'}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shadow-2xl">
+                                        <button 
+                                            onClick={handleCopyTags}
+                                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group"
+                                            title="Copy Selected Tags"
+                                        >
+                                            <ScanBarcode size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkRemove}
+                                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group"
+                                            title="Remove Selected"
+                                        >
+                                            <Trash2 size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <button onClick={() => setSelectedIds([])} className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white transition-all">
+                                            <X size={18} strokeWidth={2.5} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            <button
+                                onClick={handleCopyShareLink}
+                                className={`flex items-center gap-2 h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+                                <Share2 size={16} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">{isSelectionMode ? 'Copy Link' : 'Share'}</span>
+                            </button>
+                            <button
+                                onClick={() => { setIsSelectionMode(!isSelectionMode); if (!isSelectionMode) setSelectedIds([]); }}
+                                className={`w-10 h-10 flex items-center justify-center rounded-xl border border-white/5 transition-all ${isSelectionMode ? 'bg-white text-black border-transparent' : 'text-white/20 hover:text-white hover:bg-white/5'}`}
+                                title={isSelectionMode ? "Exit Selection Mode" : "Select Items"}>
+                                {isSelectionMode ? <X size={20} /> : <Check size={20} strokeWidth={3} />}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Right: Status filter + Selection actions */}
-                    <div className="flex items-center gap-5 shrink-0">
-                        {isSelectionMode && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{selectedIds.length} SELECTED</span>
-                                <div className="flex items-center gap-3 border-l border-white/5 pl-4 ml-2">
-                                    <button onClick={handleSelectAll} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-(--main-color) transition-colors">
-                                        {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'DESELECT ALL' : 'SELECT ALL'}
+                    {/* Row 2: Active Filters Bar (only when filters are set) */}
+                    {(vendorFilter !== 'All' || categoryFilter !== 'All' || materialFilter !== 'All') && (
+                        <div className="flex items-center gap-6 px-10 pb-4 animate-in slide-in-from-top-2 duration-500">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10">Active Filters</span>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {vendorFilter !== 'All' && (
+                                    <button onClick={() => setVendorFilter('All')}
+                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
+                                        {vendorFilter}
+                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
                                     </button>
-                                    <button onClick={() => setSelectedIds([])} className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-red-400 transition-colors">CLEAR</button>
-                                </div>
-                                <button 
-                                    onClick={handleCopyTags}
-                                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-(--main-color)/10 text-(--main-color) border border-(--main-color)/20 hover:bg-(--main-color) hover:text-black transition-all text-[9px] font-black uppercase tracking-widest ml-1"
-                                    title="Copy Selected Tag IDs (Space Separated)"
-                                >
-                                    <ScanBarcode size={14} strokeWidth={3} />
-                                    COPY TAGS
+                                )}
+                                {categoryFilter !== 'All' && (
+                                    <button onClick={() => setCategoryFilter('All')}
+                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <Layers size={12} className="opacity-40 group-hover:opacity-100" />
+                                        {categoryFilter}
+                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
+                                    </button>
+                                )}
+                                {materialFilter !== 'All' && (
+                                    <button onClick={() => setMaterialFilter('All')}
+                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <Box size={12} className="opacity-40 group-hover:opacity-100" />
+                                        {materialFilter}
+                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Row 3: Deploy Panel Toggle (only when FILTERS is ON) */}
+                    <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="flex items-center px-10 gap-6 h-14 bg-white/[0.02] border-t border-white/5">
+                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 shrink-0">Config Panels</span>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isVendorFilterOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+                                    <Tag size={14} strokeWidth={2.5} /> Vendor
                                 </button>
-                                <button 
-                                    onClick={handleBulkRemove}
-                                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-[9px] font-black uppercase tracking-widest ml-1"
-                                    title="Move Selected Items to Store (Mark as Available)"
-                                >
-                                    <Trash2 size={14} strokeWidth={3} />
-                                    REMOVE
+                                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isCategoryOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+                                    <Layers size={14} strokeWidth={2.5} /> Type
+                                </button>
+                                <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isMaterialOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+                                    <Box size={14} strokeWidth={2.5} /> Material
                                 </button>
                             </div>
-                        )}
-                        <button
-                            onClick={handleCopyShareLink}
-                            className={`flex items-center gap-2 h-9 font-black text-[9px] uppercase tracking-widest transition-all active:scale-95 ${isSelectionMode ? 'text-(--main-color)' : 'text-white/30 hover:text-white'}`}>
-                            <Share2 size={14} strokeWidth={2.5} />
-                            <span className="hidden sm:inline">{isSelectionMode ? 'Copy Link' : 'Share'}</span>
-                        </button>
-                        <button
-                            onClick={() => { setIsSelectionMode(!isSelectionMode); if (!isSelectionMode) setSelectedIds([]); }}
-                            className={`flex items-center justify-center transition-all ${isSelectionMode ? 'text-white' : 'text-white/30 hover:text-white'}`}
-                            title={isSelectionMode ? "Exit Selection Mode" : "Select Items"}>
-                            {isSelectionMode ? <X size={18} /> : <Check size={18} strokeWidth={2.5} />}
-                        </button>
+                        </div>
+                    </div>
+
+                    {/* Row 4: Deployed Filter Options */}
+                    <div className="flex flex-col">
+                        {/* Vendor Options */}
+                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Vendors</span>
+                                <button onClick={() => setVendorFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                                {activeVendors.map(v => {
+                                    const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                                    const isActive = vendorFilter === v;
+                                    return (
+                                        <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                                            {v}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        {/* Category Options */}
+                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Artifact Types</span>
+                                <button onClick={() => setCategoryFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                                {activeCategories.map(c => (
+                                    <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}>{c}</button>
+                                ))}
+                            </div>
+                        </div>
+                        {/* Material Options */}
+                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
+                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
+                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Materiality</span>
+                                <button onClick={() => setMaterialFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
+                                {activeMaterials.map(m => (
+                                    <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}>{m}</button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Row 2: Active filter bubbles (animated, only when filters are set) */}
-                {(vendorFilter !== 'All' || categoryFilter !== 'All' || materialFilter !== 'All') && (
-                    <div className="flex items-center gap-5 px-4 sm:px-6 pb-2.5 flex-wrap">
-                        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/15 mr-1">Active Filters</span>
-                        {vendorFilter !== 'All' && (
-                            <button onClick={() => setVendorFilter('All')}
-                                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
-                                {vendorFilter}
-                                <X size={11} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                            </button>
-                        )}
-                        {categoryFilter !== 'All' && (
-                            <button onClick={() => setCategoryFilter('All')}
-                                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
-                                <Layers size={11} className="opacity-40 group-hover:opacity-100 transition-opacity" />
-                                {categoryFilter.length > 20 ? categoryFilter.slice(0, 20) + '…' : categoryFilter}
-                                <X size={11} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                            </button>
-                        )}
-                        {materialFilter !== 'All' && (
-                            <button onClick={() => setMaterialFilter('All')}
-                                className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-white/70 hover:text-red-400 transition-all animate-in fade-in duration-200 group">
-                                <Box size={11} className="opacity-40 group-hover:opacity-100 transition-opacity" />
-                                {materialFilter.length > 22 ? materialFilter.slice(0, 22) + '…' : materialFilter}
-                                <X size={11} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
+                {/* ── MAIN INVENTORY CONTENT ── */}
+                <div className="px-1 sm:px-6 py-8 md:py-12">
+                    <div className={
+                        viewMode === 'grid' 
+                            ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-8 pb-32" 
+                            : viewMode === 'gallery' 
+                                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 pb-32 auto-rows-max" 
+                                : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
+                    }>
 
-            {/* ── DEPLOY PANEL: Filter sub-panel (only when FILTERS is ON) ── */}
-            <div className={`z-40 shrink-0 overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'max-h-14 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-                <div className="flex items-center px-4 sm:px-6 gap-3 bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl h-12">
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/15 shrink-0">Filter Panel</span>
-                    <div className="w-px h-5 bg-white/10 shrink-0" />
-                    <div className="flex items-center gap-6 shrink-0 ml-2">
-                        <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all ${isVendorFilterOpen ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}>
-                            <Tag size={13} strokeWidth={2.5} /> Vendor
-                        </button>
-                        <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all ${isCategoryOpen ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}>
-                            <Layers size={13} strokeWidth={2.5} /> Type
-                        </button>
-                        <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all ${isMaterialOpen ? 'text-(--main-color)' : 'text-white/40 hover:text-white'}`}>
-                            <Box size={13} strokeWidth={2.5} /> Material
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── DEPLOYED FILTER BARS (only show when isFiltersOpen) ── */}
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isVendorFilterOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Vendor</span>
-                    <button onClick={() => setVendorFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                    {activeVendors.map(v => {
-                        const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                        const isActive = vendorFilter === v;
-                        return (
-                            <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                                {v}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isCategoryOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Type</span>
-                    <button onClick={() => setCategoryFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                    {activeCategories.map(c => (
-                        <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{c}</button>
-                    ))}
-                </div>
-            </div>
-
-            <div className={`shrink-0 z-30 overflow-hidden transition-all duration-300 ${isFiltersOpen && isMaterialOpen ? 'h-12 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                <div className="h-full flex items-center px-6 gap-2 bg-black/20 backdrop-blur-md border-b border-white/5 overflow-x-auto no-scrollbar">
-                    <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/20 shrink-0 mr-3">Material</span>
-                    <button onClick={() => setMaterialFilter('All')} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                    {activeMaterials.map(m => (
-                        <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}>{m}</button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto px-1 sm:px-6 py-4 md:py-6 custom-scrollbar">
-                <div className={
-                    viewMode === 'grid' 
-                        ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-6 pb-20" 
-                        : viewMode === 'gallery' 
-                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20 auto-rows-max" 
-                            : "flex flex-col gap-3 pb-20 max-w-[1600px] mx-auto w-full"
-                }>
                     {isLoading && items.length === 0 ? (
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
                     ) : (
@@ -1461,6 +1478,7 @@ export const UnifiedInventoryView = () => {
                         })
                     )}
                 </div>
+            </div>
             </div>
 
             {mode === 'edit' && editData && (

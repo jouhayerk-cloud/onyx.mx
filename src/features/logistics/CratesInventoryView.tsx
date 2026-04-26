@@ -339,7 +339,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeploye
     };
 
     return (
-        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 border-b border-white/5 last:border-0">
+        <div className="group relative transition-all duration-500 w-full flex flex-col py-6 px-6 bg-white/[0.03] border border-white/10 backdrop-blur-md rounded-3xl mb-4 hover:border-(--main-color)/40">
 
             {/* Main Row */}
             <div className="p-4 flex flex-col xl:flex-row items-stretch xl:items-center gap-4 xl:gap-6 relative">
@@ -900,8 +900,8 @@ export const CratesInventoryView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden relative">
-            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-4 border-b border-white/5 bg-black/20 backdrop-blur-2xl shrink-0 z-10 w-full overflow-x-auto no-scrollbar gap-4 lg:gap-8">
+        <div className="flex flex-col relative">
+            <div className="flex items-center justify-between px-4 lg:px-8 py-3 lg:py-6 border-b border-white/10 bg-black/40 backdrop-blur-3xl sticky top-14 sm:top-16 z-[60] w-full gap-4 lg:gap-8">
                 <div className="flex items-center gap-4 sm:gap-8 shrink-0">
                     <div className="shrink-0">
                         <h2 className="text-lg font-black uppercase tracking-tight text-(--text-color)">
@@ -969,8 +969,8 @@ export const CratesInventoryView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 relative">
-                <div className="px-4 lg:px-8 py-4 lg:py-7 pb-32">
+            <div className="relative">
+                <div className="px-4 lg:px-8 py-4 lg:py-10">
                     {displayCrates.length > 0 ? (
                         <div className="flex flex-col gap-4 content-start">
                             {displayCrates.map(crate => (

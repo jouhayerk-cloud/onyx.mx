@@ -23,9 +23,9 @@ export const FinanceView: React.FC = () => {
     const pending = grandTotal - paid;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col">
             {/* ── Content ── */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1">
                 <TrackingPaymentsView docs={docs} exchangeRate={exchangeRate} onRefresh={refresh} />
             </div>
         </div>
