@@ -39,6 +39,8 @@ export interface ManifestoMeta {
     exportBruteWeight?: string; // Appended brute weight input from UI
     excludeHeader?: boolean;  // If true, skips the top panel entirely
     customTitle?: string;     // Explicit title override
+    excludeHeaderQr?: boolean; // NEW: Hide the big QR code in the header
+    excludeHeaderWireframe?: boolean; // NEW: Hide the wireframe icon in the header
     // ── Trailer Export Props ──
     topViewImg?: string;      // Base64 top view of trailer
     sideViewImg?: string;     // Base64 side view of trailer
@@ -181,10 +183,11 @@ export async function exportCrateManifesto(
     // ─── Column definitions (Adjusted for Portrait Width) ───────────────────
     const TABLE_END = PW - MR;
     const COL_QR   = { x: ML,       w: 12  }; 
-    const COL_TAG  = { x: COL_QR.x + COL_QR.w,  w: 32  }; 
-    const COL_PACKET = { x: COL_TAG.x + COL_TAG.w, w: 25 }; 
-    const COL_NAME = { x: COL_PACKET.x + COL_PACKET.w, w: 70 }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 35  }; 
+    const COL_IMG  = { x: COL_QR.x + COL_QR.w, w: meta.excludeImages ? 0 : 18 };
+    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 28  }; 
+    const COL_PACKET = { x: COL_TAG.x + COL_TAG.w, w: 22 }; 
+    const COL_NAME = { x: COL_PACKET.x + COL_PACKET.w, w: meta.excludeImages ? 83 : 65 }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 30  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
     const HDR_H = meta.excludeHeader ? 0 : 25;
@@ -203,17 +206,19 @@ export async function exportCrateManifesto(
             doc.rect(0, 0, PW, HDR_H, 'F');
 
             // Header QR — Left side
-            const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
-            if (headerQrUrl) {
-                const qrSize = 16;
-                const bx = ML;
-                const by = 4;
-                doc.setFillColor(255, 255, 255);
-                doc.rect(bx - 0.5, by - 0.5, qrSize + 1, qrSize + 1, 'F');
-                doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
+            if (!meta.excludeHeaderQr) {
+                const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
+                if (headerQrUrl) {
+                    const qrSize = 16;
+                    const bx = ML;
+                    const by = 4;
+                    doc.setFillColor(255, 255, 255);
+                    doc.rect(bx - 0.5, by - 0.5, qrSize + 1, qrSize + 1, 'F');
+                    doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
+                }
             }
 
-            const ts = ML + 48; // shift text more to the right to clear wireframe
+            const ts = (meta.excludeHeaderQr && meta.excludeHeaderWireframe) ? ML : ML + 48; // shift text more to the right to clear wireframe
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...TEXT_LO);
@@ -252,9 +257,11 @@ export async function exportCrateManifesto(
             doc.text(`${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
 
             // Wireframe Icon (Top Header)
-            const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
-            const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
-            drawWireframeIcon(doc, ML + 24, 4, 16, cw, cl, ch, meta.crateColor || '#d95a0a', meta.crateType);
+            if (!meta.excludeHeaderWireframe) {
+                const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
+                const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
+                drawWireframeIcon(doc, ML + 24, 4, 16, cw, cl, ch, meta.crateColor || '#d95a0a', meta.crateType);
+            }
         } else if (pageNum > 1) {
             // Continuation Header
             doc.setFillColor(...SURFACE);

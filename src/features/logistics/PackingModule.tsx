@@ -9,6 +9,7 @@ import {
     packingSortKeyAtom, packingSortOrderAtom, packingSelectedIdsAtom
 } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
+import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
 import { 
     Package, CheckCircle2, Grid, List, ChevronRight, Filter, CheckSquare, Square, 
@@ -405,31 +406,8 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                                         </div>
                                     </div>
 
-                                    <button
-                                        disabled={!isSupported || isWriting || status === 'success'}
-                                        onClick={handleWrite}
-                                        className={`w-full py-8 rounded-[2.5rem] text-xl font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex flex-col items-center justify-center gap-1 shadow-2xl relative overflow-hidden group
-                                            ${!isSupported ? 'bg-white/5 text-white/10 cursor-not-allowed' :
-                                              status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
-                                              status === 'success' ? 'bg-green-500 text-black' :
-                                              'bg-white text-black hover:bg-(--main-color) hover:scale-[1.02]'}`}
-                                    >
-                                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <div className="flex items-center gap-4 relative z-10">
-                                            {status === 'writing' ? (
-                                                <div className="animate-spin-slow"><Nfc size={28} /></div>
-                                            ) : <Zap size={28} strokeWidth={3} className={status === 'success' || !isSupported ? '' : 'group-hover:fill-current'} />}
-                                            <span>
-                                                {!isSupported ? 'NFC UNSUPPORTED' : 
-                                                 status === 'writing' ? 'SCANNING...' : 
-                                                 status === 'success' ? 'ENCODED' : 'WRITE NFC TAG'}
-                                            </span>
-                                        </div>
-                                        
-                                        {targetCopies > 1 && status === 'idle' && isSupported && (
-                                            <span className="text-[9px] opacity-40 font-black uppercase tracking-[0.3em] mt-1">Ready for {targetCopies} copies</span>
-                                        )}
-                                    </button>
+                                    {/* Moved WRITE button down to footer for better ergonomics */}
+                                    <div className="h-24" /> 
                                 </div>
                             </div>
                         )}
@@ -449,6 +427,21 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                 </button>
 
                 <div className="flex gap-4">
+                    {!isReviewStep && currentItem && (
+                        <button
+                            disabled={!isSupported || isWriting || status === 'success'}
+                            onClick={handleWrite}
+                            className={`px-12 py-3 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-3 shadow-xl
+                                ${!isSupported ? 'bg-white/5 text-white/10 cursor-not-allowed' :
+                                  status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
+                                  status === 'success' ? 'bg-green-500 text-black' :
+                                  'bg-white text-black hover:bg-(--main-color) hover:scale-105'}`}
+                        >
+                            {status === 'writing' ? <div className="animate-spin"><Nfc size={16} /></div> : <Zap size={16} strokeWidth={3} />}
+                            <span>{status === 'writing' ? 'SCANNING...' : status === 'success' ? 'ENCODED' : 'WRITE NFC'}</span>
+                        </button>
+                    )}
+
                     <button 
                         onClick={() => {
                             if (isReviewStep) {
@@ -465,6 +458,213 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                     >
                         <span className="text-xs font-black uppercase tracking-widest">{isReviewStep ? 'Cancel' : 'Skip Item'}</span>
                     </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ─── Printables Export Wizard ─── */
+const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, setProgress, urls, setUrls }: any) => {
+    const [name, setName] = useState(`Onyx_Labels_${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
+    const [includeImages, setIncludeImages] = useState(false);
+
+    const handleGenerateXLSX = async () => {
+        setProgress((p: any) => ({ ...p, xlsx: 10 }));
+        try {
+            const data = items.map((item: any) => {
+                const d = item.normData;
+                const c = item.codes;
+                
+                const desc = `${d.shape || ''} ${d.itemType || d.type || d.shortDescription || d.description || ''}`.trim() || 'ONYX PIECE';
+                const matColor = `${d.material || 'ONYX'} ${d.color || ''}`.trim();
+                const sizes = `${d.widthCm || 0}*${d.lengthCm || 0}*${d.heightCm || 0} CM`;
+                const bookv = String(d.workbook || workbookPrefix || '326').replace(/v/gi, '');
+                const retailStr = String(c.bookRetail || '0').padStart(4, '0');
+                const bookRetailTag = `${c.bookAqCode}-${bookv}${retailStr}`;
+                const qrUrl = `https://yircifkayqpuydfdqzlm.supabase.co/functions/v1/artifact?tagid=${c.bookBarcode}`;
+                
+                return [
+                    c.bookBarcode, 
+                    desc, 
+                    matColor, 
+                    sizes, 
+                    d.quantity || 1, 
+                    c.bookLandCode || '', 
+                    c.bookAqCode || '', 
+                    bookRetailTag, 
+                    qrUrl
+                ];
+            });
+            
+            setProgress((p: any) => ({ ...p, xlsx: 50 }));
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('Packing List');
+            
+            const headers = ['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'];
+            ws.addRow(headers);
+            data.forEach((r: any) => ws.addRow(r));
+            
+            ws.getRow(1).font = { bold: true };
+            ws.columns = headers.map(() => ({ width: 22 }));
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            setUrls((u: any) => ({ ...u, xlsx: URL.createObjectURL(blob) }));
+            setProgress((p: any) => ({ ...p, xlsx: 100 }));
+        } catch (e) {
+            console.error(e);
+            setProgress((p: any) => ({ ...p, xlsx: -1 }));
+            toast.error('XLSX Generation Failed');
+        }
+    };
+
+    const handleGeneratePDF = async () => {
+        setProgress((p: any) => ({ ...p, pdf: 5 }));
+        try {
+            const manifestoItems: ManifestoItem[] = items.map((item: any, idx: number) => {
+                const d = item.normData;
+                const c = item.codes;
+                return {
+                    index: idx, 
+                    vendorPrefix: c.vendorPrefix || '', 
+                    qty: Number(d.quantity || 1),
+                    itemId: c.bookBarcode || '', 
+                    rowId: String(item.row),
+                    name: `${d.shape || ''} ${d.shortDescription || ''}`.trim() || 'Artifact',
+                    material: d.material || '', 
+                    color: d.color || '',
+                    dims: [d.widthCm, d.heightCm, d.lengthCm].filter(Boolean).join('×'),
+                    weightKg: parseFloat(d.weightKg) || 0,
+                    costMxn: 0, 
+                    costUsd: 0, 
+                    imageUrls: includeImages ? [item.imageUrl].filter(Boolean) : [],
+                    tagColor: c.vendorColor || '#333', 
+                    dbItemCount: Number(d.quantity || 1),
+                    packetIn: ''
+                };
+            });
+
+            const meta = {
+                dynamicId: name, 
+                crateId: `LBL-${Date.now()}`, 
+                crateDims: 'N/A',
+                crateType: 'Labels Batch', 
+                fillPct: 100, 
+                exportedAt: new Date().toLocaleString(),
+                customTitle: 'LABELS PACKING LIST',
+                excludeImages: !includeImages,
+                excludeHeaderQr: true,
+                excludeHeaderWireframe: true
+            };
+
+            const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress((p: any) => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
+            setUrls((u: any) => ({ ...u, pdf: URL.createObjectURL(blob) }));
+            setProgress((p: any) => ({ ...p, pdf: 100 }));
+        } catch (e) {
+            console.error(e);
+            setProgress((p: any) => ({ ...p, pdf: -1 }));
+            toast.error('PDF Generation Failed');
+        }
+    };
+
+    const triggerDownload = (url: string, filename: string) => {
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border border-white/15 p-8 flex flex-col gap-8 shadow-2xl bg-black/90 max-h-[90vh] overflow-y-auto custom-scrollbar"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Printables Wizard</h3>
+                        <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest font-bold">Generate Assets for {items.length} Labels</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-3">
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Batch Identity</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-(--main-color)/50 transition-all font-bold"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Include Visuals</span>
+                            <span className="text-[8px] text-white/30 uppercase font-bold tracking-tighter">Add images to PDF catalog</span>
+                        </div>
+                        <button 
+                            onClick={() => setIncludeImages(!includeImages)}
+                            className={`w-12 h-6 rounded-full transition-all relative ${includeImages ? 'bg-(--main-color)' : 'bg-white/10'}`}
+                        >
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${includeImages ? 'left-7' : 'left-1'}`} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                    {/* XLSX Option */}
+                    <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.05] transition-all">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <FileSpreadsheet size={24} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <span className="block text-sm font-black text-white uppercase tracking-tight">inventory.xlsx</span>
+                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">Master spreadsheet (Legacy)</span>
+                            {progress.xlsx >= 0 && (
+                                <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress.xlsx}%` }} />
+                                </div>
+                            )}
+                        </div>
+                        {progress.xlsx === 100 ? (
+                            <button onClick={() => triggerDownload(urls.xlsx, `${name}.xlsx`)} className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Download</button>
+                        ) : (
+                            <button onClick={handleGenerateXLSX} disabled={progress.xlsx >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                                {progress.xlsx >= 0 ? 'Building...' : 'Generate'}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* PDF Option */}
+                    <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.05] transition-all">
+                        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                            <FileText size={24} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <span className="block text-sm font-black text-white uppercase tracking-tight">catalog.pdf</span>
+                            <span className="block text-[9px] text-white/30 uppercase font-bold tracking-widest mt-0.5">Packing list manifest</span>
+                            {progress.pdf >= 0 && (
+                                <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${progress.pdf}%` }} />
+                                </div>
+                            )}
+                        </div>
+                        {progress.pdf === 100 ? (
+                            <button onClick={() => triggerDownload(urls.pdf, `${name}.pdf`)} className="px-4 py-2 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Download</button>
+                        ) : (
+                            <button onClick={handleGeneratePDF} disabled={progress.pdf >= 0} className="px-4 py-2 bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                                {progress.pdf >= 0 ? 'Rendering...' : 'Generate'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="text-center">
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.4em]">OnyxLabels Printables Engine v2.5</p>
                 </div>
             </div>
         </div>
@@ -488,6 +688,18 @@ export const PackingModule: React.FC = () => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
     const [isSendingToDesigner, setIsSendingToDesigner] = useState(false);
+    const [isPrintablesWizardOpen, setIsPrintablesWizardOpen] = useState(false);
+    
+    // Wizard Persistence State
+    const [printablesProgress, setPrintablesProgress] = useState({ xlsx: -1, pdf: -1 });
+    const [printablesUrls, setPrintablesUrls] = useState({ xlsx: '', pdf: '' });
+    
+    // Reset wizard when selection changes
+    useEffect(() => {
+        setPrintablesProgress({ xlsx: -1, pdf: -1 });
+        setPrintablesUrls({ xlsx: '', pdf: '' });
+    }, [selectedIds.size]); // Use size to trigger reset on selection change
+
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     
     // Global State from Top Bar
@@ -875,28 +1087,28 @@ export const PackingModule: React.FC = () => {
                 showBruteWeight={true}
             />
 
-            {/* ── SELECTION OVERLAY (Only shows when items selected) ── */}
+            {/* ── SELECTION OVERLAY (Glassmorphic) ── */}
             {selectedIds.size > 0 && (
-                <div className="shrink-0 flex items-center justify-between px-8 py-3 bg-(--main-color) text-black animate-in slide-in-from-top duration-300 z-50">
-                    <div className="flex items-center gap-6">
+                <div className="absolute top-0 left-0 right-0 z-[60] flex items-center justify-between px-10 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/10 text-white animate-in slide-in-from-top duration-500">
+                    <div className="flex items-center gap-8">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-widest">{selectedIds.size} ARTIFACTS SELECTED</span>
-                            <button onClick={() => setSelectedIds(new Set())} className="text-[9px] font-bold underline uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity text-left">Clear Selection</button>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color)">{selectedIds.size} ARTIFACTS SELECTED</span>
+                            <button onClick={() => setSelectedIds(new Set())} className="text-[9px] font-bold underline uppercase tracking-tighter opacity-40 hover:opacity-100 transition-opacity text-left">Clear Selection</button>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
                         <button 
-                            onClick={handleExportXLSX}
-                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-black text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                            onClick={() => setIsPrintablesWizardOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20"
                         >
-                            <FileSpreadsheet size={14} />
-                            Print File
+                            <FileSpreadsheet size={16} strokeWidth={2.5} />
+                            PRINTABLES
                         </button>
                         <button 
                             onClick={() => setIsPrintWizardOpen(true)}
-                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-black/10 border border-black/10 text-[10px] font-black uppercase tracking-widest hover:bg-black/20 transition-all"
+                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                         >
-                            <Printer size={14} />
+                            <Printer size={16} strokeWidth={2.5} />
                             Print Labels
                         </button>
                     </div>
@@ -985,7 +1197,7 @@ export const PackingModule: React.FC = () => {
             <div className="flex-1 flex overflow-hidden min-h-0">
 
                 {/* LEFT: Item grid / list */}
-                <div className="flex-1 overflow-y-auto px-8 py-7 custom-scrollbar">
+                <div className={`flex-1 overflow-y-auto px-8 py-7 custom-scrollbar transition-all duration-500 ${selectedIds.size > 0 ? 'pt-28' : 'pt-7'}`}>
                     {processedItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-5 text-white/10">
                             <div className="w-24 h-24 rounded-full border border-dashed border-white/8 flex items-center justify-center">
@@ -1094,14 +1306,14 @@ export const PackingModule: React.FC = () => {
                 </div>
             )}
 
-            {/* ── FLOATING NFC TRIGGER ── */}
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            {/* ── FULL-WIDTH NFC TRIGGER (Glassmorphic) ── */}
+            <div className="absolute bottom-0 left-0 right-0 z-50">
                 <button 
                     onClick={() => setIsNFCWizardOpen(true)}
-                    className="pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-full bg-black border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-(--main-color) hover:scale-110 hover:border-(--main-color)/50 active:scale-90 transition-all group"
+                    className="w-full flex items-center justify-center gap-4 py-8 bg-black/40 backdrop-blur-3xl border-t border-white/10 text-(--main-color) hover:bg-(--main-color)/10 hover:text-white active:bg-(--main-color)/20 transition-all group"
                 >
-                    <Nfc size={24} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/70 group-hover:text-white transition-colors">NFC Wizard</span>
+                    <Nfc size={28} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                    <span className="text-sm font-black uppercase tracking-[0.5em]">NFC</span>
                 </button>
             </div>
 
@@ -1116,6 +1328,17 @@ export const PackingModule: React.FC = () => {
                 items={selectedItems}
                 isOpen={isNFCWizardOpen}
                 onClose={() => setIsNFCWizardOpen(false)}
+            />
+
+            <PrintablesWizard
+                items={selectedItems}
+                isOpen={isPrintablesWizardOpen}
+                onClose={() => setIsPrintablesWizardOpen(false)}
+                workbookPrefix={workbookPrefix}
+                progress={printablesProgress}
+                setProgress={setPrintablesProgress}
+                urls={printablesUrls}
+                setUrls={setPrintablesUrls}
             />
         </div>
     );
