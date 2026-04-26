@@ -1083,17 +1083,21 @@ export const CratePackingManager: React.FC = () => {
 
             {/* ── Main Area: Inventory List ── */}
             <div className={`flex-1 flex flex-col min-w-0 relative ${!selectedCrate ? 'hidden' : ''}`}>
-                {/* INDUSTRIAL CONFIG DRAWER - Stick to top of list area */}
-                <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="w-full px-8 py-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="flex flex-col gap-6">
-                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Source Vendor Identity</span>
-                                <div className="flex flex-wrap gap-3">
+                {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
+                <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="w-full px-8 py-10 max-w-7xl mx-auto">
+                        <div className="flex flex-col gap-10">
+                            {/* Vendor Section */}
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor Identity</span>
+                                    <div className="h-px flex-1 bg-white/5" />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
                                     <button
                                         onClick={() => setVendorFilter(null)}
-                                        className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${
-                                            !vendorFilter ? 'bg-white text-black border-white' : 'text-white/30 hover:text-white hover:border-white/30 border-white/10'
+                                        className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
+                                            !vendorFilter ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
                                         }`}
                                     >All Vendors</button>
                                     {vendorOptions.filter(v => v !== 'All').map(v => {
@@ -1103,52 +1107,62 @@ export const CratePackingManager: React.FC = () => {
                                             <button
                                                 key={v}
                                                 onClick={() => setVendorFilter(v)}
-                                                style={{ 
-                                                    backgroundColor: isActive ? vColor : 'transparent',
-                                                    borderColor: isActive ? vColor : 'rgba(255,255,255,0.1)'
-                                                }}
-                                                className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${
-                                                    isActive ? 'text-black shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'text-white/30 hover:text-white hover:border-white/30'
+                                                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
+                                                    isActive 
+                                                        ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                                        : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
                                                 }`}
                                             >
+                                                <div 
+                                                    className="w-2 h-2 rounded-full" 
+                                                    style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
+                                                />
                                                 {v}
                                             </button>
                                         );
                                     })}
                                 </div>
                             </div>
-
-                            <div className="flex flex-col gap-6">
-                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sort Parameters</span>
-                                <div className="flex gap-4">
-                                    {(['Date', 'Status', 'Vendor', '#'] as const).map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => {
-                                                if (sortBy === s) {
-                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                                                } else {
-                                                    setSortKey(s);
-                                                }
-                                            }}
-                                            className={`flex-1 py-3 border-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-2 ${
-                                                sortBy === s ? 'bg-white text-black border-white' : 'bg-transparent text-white/20 border-white/5 hover:border-white/20'
-                                            }`}
-                                        >
-                                            {s}
-                                            {sortBy === s && (
-                                                <div className="flex flex-col -space-y-1">
-                                                    <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/20'}`} />
-                                                    <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/20'}`} />
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                            </div>
-                                        </div>
-                                    </div>
+                            {/* Sort Section */}
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
+                                    <div className="h-px flex-1 bg-white/5" />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(['Date', 'Status', 'Vendor', '#'] as const).map(s => {
+                                        const isActive = sortBy === s;
+                                        return (
+                                            <button
+                                                key={s}
+                                                onClick={() => {
+                                                    if (sortBy === s) {
+                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                    } else {
+                                                        setSortKey(s);
+                                                    }
+                                                }}
+                                                className={`px-8 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+                                                    isActive 
+                                                        ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
+                                                        : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
+                                                }`}
+                                            >
+                                                {s}
+                                                {isActive && (
+                                                    <div className="flex flex-col -space-y-1">
+                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
+                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
                         {!selectedCrate ? (
                             <div className="flex flex-col items-center justify-center py-32 text-center opacity-40 gap-10">

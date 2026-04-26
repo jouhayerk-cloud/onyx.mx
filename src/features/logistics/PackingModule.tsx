@@ -1108,25 +1108,37 @@ export const PackingModule: React.FC = () => {
                 </div>
             )}
 
-            {/* ── INDUSTRIAL CONFIG DRAWER ── */}
-            <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
+            {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
+            <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
                 <div className="max-w-7xl mx-auto px-8 py-10">
-                    <div className="flex flex-col gap-8">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-10">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
+                            {/* Select All */}
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Bulk Selection</span>
+                                    <div className="h-px flex-1 bg-white/5" />
+                                </div>
                                 <button
                                     onClick={selectAll}
-                                    className="flex items-center gap-2 px-6 py-3 border-2 border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-white/50 hover:text-white hover:border-white/30 transition-all"
+                                    className={`px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 w-fit ${
+                                        selectedIds.size === processedItems.length 
+                                            ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                            : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                    }`}
                                 >
-                                    {selectedIds.size === processedItems.length ? <CheckSquare size={14} className="text-(--main-color)" /> : <Square size={14} />}
+                                    {selectedIds.size === processedItems.length ? <CheckSquare size={14} /> : <Square size={14} />}
                                     {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
                                 </button>
                             </div>
                             
                             {/* Sort by UI */}
-                            <div className="flex flex-col gap-4">
-                                <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Sort Parameters</span>
+                            <div className="flex flex-col gap-4 flex-1">
                                 <div className="flex items-center gap-4">
+                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
+                                    <div className="h-px flex-1 bg-white/5" />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
                                     {['Date', 'Status', 'Vendor', '#'].map((key) => {
                                         const isActive = sortKey === key;
                                         return (
@@ -1139,13 +1151,17 @@ export const PackingModule: React.FC = () => {
                                                         setSortKey(key as any);
                                                     }
                                                 }}
-                                                className={`px-6 py-3 border-2 text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 ${isActive ? 'bg-white text-black border-white' : 'bg-transparent text-white/20 border-white/5 hover:border-white/20'}`}
+                                                className={`px-8 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+                                                    isActive 
+                                                        ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
+                                                        : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
+                                                }`}
                                             >
                                                 {key}
                                                 {isActive && (
                                                     <div className="flex flex-col -space-y-1">
-                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/20'}`} />
-                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/20'}`} />
+                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
+                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
                                                     </div>
                                                 )}
                                             </button>
@@ -1156,12 +1172,17 @@ export const PackingModule: React.FC = () => {
                         </div>
 
                         {/* Vendor chips */}
-                        <div className="flex flex-col gap-6">
-                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Source Vendor Identity</span>
-                            <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-4">
+                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor Identity</span>
+                                <div className="h-px flex-1 bg-white/5" />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
                                 <button
                                     onClick={() => setVendorFilter(null)}
-                                    className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${!vendorFilter ? 'bg-white text-black border-white' : 'text-white/30 hover:text-white border-white/10'}`}
+                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
+                                        !vendorFilter ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                    }`}
                                 >All Vendors</button>
                                 {availableVendors.map(v => {
                                     const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
@@ -1170,12 +1191,16 @@ export const PackingModule: React.FC = () => {
                                         <button
                                             key={v}
                                             onClick={() => setVendorFilter(v)}
-                                            style={{ 
-                                                backgroundColor: isActive ? vColor : 'transparent',
-                                                borderColor: isActive ? vColor : 'rgba(255,255,255,0.1)'
-                                            }}
-                                            className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2 ${isActive ? 'text-black shadow-[0_0_30px_rgba(255,255,255,0.1)]' : 'text-white/30 hover:text-white hover:border-white/30'}`}
+                                            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
+                                                isActive 
+                                                    ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                                    : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                            }`}
                                         >
+                                            <div 
+                                                className="w-2 h-2 rounded-full" 
+                                                style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
+                                            />
                                             {v}
                                         </button>
                                     );
