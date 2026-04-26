@@ -666,12 +666,17 @@ const TruckExportModal: React.FC<{
     };
 
     const buildConsolidatedItems = () => {
-        const itemMap = new Map<string, { qty: number, inv: any }>();
+        const itemMap = new Map<string, { qty: number, inv: any, crates: Set<string> }>();
         truckCrates.forEach(c => {
+            const { label } = getCrateDisplayName(c, allCrates, allInventory);
             getItemsFromCrate(c).forEach((item: any) => {
                 const existing = itemMap.get(item.id);
-                if (existing) existing.qty += item.qty;
-                else itemMap.set(item.id, { qty: item.qty, inv: item.inv });
+                if (existing) {
+                    existing.qty += item.qty;
+                    existing.crates.add(label);
+                } else {
+                    itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([label]) });
+                }
             });
         });
         return Array.from(itemMap.values());
@@ -727,8 +732,9 @@ const TruckExportModal: React.FC<{
                 dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                 weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                 costMxn: 0, costUsd: 0,
-                imageUrls: (data.photos || []).map((p:any) => p.url),
-                tagColor: vendorCol, dbItemCount: data.quantity || 1
+                imageUrls: [], // REMOVED PHOTO AS REQUESTED
+                tagColor: vendorCol, dbItemCount: data.quantity || 1,
+                packetIn: Array.from(item.crates).join(', ')
             };
         });
 
@@ -750,7 +756,8 @@ const TruckExportModal: React.FC<{
             dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
             crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
             topViewImg: topView, sideViewImg: sideView,
-            allTruckCrates: allTruckCratesMeta
+            allTruckCrates: allTruckCratesMeta,
+            excludeImages: true // FORCE REMOVAL OF PHOTOS
         };
         const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
         setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));

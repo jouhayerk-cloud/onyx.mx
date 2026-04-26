@@ -22,6 +22,7 @@ export interface ManifestoItem {
     imageUrls?: string[];
     tagColor: string;
     dbItemCount: number;      // Total quantity in DB for this item
+    packetIn?: string;        // NEW: Labels of crates/pallets containing this item
 }
 
 export interface ManifestoMeta {
@@ -147,10 +148,10 @@ export async function exportCrateManifesto(
 
     // ─── Column definitions (Adjusted for Portrait Width) ───────────────────
     const TABLE_END = PW - MR;
-    const COL_QR   = { x: ML,       w: 18  }; 
-    const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 42  }; // widened for book barcodes
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 58 + (meta.excludeImages ? 18 : 0)  }; 
+    const COL_QR   = { x: ML,       w: 12  }; 
+    const COL_TAG  = { x: COL_QR.x + COL_QR.w,  w: 32  }; 
+    const COL_PACKET = { x: COL_TAG.x + COL_TAG.w, w: 25 }; 
+    const COL_NAME = { x: COL_PACKET.x + COL_PACKET.w, w: 70 }; 
     const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 35  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
@@ -180,46 +181,40 @@ export async function exportCrateManifesto(
                 doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
             }
 
-            const ts = ML + 42;
-            doc.setFontSize(10);
+            const ts = ML + 48; // shift text more to the right to clear wireframe
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...TEXT_LO);
-            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), ts, 10);
+            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), ts, 7);
 
-            doc.setFontSize(22);
+            doc.setFontSize(18);
             doc.setTextColor(...TEXT_HI);
-            doc.text(`${meta.dynamicId.toUpperCase()}`, ts, 18);
+            doc.text(`${meta.dynamicId.toUpperCase()}`, ts, 14);
 
             if (meta.exportNotes) {
-                doc.setFontSize(8);
+                doc.setFontSize(7);
                 doc.setTextColor(...TEXT_MID);
-                doc.text(meta.exportNotes.toUpperCase(), ts, 23);
+                doc.text(meta.exportNotes.toUpperCase(), ts, 18);
             }
 
             // Stats block
             const totalUnits = items.reduce((s, i) => s + i.qty, 0);
             const totalWeight = items.reduce((s, i) => s + i.weightKg * i.qty, 0);
+            
+            // Header Right Side (Split into cleaner rows)
+            doc.setTextColor(...TEXT_LO);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Exported: ${meta.exportedAt}`, PW - MR, 7, { align: 'right' });
+
             doc.setTextColor(...TEXT_HI);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
+            doc.text(`${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}`, PW - MR, 12, { align: 'right' });
+
             let weightStr = `${totalWeight.toFixed(1)} kg NET`;
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
-            
-            const part2 = `  ·  ${meta.crateDims}  ·  ${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`;
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...TEXT_HI);
-            doc.text(part2, PW - MR, 12, { align: 'right' });
-            
-            const part2W = doc.getTextWidth(part2);
-            doc.setFontSize(14); // Larger tag
-            doc.setFont('helvetica', 'bold');
-            doc.text(meta.crateType.toUpperCase(), PW - MR - part2W, 12, { align: 'right' });
-
-            doc.setTextColor(...TEXT_LO);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Exported: ${meta.exportedAt}`, PW - MR, 18, { align: 'right' });
+            doc.text(`${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
 
             // Wireframe Icon
             try {
@@ -232,7 +227,7 @@ export async function exportCrateManifesto(
                 const dw = cw * scale, dl = cl * scale, dh = visH * scale;
                 const depth = dl * 0.38;
                 const dx = depth, dy = -depth;
-                const x0 = ML + 22, y0 = 6 + depth;
+                const x0 = ML + 24, y0 = 4 + depth;
                 let [R, G, B] = meta.crateColor ? hexToRgb(meta.crateColor) : [217, 90, 10];
                 doc.setDrawColor(R, G, B);
                 doc.setLineWidth(0.3);
@@ -355,6 +350,7 @@ export async function exportCrateManifesto(
         doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
         if (!meta.excludeImages) doc.text('PHOTO', COL_IMG.x + COL_IMG.w / 2, ty, { align: 'center' });
         doc.text('BOOK TAG ID', COL_TAG.x + 2, ty);
+        doc.text('PACKET IN', COL_PACKET.x + 2, ty);
         doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, ty);
         doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, ty);
         doc.text('QTY', COL_QTY.x + 2, ty);
@@ -407,7 +403,7 @@ export async function exportCrateManifesto(
         // QR
         const qrDataUrl = await loadQrDataUrl(item.itemId, 120);
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 2, y + 2, 14, 14);
+            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 2, y + 4.5, 8, 8);
         }
 
         // Image
@@ -425,18 +421,27 @@ export async function exportCrateManifesto(
         // Tag Badge
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         doc.setFillColor(tr, tg, tb);
-        doc.setFontSize(11);
+        doc.setFontSize(8); // Smaller font for tag
         doc.setFont('helvetica', 'bold');
         const textW = doc.getTextWidth(item.itemId);
         const badgeW = Math.min(COL_TAG.w - 2, textW + 2);
-        doc.roundedRect(COL_TAG.x + 2, y + 5.5, badgeW, 6, 0.5, 0.5, 'F');
+        doc.roundedRect(COL_TAG.x + 2, y + 6.5, badgeW, 5, 0.5, 0.5, 'F');
         doc.setTextColor(255, 255, 255);
-        doc.text(item.itemId, COL_TAG.x + 2 + badgeW/2, y + 9.8, { align: 'center' });
+        doc.text(item.itemId, COL_TAG.x + 2 + badgeW/2, y + 10, { align: 'center' });
+
+        // Packet In
+        doc.setTextColor(...TEXT_MID);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        if (item.packetIn) {
+            const lines = doc.splitTextToSize(item.packetIn.toUpperCase(), COL_PACKET.w - 4);
+            doc.text(lines, COL_PACKET.x + 2, y + 8);
+        }
 
         // Name & Badges
         doc.setTextColor(...TEXT_HI);
-        doc.setFontSize(10);
-        doc.text(item.name.toUpperCase().slice(0, 45), COL_NAME.x + 2, y + 8);
+        doc.setFontSize(8); // Smaller name font
+        doc.text(item.name.toUpperCase().slice(0, 50), COL_NAME.x + 2, y + 8);
         
         let pillX = COL_NAME.x + 2;
         const pillY = y + 10;
