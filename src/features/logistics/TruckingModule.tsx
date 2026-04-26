@@ -1408,8 +1408,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
                 {/* ══ FIXED HEADER PANEL ══ */}
                 <div
-                    className="shrink-0 px-6 pt-3 pb-3 flex flex-col gap-3 backdrop-blur-xl border-b border-white/6"
-                    style={{ background: 'rgba(10,10,15,0.7)' }}
+                    className="shrink-0 px-6 pt-3 pb-3 flex flex-col gap-3 border-b border-white/6"
+                    style={{ background: 'transparent' }}
                     onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
                 >
                     {/* Row 1: title + view toggle + zoom controls */}
