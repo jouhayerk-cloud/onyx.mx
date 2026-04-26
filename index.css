@@ -23,26 +23,14 @@ html, body, #root {
   z-index: 1;
 }
 
-/* Global Mesh Gradient Background */
-.mesh-gradient {
+/* Global Mesh Gradient Placeholder */
+.mesh-gradient-root {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
   z-index: -2;
-  background: 
-    radial-gradient(at 0% 0%, var(--c1) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, var(--c2) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, var(--c3) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, var(--c4) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, var(--c5) 0px, transparent 50%);
-  background-color: var(--app-bg-solid, #0a0a0f);
   overflow: hidden;
-}
-
-/* Light themes refinement for mesh */
-html:not([class*='theme-talan']):not([class*='theme-fluorite']):not([class*='theme-earth']):not([class*='theme-stitch']) .mesh-gradient {
-  opacity: 0.8;
 }
 
 
