@@ -875,7 +875,10 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
     const costUsdRounded    = onyxRound(costUsd);
     const landedCostRounded = onyxRound(landedCost);
 
-    const vendorPrefix = String(norm.vendorId || norm.itemId || '').split('-')[0].toUpperCase();
+    const rawId = (norm.vendorId || norm.itemId || norm.tag_id || '').toUpperCase();
+    const vendorPrefix = rawId.split('-')[0] || rawId.substring(0, 2);
+    const vendorData = (vendors as any)[vendorPrefix] || (vendors as any)[rawId.substring(0, 2)] || (vendors as any)[rawId.substring(0, 1)];
+    
     const bookStr = String(norm.workbook || workbookPrefix).replace(/v/gi, '');
     const itemCountNumber = parseInt(norm.itemNumber, 10) || 1;
     const itemCountStr = itemCountNumber.toString();
@@ -894,7 +897,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookTagId: norm.itemId || '-', // The original workbook tag ID (e.g. EM-001-T)
       bookBarcodeDisplay: displayTagId,
       bookBardcode: newTagId, // Legacy typo alias
-      vendorColor: (vendors as any)[vendorPrefix]?.color || '#555',
+      vendorColor: vendorData?.color || '#555',
     };
   } catch (e) {
     console.error('calculateCodesAndPrices error:', e);

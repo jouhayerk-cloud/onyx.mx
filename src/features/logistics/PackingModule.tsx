@@ -6,7 +6,7 @@ import {
     isPackingPrintWizardOpenAtom, packingExportPDFTriggerAtom, 
     packingExportXLSXTriggerAtom, packingExportJSONTriggerAtom,
     isPackingFiltersOpenAtom, isPackingNFCWizardOpenAtom,
-    packingSortKeyAtom, packingSortOrderAtom
+    packingSortKeyAtom, packingSortOrderAtom, packingSelectedIdsAtom
 } from '../../lib/atoms';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import toast from 'react-hot-toast';
@@ -116,6 +116,15 @@ const ONYX_MASTER_TEMPLATE = (width: number, height: number) => ({
 });
 
 /* ─── JSON Project Generator (V3 Batch) ─── */
+const getContrastColorHex = (hex: string): string => {
+    if (!hex || hex.length < 7) return '#ffffff';
+    const r = parseInt(hex.substring(1, 3), 16);
+    const g = parseInt(hex.substring(3, 5), 16);
+    const b = parseInt(hex.substring(5, 7), 16);
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luma < 128 ? '#ffffff' : '#000000';
+};
+
 const buildBatchJSON = (items: any[], workbookPrefix: string, activeLabelSize: string, multiplier: number = 1) => {
     const [wStr, hStr] = activeLabelSize.split('x');
     const width = parseInt(wStr) || 50;
@@ -475,7 +484,7 @@ export const PackingModule: React.FC = () => {
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const deferredSearch = React.useDeferredValue(globalSearchTerm);
 
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectedIds, setSelectedIds] = useAtom(packingSelectedIdsAtom);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isExportingXLSX, setIsExportingXLSX] = useState(false);
     const [isSendingToDesigner, setIsSendingToDesigner] = useState(false);
@@ -868,13 +877,28 @@ export const PackingModule: React.FC = () => {
 
             {/* ── SELECTION OVERLAY (Only shows when items selected) ── */}
             {selectedIds.size > 0 && (
-                <div className="shrink-0 flex items-center justify-between px-8 py-2 bg-(--main-color) text-black animate-in slide-in-from-top duration-300 z-50">
-                    <div className="flex items-center gap-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest">{selectedIds.size} ARTIFACTS SELECTED</span>
-                        <button onClick={() => setSelectedIds(new Set())} className="text-[9px] font-bold underline uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity">Clear Selection</button>
+                <div className="shrink-0 flex items-center justify-between px-8 py-3 bg-(--main-color) text-black animate-in slide-in-from-top duration-300 z-50">
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest">{selectedIds.size} ARTIFACTS SELECTED</span>
+                            <button onClick={() => setSelectedIds(new Set())} className="text-[9px] font-bold underline uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity text-left">Clear Selection</button>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
-                         <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Ready for studio actions in top bar</span>
+                        <button 
+                            onClick={handleExportXLSX}
+                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-black text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                        >
+                            <FileSpreadsheet size={14} />
+                            Print File
+                        </button>
+                        <button 
+                            onClick={() => setIsPrintWizardOpen(true)}
+                            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-black/10 border border-black/10 text-[10px] font-black uppercase tracking-widest hover:bg-black/20 transition-all"
+                        >
+                            <Printer size={14} />
+                            Print Labels
+                        </button>
                     </div>
                 </div>
             )}
@@ -1070,6 +1094,17 @@ export const PackingModule: React.FC = () => {
                 </div>
             )}
 
+            {/* ── FLOATING NFC TRIGGER ── */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                <button 
+                    onClick={() => setIsNFCWizardOpen(true)}
+                    className="pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-full bg-black border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-(--main-color) hover:scale-110 hover:border-(--main-color)/50 active:scale-90 transition-all group"
+                >
+                    <Nfc size={24} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/70 group-hover:text-white transition-colors">NFC Wizard</span>
+                </button>
+            </div>
+
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -1130,13 +1165,13 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
             </div>
 
             {/* Content Section */}
-            <div className="p-5 flex flex-col gap-4 flex-1">
+            <div className="p-4 flex flex-col gap-3 flex-1">
                 {/* Header: Title & Tag */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                     <div className="flex items-start justify-between gap-3">
-                        <h3 className="font-black text-base text-white leading-tight tracking-tight flex-1">
+                        <h3 className="font-black text-sm text-white leading-tight tracking-tight flex-1">
                             {d.shape || 'OBJ'}
-                            <span className="block text-[11px] font-bold text-(--text-color)/40 uppercase tracking-[0.2em] mt-1">{d.shortDescription || 'Artifact'}</span>
+                            <span className="block text-[9px] font-bold text-(--text-color)/40 uppercase tracking-[0.2em] mt-0.5">{d.shortDescription || 'Artifact'}</span>
                         </h3>
                         {item.codes.bookBarcode && (
                             <button 
@@ -1147,8 +1182,11 @@ const LogisticsCard = ({ item, isSelected, onToggle }: any) => {
                                     navigator.clipboard.writeText(fullText); 
                                     toast.success(`Full Metadata Copied`, { icon: '📋' }); 
                                 }}
-                                className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase text-black shadow-lg hover:scale-110 active:scale-90 transition-all" 
-                                style={{ backgroundColor: vendorColor }}
+                                className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase shadow-lg hover:scale-110 active:scale-90 transition-all border border-black/10" 
+                                style={{ 
+                                    backgroundColor: vendorColor,
+                                    color: getContrastColorHex(vendorColor)
+                                }}
                             >
                                 {item.codes.bookBarcodeDisplay}
                             </button>
@@ -1212,7 +1250,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
     return (
         <div className="flex flex-col gap-0">
             <div
-                className={`flex flex-row items-center h-16 sm:h-14 overflow-hidden border rounded-2xl transition-all group shadow-sm ${
+                className={`flex flex-row items-center h-14 sm:h-12 overflow-hidden border rounded-2xl transition-all group shadow-sm ${
                     isSelected
                         ? 'bg-(--main-color)/8 border-(--main-color)/30 ring-1 ring-(--main-color)/20'
                         : 'bg-white/3 border-white/6 hover:border-white/12 hover:bg-white/5'
@@ -1247,13 +1285,13 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                 </div>
 
                 {/* Scrollable data columns */}
-                <div onClick={onToggle} className="flex-1 overflow-x-auto no-scrollbar flex items-center h-full px-5 gap-6 min-w-0 cursor-pointer">
+                <div onClick={onToggle} className="flex-1 overflow-x-auto no-scrollbar flex items-center h-full px-4 gap-4 min-w-0 cursor-pointer">
                     {/* Name cluster */}
-                    <div className="flex flex-col justify-center min-w-[160px] max-w-[280px] shrink-0 border-r border-white/5 pr-6 h-full">
-                        <h3 className="text-[13px] font-black text-white truncate leading-none mb-1">
+                    <div className="flex flex-col justify-center min-w-[140px] max-w-[240px] shrink-0 border-r border-white/5 pr-4 h-full">
+                        <h3 className="text-[12px] font-black text-white truncate leading-none mb-1">
                             {(d.shape || '') + ' ' + (d.shortDescription || d.description || '')}
                         </h3>
-                        <div className="flex items-center gap-2 text-[10px] text-(--text-color)/50 font-black uppercase tracking-widest leading-none">
+                        <div className="flex items-center gap-2 text-[9px] text-(--text-color)/40 font-black uppercase tracking-widest leading-none">
                             {d.color && <span className="truncate">{d.color}</span>}
                             {d.material && <><span className="text-white/10">•</span><span className="truncate">{d.material}</span></>}
                         </div>
@@ -1271,8 +1309,11 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                     navigator.clipboard.writeText(fullText); 
                                     toast.success(`Full Metadata Copied`, { icon: '📋' }); 
                                 }}
-                                className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-black text-[12px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all"
-                                style={{ backgroundColor: vendorColor }}
+                                className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-black uppercase shadow-lg w-fit hover:scale-105 active:scale-95 transition-all border border-black/10"
+                                style={{ 
+                                    backgroundColor: vendorColor,
+                                    color: getContrastColorHex(vendorColor)
+                                }}
                             >
                                 {item.codes.bookBarcodeDisplay || 'N/A'}
                             </button>
@@ -1365,8 +1406,11 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                                                 navigator.clipboard.writeText(fullText); 
                                                 toast.success(`Full Metadata Copied`, { icon: '📋' }); 
                                             }}
-                                            className="px-2 py-1 rounded-none text-black text-[10px] font-black uppercase tracking-widest shadow-sm border border-black/5 hover:scale-105 active:scale-95 transition-all" 
-                                            style={{ backgroundColor: vendorColor }}
+                                            className="px-2 py-1 rounded-none text-[9px] font-black uppercase tracking-widest shadow-sm border border-black/10 hover:scale-105 active:scale-95 transition-all" 
+                                            style={{ 
+                                                backgroundColor: vendorColor,
+                                                color: getContrastColorHex(vendorColor)
+                                            }}
                                         >
                                             {item.codes.bookBarcodeDisplay}
                                         </button>

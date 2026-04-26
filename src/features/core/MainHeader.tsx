@@ -641,43 +641,13 @@ const PackingBar: React.FC = () => {
 
             {!isSearchOpen && (
                 <>
-                    <button 
-                        onClick={() => setIsNFCWizardOpen(true)}
-                        className="p-2 text-(--main-color) hover:scale-110 transition-all animate-in fade-in group shrink-0"
-                        title="Write NFC Tags"
-                    >
-                        <Nfc size={22} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                    </button>
-
-                    <div className="flex items-center gap-2 animate-in fade-in duration-300">
-                        <div className="w-px h-6 bg-white/5 mx-1" />
-
-                        {/* Export & Print Actions */}
+                        {/* Export Actions */}
                         <div className="flex items-center gap-0.5">
                             <StudioAction 
                                 icon={FileText}
                                 label="PDF"
                                 onClick={() => setExportPDF(prev => prev + 1)}
                                 title="Export PDF Catalog"
-                            />
-                            <StudioAction 
-                                icon={FileSpreadsheet}
-                                label="XLSX"
-                                onClick={() => setExportXLSX(prev => prev + 1)}
-                                title="Export Packing XLSX"
-                            />
-                            <StudioAction 
-                                icon={FileJson}
-                                label="JSON"
-                                onClick={() => setExportJSON(prev => prev + 1)}
-                                title="Export Designer JSON"
-                            />
-                            <StudioAction 
-                                icon={Printer}
-                                label="PRINT"
-                                onClick={() => setIsPrintOpen(true)}
-                                title="Print Labels"
-                                color="var(--main-color)"
                             />
                         </div>
 
@@ -700,7 +670,6 @@ const PackingBar: React.FC = () => {
                                     Config
                                 </button>
                             </div>
-                        </div>
                     </>
                 )}
             </div>

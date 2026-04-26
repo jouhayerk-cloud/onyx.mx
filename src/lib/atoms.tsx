@@ -401,12 +401,27 @@ const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' => {
 export const universalViewAtom = atom<'app' | 'tag' | 'viewer', ['app' | 'tag' | 'viewer'], void>(getInitialUniversalView(), (get, set, update) => set(universalViewAtom, update));
 
 // Packing Module Atoms
-// Packing Module Atoms
-export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list', sessionJSONStorage);
-export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null, sessionJSONStorage);
-export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30', sessionJSONStorage);
-export const packingSortKeyAtom = atomWithStorage<'Date' | 'Status' | 'Vendor' | '#'>('packingSortKey', 'Date', sessionJSONStorage);
-export const packingSortOrderAtom = atomWithStorage<'asc' | 'desc'>('packingSortOrder', 'asc', sessionJSONStorage);
+export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list');
+export const packingVendorFilterAtom = atomWithStorage<string | null>('packingVendorFilter', null);
+export const packingLabelSizeAtom = atomWithStorage<'40x30' | '50x30' | '50x80'>('packingLabelSize', '50x30');
+export const packingSortKeyAtom = atomWithStorage<'Date' | 'Status' | 'Vendor' | '#'>('packingSortKey', 'Date');
+export const packingSortOrderAtom = atomWithStorage<'asc' | 'desc'>('packingSortOrder', 'asc');
+export const packingSelectedIdsAtom = atomWithStorage<Set<string>>('packingSelectedIds', new Set<string>(), {
+  getItem: (key, initialValue) => {
+    const saved = localStorage.getItem(key);
+    try {
+      return saved ? new Set(JSON.parse(saved)) : initialValue;
+    } catch {
+      return initialValue;
+    }
+  },
+  setItem: (key, value) => {
+    localStorage.setItem(key, JSON.stringify(Array.from(value)));
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+  },
+});
 export const isPackingPrintWizardOpenAtom = atom<boolean>(false);
 export const packingExportPDFTriggerAtom = atom<number>(0);
 export const packingExportXLSXTriggerAtom = atom<number>(0);
