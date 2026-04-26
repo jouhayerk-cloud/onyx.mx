@@ -1570,8 +1570,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 {/* Canvas / Side View */}
                 <div
                     ref={canvasRef}
-                    className="flex-1 overflow-auto custom-scrollbar"
-                    style={{ background: 'rgba(5,5,8,0.85)', touchAction: 'pan-x pan-y' }}
+                    className="flex-1 overflow-auto custom-scrollbar backdrop-blur-md"
+                    style={{ background: 'rgba(0,0,0,0.6)', touchAction: 'pan-x pan-y' }}
                     onWheel={handleWheel}
                 >
                     {viewMode === 'side' ? (
