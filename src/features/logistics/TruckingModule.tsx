@@ -3,9 +3,10 @@ import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
+import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
+import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
 import ExcelJS from 'exceljs';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 
@@ -460,12 +461,12 @@ function generateTrailerThumbnail(
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
     
-    // Trailer floor (Dark background)
-    ctx.fillStyle = '#13131e';
+    // Trailer floor (Light gray background)
+    ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(0, 0, W, H);
     
     // Cab end marker
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
     ctx.fillRect(0, 0, 6, H);
     
     // Crates
@@ -511,12 +512,12 @@ function generateSideViewThumbnail(
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
     
-    // Trailer shell (Dark background)
-    ctx.fillStyle = '#0a0a0f';
+    // Trailer shell (Light gray background)
+    ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(0, 0, W, H);
     
     // Floor marker
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(0, H - 4, W, 4);
 
     // Crates
@@ -650,6 +651,7 @@ const TruckExportModal: React.FC<{
     onClose: () => void;
 }> = ({ truckCrates, allCrates, allInventory, positions, onClose }) => {
     const [name, setName] = useState(`Truck ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
+    const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1 });
     const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '' });
 
@@ -691,9 +693,12 @@ const TruckExportModal: React.FC<{
             setProgress(p => ({ ...p, manifesto: 5 + Math.round((idx / items.length) * 80) }));
             const inv = item.inv;
             const data = inv.data || {};
+            const norm = normalizeInventoryData(inv);
+            const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+            const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
             const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
             const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-            ws.addRow({ tag: data.itemId || inv.row, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+            ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
         });
         ws.getRow(1).font = { bold: true };
         setProgress(p => ({ ...p, manifesto: 95 }));
@@ -707,9 +712,12 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, pdf: 5 }));
         const items = buildConsolidatedItems();
         const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
-            const data = item.inv.data || {};
-            // USE book_barcode (Book tag ID) as requested
-            const tag = data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
+            const inv = item.inv;
+            const data = inv.data || {};
+            const norm = normalizeInventoryData(inv);
+            const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+            // USE calculated workbook barcode
+            const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
             const vendorPrefix = tag.split('-')[0] || '';
             const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#333333';
             return {
@@ -767,9 +775,12 @@ const TruckExportModal: React.FC<{
             ];
             getItemsFromCrate(crate).forEach((item: any) => {
                 const inv = item.inv; const data = inv.data || {};
+                const norm = normalizeInventoryData(inv);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
                 const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-                ws.addRow({ tag: data.itemId || inv.row, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+                ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
             });
             ws.getRow(1).font = { bold: true };
         }
@@ -1215,7 +1226,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 const col = (vendors as any)[vendor]?.color || '#6b7280';
                 return `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${col}22" stroke="${col}" stroke-width="0.8"/><text x="${px+pw/2}" y="${py+ph/2+4}" text-anchor="middle" font-size="7" fill="${col}" font-family="monospace">${cd.label}</text>`;
             }).join('');
-            const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"><rect width="${svgW}" height="${svgH}" fill="#111" stroke="#444" stroke-width="1.5" rx="2"/>${crateRects}</svg>`;
+            const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"><rect width="${svgW}" height="${svgH}" fill="#F3F4F6" stroke="#ccc" stroke-width="1" rx="2"/>${crateRects}</svg>`;
 
             // 4. PDF (HTML print)
             const allItemsFlat = crateData.flatMap(cd => (cd.items as any[]).map(it => ({ ...it, crate: cd.label })));
