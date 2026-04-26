@@ -475,8 +475,8 @@ function generateTrailerThumbnail(
         if (!crate) continue;
         
         const rotated = pos.r === 90;
-        const lenX = (rotated ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
-        const lenY = (rotated ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
+        const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+        const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
         
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
@@ -1134,8 +1134,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const svgW = Math.round(TRUCK_L_CM * BASE_SCALE * svgScale);
             const svgH = Math.round(TRUCK_W_CM * BASE_SCALE * svgScale);
             const crateRects = crateData.map(cd => {
-                const dimX = cd.rot === '90°' ? cd.l_cm : cd.w_cm;
-                const dimY = cd.rot === '90°' ? cd.w_cm : cd.l_cm;
+                const dimX = cd.rot === '90°' ? cd.w_cm : cd.l_cm;
+                const dimY = cd.rot === '90°' ? cd.l_cm : cd.w_cm;
                 const px = Math.round(parseFloat(cd.pos.split(',')[0].trim().replace('cm',''))) * BASE_SCALE * svgScale;
                 const py = Math.round(parseFloat(cd.pos.split(',')[1])) * BASE_SCALE * svgScale;
                 const pw = dimX * BASE_SCALE * svgScale;
