@@ -473,8 +473,11 @@ function generateTrailerThumbnail(
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
-        const lenX = (crate.length_cm || 120) * scale;
-        const lenY = (crate.width_cm || 80) * scale;
+        
+        const rotated = pos.r === 90;
+        const lenX = (rotated ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+        const lenY = (rotated ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
+        
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         ctx.fillStyle = primaryColor;
