@@ -38,6 +38,13 @@ export interface ManifestoMeta {
     exportBruteWeight?: string; // Appended brute weight input from UI
     excludeHeader?: boolean;  // If true, skips the top panel entirely
     customTitle?: string;     // Explicit title override
+    // ── Trailer Export Props ──
+    topViewImg?: string;      // Base64 top view of trailer
+    sideViewImg?: string;     // Base64 side view of trailer
+    allTruckCrates?: Array<{
+        id: string; label: string; type: string; dims: string; weight: number; color: string;
+        l: number; w: number; h: number;
+    }>;
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -117,6 +124,7 @@ export async function exportCrateManifesto(
 ): Promise<Blob | void> {
     // Sort items by descending vendor item count (index)
     const sortedItems = [...items].sort((a, b) => b.index - a.index);
+    const isMultiCrate = meta.crateType === 'Trailer Load';
 
     // Universal Safe Landscape: Fits inside both US Letter (279.4 width) and A4 (210 height)
     // This prevents ANY tiling on mobile AirPrint regardless of regional paper defaults.
@@ -141,8 +149,8 @@ export async function exportCrateManifesto(
     const TABLE_END = PW - MR;
     const COL_QR   = { x: ML,       w: 18  }; 
     const COL_IMG  = { x: COL_QR.x + COL_QR.w,  w: meta.excludeImages ? 0 : 18  }; 
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 35  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 65 + (meta.excludeImages ? 18 : 0)  }; 
+    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 42  }; // widened for book barcodes
+    const COL_NAME = { x: COL_TAG.x + COL_TAG.w,  w: 58 + (meta.excludeImages ? 18 : 0)  }; 
     const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 35  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
@@ -267,8 +275,78 @@ export async function exportCrateManifesto(
         doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
     }
 
+    async function drawSummaryPage() {
+        await drawPageChrome(1);
+        let sy = HDR_H + 8;
+        
+        // Trailer Maps
+        if (meta.topViewImg) {
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
+            doc.text('TRAILER TOP VIEW MAP (PLAN)', ML, sy);
+            sy += 3;
+            const imgW = PW - ML - MR;
+            const imgH = imgW / (1615/244);
+            doc.addImage(meta.topViewImg, 'JPEG', ML, sy, imgW, imgH);
+            sy += imgH + 8;
+        }
+
+        if (meta.sideViewImg) {
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
+            doc.text('TRAILER SIDE VIEW MAP (LATERAL STACKING)', ML, sy);
+            sy += 3;
+            const imgW = PW - ML - MR;
+            const imgH = imgW / (1615/279);
+            doc.addImage(meta.sideViewImg, 'JPEG', ML, sy, imgW, imgH);
+            sy += imgH + 12;
+        }
+
+        // Crate Grid
+        if (meta.allTruckCrates) {
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+            doc.text('PACKED CRATES & PALLETS SUMMARY', ML, sy);
+            sy += 6;
+            
+            const gridCols = 3;
+            const boxW = (PW - ML - MR) / gridCols - 4;
+            const boxH = 18;
+            
+            for (let i = 0; i < meta.allTruckCrates.length; i++) {
+                const c = meta.allTruckCrates[i];
+                const col = i % gridCols;
+                const row = Math.floor(i / gridCols);
+                const bx = ML + col * (boxW + 4);
+                const by = sy + row * (boxH + 4);
+                
+                if (by + boxH > PH - MB) continue; // safety
+
+                doc.setFillColor(252, 252, 252);
+                doc.rect(bx, by, boxW, boxH, 'F');
+                doc.setDrawColor(230, 230, 230);
+                doc.rect(bx, by, boxW, boxH, 'S');
+                
+                // Mini wireframe
+                let [cr, cg, cb] = hexToRgb(c.color);
+                doc.setDrawColor(cr, cg, cb);
+                doc.setLineWidth(0.4);
+                const wfw = 10, wfh = 10;
+                const wfx = bx + 2, wfy = by + (boxH - wfh)/2;
+                doc.rect(wfx, wfy, wfw, wfh, 'S');
+                // Inner "X" to look like a crate
+                doc.setLineWidth(0.1);
+                doc.line(wfx, wfy, wfx + wfw, wfy + wfh);
+                doc.line(wfx + wfw, wfy, wfx, wfy + wfh);
+                
+                doc.setTextColor(...TEXT_HI); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+                doc.text(c.label, bx + 14, by + 5);
+                doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+                doc.text(`${c.type.toUpperCase()} · ${c.weight} KG`, bx + 14, by + 9);
+                doc.text(c.dims, bx + 14, by + 13);
+            }
+        }
+    }
+
     function drawColHeaders(y: number) {
-        doc.setFillColor(230, 230, 230);
+        doc.setFillColor(240, 240, 240);
         doc.rect(ML, y, TABLE_END - ML, COL_HDR_H, 'F');
         doc.setTextColor(...TEXT_LO);
         doc.setFontSize(7);
@@ -276,7 +354,7 @@ export async function exportCrateManifesto(
         const ty = y + 4.5;
         doc.text('SCAN', COL_QR.x + COL_QR.w / 2, ty, { align: 'center' });
         if (!meta.excludeImages) doc.text('PHOTO', COL_IMG.x + COL_IMG.w / 2, ty, { align: 'center' });
-        doc.text('TAG ID', COL_TAG.x + 2, ty);
+        doc.text('BOOK TAG ID', COL_TAG.x + 2, ty);
         doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, ty);
         doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, ty);
         doc.text('QTY', COL_QTY.x + 2, ty);
@@ -285,7 +363,15 @@ export async function exportCrateManifesto(
     let page = 1;
     let y = (meta.excludeHeader ? 0 : HDR_H);
     
-    await drawPageChrome(page);
+    if (isMultiCrate) {
+        await drawSummaryPage();
+        doc.addPage();
+        page++;
+        await drawPageChrome(page);
+    } else {
+        await drawPageChrome(page);
+    }
+    
     drawColHeaders(y);
     y += COL_HDR_H;
 

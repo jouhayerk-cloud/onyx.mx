@@ -496,6 +496,59 @@ function generateTrailerThumbnail(
     return canvas.toDataURL('image/jpeg', 0.85);
 }
 
+function generateSideViewThumbnail(
+    truckCrates: any[],
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>,
+    allCrates: any[],
+    allInventory: any[]
+): string {
+    const W = 2400;
+    const scale = W / TRUCK_L_CM;
+    const TRUCK_H_CM = 279;
+    const H = Math.round(TRUCK_H_CM * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    
+    // Trailer shell (Dark background)
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, W, H);
+    
+    // Floor marker
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(0, H - 4, W, 4);
+
+    // Crates
+    const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+    for (const [id, pos] of Object.entries(positions)) {
+        const crate = crateMap.get(id) as any;
+        if (!crate) continue;
+        
+        const rotated = pos.r === 90;
+        const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+        const h = (crate.height_cm || 100) * scale;
+        const zOff = (pos.z || 0) * scale;
+        
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        
+        ctx.fillStyle = primaryColor;
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        (ctx as any).roundRect(pos.x * scale, H - zOff - h, lenX, h, 1.5);
+        ctx.fill(); ctx.stroke();
+    }
+    
+    // Watermark
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 10, H - 10);
+    
+    return canvas.toDataURL('image/jpeg', 0.85);
+}
+
 function getDrafts(): TruckDraft[] {
     try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]'); } catch { return []; }
 }
@@ -655,7 +708,8 @@ const TruckExportModal: React.FC<{
         const items = buildConsolidatedItems();
         const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
             const data = item.inv.data || {};
-            const tag = data.itemId || String(item.inv.row);
+            // USE book_barcode (Book tag ID) as requested
+            const tag = data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
             const vendorPrefix = tag.split('-')[0] || '';
             const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#333333';
             return {
@@ -669,9 +723,26 @@ const TruckExportModal: React.FC<{
                 tagColor: vendorCol, dbItemCount: data.quantity || 1
             };
         });
+
+        // ── Enhanced Meta with Trailer Views ──
+        const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
+        const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
+        
+        const allTruckCratesMeta = truckCrates.map(c => {
+            const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#f59e0b') : '#f59e0b';
+            return {
+                id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                weight: computeCrateWeight(c, allInventory), color: col,
+                l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
+            };
+        });
+
         const meta = {
             dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
-            crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST'
+            crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
+            topViewImg: topView, sideViewImg: sideView,
+            allTruckCrates: allTruckCratesMeta
         };
         const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
         setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
