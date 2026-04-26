@@ -116,6 +116,38 @@ function hexToRgb(hex: string): [number, number, number] {
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw: number, cl: number, ch: number, colorHex: string, type: string) {
+    try {
+        const visH = type.toLowerCase().includes('pallet') ? 15 : ch;
+        const maxDim = Math.max(cw, cl, visH, 1);
+        const scale = (sizePx * 0.75) / maxDim;
+        const dw = cw * scale, dl = cl * scale, dh = visH * scale;
+        const depth = dl * 0.38;
+        const dx = depth, dy = -depth;
+        
+        const x0 = x, y0 = y + depth; 
+        let [R, G, B] = hexToRgb(colorHex);
+        doc.setDrawColor(R, G, B);
+        doc.setLineWidth(0.15);
+        
+        // Back face (dotted)
+        doc.setLineDashPattern([0.5, 0.5], 0);
+        doc.line(x0 + dx, y0 + dy, x0 + dx, y0 + dh + dy);
+        doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
+        doc.setLineDashPattern([], 0);
+        
+        // Perspective lines
+        doc.setLineWidth(0.3);
+        doc.line(x0, y0, x0 + dx, y0 + dy);
+        doc.line(x0 + dw, y0, x0 + dw + dx, y0 + dy);
+        doc.line(x0 + dw + dx, y0 + dy, x0 + dw + dx, y0 + dh + dy);
+        doc.line(x0 + dw, y0 + dh, x0 + dw + dx, y0 + dh + dy);
+        
+        // Front face
+        doc.rect(x0, y0, dw, dh, 'S');
+    } catch (e) { console.error('Wireframe draw error:', e); }
+}
+
 // ─── Main Export Function ────────────────────────────────────────────────────
 export async function exportCrateManifesto(
     items: ManifestoItem[],
@@ -216,33 +248,10 @@ export async function exportCrateManifesto(
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
             doc.text(`${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
 
-            // Wireframe Icon
-            try {
-                const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
-                const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
-                const visH = meta.crateType.toLowerCase() === 'pallet' ? 15 : ch;
-                const maxDim = Math.max(cw, cl, visH, 1);
-                const sizePx = 16;
-                const scale = (sizePx * 0.75) / maxDim;
-                const dw = cw * scale, dl = cl * scale, dh = visH * scale;
-                const depth = dl * 0.38;
-                const dx = depth, dy = -depth;
-                const x0 = ML + 24, y0 = 4 + depth;
-                let [R, G, B] = meta.crateColor ? hexToRgb(meta.crateColor) : [217, 90, 10];
-                doc.setDrawColor(R, G, B);
-                doc.setLineWidth(0.3);
-                doc.setLineDashPattern([1, 1], 0);
-                doc.line(x0 + dx, y0 + dy, x0 + dx, y0 + dh + dy);
-                doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
-                doc.setLineDashPattern([], 0);
-                doc.setLineWidth(0.5);
-                doc.line(x0, y0, x0 + dx, y0 + dy);
-                doc.line(x0 + dw, y0, x0 + dw + dx, y0 + dy);
-                doc.line(x0 + dx, y0 + dy, x0 + dw + dx, y0 + dy);
-                doc.line(x0 + dw + dx, y0 + dy, x0 + dw + dx, y0 + dh + dy);
-                doc.line(x0 + dw, y0 + dh, x0 + dw + dx, y0 + dh + dy);
-                doc.rect(x0, y0, dw, dh, 'S');
-            } catch {}
+            // Wireframe Icon (Top Header)
+            const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
+            const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
+            drawWireframeIcon(doc, ML + 24, 4, 16, cw, cl, ch, meta.crateColor || '#d95a0a', meta.crateType);
         } else if (pageNum > 1) {
             // Continuation Header
             doc.setFillColor(...SURFACE);
@@ -319,17 +328,8 @@ export async function exportCrateManifesto(
                 doc.setDrawColor(230, 230, 230);
                 doc.rect(bx, by, boxW, boxH, 'S');
                 
-                // Mini wireframe
-                let [cr, cg, cb] = hexToRgb(c.color);
-                doc.setDrawColor(cr, cg, cb);
-                doc.setLineWidth(0.4);
-                const wfw = 10, wfh = 10;
-                const wfx = bx + 2, wfy = by + (boxH - wfh)/2;
-                doc.rect(wfx, wfy, wfw, wfh, 'S');
-                // Inner "X" to look like a crate
-                doc.setLineWidth(0.1);
-                doc.line(wfx, wfy, wfx + wfw, wfy + wfh);
-                doc.line(wfx + wfw, wfy, wfx, wfy + wfh);
+                // Scaled wireframe icon
+                drawWireframeIcon(doc, bx + 2, by + 4, 10, c.w, c.l, c.h, c.color, c.type);
                 
                 doc.setTextColor(...TEXT_HI); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
                 doc.text(c.label, bx + 14, by + 5);
