@@ -40,19 +40,22 @@ export const HeroBackground = () => {
 
     const meshStyle = {
         background: `
-            radial-gradient(at ${p[0]}, var(--c1) 0px, transparent 60%),
-            radial-gradient(at ${p[1]}, var(--c2) 0px, transparent 60%),
-            radial-gradient(at ${p[2]}, var(--c3) 0px, transparent 60%),
-            radial-gradient(at ${p[3]}, var(--c4) 0px, transparent 60%),
-            radial-gradient(at ${p[4]}, var(--c5) 0px, transparent 60%),
-            radial-gradient(at ${p[5]}, var(--c6, var(--c1)) 0px, transparent 60%)
+            radial-gradient(at ${p[0]}, var(--c1) 0px, transparent 65%),
+            radial-gradient(at ${p[1]}, var(--c2) 0px, transparent 65%),
+            radial-gradient(at ${p[2]}, var(--c3) 0px, transparent 65%),
+            radial-gradient(at ${p[3]}, var(--c4) 0px, transparent 65%),
+            radial-gradient(at ${p[4]}, var(--c5) 0px, transparent 65%),
+            radial-gradient(at ${p[5]}, var(--c6, var(--c1)) 0px, transparent 65%),
+            radial-gradient(at 50% 50%, var(--main-color) 0px, transparent 70%),
+            radial-gradient(at 20% 80%, var(--secondary-color) 0px, transparent 60%)
         `,
-        backgroundColor: 'var(--app-bg-solid, #0a0a0f)'
+        backgroundColor: 'var(--app-bg-solid, #0a0a0f)',
+        opacity: 0.8 // Subtle softness
     };
 
     return (
         <div 
-            className="fixed inset-0 overflow-hidden z--2 pointer-events-none select-none transition-all duration-1000" 
+            className="fixed inset-0 overflow-hidden z--2 pointer-events-none select-none transition-all duration-[1500ms] ease-in-out" 
             style={meshStyle} 
         />
     );
