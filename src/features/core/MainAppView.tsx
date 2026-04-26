@@ -58,6 +58,7 @@ import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
+import { PaymentsFilterBar } from '../finance/PaymentsFilterBar';
 
 
 declare const __APP_VERSION__: string;
@@ -452,9 +453,10 @@ export function MainAppView() {
                         )}
                     </div>
                 </div>
-                <div className="app-content">
+                <div className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative">
                     <MainHeader />
-                    <main className="grow min-h-0 relative">
+                    {activeView === 'finance' && <PaymentsFilterBar />}
+                    <main className="flex-1 flex flex-col min-h-0">
                         {pageContent}
                     </main>
                 </div>

@@ -1074,7 +1074,7 @@ export const PackingModule: React.FC = () => {
     }, [exportJSONTrigger]);
 
     return (
-        <div className="flex flex-col h-full bg-transparent overflow-hidden relative">
+        <div className="flex-1 flex flex-col relative bg-transparent">
             
             {/* ── UNIFIED EXPORT WIZARD ── */}
             <ExportWizard 
@@ -1089,7 +1089,7 @@ export const PackingModule: React.FC = () => {
 
             {/* ── SELECTION OVERLAY (Glassmorphic) ── */}
             {selectedIds.size > 0 && (
-                <div className="absolute top-0 left-0 right-0 z-[60] flex items-center justify-between px-10 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/10 text-white animate-in slide-in-from-top duration-500">
+                <div className="sticky top-14 sm:top-16 z-[60] flex items-center justify-between px-10 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/10 text-white animate-in slide-in-from-top duration-500">
                     <div className="flex items-center gap-8">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color)">{selectedIds.size} ARTIFACTS SELECTED</span>
@@ -1099,17 +1099,10 @@ export const PackingModule: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <button 
                             onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-(--main-color) text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20"
+                            className="flex items-center justify-center w-16 h-16 rounded-2xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40 group"
+                            title="Print Manifest / Labels"
                         >
-                            <FileSpreadsheet size={16} strokeWidth={2.5} />
-                            PRINTABLES
-                        </button>
-                        <button 
-                            onClick={() => setIsPrintWizardOpen(true)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
-                        >
-                            <Printer size={16} strokeWidth={2.5} />
-                            Print Labels
+                            <Printer size={32} strokeWidth={3} className="group-hover:rotate-12 transition-transform" />
                         </button>
                     </div>
                 </div>
@@ -1194,10 +1187,10 @@ export const PackingModule: React.FC = () => {
             </div>
 
             {/* ── MAIN SPLIT LAYOUT ── */}
-            <div className="flex-1 flex overflow-hidden min-h-0">
+            <div className="flex-1 flex min-h-0">
 
                 {/* LEFT: Item grid / list */}
-                <div className={`flex-1 overflow-y-auto px-8 py-7 custom-scrollbar transition-all duration-500 ${selectedIds.size > 0 ? 'pt-28' : 'pt-7'}`}>
+                <div className={`flex-1 px-8 py-7 transition-all duration-500`}>
                     {processedItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-5 text-white/10">
                             <div className="w-24 h-24 rounded-full border border-dashed border-white/8 flex items-center justify-center">
@@ -1307,7 +1300,7 @@ export const PackingModule: React.FC = () => {
             )}
 
             {/* ── FULL-WIDTH NFC TRIGGER (Glassmorphic) ── */}
-            <div className="absolute bottom-0 left-0 right-0 z-50">
+            <div className="sticky bottom-0 left-0 right-0 z-50">
                 <button 
                     onClick={() => setIsNFCWizardOpen(true)}
                     className="w-full flex items-center justify-center gap-4 py-8 bg-black/40 backdrop-blur-3xl border-t border-white/10 text-(--main-color) hover:bg-(--main-color)/10 hover:text-white active:bg-(--main-color)/20 transition-all group"
@@ -1671,6 +1664,7 @@ const LogisticsRow = ({ item, isSelected, isExpanded, onToggle, onToggleExpand }
                     )}
                 </div>
             )}
+
         </div>
     );
 };

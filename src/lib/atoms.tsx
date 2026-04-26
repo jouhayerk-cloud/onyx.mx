@@ -220,10 +220,12 @@ export type PaymentsOverviewMode = 'extended' | 'minimal' | 'collapsed';
 export const paymentsOverviewModeAtom = atom<PaymentsOverviewMode>('collapsed');
 export const liveExchangeRateAtom = atom<number | null>(null);
 export const financeSearchTermAtom = atom('');
-export type PaymentCategory = 'All' | 'ACQ' | 'PROD' | 'MONTHLY' | 'SPPL' | 'LABR' | 'PACK' | 'OPRT';
+export type PaymentCategory = 'All' | 'Acq' | 'Prod' | 'Monthly' | 'Sppl' | 'Labr' | 'Packing' | 'Oprt';
 export const paymentCategoryFilterAtom = atom<PaymentCategory>('All');
 export const isPaymentCategoryFilterOpenAtom = atom<boolean>(false);
 export const paymentFilterBarModeAtom = atom<'left' | 'right' | 'off'>('right');
+export type PaymentStatusFilter = 'All' | 'Paid' | 'Requested';
+export const paymentStatusFilterAtom = atom<PaymentStatusFilter>('All');
 
 
 export const dashboardExpDataAtom = atom<Record<string, any[]>>({});

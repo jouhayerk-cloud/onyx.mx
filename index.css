@@ -2,6 +2,13 @@
 @import "tailwindcss";
 @import "./src/styles/tokens.css";
 
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* CodePen styles adapted for the app */
 
 .app-container {
@@ -283,11 +290,9 @@ html.theme-talan .liquid-blob {
 }
 
 .app-content {
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow: hidden;
   position: relative;
 }
 
@@ -299,8 +304,6 @@ html.theme-talan .liquid-blob {
   background-color: var(--main-header-bg);
   flex-shrink: 0;
   padding: 0 1rem;
-  border-radius: var(--box-radius);
-  margin-bottom: 1rem;
 }
 
 .main-header .search-wrapper {

@@ -4,7 +4,7 @@ import { useAtom, useSetAtom, useAtomValue } from 'jotai';
 import toast from 'react-hot-toast';
 import { PaymentDestination, FinanceRecord, InventoryItem } from '../../lib/Types';
 import { vendors, appUsers } from '../../lib/consts';
-import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom } from '../../lib/atoms';
+import { paymentsVersionAtom, userAtom, inventoryAtom, InventoryVersionAtom, paymentDestinationFilterAtom, exchangeRateAtom, paymentsOverviewModeAtom, liveExchangeRateAtom, paymentFilterBarModeAtom, financeSearchTermAtom, logisticsDataAtom, isSyncingAtom, inventoryArtifactConfigAtom, paymentsArtifactConfigAtom, currencyModeAtom, paymentCategoryFilterAtom, paymentVendorFilterAtom, paymentStatusFilterAtom } from '../../lib/atoms';
 import { LoadingIndicator } from '../../components/LoadingIndicator';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
@@ -1127,8 +1127,8 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const [inventoryVersion, setInventoryVersion] = useAtom(InventoryVersionAtom);
     const [paymentsVersion, setPaymentsVersion] = useAtom(paymentsVersionAtom);
     const [destinationFilter, setDestinationFilter] = useAtom(paymentDestinationFilterAtom);
-    const [subcatFilter, setSubcatFilter] = useState<Subcategory>('All');
-    const [vendorFilter, setVendorFilter] = useState<string>('All');
+    const [subcatFilter, setSubcatFilter] = useAtom(paymentCategoryFilterAtom);
+    const [vendorFilter, setVendorFilter] = useAtom(paymentVendorFilterAtom);
     const [showAdd, setShowAdd] = useState(false);
     const [editRecord, setEditRecord] = useState<any | null>(null);
     const [requestGroup, setRequestGroup] = useState<VendorGroup | null>(null);
@@ -1139,7 +1139,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Requested'>('All');
+    const [statusFilter, setStatusFilter] = useAtom(paymentStatusFilterAtom);
     const currencyMode = useAtomValue(currencyModeAtom);
 
     const toggleRow = (id: string) => {
@@ -1546,7 +1546,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
     if (isLoading) return <div className="h-full flex items-center justify-center"><LoadingIndicator /></div>;
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col m-0 gap-0">
             <AddPaymentModal
                 isOpen={showAdd}
                 onClose={() => setShowAdd(false)}
@@ -1564,276 +1564,168 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                 onConfirm={handleRequestPayment}
             />
 
-            {/* ── General Overview & Stats Grids ── */}
-            {overviewMode !== 'collapsed' && (
-                <div className={`flex flex-col shrink-0 border-b border-white/5 bg-black/10 ${overviewMode === 'extended' ? 'p-3' : 'p-1.5'} transition-all duration-300 relative`}>
-                    
-                    {/* Compact Mode Vendor Bubbles */}
-                    {overviewMode !== 'extended' && pendingGroups.length > 0 && (
-                        <div className="flex items-center gap-2 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
-                            {pendingGroups.map(group => {
-                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
-                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                return (
-                                    <button key={group.vendorId} 
-                                        onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` })}
-                                        className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-(--text-color)/20"
-                                        title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
-                                        style={{ 
-                                            background: `conic-gradient(${color} 0% ${paidPerc}%, var(--border-color) ${paidPerc}% 100%)`,
-                                            padding: '1.5px'
-                                        }}>
-                                        <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.05)]"
-                                            style={{ color }}>
-                                            {group.vendorId[0]}
-                                        </div>
-                                        {/* Minimal pulse indicator if 0% paid */}
-                                        {paidPerc === 0 && (
-                                            <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-(--text-color)/20 animate-pulse border border-(--text-color)/10" style={{ backgroundColor: color }} />
-                                        )}
-                                    </button>
-                                );
-                            })}
-                            <div className="w-px h-3 bg-(--text-color)/10 mx-1" />
-                            <span className="text-[7px] font-black text-(--text-color)/20 uppercase tracking-widest">Ongoing Liquidations</span>
-                        </div>
-                    )}
-                    {/* Primary Grid: Rates & Summary Totals */}
-                    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-2.5' : 'gap-1'} mb-1`}>
-                        {/* Exchange Rates Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <TrendingUp size={14} className="text-[#6BCEBB]" />
-                            </div>
-                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] font-bold text-(--text-color)/10 uppercase mb-0.5">Wbk</span>
-                                    <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{exchangeRate.toFixed(2)}</span>
+            {/* ── STICKY GLASSMORPHIC HEADER ── */}
+            <div className="sticky top-14 sm:top-16 z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
+                    {/* General Overview & Stats Grids */}
+                    {overviewMode !== 'collapsed' && (
+                        <div className={`flex flex-col shrink-0 border-b border-white/5 ${overviewMode === 'extended' ? 'p-3 px-6' : 'p-1.5 px-4'} transition-all duration-300 relative`}>
+                            
+                            {/* Compact Mode Vendor Bubbles */}
+                            {overviewMode !== 'extended' && pendingGroups.length > 0 && (
+                                <div className="flex items-center gap-2 mb-2 px-1 animate-in fade-in slide-in-from-left-2 duration-500">
+                                    {pendingGroups.map(group => {
+                                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
+                                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                        return (
+                                            <button key={group.vendorId} 
+                                                onClick={() => setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` })}
+                                                className="group relative flex items-center justify-center w-6 h-6 rounded-full transition-all hover:scale-125 cursor-pointer ring-0 hover:ring-2 ring-(--text-color)/20"
+                                                title={`${group.vendorId}: ${paidPerc}% Paid (${fmtMXN(group.total - group.paidTotal)} pending)`}
+                                                style={{ 
+                                                    background: `conic-gradient(${color} 0% ${paidPerc}%, var(--border-color) ${paidPerc}% 100%)`,
+                                                    padding: '1.5px'
+                                                }}>
+                                                <div className="w-full h-full rounded-full bg-black/80 flex items-center justify-center text-[7px] font-black backdrop-blur-sm shadow-[0_0_10px_rgba(255,255,255,0.05)]"
+                                                    style={{ color }}>
+                                                    {group.vendorId[0]}
+                                                </div>
+                                                {/* Minimal pulse indicator if 0% paid */}
+                                                {paidPerc === 0 && (
+                                                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-(--text-color)/20 animate-pulse border border-(--text-color)/10" style={{ backgroundColor: color }} />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="w-px h-3 bg-white/10 mx-1" />
+                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Ongoing Liquidations</span>
                                 </div>
-                                <div className="flex flex-col border-l border-(--text-color)/5 pl-3">
-                                    <span className="text-[8px] font-bold text-(--text-color)/10 uppercase mb-0.5">Live</span>
-                                    <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[13px]' : 'text-[10px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Paid Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <CheckCircle size={14} className="text-[#6BCEBB]" />
-                            </div>
-                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
-                            <div className="flex items-center gap-2 leading-tight">
-                                <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
-                                    {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
-                                </span>
-                                <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                    {currencyMode}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Pending Total Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all`}>
-                            <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
-                                <Clock size={14} className="text-[#FACC15]" />
-                            </div>
-                            <span className="text-[8px] font-black text-(--text-color)/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
-                            <div className="flex items-center gap-2 leading-tight">
-                                <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
-                                    {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
-                                </span>
-                                <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                    {currencyMode}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Active Selection Card */}
-                        <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3' : 'p-1.5 px-2.5'} rounded-xl bg-(--main-color)/5 border border-(--main-color)/20`}>
-                            <span className="text-[8px] font-black text-(--main-color) opacity-50 uppercase tracking-[0.2em] mb-1 leading-none">Active Account</span>
-                            {destinationFilter !== 'All' ? (
-                                <div className="flex items-center justify-between gap-2 leading-tight relative z-10">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 flex items-center justify-center bg-(--text-color)/10 rounded-lg p-0.5 border border-(--text-color)/10">
-                                            <img src={destinationsConfig[destinationFilter].icon} className="max-w-full max-h-full object-contain" />
+                            )}
+                            {/* Primary Grid: Rates & Summary Totals */}
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 ${overviewMode === 'extended' ? 'gap-3' : 'gap-1.5'} mb-1`}>
+                                {/* Exchange Rates Card */}
+                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
+                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                        <TrendingUp size={14} className="text-[#6BCEBB]" />
+                                    </div>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">FX Rates</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Wbk</span>
+                                            <span className={`font-mono font-black text-[#FACC15] ${overviewMode === 'extended' ? 'text-[14px]' : 'text-[11px]'}`}>{exchangeRate.toFixed(2)}</span>
                                         </div>
-                                        <span className={`font-black font-mono text-(--text-color) tracking-tighter ${overviewMode === 'extended' ? 'text-[20px]' : 'text-sm'}`}>
-                                            {currencyMode === 'MXN' ? fmtMXN(activeDestReqNetMXN) : fmtUSD(activeDestReqNetMXN / rate)}
+                                        <div className="flex flex-col border-l border-white/5 pl-3">
+                                            <span className="text-[8px] font-bold text-white/10 uppercase mb-0.5">Live</span>
+                                            <span className={`font-mono font-black text-[#6BCEBB] ${overviewMode === 'extended' ? 'text-[14px]' : 'text-[11px]'}`}>{liveExchangeRate ? liveExchangeRate.toFixed(2) : '...'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Paid Total Card */}
+                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
+                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                        <CheckCircle size={14} className="text-[#6BCEBB]" />
+                                    </div>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Paid</span>
+                                    <div className="flex items-center gap-2 leading-tight">
+                                        <span className={`font-black font-mono text-[#6BCEBB] tracking-tighter ${overviewMode === 'extended' ? 'text-[22px]' : 'text-[16px]'}`}>
+                                            {currencyMode === 'MXN' ? fmtMXN(statusTotals.Paid || 0) : fmtUSD((statusTotals.Paid || 0) / rate)}
+                                        </span>
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/5`}>
+                                            {currencyMode}
                                         </span>
                                     </div>
-                                    <span className={`text-[9px] font-black px-1.5 rounded ${currencyMode === 'USD' ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-sky-500/10 text-sky-400/60'}`}>
-                                        {currencyMode}
-                                    </span>
                                 </div>
-                            ) : (
-                                <div className="flex-1 flex items-center relative z-10 px-1">
-                                    <span className="text-[9px] font-black text-(--text-color)/10 uppercase tracking-widest">No Selection</span>
+
+                                {/* Pending Total Card */}
+                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
+                                    <div className="absolute top-2 right-2 opacity-10 group-hover:opacity-100 transition-opacity">
+                                        <Clock size={14} className="text-[#FACC15]" />
+                                    </div>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Total Pending</span>
+                                    <div className="flex items-center gap-2 leading-tight">
+                                        <span className={`font-black font-mono text-[#FACC15] tracking-tighter ${overviewMode === 'extended' ? 'text-[22px]' : 'text-[16px]'}`}>
+                                            {currencyMode === 'MXN' ? fmtMXN(statusTotals.Requested + statusTotals.Pending || 0) : fmtUSD((statusTotals.Requested + statusTotals.Pending || 0) / rate)}
+                                        </span>
+                                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/40 border border-white/5`}>
+                                            {currencyMode}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Summary View / Currency Toggle Card */}
+                                <div className={`group relative flex flex-col ${overviewMode === 'extended' ? 'p-3 px-4' : 'p-2 px-3'} rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all`}>
+                                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] mb-1 leading-none">Perspective</span>
+                                    <div className="flex items-center justify-between gap-2 h-full">
+                                        <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/5">
+                                            <button onClick={() => setCurrencyMode('MXN')} className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${currencyMode === 'MXN' ? 'bg-white text-black' : 'text-white/30 hover:text-white'}`}>MXN</button>
+                                            <button onClick={() => setCurrencyMode('USD')} className={`px-2 py-1 rounded-lg text-[9px] font-black transition-all ${currencyMode === 'USD' ? 'bg-white text-black' : 'text-white/30 hover:text-white'}`}>USD</button>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button onClick={() => setOverviewMode(p => p === 'extended' ? 'compact' : 'extended')} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white hover:bg-white/10 transition-all">
+                                                {overviewMode === 'extended' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                                            </button>
+                                            <button onClick={() => setOverviewMode('collapsed')} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Extended Mode: Individual Vendor Progress Bars */}
+                            {overviewMode === 'extended' && pendingGroups.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-2 pt-3 border-t border-white/5 animate-in slide-in-from-top duration-500">
+                                    {pendingGroups.map(group => {
+                                        const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
+                                        const paidPerc = Math.round((group.paidTotal / group.total) * 100);
+                                        return (
+                                            <div key={group.vendorId} className="flex flex-col gap-2 p-2 rounded-xl bg-white/[0.02] border border-white/5 group/v">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-lg flex items-center justify-center text-[8px] font-black text-black" style={{ backgroundColor: color }}>{group.vendorId[0]}</div>
+                                                        <span className="text-[9px] font-black text-white/60 uppercase tracking-widest">{group.vendorId}</span>
+                                                    </div>
+                                                    {paidPerc > 0 ? <span className="text-[9px] font-black text-white/20 uppercase tracking-tighter">{paidPerc}% PAID</span> : <div />}
+                                                </div>
+                                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                                    <div className="h-full transition-all duration-1000 ease-out" style={{ width: `${paidPerc}%`, backgroundColor: color, boxShadow: `0 0 10px ${color}40` }} />
+                                                </div>
+                                                <div className="flex items-center justify-between mt-1">
+                                                    {paidPerc > 0 ? <span className="text-[9px] font-black text-white/30 uppercase">{paidPerc}% Paid</span> : <div />}
+                                                    <div className="flex items-center gap-3">
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
+                                                                setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
+                                                            }}
+                                                            className="flex items-center gap-1.5 text-[9px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
+                                                        >
+                                                            <LayoutGrid size={11} /> Items
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
+                                                              }}
+                                                            className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-white/10 pl-3"
+                                                        >
+                                                            <Receipt size={11} /> Ledger
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    {/* Secondary Grid: Vendor Request Cards (Upcoming) */}
-                    {overviewMode === 'extended' && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2">
-                            {pendingGroups.map(group => {
-                                const color = vendors[group.vendorId as keyof typeof vendors]?.color || '#888';
-                                const paidPerc = Math.round((group.paidTotal / group.total) * 100);
-                                return (
-                                    <div key={group.vendorId}
-                                        className="group relative flex flex-col p-3 rounded-xl bg-(--text-color)/2 border border-(--text-color)/5 hover:border-(--text-color)/10 transition-all shadow-lg overflow-hidden"
-                                        style={{ borderTop: `2px solid ${color}` }}>
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <span className="text-xs font-black uppercase tracking-wider block" style={{ color }}>{group.vendorId}</span>
-                                                <span className="text-[9px] font-bold text-(--text-color)/40 uppercase tracking-widest leading-none">{group.items.length} Units</span>
-                                            </div>
-                                            <div className="p-1.5 bg-(--text-color)/5 rounded-lg border border-(--text-color)/10 opacity-30 group-hover:opacity-100 transition-opacity">
-                                                <Archive size={14} style={{ color }} />
-                                            </div>
-                                        </div>
-                                        <div className="mt-auto">
-                                            <div className="flex items-center gap-2 mb-2 overflow-hidden">
-                                                <span className="text-[17px] font-black font-mono text-(--text-color) leading-none whitespace-nowrap">
-                                                    {currencyMode === 'MXN' ? fmtMXN(group.total) : fmtUSD(group.total / rate)}
-                                                </span>
-                                                <span className={`text-[9px] font-black px-1.5 rounded shrink-0 ${currencyMode === 'USD' ? 'text-emerald-400/50' : 'text-sky-400/50'}`}>
-                                                    {currencyMode}
-                                                </span>
-                                            </div>
-                                            <div className="w-full h-1 bg-(--text-color)/5 rounded-full overflow-hidden">
-                                                <div className="h-full bg-(--main-color) opacity-80" style={{ width: `${paidPerc || 0}%` }} />
-                                            </div>
-                                            <div className="flex items-center justify-between mt-2.5 gap-2">
-                                                {paidPerc > 0 ? <span className="text-[9px] font-black text-(--text-color)/30 uppercase">{paidPerc}% Paid</span> : <div />}
-                                                <div className="flex items-center gap-3">
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const ids = group.items.map(i => i.row || (i.data as any).id).filter(Boolean);
-                                                            setArtifactConfig({ isOpen: true, itemIds: ids, title: `Items for ${group.vendorId}` });
-                                                        }}
-                                                        className="flex items-center gap-1.5 text-[9px] font-black text-(--main-color)/60 hover:text-(--main-color) transition-colors uppercase tracking-widest"
-                                                    >
-                                                        <LayoutGrid size={11} /> Items
-                                                    </button>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                              e.stopPropagation();
-                                                              setPaymentsArtifactConfig({ isOpen: true, vendor: group.vendorId, title: `Payment History: ${group.vendorId}` });
-                                                          }}
-                                                        className="flex items-center gap-1.5 text-[9px] font-black text-sky-400/60 hover:text-sky-400 transition-colors uppercase tracking-widest border-l border-(--text-color)/10 pl-3"
-                                                    >
-                                                        <Receipt size={11} /> Ledger
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ── Toggleable Filter Bar ── */}
-            {showFilters && (
-                <div className="flex-none flex flex-col bg-(--glass-bg) border-b border-white/5 animate-in slide-in-from-top-2 duration-300 relative z-10">
-                    <div className="flex items-center gap-2 px-4 py-1.5 overflow-x-auto no-scrollbar">
-                        {/* Status Filter Indicator */}
-                        <button 
-                            onClick={() => setStatusFilter(prev => prev === 'All' ? 'Paid' : prev === 'Paid' ? 'Requested' : 'All')}
-                            className="flex items-center justify-center w-[50px] h-[50px] transition-all duration-300 transform active:scale-90 shrink-0 group focus:outline-none"
-                            title={`Filter Status: ${statusFilter}`}
-                        >
-                            <div className={`w-[20px] h-[20px] rounded-full! border-2 transition-all duration-300 ${
-                                statusFilter === 'All' 
-                                    ? 'bg-white/5 border-white/20 group-hover:border-white/40' 
-                                    : statusFilter === 'Paid'
-                                        ? 'bg-[#22c55e] border-[#22c55e]/20 shadow-[0_0_12px_rgba(34,197,94,0.3)]'
-                                        : 'bg-[#eab308] border-[#eab308]/20 shadow-[0_0_12px_rgba(234,179,8,0.3)]'
-                            }`} />
-                        </button>
-
-                        <div className="w-px h-4 bg-white/10 shrink-0 mx-1" />
-
-                        {/* Subcategories Filter */}
-                        <div className="flex items-center gap-2">
-                            {SUBCATEGORIES.map(s => {
-                                const labels: Record<string, { label: string; icon: any; color: string }> = {
-                                    'All': { label: 'ALL', icon: LayoutGrid, color: '#888' },
-                                    'Acq': { label: 'ACQUISITION', icon: DollarSign, color: '#10b981' },
-                                    'Prod': { label: 'PRODUCTION', icon: Cpu, color: '#6366f1' },
-                                    'Monthly': { label: 'MONTHLY', icon: Calendar, color: '#38bdf8' },
-                                    'Oprt': { label: 'OPERATION', icon: Activity, color: '#818cf8' },
-                                    'Packing': { label: 'PACKING', icon: Archive, color: '#fb7185' },
-                                    'Sppl': { label: 'SUPPLIES', icon: Box, color: '#34d399' },
-                                    'Labr': { label: 'LABOR', icon: Users, color: '#fbbf24' }
-                                };
-                                const cfg = labels[s];
-                                const isActive = subcatFilter === s;
-                                return (
-                                    <button key={s} onClick={() => setSubcatFilter(s as Subcategory)}
-                                        className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-xl border transition-all whitespace-nowrap shrink-0 group/f ${isActive ? 'bg-white/10 border-white/20' : 'bg-transparent border-transparent hover:bg-white/5'}`}>
-                                        <cfg.icon size={16} style={{ color: isActive ? cfg.color : '#666' }} className={`transition-all ${isActive ? 'scale-110 grayscale-0' : 'scale-100 grayscale'}`} />
-                                        <span className={`text-[8px] font-black tracking-[0.2em] transition-all uppercase`} style={{ color: isActive ? cfg.color : '#666' }}>
-                                            {cfg.label}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Account Filter (Large Free-Floating Icons) */}
-                        <div className="flex items-center gap-2 shrink-0 px-2 lg:px-4">
-                            {Object.entries(destinationsConfig).map(([key, cfg]) => {
-                                const isActive = destinationFilter === key;
-                                return (
-                                    <button key={key} onClick={() => setDestinationFilter(destinationFilter === key ? 'All' : key as PaymentDestination)}
-                                        className={`relative group transition-all transform hover:scale-110 active:scale-95 ${isActive ? 'grayscale-0 opacity-100' : 'grayscale opacity-30 hover:opacity-100 hover:grayscale-0'}`}>
-                                        <div className="w-10 h-7 flex items-center justify-center">
-                                            <img src={cfg.icon} alt={cfg.name} className="max-w-full max-h-full object-contain drop-shadow-2xl" />
-                                        </div>
-                                        {isActive && (
-                                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-0.5 rounded-full bg-(--main-color) shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
-                                        )}
-                                        {/* Hover Label */}
-                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/80 px-2 py-0.5 rounded text-[7px] font-black text-white/60 uppercase opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none tracking-widest border border-white/10">
-                                            {cfg.name}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="flex-1 flex flex-col min-h-0">
-                {/* High Density Payment Card List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                    {/* Large Primary Action: Initialize Transaction (Restricted to Admins/Developers) */}
-                    {(user?.role === 'Admin' || user?.role === 'Developer') && (
-                        <button
-                            onClick={() => setShowAdd(true)}
-                            className="w-full mb-3 flex items-center justify-center gap-4 py-5 px-8 rounded-[32px] border border-(--main-color)/20 bg-(--main-color)/10 hover:bg-(--main-color)/20 transition-all group relative overflow-hidden active:scale-95 duration-200 shadow-lg shadow-(--main-color)/5"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-(--text-color)/5 border border-(--text-color)/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-(--main-color)/30 group-hover:border-(--main-color)/30 transition-all duration-300">
-                                <Plus className="w-7 h-7 text-(--text-color)/40 group-hover:text-(--main-color) transition-colors" />
-                            </div>
-                            <div className="text-left flex-1">
-                                <span className="block text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color)/30 group-hover:text-(--text-color) transition-all">New Transaction</span>
-                                <span className="block text-[9px] font-bold text-(--text-color)/10 uppercase tracking-widest mt-1 group-hover:text-(--main-color)/60 transition-colors">Launch Payment Wizard UI</span>
-                            </div>
-                            <div className="opacity-0 group-hover:opacity-30 transition-opacity">
-                                <Plus size={24} className="text-(--main-color)" />
-                            </div>
-                        </button>
                     )}
 
+                    {/* ── Toggleable Filter Bar LIFTED TO MainAppView ── */}
+                </div>
+
+                <div className="p-2 space-y-1 pb-32">
                     {filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Info size={40} className="mb-4" />
@@ -2207,7 +2099,26 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                         })
                     )}
                 </div>
-            </div>
+
+            {/* ── NEW REQUEST TRIGGER (Glassmorphic Bar) ── */}
+                {(user?.role === 'Admin' || user?.role === 'Developer') && (
+                    <div className="sticky bottom-0 left-0 right-0 z-50">
+                        <button 
+                            onClick={() => setShowAdd(true)}
+                            className="w-full flex items-center justify-center gap-4 py-8 bg-black/40 backdrop-blur-3xl border-t border-white/10 text-(--main-color) hover:bg-(--main-color)/10 hover:text-white active:bg-(--main-color)/20 transition-all group shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+                        >
+                            <div className="relative">
+                                <Plus className="w-8 h-8 sm:w-10 sm:h-10 stroke-[3] group-hover:scale-110 transition-transform" />
+                                <div className="absolute -inset-2 bg-(--main-color)/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <div className="flex flex-col items-start text-left">
+                                <span className="text-sm sm:text-base font-black uppercase tracking-[0.5em] leading-none">New Request</span>
+                                <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-1">Launch Payment Wizard</span>
+                            </div>
+                        </button>
+                    </div>
+                )}
+            
 
             {/* SVG Icons for Wizard */}
             <svg style={{ display: 'none' }}>
