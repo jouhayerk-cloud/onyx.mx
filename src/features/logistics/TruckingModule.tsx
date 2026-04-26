@@ -723,7 +723,7 @@ const TruckExportModal: React.FC<{
             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
             // USE calculated workbook barcode
             const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
-            const vendorPrefix = tag.split('-')[0] || '';
+            const vendorPrefix = Object.keys(vendors).find(v => tag.startsWith(v)) || '';
             const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#333333';
             return {
                 index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
