@@ -242,7 +242,7 @@ export async function exportCrateManifesto(
             doc.setTextColor(...TEXT_HI);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.text(`${meta.crateType.toUpperCase()}  ·  ${meta.crateDims}`, PW - MR, 12, { align: 'right' });
+
 
             let weightStr = `${totalWeight.toFixed(1)} kg NET`;
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
