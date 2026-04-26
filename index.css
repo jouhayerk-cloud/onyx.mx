@@ -202,7 +202,6 @@ html, body, #root {
 }
 
 .main-header {
-  height: 64px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -388,7 +387,7 @@ html, body, #root {
   }
 
   .app-content {
-    padding: 0.5rem;
+    padding: 0;
   }
 
   .app-container.sidebar-compact .sidebar-list-item.open+.sidebar-submenu {
@@ -397,11 +396,11 @@ html, body, #root {
   }
 
   .app-content {
-    padding: 0.5rem;
+    padding: 0;
   }
 
   .main-header {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
   }
 }
 

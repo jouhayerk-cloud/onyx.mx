@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
@@ -317,42 +317,51 @@ const SideView: React.FC<{
     };
 
     return (
-        <div className="flex-1 overflow-auto custom-scrollbar" style={{ background: 'rgba(3,3,6,0.9)' }}>
+        <div className="flex-1 overflow-auto custom-scrollbar bg-black/20 backdrop-blur-2xl border-t border-white/5 shadow-inner">
             <div className="p-6" style={{ minWidth: SVG_W * zoom + 48, minHeight: SVG_H * zoom + 120 }}>
                 {/* Header bar */}
-                <div className="flex items-center gap-4 mb-3">
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">◀ Rear</span>
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-[9px] font-black text-white/70 uppercase tracking-widest">
-                        Side View — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H
+                <div className="flex items-center gap-6 mb-6 px-4">
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-white/20" /> ◀ Rear
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/50">Front ▶</span>
+                    <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.6em] italic">
+                        Trailer Matrix — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H
+                    </span>
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
+                        Front ▶ <span className="w-1 h-1 rounded-full bg-white/20" />
+                    </span>
                 </div>
                 {/* Selected crate toolbar */}
                 {selectedId && positions[selectedId] && (() => {
                     const sel = truckCrates.find(c => c.id === selectedId);
                     const pos = positions[selectedId];
                     return sel ? (
-                        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-white/15 backdrop-blur-sm" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
                             <span className="text-[10px] font-black text-white/80 uppercase tracking-wide flex-1">
                                 {getCrateDisplayName(sel, allCrates, allInventory).label}
                                 <span className="text-white/30 ml-2">X:{Math.round(pos.x)}cm  Z:{Math.round(pos.z||0)}cm</span>
                             </span>
                             <button onClick={() => onStack(selectedId)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border border-amber-500/30 text-amber-400 hover:bg-amber-500/15">
-                                ⬆ Stack on Top
+                                className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] cursor-pointer transition-all bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/5">
+                                <Layers size={13} /> Stack on Top
                             </button>
-                            <button onClick={() => onUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z||0) - (sel.height_cm||100)))}
-                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">↓</button>
-                            <button onClick={() => onUpdateXZ(selectedId, pos.x, (pos.z||0) + (sel.height_cm||100))}
-                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">↑</button>
-                            <button onClick={() => onUpdateXZ(selectedId, Math.max(0, pos.x - 50), pos.z||0)}
-                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">◀</button>
-                            <button onClick={() => onUpdateXZ(selectedId, pos.x + 50, pos.z||0)}
-                                className="px-2 py-1.5 rounded-md text-[9px] font-black text-white/50 hover:text-white border border-white/10 cursor-pointer">▶</button>
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-xl border border-white/10">
+                                <button onClick={() => onUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z||0) - (sel.height_cm||100)))}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Down"><ArrowDown size={14} /></button>
+                                <button onClick={() => onUpdateXZ(selectedId, pos.x, (pos.z||0) + (sel.height_cm||100))}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Up"><ArrowUp size={14} /></button>
+                                <div className="w-px h-3 bg-white/10 mx-0.5" />
+                                <button onClick={() => onUpdateXZ(selectedId, Math.max(0, pos.x - 50), pos.z||0)}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Rear"><ArrowLeft size={14} /></button>
+                                <button onClick={() => onUpdateXZ(selectedId, pos.x + 50, pos.z||0)}
+                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Front"><ChevronRight size={14} /></button>
+                            </div>
                             <button onClick={() => onUnload(selectedId)}
-                                className="px-3 py-1.5 rounded-md text-[9px] font-black text-rose-400 border border-rose-500/20 hover:bg-rose-500/10 cursor-pointer">Remove</button>
+                                className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-rose-500/5">
+                                <Trash2 size={13} /> Remove
+                            </button>
                         </div>
                     ) : null;
                 })()}
@@ -360,9 +369,10 @@ const SideView: React.FC<{
                     <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
                         style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible', cursor: 'default' }}>
                         {/* Trailer shell */}
-                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.25)" strokeWidth={2} />
+                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={8} />
                         {/* Floor */}
-                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.12)" />
+                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.08)" />
+                        <line x1={0} y1={SVG_H - 8} x2={SVG_W} y2={SVG_H - 8} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
                         {/* Height grid every 50cm */}
                         {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
                             <g key={y}>
@@ -379,14 +389,19 @@ const SideView: React.FC<{
                         {/* Crates — non-selected first, selected on top */}
                         {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
                             <g key={cr.id} style={{ cursor: 'grab' }} onMouseDown={e => handleCrateMouseDown(e, cr)}>
-                                {/* Shadow */}
-                                {cr.isSelected && <rect x={cr.px + 3} y={cr.py + 3} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.4)" rx={3} />}
+                                {/* Selection Glow & Shadow */}
+                                {cr.isSelected && (
+                                    <>
+                                        <rect x={cr.px - 4} y={cr.py - 4} width={cr.pw + 8} height={cr.ph + 8} fill="white" opacity={0.15} filter="blur(12px)" rx={8} />
+                                        <rect x={cr.px + 4} y={cr.py + 4} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.5)" rx={4} />
+                                    </>
+                                )}
                                 {/* Body — full solid color */}
                                 <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
                                     fill={cr.col}
                                     stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
                                     strokeWidth={cr.isSelected ? 2.5 : 1.5}
-                                    rx={3} opacity={cr.isSelected ? 1 : 0.92} />
+                                    rx={4} opacity={cr.isSelected ? 1 : 0.92} />
                                 {/* Selection ring */}
                                 {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
                                     fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
@@ -412,9 +427,9 @@ const SideView: React.FC<{
                             </g>
                         ))}
                         {/* Cab block */}
-                        <rect x={SVG_W - 10} y={0} width={10} height={SVG_H} fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-                        <text x={SVG_W - 5} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.4)" fontFamily="monospace"
-                            transform={`rotate(-90, ${SVG_W - 5}, ${SVG_H / 2})`}>CAB</text>
+                        <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={2} />
+                        <text x={SVG_W - 6} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace" fontWeight="black"
+                            transform={`rotate(-90, ${SVG_W - 6}, ${SVG_H / 2})`}>FRONT (CAB)</text>
                     </svg>
                 </div>
             </div>
@@ -985,7 +1000,7 @@ const OpenDraftModal: React.FC<{
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+                <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[rgba(12,12,18,0.95)]">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Load Drafts</h3>
                         <p className="text-[10px] text-white/40">{drafts.length} saved · <span className="text-white/20">.truckload</span></p>
@@ -1351,7 +1366,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             {/* ── HORIZONTAL DOCK STRIP ── */}
             <div
-                className="sticky top-14 sm:top-16 z-[60] shrink-0 border-b border-white/10 backdrop-blur-3xl bg-black/40"
+                className="sticky top-20 sm:top-24 z-[60] shrink-0 border-b border-white/10 backdrop-blur-3xl bg-black/40"
                 onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
             >
                 {dockCrates.length === 0 ? (

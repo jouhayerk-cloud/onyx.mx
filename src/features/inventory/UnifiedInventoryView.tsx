@@ -1262,7 +1262,7 @@ export const UnifiedInventoryView = () => {
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
                 {/* ── STICKY GLASSMORPHIC HEADER (Tools + Filters) ── */}
-                <div className="sticky top-14 sm:top-16 z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
+                <div className="sticky top-20 sm:top-24 z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
                     {/* Row 1: Stats + Actions */}
                     <div className="flex items-center justify-between px-4 sm:px-10 py-4 gap-3 overflow-x-auto no-scrollbar">
                         {/* Left: Status Cycle */}
