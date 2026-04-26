@@ -421,3 +421,4 @@ export const truckViewModeAtom = atom<'top' | 'side'>('top'); // trailer view: t
 export const truckIsCompactAtom = atom<boolean>(false);       // compact dock/info panels
 export const truckShowSaveDraftAtom = atom<boolean>(false);   // open Save Draft modal
 export const truckShowOpenDraftAtom = atom<boolean>(false);   // open Load Drafts modal
+export const truckShowExportModalAtom = atom<boolean>(false); // open Exportation wizard
