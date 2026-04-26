@@ -80,6 +80,7 @@ import {
     truckIsCompactAtom,
     truckShowSaveDraftAtom,
     truckShowOpenDraftAtom,
+    truckShowExportModalAtom,
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -510,6 +511,7 @@ const LogisticsBar: React.FC = () => {
     const [truckCompact, setTruckCompact] = useAtom(truckIsCompactAtom);
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
+    const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'package' },
@@ -578,6 +580,15 @@ const LogisticsBar: React.FC = () => {
                                 style={{ background: 'rgba(255,255,255,0.04)' }}
                             >
                                 <Save size={13} />Save
+                            </button>
+                            {/* Exportation */}
+                            <button
+                                onClick={() => setShowExportModal(true)}
+                                title="Export consolidated manifesto and packed crates"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/25 transition-all cursor-pointer"
+                                style={{ background: 'rgba(255,255,255,0.04)' }}
+                            >
+                                <Download size={13} />Exportation
                             </button>
                             {/* Ready Truck */}
                             <button

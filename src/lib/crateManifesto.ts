@@ -112,8 +112,9 @@ function hexToRgb(hex: string): [number, number, number] {
 export async function exportCrateManifesto(
     items: ManifestoItem[],
     meta: ManifestoMeta,
-    onProgress?: (pct: number) => void
-): Promise<void> {
+    onProgress?: (pct: number) => void,
+    returnBlob?: boolean
+): Promise<Blob | void> {
     // Sort items by descending vendor item count (index)
     const sortedItems = [...items].sort((a, b) => b.index - a.index);
 
@@ -396,5 +397,9 @@ export async function exportCrateManifesto(
 
     onProgress?.(100);
     const safeId = meta.dynamicId.replace(/[^A-Z0-9_\-]/gi, '_');
-    doc.save(`MANIFESTO_${safeId}.pdf`);
+    if (returnBlob) {
+        return doc.output('blob');
+    } else {
+        doc.save(`MANIFESTO_${safeId}.pdf`);
+    }
 }

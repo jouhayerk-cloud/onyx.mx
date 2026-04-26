@@ -3,9 +3,11 @@ import { useAtomValue, useSetAtom, useAtom } from 'jotai';
 import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom } from '../../lib/atoms';
+import { isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
+import ExcelJS from 'exceljs';
+import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
 
 const TRUCK_L_CM = 1615;
 const TRUCK_W_CM = 244;
@@ -583,6 +585,227 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
     } catch (e) { console.error('Draft import failed', e); return null; }
 }
 
+// ─── Export Modal ────────────────────────────────────────────────────────────
+const TruckExportModal: React.FC<{
+    truckCrates: any[];
+    allCrates: any[];
+    allInventory: any[];
+    positions: any;
+    onClose: () => void;
+}> = ({ truckCrates, allCrates, allInventory, positions, onClose }) => {
+    const [name, setName] = useState(`Truck ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
+    const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1 });
+    const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '' });
+
+    const getItemsFromCrate = (crate: any) => {
+        if (!crate.inventory_ids) return [];
+        return crate.inventory_ids.split(',').filter(Boolean).map((e: string) => {
+            const [id, qtyStr] = e.split(':');
+            const qty = parseInt(qtyStr || '1', 10) || 1;
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            return { id, qty, inv };
+        }).filter((item: any) => item.inv);
+    };
+
+    const buildConsolidatedItems = () => {
+        const itemMap = new Map<string, { qty: number, inv: any }>();
+        truckCrates.forEach(c => {
+            getItemsFromCrate(c).forEach((item: any) => {
+                const existing = itemMap.get(item.id);
+                if (existing) existing.qty += item.qty;
+                else itemMap.set(item.id, { qty: item.qty, inv: item.inv });
+            });
+        });
+        return Array.from(itemMap.values());
+    };
+
+    const generateManifesto = async () => {
+        setProgress(p => ({ ...p, manifesto: 5 }));
+        const items = buildConsolidatedItems();
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Manifesto');
+        ws.columns = [
+            { header: 'Book TAG ID', key: 'tag', width: 20 },
+            { header: 'Quantity', key: 'qty', width: 10 },
+            { header: 'Description', key: 'desc', width: 50 },
+            { header: 'Weight (KG)', key: 'weight', width: 15 },
+            { header: 'Dimensions (CM)', key: 'dims', width: 20 },
+        ];
+        items.forEach((item, idx) => {
+            setProgress(p => ({ ...p, manifesto: 5 + Math.round((idx / items.length) * 80) }));
+            const inv = item.inv;
+            const data = inv.data || {};
+            const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
+            const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
+            ws.addRow({ tag: data.itemId || inv.row, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+        });
+        ws.getRow(1).font = { bold: true };
+        setProgress(p => ({ ...p, manifesto: 95 }));
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        setUrls(u => ({ ...u, manifesto: URL.createObjectURL(blob) }));
+        setProgress(p => ({ ...p, manifesto: 100 }));
+    };
+
+    const generatePdf = async () => {
+        setProgress(p => ({ ...p, pdf: 5 }));
+        const items = buildConsolidatedItems();
+        const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
+            const data = item.inv.data || {};
+            const tag = data.itemId || String(item.inv.row);
+            const vendorPrefix = tag.split('-')[0] || '';
+            const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#333333';
+            return {
+                index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
+                name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                material: data.material || data.Material || '', color: data.color || data.Color || '',
+                dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                costMxn: 0, costUsd: 0,
+                imageUrls: (data.photos || []).map((p:any) => p.url),
+                tagColor: vendorCol, dbItemCount: data.quantity || 1
+            };
+        });
+        const meta = {
+            dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+            crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST'
+        };
+        const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
+        setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
+        setProgress(p => ({ ...p, pdf: 100 }));
+    };
+
+    const generatePacked = async () => {
+        setProgress(p => ({ ...p, packed: 5 }));
+        const wb = new ExcelJS.Workbook();
+        for (let i = 0; i < truckCrates.length; i++) {
+            setProgress(p => ({ ...p, packed: 5 + Math.round((i / truckCrates.length) * 80) }));
+            const crate = truckCrates[i];
+            const { label } = getCrateDisplayName(crate, allCrates, allInventory);
+            const safeLabel = label.replace(/[\[\]\*\/\?\:\\]/g, '').substring(0, 31) || `Crate ${i+1}`;
+            let sheetName = safeLabel; let counter = 1;
+            while (wb.worksheets.find(s => s.name === sheetName)) sheetName = `${safeLabel.substring(0, 28)}_${counter++}`;
+            const ws = wb.addWorksheet(sheetName);
+            ws.columns = [
+                { header: 'Book TAG ID', key: 'tag', width: 20 }, { header: 'Quantity', key: 'qty', width: 10 },
+                { header: 'Description', key: 'desc', width: 50 }, { header: 'Weight (KG)', key: 'weight', width: 15 },
+                { header: 'Dimensions (CM)', key: 'dims', width: 20 },
+            ];
+            getItemsFromCrate(crate).forEach((item: any) => {
+                const inv = item.inv; const data = inv.data || {};
+                const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
+                const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
+                ws.addRow({ tag: data.itemId || inv.row, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+            });
+            ws.getRow(1).font = { bold: true };
+        }
+        setProgress(p => ({ ...p, packed: 95 }));
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        setUrls(u => ({ ...u, packed: URL.createObjectURL(blob) }));
+        setProgress(p => ({ ...p, packed: 100 }));
+    };
+
+    const triggerDownload = (url: string, filename: string) => {
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    };
+
+    const isDone = (k: keyof typeof progress) => progress[k] === 100;
+    const isWorking = (k: keyof typeof progress) => progress[k] >= 0 && progress[k] < 100;
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-6 shadow-2xl"
+                style={{ background: 'rgba(12,12,18,0.95)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="text-xl font-black uppercase tracking-tighter text-white">Exportation Wizard</h3>
+                        <p className="text-xs text-white/40 mt-1">Generate manifestos and packing lists</p>
+                    </div>
+                    <button onClick={onClose} className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+                        <X size={18} />
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/50">Truck Name</label>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    {/* Manifesto.xlsx */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
+                        <div className="flex-1">
+                            <span className="block text-sm font-bold text-white">manifesto.xlsx</span>
+                            <span className="block text-[10px] text-white/40">Consolidated list of all items</span>
+                            {progress.manifesto >= 0 && (
+                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress.manifesto}%` }} />
+                                </div>
+                            )}
+                        </div>
+                        {isDone('manifesto') ? (
+                            <button onClick={() => triggerDownload(urls.manifesto, `${name}_Manifesto.xlsx`)} className="px-3 py-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
+                        ) : (
+                            <button onClick={generateManifesto} disabled={isWorking('manifesto')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                                {isWorking('manifesto') ? 'Generating...' : 'Generate'}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Packing List.pdf */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
+                        <div className="flex-1">
+                            <span className="block text-sm font-bold text-white">Packing List.pdf</span>
+                            <span className="block text-[10px] text-white/40">Multi-page printable manifesto</span>
+                            {progress.pdf >= 0 && (
+                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${progress.pdf}%` }} />
+                                </div>
+                            )}
+                        </div>
+                        {isDone('pdf') ? (
+                            <button onClick={() => triggerDownload(urls.pdf, `${name}_Packing_List.pdf`)} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
+                        ) : (
+                            <button onClick={generatePdf} disabled={isWorking('pdf')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                                {isWorking('pdf') ? 'Generating...' : 'Generate'}
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Packed.xlsx */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
+                        <div className="flex-1">
+                            <span className="block text-sm font-bold text-white">Packed.xlsx</span>
+                            <span className="block text-[10px] text-white/40">One spreadsheet per crate</span>
+                            {progress.packed >= 0 && (
+                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress.packed}%` }} />
+                                </div>
+                            )}
+                        </div>
+                        {isDone('packed') ? (
+                            <button onClick={() => triggerDownload(urls.packed, `${name}_Packed.xlsx`)} className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
+                        ) : (
+                            <button onClick={generatePacked} disabled={isWorking('packed')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
+                                {isWorking('packed') ? 'Generating...' : 'Generate'}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Save Draft Modal
 const SaveDraftModal: React.FC<{
     crateCount: number;
@@ -757,6 +980,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [isCompact, setIsCompact] = useAtom(truckIsCompactAtom);
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
+    const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -1333,6 +1557,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 <OpenDraftModal
                     onLoad={handleLoadDraft}
                     onClose={() => setShowOpenDraft(false)}
+                />
+            )}
+            {showExportModal && (
+                <TruckExportModal
+                    truckCrates={truckCrates}
+                    allCrates={allCrates}
+                    allInventory={allInventory}
+                    positions={positions}
+                    onClose={() => setShowExportModal(false)}
                 />
             )}
         </div>
