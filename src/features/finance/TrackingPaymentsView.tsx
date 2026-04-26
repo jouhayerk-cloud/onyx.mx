@@ -1565,7 +1565,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             />
 
             {/* ── STICKY GLASSMORPHIC HEADER ── */}
-            <div className="sticky top-14 sm:top-16 z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
+            <div className="sticky top-20 sm:top-24 z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
                     {/* General Overview & Stats Grids */}
                     {overviewMode !== 'collapsed' && (
                         <div className={`flex flex-col shrink-0 border-b border-white/5 ${overviewMode === 'extended' ? 'p-3 px-6' : 'p-1.5 px-4'} transition-all duration-300 relative`}>

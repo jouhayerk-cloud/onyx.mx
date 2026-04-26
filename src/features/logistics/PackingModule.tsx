@@ -307,9 +307,9 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         <div className="shrink-0 flex justify-center pb-8 border-t border-white/5 pt-8">
                             <button 
                                 onClick={() => setIsReviewStep(false)}
-                                className="px-16 py-5 rounded-[2rem] bg-(--main-color) text-black text-lg font-black uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/20 flex items-center gap-4"
+                                className="px-20 py-6 rounded-[2.5rem] bg-(--main-color) text-black text-lg font-black uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/30 flex items-center gap-4 group"
                             >
-                                <Zap size={24} strokeWidth={3} />
+                                <Zap size={28} strokeWidth={3} className="group-hover:rotate-12 transition-transform" />
                                 Begin Programming
                             </button>
                         </div>
@@ -431,13 +431,13 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
                         <button
                             disabled={!isSupported || isWriting || status === 'success'}
                             onClick={handleWrite}
-                            className={`px-12 py-3 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all active:scale-95 flex items-center gap-3 shadow-xl
+                            className={`px-16 py-6 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.3em] transition-all active:scale-95 flex items-center gap-4 shadow-2xl
                                 ${!isSupported ? 'bg-white/5 text-white/10 cursor-not-allowed' :
                                   status === 'writing' ? 'bg-white/5 text-white/20 cursor-wait' : 
-                                  status === 'success' ? 'bg-green-500 text-black' :
-                                  'bg-white text-black hover:bg-(--main-color) hover:scale-105'}`}
+                                  status === 'success' ? 'bg-green-500 text-black shadow-[0_0_40px_rgba(34,197,94,0.4)]' :
+                                  'bg-white text-black hover:bg-(--main-color) hover:scale-110 hover:shadow-(--main-color)/40'}`}
                         >
-                            {status === 'writing' ? <div className="animate-spin"><Nfc size={16} /></div> : <Zap size={16} strokeWidth={3} />}
+                            {status === 'writing' ? <div className="animate-spin"><Nfc size={28} strokeWidth={2.5} /></div> : <Zap size={28} strokeWidth={3} />}
                             <span>{status === 'writing' ? 'SCANNING...' : status === 'success' ? 'ENCODED' : 'WRITE NFC'}</span>
                         </button>
                     )}
@@ -1087,26 +1087,6 @@ export const PackingModule: React.FC = () => {
                 showBruteWeight={true}
             />
 
-            {/* ── SELECTION OVERLAY (Glassmorphic) ── */}
-            {selectedIds.size > 0 && (
-                <div className="sticky top-14 sm:top-16 z-[60] flex items-center justify-between px-10 py-4 bg-black/40 backdrop-blur-3xl border-b border-white/10 text-white animate-in slide-in-from-top duration-500">
-                    <div className="flex items-center gap-8">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color)">{selectedIds.size} ARTIFACTS SELECTED</span>
-                            <button onClick={() => setSelectedIds(new Set())} className="text-[9px] font-bold underline uppercase tracking-tighter opacity-40 hover:opacity-100 transition-opacity text-left">Clear Selection</button>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="flex items-center justify-center w-16 h-16 rounded-2xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40 group"
-                            title="Print Manifest / Labels"
-                        >
-                            <Printer size={32} strokeWidth={3} className="group-hover:rotate-12 transition-transform" />
-                        </button>
-                    </div>
-                </div>
-            )}
 
             {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
             <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
@@ -1324,16 +1304,28 @@ export const PackingModule: React.FC = () => {
                 </div>
             )}
 
-            {/* ── FULL-WIDTH NFC TRIGGER (Glassmorphic) ── */}
-            <div className="sticky bottom-0 left-0 right-0 z-50">
-                <button 
-                    onClick={() => setIsNFCWizardOpen(true)}
-                    className="w-full flex items-center justify-center gap-4 py-8 bg-black/40 backdrop-blur-3xl border-t border-white/10 text-(--main-color) hover:bg-(--main-color)/10 hover:text-white active:bg-(--main-color)/20 transition-all group"
-                >
-                    <Nfc size={28} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-black uppercase tracking-[0.5em]">NFC</span>
-                </button>
-            </div>
+            {/* ── MINIMAL FIXED BOTTOM ACTION BAR ── */}
+            {selectedIds.size > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-6 px-6 py-3 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-10 duration-700">
+                    <button 
+                        onClick={() => setIsPrintablesWizardOpen(true)}
+                        className="flex items-center justify-center w-14 h-14 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                        title="Print Labels"
+                    >
+                        <Printer size={28} strokeWidth={2} />
+                    </button>
+
+                    <div className="w-px h-6 bg-white/10" />
+
+                    <button 
+                        onClick={() => setIsNFCWizardOpen(true)}
+                        className="flex items-center justify-center w-16 h-16 rounded-full bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40 group"
+                        title="NFC Wizard"
+                    >
+                        <Nfc size={32} strokeWidth={2.5} />
+                    </button>
+                </div>
+            )}
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

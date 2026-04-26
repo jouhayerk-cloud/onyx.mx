@@ -255,7 +255,7 @@ const ActiveCrateHUD: React.FC<{
     const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
 
     return (
-        <div className="sticky top-14 sm:top-16 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="sticky top-20 sm:top-24 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
             <div className="w-full max-w-screen-2xl mx-auto flex items-center justify-between gap-6 px-6 py-4 sm:px-12 sm:py-6">
                 {/* Left: Crate Info */}
                 <div className="flex items-center gap-6 min-w-0">

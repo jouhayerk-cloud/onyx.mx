@@ -81,6 +81,7 @@ import {
     truckShowSaveDraftAtom,
     truckShowOpenDraftAtom,
     truckShowExportModalAtom,
+    packingSelectedIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -165,10 +166,10 @@ const SubTabPills: React.FC<{
             const TabIcon = t.icon ? iconToLucide[t.icon.replace('#', '')] : null;
             return (
                 <button key={t.id} onClick={() => onSelect(t.id)}
-                    className={`flex flex-col items-center justify-center p-1 transition-all active:scale-90 group/pill select-none
+                    className={`flex flex-col items-center justify-center p-2 transition-all active:scale-90 group/pill select-none
                         ${active === t.id ? 'text-(--text-color)' : 'text-(--text-color)/30 hover:text-(--text-color)'}`}
                     style={active === t.id ? { color: accentColor } : {}}>
-                    {TabIcon && <TabIcon size={20} strokeWidth={1.5} />}
+                    {TabIcon && <TabIcon size={28} strokeWidth={1.5} />}
                 </button>
             );
         })}
@@ -189,11 +190,11 @@ const StudioAction: React.FC<{
         onClick={onClick}
         disabled={disabled}
         title={title}
-        className={`flex flex-col items-center justify-center h-10 px-2.5 rounded-xl transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className}
+        className={`flex flex-col items-center justify-center h-16 px-4 rounded-2xl transition-all active:scale-90 group/studio select-none disabled:opacity-30 disabled:pointer-events-none ${className}
             ${active ? 'bg-white/5 text-white' : 'text-white/30 hover:text-white/60 hover:bg-white/2'}`}
     >
-        <Icon size={16} strokeWidth={2.5} className="group-hover/studio:scale-110 transition-transform mb-0.5" style={{ color: active ? color : undefined }} />
-        <span className="text-[7px] font-black uppercase tracking-widest leading-none">{label}</span>
+        <Icon size={24} strokeWidth={2} className="group-hover/studio:scale-110 transition-transform mb-1" style={{ color: active ? color : undefined }} />
+        <span className="text-[8px] font-black uppercase tracking-widest leading-none">{label}</span>
     </button>
 );
 
@@ -207,12 +208,12 @@ const DeployableSearch: React.FC<{
 }> = ({ value, onChange, isOpen, setIsOpen, placeholder = "SEARCH...", accentColor = "var(--main-color)" }) => (
     <div className={`relative flex items-center transition-all duration-500 ease-out ${isOpen ? 'flex-1 max-w-xl' : 'w-auto'}`}>
         {!isOpen ? (
-            <button onClick={() => setIsOpen(true)} className="p-2.5 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
-                <Search size={22} strokeWidth={2} />
+            <button onClick={() => setIsOpen(true)} className="p-4 text-(--text-color)/40 hover:text-(--text-color) hover:scale-110 transition-all">
+                <Search size={32} strokeWidth={2} />
             </button>
         ) : (
             <div className="flex-1 flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
-                <Search size={18} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
+                <Search size={24} strokeWidth={2.5} style={{ color: accentColor }} className="shrink-0 opacity-80" />
                 <input
                     autoFocus
                     type="text"
@@ -220,15 +221,15 @@ const DeployableSearch: React.FC<{
                     onChange={e => onChange(e.target.value)}
                     onBlur={() => { if (!value) setIsOpen(false); }}
                     placeholder={placeholder}
-                    className="flex-1 bg-transparent border-none text-[13px] font-black text-(--text-color) outline-none placeholder-(--text-color)/15 uppercase tracking-[0.25em] py-3"
+                    className="flex-1 bg-transparent border-none text-[15px] font-black text-(--text-color) outline-none placeholder-(--text-color)/15 uppercase tracking-[0.25em] py-4"
                 />
                 {value && (
-                    <button onClick={() => onChange('')} className="p-2 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
-                        <X size={18} strokeWidth={2.5} />
+                    <button onClick={() => onChange('')} className="p-3 text-(--text-color)/30 hover:text-(--text-color) transition-colors">
+                        <X size={24} strokeWidth={2.5} />
                     </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="p-2 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
-                    <X size={16} strokeWidth={3} />
+                <button onClick={() => setIsOpen(false)} className="p-3 text-(--text-color)/30 hover:text-(--text-color) transition-all hover:scale-125">
+                    <X size={20} strokeWidth={3} />
                 </button>
             </div>
         )}
@@ -241,8 +242,8 @@ const DeployableSearch: React.FC<{
 const ModuleBadge: React.FC<{ icon: string; label: string; color: string }> = ({ icon, label, color }) => {
     const BadgeIcon = iconToLucide[icon] || Store;
     return (
-        <div className="hidden sm:flex items-center gap-3 pr-4 border-r border-white/5 shrink-0 truncate">
-            <BadgeIcon size={18} strokeWidth={2} style={{ color }} />
+        <div className="hidden sm:flex items-center gap-4 pr-6 border-r border-white/5 shrink-0 truncate">
+            <BadgeIcon size={28} strokeWidth={2} style={{ color }} />
         </div>
     );
 };
@@ -259,10 +260,10 @@ const ShippingStats: React.FC = () => {
     const volPct = truckVol > 0 ? Math.round((vol / truckVol) * 100) : 0;
 
     return (
-        <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono text-(--text-color)/40">
-            <span className="flex items-center gap-1"><span className="text-(--text-color)/70 font-black">{loaded.length}</span> crates</span>
-            <div className="flex items-center gap-1.5">
-                <div className="w-20 h-1.5 bg-(--text-color)/10 rounded-full overflow-hidden">
+        <div className="hidden lg:flex items-center gap-6 text-[12px] font-mono text-(--text-color)/40">
+            <span className="flex items-center gap-2"><span className="text-(--text-color)/70 font-black text-sm">{loaded.length}</span> crates</span>
+            <div className="flex items-center gap-2.5">
+                <div className="w-24 h-2 bg-(--text-color)/10 rounded-full overflow-hidden">
                     <div className="h-full bg-[#00AEEF] rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <span>{pct}% wt</span>
@@ -342,13 +343,13 @@ const InventoryBar: React.FC = () => {
 
                 {!isSearchOpen && (
                     <div className="flex items-center gap-0.5 shrink-0 animate-in fade-in duration-300">
-                        <StudioAction 
-                            icon={Filter} 
-                            label="FILTERS"
-                            active={isFiltersOpen}
+                        <button 
                             onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            color="var(--color-inventory)"
-                        />
+                            className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--color-inventory)' : 'text-white/20 hover:text-white'}`}
+                            title="Filters"
+                        >
+                            <Filter size={28} />
+                        </button>
 
                         <div className="w-px h-5 bg-(--text-color)/5 mx-0.5 hidden sm:block" />
 
@@ -544,10 +545,10 @@ const LogisticsBar: React.FC = () => {
                             <div className="w-px h-6 bg-white/5 mx-1" />
                             <button 
                                 onClick={() => setIsPackingFiltersOpen(!isPackingFiltersOpen)}
-                                className={`flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${isPackingFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white/60'}`}
+                                className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isPackingFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                                title="Configuration"
                             >
-                                <Filter size={13} />
-                                Config
+                                <ListFilter size={28} />
                             </button>
                         </>
                     )}
@@ -623,21 +624,37 @@ const PackingBar: React.FC = () => {
     const setExportXLSX = useSetAtom(packingExportXLSXTriggerAtom);
     const setExportJSON = useSetAtom(packingExportJSONTriggerAtom);
     const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
-    const [labelSize, setLabelSize] = useAtom(packingLabelSizeAtom);
+    const [selectedIds, setSelectedIds] = useAtom(packingSelectedIdsAtom);
 
     const cycleView = () => setViewMode(v => v === 'list' ? 'grid' : 'list');
     const ViewIcon = viewMode === 'list' ? LayoutList : LayoutGrid;
 
     return (
         <div className="flex flex-1 items-center gap-1 sm:gap-4 ml-1">
-            <DeployableSearch 
-                value={search} 
-                onChange={setSearch} 
-                isOpen={isSearchOpen} 
-                setIsOpen={setIsSearchOpen} 
-                accentColor="var(--main-color)"
-                placeholder="FIND INVENTORY..."
-            />
+            {selectedIds.size > 0 ? (
+                <div className="flex items-center gap-6 animate-in slide-in-from-left duration-500 pr-4 border-r border-white/5 mr-2">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-(--main-color) whitespace-nowrap">
+                            {selectedIds.size} ARTIFACTS SELECTED
+                        </span>
+                        <button 
+                            onClick={() => setSelectedIds(new Set())} 
+                            className="text-[9px] font-bold underline uppercase tracking-tighter opacity-40 hover:opacity-100 transition-opacity text-left"
+                        >
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <DeployableSearch 
+                    value={search} 
+                    onChange={setSearch} 
+                    isOpen={isSearchOpen} 
+                    setIsOpen={setIsSearchOpen} 
+                    accentColor="var(--main-color)"
+                    placeholder="FIND INVENTORY..."
+                />
+            )}
 
             {!isSearchOpen && (
                 <>
@@ -655,10 +672,10 @@ const PackingBar: React.FC = () => {
                             />
                                 <button 
                                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                                    className={`flex items-center gap-2 px-3 text-[10px] font-black uppercase tracking-[0.4em] transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                                    className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--main-color)' : 'text-white/20 hover:text-white'}`}
+                                    title="Configuration"
                                 >
-                                    <ListFilter size={14} />
-                                    Config
+                                    <ListFilter size={28} />
                                 </button>
                             </div>
                     </>
@@ -1228,7 +1245,7 @@ export function MainHeader() {
 
     return (
         <>
-            <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full sticky top-0 z-[100] border-b border-white/10 bg-black/40 backdrop-blur-3xl">
+            <div className="main-header h-20 sm:h-24 flex items-center pl-6 pr-0 shrink-0 transition-all flex-nowrap w-full sticky top-0 z-[100] border-b border-white/10 bg-black/40 backdrop-blur-3xl">
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
@@ -1240,7 +1257,7 @@ export function MainHeader() {
                             className="p-1 px-2 -ml-2 rounded-xl hover:bg-white/5 active:scale-90 transition-all flex items-center gap-2 group/logo mr-4"
                             title="Onyx.mx Menu"
                         >
-                            <OnyxMiniLogo className="w-8 h-8 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                            <OnyxMiniLogo className="w-12 h-12 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                         </button>
                     )}
                 </div>
@@ -1294,9 +1311,9 @@ export function MainHeader() {
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
-                    <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-4">
-                        <span className="text-[7px] font-bold uppercase tracking-[0.25em] text-(--main-color) opacity-40 leading-none mb-1">WELCOME</span>
-                        <span className="text-[14px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
+                    <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-6">
+                        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1.5">WELCOME</span>
+                        <span className="text-[18px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
                             {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
                                 ? user.name.split(' ')[0]
                                 : user?.email?.split('@')[0] || 'User'}
@@ -1322,12 +1339,12 @@ export function MainHeader() {
                     <div className="flex items-center relative h-full">
                         <button
                             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                            className={`w-14 h-14 sm:h-16 flex items-center justify-center transition-all active:scale-95 group/sett ${
+                            className={`w-20 h-20 sm:h-24 flex items-center justify-center transition-all active:scale-95 group/sett ${
                                 isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
                             }`}
                             title="Studio Settings"
                         >
-                            <Settings size={24} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
+                            <Settings size={32} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
                         </button>
 
                         {isSettingsOpen && createPortal(
