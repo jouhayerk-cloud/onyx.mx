@@ -642,16 +642,7 @@ const PackingBar: React.FC = () => {
             {!isSearchOpen && (
                 <>
                         {/* Export Actions */}
-                        <div className="flex items-center gap-0.5">
-                            <StudioAction 
-                                icon={FileText}
-                                label="PDF"
-                                onClick={() => setExportPDF(prev => prev + 1)}
-                                title="Export PDF Catalog"
-                            />
-                        </div>
 
-                        <div className="w-px h-6 bg-white/5 mx-1" />
 
                         {/* View & Config Actions */}
                         <div className="flex items-center gap-0.5">
@@ -1237,7 +1228,7 @@ export function MainHeader() {
 
     return (
         <>
-            <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full relative z-50 border-b border-white/5 bg-(--main-header-bg) scale-95 sm:scale-100 origin-right sm:origin-center">
+            <div className="main-header h-14 sm:h-16 flex items-center pl-4 pr-0 shrink-0 transition-all flex-nowrap w-full relative z-[100] border-b border-white/10 bg-black/40 backdrop-blur-3xl scale-95 sm:scale-100 origin-right sm:origin-center">
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
