@@ -239,14 +239,17 @@ export async function exportCrateManifesto(
             doc.setFont('helvetica', 'normal');
             doc.text(`Exported: ${meta.exportedAt}`, PW - MR, 7, { align: 'right' });
 
+            const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase().includes('crate')).length;
+            const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase().includes('pallet')).length;
+
             doc.setTextColor(...TEXT_HI);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-
+            doc.text(`${nCrates} Crates  ·  ${nPallets} Pallets  ·  ${items.length} SKU(s)`, PW - MR, 12, { align: 'right' });
 
             let weightStr = `${totalWeight.toFixed(1)} kg NET`;
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
-            doc.text(`${items.length} SKU(s)  ·  ${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
+            doc.text(`${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
 
             // Wireframe Icon (Top Header)
             const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
