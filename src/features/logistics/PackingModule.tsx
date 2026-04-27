@@ -1307,24 +1307,24 @@ export const PackingModule: React.FC = () => {
 
             {/* ── MINIMAL FIXED BOTTOM ACTION BAR ── */}
             {selectedIds.size > 0 && (
-                <div className="sticky bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-500 mt-auto">
-                    <div className="bg-white/[0.02] backdrop-blur-3xl border-t border-white/5 px-8 py-3 flex items-center justify-around shadow-2xl relative overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-20" />
+                <div className="sticky bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-500 mt-auto pointer-events-none">
+                    <div className="bg-white/[0.02] backdrop-blur-3xl border-t border-white/5 px-8 py-3 flex items-center justify-around shadow-2xl relative overflow-hidden pointer-events-auto">
+                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-20 pointer-events-none" />
                         
                         <button 
                             onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all active:scale-90 hover:scale-110 shadow-lg"
+                            className="relative z-10 flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all active:scale-90 hover:scale-110 shadow-lg cursor-pointer"
                             style={{ background: 'var(--secondary-color)', color: 'black' }}
                             title="Print Labels"
                         >
                             <Printer size={28} strokeWidth={2} />
                         </button>
 
-                        <div className="w-px h-8 bg-white/5" />
+                        <div className="w-px h-8 bg-white/5 relative z-10" />
 
                         <button 
                             onClick={() => setIsNFCWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all active:scale-95 hover:scale-110 shadow-xl"
+                            className="relative z-10 flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all active:scale-95 hover:scale-110 shadow-xl cursor-pointer"
                             style={{ background: 'var(--main-color)', color: 'black' }}
                             title="NFC Wizard"
                         >
