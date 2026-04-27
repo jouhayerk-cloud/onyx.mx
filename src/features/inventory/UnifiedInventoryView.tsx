@@ -1261,11 +1261,11 @@ export const UnifiedInventoryView = () => {
         <div className="flex-1 flex flex-col relative m-0 gap-0">
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
-                {/* ── STICKY GLASSMORPHIC HEADER (Tools + Filters) ── */}
-                <div className="sticky top-[79px] sm:top-[95px] z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
-                    {/* Row 1: Stats + Actions */}
+                {/* ── STICKY INDUSTRIAL HEADER (Tools + Filters) ── */}
+                <div className="sticky top-20 sm:top-24 z-[90] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
+                    {/* Row 1: Primary Tools & Stats */}
                     <div className="flex items-center justify-between px-4 sm:px-10 py-4 gap-3 overflow-x-auto no-scrollbar">
-                        {/* Left: Status Cycle */}
+                        {/* Status Filter Indicator */}
                         <div className="flex items-center gap-6 shrink-0">
                             <button
                                 onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
@@ -1277,9 +1277,8 @@ export const UnifiedInventoryView = () => {
                             </button>
                         </div>
 
-                        {/* Center: Sort Pills */}
-                        <div className="hidden lg:flex items-center gap-6 flex-1 justify-center">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 shrink-0">Sort Criteria</span>
+                        {/* Central Sort Parameter (Only when closed) */}
+                        <div className={`hidden lg:flex items-center gap-6 flex-1 justify-center transition-all duration-500 ${isFiltersOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
                             <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
                                 {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: '#' }].map((o) => (
                                     <button key={o.key}
@@ -1297,7 +1296,7 @@ export const UnifiedInventoryView = () => {
                             </div>
                         </div>
 
-                        {/* Right: Actions */}
+                        {/* Right: Selection & View Actions */}
                         <div className="flex items-center gap-5 shrink-0">
                             {isSelectionMode && (
                                 <div className="flex items-center gap-3 animate-in slide-in-from-right duration-500">
@@ -1308,22 +1307,11 @@ export const UnifiedInventoryView = () => {
                                         </button>
                                     </div>
                                     <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shadow-2xl">
-                                        <button 
-                                            onClick={handleCopyTags}
-                                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group"
-                                            title="Copy Selected Tags"
-                                        >
+                                        <button onClick={handleCopyTags} className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group" title="Copy Selected Tags">
                                             <ScanBarcode size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
                                         </button>
-                                        <button 
-                                            onClick={handleBulkRemove}
-                                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group"
-                                            title="Remove Selected"
-                                        >
+                                        <button onClick={handleBulkRemove} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group" title="Remove Selected">
                                             <Trash2 size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                                        </button>
-                                        <button onClick={() => setSelectedIds([])} className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white transition-all">
-                                            <X size={18} strokeWidth={2.5} />
                                         </button>
                                     </div>
                                 </div>
@@ -1343,97 +1331,121 @@ export const UnifiedInventoryView = () => {
                         </div>
                     </div>
 
-                    {/* Row 2: Active Filters Bar (only when filters are set) */}
+                    {/* Row 2: HORIZONTALLY SCROLLABLE TOOLBARS (Expanding Panel) */}
+                    <div className={`overflow-hidden transition-all duration-700 ease-in-out border-t border-white/5 ${isFiltersOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                        <div className="flex flex-col bg-white/[0.02]">
+                            
+                            {/* Toolbar 1: Config Panels + Sort Parameters (Single Row) */}
+                            <div className="flex items-center gap-10 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar">
+                                <div className="flex items-center gap-4 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isVendorFilterOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
+                                            <Tag size={14} strokeWidth={2.5} /> Vendor
+                                        </button>
+                                        <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isCategoryOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
+                                            <Layers size={14} strokeWidth={2.5} /> Type
+                                        </button>
+                                        <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isMaterialOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
+                                            <Box size={14} strokeWidth={2.5} /> Material
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="w-px h-8 bg-white/10 shrink-0" />
+
+                                <div className="flex items-center gap-4 shrink-0">
+                                    <div className="flex items-center gap-2">
+                                        {[{ key: 'Date', label: 'DATE' }, { key: 'Status', label: 'STATUS' }, { key: 'Vendor', label: 'VENDOR' }, { key: 'Number', label: '#' }].map((o) => (
+                                            <button key={o.key}
+                                                onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
+                                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${sortKey === o.key ? 'bg-white text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}>
+                                                {o.label}
+                                                {sortKey === o.key && (
+                                                    <div className="flex flex-col -space-y-1">
+                                                        <ChevronRight size={9} className={`-rotate-90 transition-opacity ${sortOrder === 'asc' ? 'opacity-100' : 'opacity-20'}`} />
+                                                        <ChevronRight size={9} className={`rotate-90 transition-opacity ${sortOrder === 'desc' ? 'opacity-100' : 'opacity-20'}`} />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Toolbar 2: Vendor Selection (Horizontally Scrollable) */}
+                            {isVendorFilterOpen && (
+                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button onClick={() => setVendorFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
+                                        {activeVendors.map(v => {
+                                            const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
+                                            const isActive = vendorFilter === v;
+                                            return (
+                                                <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2.5 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
+                                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                                                    {v}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Toolbar 3: Category Selection (Horizontally Scrollable) */}
+                            {isCategoryOpen && (
+                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button onClick={() => setCategoryFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
+                                        {activeCategories.map(c => (
+                                            <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent shadow-xl' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`}>{c}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Toolbar 4: Material Selection (Horizontally Scrollable) */}
+                            {isMaterialOpen && (
+                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button onClick={() => setMaterialFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
+                                        {activeMaterials.map(m => (
+                                            <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent shadow-xl' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`}>{m}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Row 3: ACTIVE FILTERS PILLS (Always visible if filters exist) */}
                     {(vendorFilter !== 'All' || categoryFilter !== 'All' || materialFilter !== 'All') && (
-                        <div className="flex items-center gap-6 px-10 pb-4 animate-in slide-in-from-top-2 duration-500">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10">Active Filters</span>
-                            <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-6 px-10 py-3 border-t border-white/5 bg-white/[0.01] animate-in slide-in-from-top-1 duration-500 overflow-x-auto no-scrollbar">
+                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 shrink-0">Active</span>
+                            <div className="flex items-center gap-2">
                                 {vendorFilter !== 'All' && (
-                                    <button onClick={() => setVendorFilter('All')}
-                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
+                                    <button onClick={() => setVendorFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
                                         {vendorFilter}
-                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
+                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
                                     </button>
                                 )}
                                 {categoryFilter !== 'All' && (
-                                    <button onClick={() => setCategoryFilter('All')}
-                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <Layers size={12} className="opacity-40 group-hover:opacity-100" />
+                                    <button onClick={() => setCategoryFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <Layers size={10} className="opacity-40 group-hover:opacity-100" />
                                         {categoryFilter}
-                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
+                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
                                     </button>
                                 )}
                                 {materialFilter !== 'All' && (
-                                    <button onClick={() => setMaterialFilter('All')}
-                                        className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/70 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <Box size={12} className="opacity-40 group-hover:opacity-100" />
+                                    <button onClick={() => setMaterialFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
+                                        <Box size={10} className="opacity-40 group-hover:opacity-100" />
                                         {materialFilter}
-                                        <X size={12} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
+                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
                                     </button>
                                 )}
                             </div>
                         </div>
                     )}
-
-                    {/* Row 3: Deploy Panel Toggle (only when FILTERS is ON) */}
-                    <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isFiltersOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="flex items-center px-10 gap-6 h-14 bg-white/[0.02] border-t border-white/5">
-                            <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 shrink-0">Config Panels</span>
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isVendorFilterOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                                    <Tag size={14} strokeWidth={2.5} /> Vendor
-                                </button>
-                                <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isCategoryOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                                    <Layers size={14} strokeWidth={2.5} /> Type
-                                </button>
-                                <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2.5 ${isMaterialOpen ? 'bg-white/10 text-(--main-color)' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                                    <Box size={14} strokeWidth={2.5} /> Material
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 4: Deployed Filter Options */}
-                    <div className="flex flex-col">
-                        {/* Vendor Options */}
-                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isVendorFilterOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Vendors</span>
-                                <button onClick={() => setVendorFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                                {activeVendors.map(v => {
-                                    const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                    const isActive = vendorFilter === v;
-                                    return (
-                                        <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
-                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                                            {v}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                        {/* Category Options */}
-                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isCategoryOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Artifact Types</span>
-                                <button onClick={() => setCategoryFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                                {activeCategories.map(c => (
-                                    <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}>{c}</button>
-                                ))}
-                            </div>
-                        </div>
-                        {/* Material Options */}
-                        <div className={`overflow-hidden transition-all duration-300 ${isFiltersOpen && isMaterialOpen ? 'h-14 opacity-100' : 'h-0 opacity-0 pointer-events-none'}`}>
-                            <div className="h-full flex items-center px-10 gap-3 bg-white/[0.01] border-t border-white/5 overflow-x-auto no-scrollbar">
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/10 mr-4">Materiality</span>
-                                <button onClick={() => setMaterialFilter('All')} className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>All</button>
-                                {activeMaterials.map(m => (
-                                    <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}>{m}</button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* ── MAIN INVENTORY CONTENT ── */}

@@ -343,16 +343,6 @@ const InventoryBar: React.FC = () => {
 
                 {!isSearchOpen && (
                     <div className="flex items-center gap-0.5 shrink-0 animate-in fade-in duration-300">
-                        <button 
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                            className={`flex items-center justify-center w-10 h-10 transition-all cursor-pointer ${isFiltersOpen ? 'text-(--color-inventory)' : 'text-white/20 hover:text-white'}`}
-                            title="Filters"
-                        >
-                            <Filter size={28} />
-                        </button>
-
-                        <div className="w-px h-5 bg-(--text-color)/5 mx-0.5 hidden sm:block" />
-
                         <StudioAction 
                             icon={ViewIcon}
                             label={viewLabel}
@@ -368,7 +358,16 @@ const InventoryBar: React.FC = () => {
                 <>
                     <div className="flex-1 min-w-[20px]" />
                     <InventoryStats />
-                    <div className="flex-1 min-w-[20px]" />
+                    <div className="flex items-center gap-2 pr-6">
+                        <div className="w-px h-8 bg-white/10 mx-2" />
+                        <button 
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                            className={`flex items-center justify-center w-12 h-12 transition-all cursor-pointer rounded-2xl ${isFiltersOpen ? 'bg-(--color-inventory) text-black shadow-[0_0_20px_rgba(var(--color-inventory-rgb),0.3)]' : 'bg-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}
+                            title="Filters"
+                        >
+                            <Filter size={24} />
+                        </button>
+                    </div>
                 </>
             )}
         </div>

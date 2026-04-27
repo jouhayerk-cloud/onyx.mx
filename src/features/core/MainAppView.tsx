@@ -456,7 +456,7 @@ export function MainAppView() {
                 <div className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative">
                     <MainHeader />
                     {activeView === 'finance' && <PaymentsFilterBar />}
-                    <main className="flex-1 flex flex-col min-h-0">
+                    <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {pageContent}
                     </main>
                 </div>

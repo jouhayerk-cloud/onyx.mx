@@ -25,7 +25,7 @@ export const PaymentsFilterBar: React.FC = () => {
     if (!showFilters) return null;
 
     return (
-        <div className="flex-none flex flex-col border-b border-white/10 animate-in slide-in-from-top-2 duration-300 bg-black/20 backdrop-blur-3xl z-[90] sticky top-[79px] sm:top-[95px]">
+        <div className="flex-none flex flex-col border-b border-white/10 animate-in slide-in-from-top-2 duration-300 bg-black/20 backdrop-blur-3xl z-[90] sticky top-20 sm:top-24">
             <div className="flex items-center gap-2 px-6 py-2 overflow-x-auto no-scrollbar">
                 {/* Status Filter Indicator */}
                 <button 

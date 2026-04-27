@@ -379,7 +379,7 @@ html, body, #root {
     top: 0;
     height: 100%;
     transform: translateX(0);
-    z-index: 100;
+    z-index: 1000;
   }
 
   .app-container.sidebar-compact .sidebar {
