@@ -1565,7 +1565,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
             />
 
             {/* ── STICKY GLASSMORPHIC HEADER ── */}
-            <div className="sticky top-20 sm:top-24 z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
+            <div className="sticky top-[79px] sm:top-[95px] z-[95] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl">
                     {/* General Overview & Stats Grids */}
                     {overviewMode !== 'collapsed' && (
                         <div className={`flex flex-col shrink-0 border-b border-white/5 ${overviewMode === 'extended' ? 'p-3 px-6' : 'p-1.5 px-4'} transition-all duration-300 relative`}>
@@ -1725,7 +1725,7 @@ export const TrackingPaymentsView: React.FC<{ docs: any[]; exchangeRate: number;
                     {/* ── Toggleable Filter Bar LIFTED TO MainAppView ── */}
                 </div>
 
-                <div className="p-2 space-y-1 pb-32">
+                <div className="pt-0 p-2 space-y-1 pb-32">
                     {filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-20">
                             <Info size={40} className="mb-4" />

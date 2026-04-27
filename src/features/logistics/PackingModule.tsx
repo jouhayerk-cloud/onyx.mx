@@ -1090,7 +1090,7 @@ export const PackingModule: React.FC = () => {
 
             {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
             <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
-                <div className="max-w-7xl mx-auto px-8 py-10">
+                <div className="px-1 sm:px-6 pt-0 pb-12">
                     <div className="flex flex-col gap-10">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
                             {/* Select All */}
@@ -1195,7 +1195,7 @@ export const PackingModule: React.FC = () => {
             <div className="flex-1 flex min-h-0">
 
                 {/* LEFT: Item grid / list */}
-                <div className={`flex-1 px-8 py-7 transition-all duration-500`}>
+                <div className={`flex-1 px-8 pt-0 pb-32 transition-all duration-500`}>
                     {processedItems.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-5 text-white/10">
                             <div className="w-24 h-24 rounded-full border border-dashed border-white/8 flex items-center justify-center">
@@ -1306,24 +1306,30 @@ export const PackingModule: React.FC = () => {
 
             {/* ── MINIMAL FIXED BOTTOM ACTION BAR ── */}
             {selectedIds.size > 0 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-6 px-6 py-3 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.4)] animate-in slide-in-from-bottom-10 duration-700">
-                    <button 
-                        onClick={() => setIsPrintablesWizardOpen(true)}
-                        className="flex items-center justify-center w-14 h-14 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
-                        title="Print Labels"
-                    >
-                        <Printer size={28} strokeWidth={2} />
-                    </button>
+                <div className="fixed bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-500">
+                    <div className="max-w-md mx-auto">
+                        <div className="bg-black/80 backdrop-blur-3xl border-t border-white/10 px-10 py-4 flex items-center justify-around shadow-2xl relative overflow-hidden">
+                            <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent opacity-50" />
+                            
+                            <button 
+                                onClick={() => setIsPrintablesWizardOpen(true)}
+                                className="flex items-center justify-center w-16 h-16 rounded-2xl text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                                title="Print Labels"
+                            >
+                                <Printer size={32} strokeWidth={1.5} />
+                            </button>
 
-                    <div className="w-px h-6 bg-white/10" />
+                            <div className="w-px h-8 bg-white/10" />
 
-                    <button 
-                        onClick={() => setIsNFCWizardOpen(true)}
-                        className="flex items-center justify-center w-16 h-16 rounded-full bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40 group"
-                        title="NFC Wizard"
-                    >
-                        <Nfc size={32} strokeWidth={2.5} />
-                    </button>
+                            <button 
+                                onClick={() => setIsNFCWizardOpen(true)}
+                                className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40 group"
+                                title="NFC Wizard"
+                            >
+                                <Nfc size={36} strokeWidth={2.5} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
