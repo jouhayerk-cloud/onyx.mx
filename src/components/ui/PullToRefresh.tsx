@@ -23,8 +23,11 @@ export function PullToRefresh() {
                 return;
             }
 
-            // Only activate if we are at the absolute top of the page
-            if (window.scrollY === 0 && document.documentElement.scrollTop === 0) {
+            // Only activate if we are at the absolute top of the scrollable container
+            const scrollContainer = document.querySelector('.app-content');
+            const isAtTop = !scrollContainer || scrollContainer.scrollTop === 0;
+
+            if (isAtTop) {
                 touchStartRef.current = { 
                     x: e.touches[0].clientX, 
                     y: e.touches[0].clientY 
@@ -46,8 +49,11 @@ export function PullToRefresh() {
 
             // Ensure the pull is primarily vertical and downward
             if (pullY > 0 && Math.abs(pullY) > Math.abs(pullX) * 1.5) {
-                // Check if we are still at the top (in case momentum scrolling changed it)
-                if (window.scrollY === 0 && document.documentElement.scrollTop === 0) {
+                // Check if we are still at the top
+                const scrollContainer = document.querySelector('.app-content');
+                const isAtTop = !scrollContainer || scrollContainer.scrollTop <= 0;
+
+                if (isAtTop) {
                     // Apply exponential friction for a more "elastic" feel
                     // The further we pull, the harder it gets
                     const frictionPull = Math.pow(pullY, 0.85) * 1.5;
