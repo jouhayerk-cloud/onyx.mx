@@ -993,7 +993,11 @@ export const CratePackingManager: React.FC = () => {
 
             {/* ─── Unit Picker (Full screen if no crate selected) ─── */}
             {!selectedCrate && (
-                <div className="flex-1 flex flex-col bg-black min-h-0">
+                <div className="flex-1 flex flex-col bg-white/[0.01] backdrop-blur-3xl min-h-0 border-x border-white/5 relative overflow-hidden">
+                    {/* Background Decorative Element */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-(--main-color)/5 blur-[120px] rounded-full -translate-y-1/2 pointer-events-none" />
+                    <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full translate-x-1/4 translate-y-1/4 pointer-events-none" />
+                    
                     {/* Header Section */}
                     <div className="px-6 pt-12 pb-10 sm:px-10 shrink-0">
                         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -1017,10 +1021,10 @@ export const CratePackingManager: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Free-Floating Grid Section - FULL SCROLLABILITY */}
+                    {/* Free-Floating Grid Section - Responsive Scrollable Mobile View */}
                     <div className="px-6 pb-32 sm:px-10">
                         <div className="w-full">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 sm:gap-10">
+                            <div className="flex flex-nowrap overflow-x-auto sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 sm:gap-10 no-scrollbar pb-8 sm:pb-0">
                                 {activeCrates.length === 0 ? (
                                     <div className="flex flex-col items-center gap-6 py-24 opacity-20 col-span-full justify-center">
                                         <Inbox size={48} strokeWidth={0.5} />
@@ -1083,87 +1087,78 @@ export const CratePackingManager: React.FC = () => {
 
             {/* ── Main Area: Inventory List ── */}
             <div className={`flex-1 flex flex-col min-w-0 relative ${!selectedCrate ? 'hidden' : ''}`}>
-                {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
-                <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="w-full px-8 py-10 max-w-7xl mx-auto">
-                        <div className="flex flex-col gap-10">
-                            {/* Vendor Section */}
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor Identity</span>
-                                    <div className="h-px flex-1 bg-white/5" />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setVendorFilter(null)}
-                                        className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
-                                            !vendorFilter ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
-                                        }`}
-                                    >All Vendors</button>
-                                    {vendorOptions.filter(v => v !== 'All').map(v => {
-                                        const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
-                                        const isActive = vendorFilter === v;
-                                        return (
-                                            <button
-                                                key={v}
-                                                onClick={() => setVendorFilter(v)}
-                                                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
-                                                    isActive 
-                                                        ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
-                                                        : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
-                                                }`}
-                                            >
-                                                <div 
-                                                    className="w-2 h-2 rounded-full" 
-                                                    style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
-                                                />
-                                                {v}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Sticky Glassmorphic Toolbars */}
+                <div className={`sticky top-20 sm:top-24 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isFiltersOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                    <div className="flex flex-col">
+                        
+                        {/* Toolbar 1: Sort Parameters */}
+                        <div className="flex items-center gap-10 px-8 py-5 border-b border-white/5 overflow-x-auto no-scrollbar">
+                            <div className="flex items-center gap-2 shrink-0">
+                                {(['Date', 'Status', 'Vendor', '#'] as const).map(s => {
+                                    const isActive = sortBy === s;
+                                    return (
+                                        <button
+                                            key={s}
+                                            onClick={() => {
+                                                if (sortBy === s) {
+                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                } else {
+                                                    setSortKey(s);
+                                                }
+                                            }}
+                                            className={`px-6 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
+                                                isActive 
+                                                    ? 'bg-(--main-color) text-black border-transparent shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
+                                                    : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
+                                            }`}
+                                        >
+                                            {s}
+                                            {isActive && (
+                                                <div className="flex flex-col -space-y-1">
+                                                    <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
+                                                    <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            {/* Sort Section */}
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
-                                    <div className="h-px flex-1 bg-white/5" />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {(['Date', 'Status', 'Vendor', '#'] as const).map(s => {
-                                        const isActive = sortBy === s;
-                                        return (
-                                            <button
-                                                key={s}
-                                                onClick={() => {
-                                                    if (sortBy === s) {
-                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                                                    } else {
-                                                        setSortKey(s);
-                                                    }
-                                                }}
-                                                className={`px-8 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
-                                                    isActive 
-                                                        ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
-                                                        : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
-                                                }`}
-                                            >
-                                                {s}
-                                                {isActive && (
-                                                    <div className="flex flex-col -space-y-1">
-                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
-                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                        </div>
+
+                        {/* Toolbar 2: Source Vendor Identity (Horizontally Scrollable) */}
+                        <div className="flex items-center gap-8 px-8 py-5 overflow-x-auto no-scrollbar">
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setVendorFilter(null)}
+                                    className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
+                                        !vendorFilter ? 'bg-white text-black border-white shadow-xl' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                    }`}
+                                >ALL VENDORS</button>
+                                {vendorOptions.filter(v => v !== 'All').map(v => {
+                                    const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
+                                    const isActive = vendorFilter === v;
+                                    return (
+                                        <button
+                                            key={v}
+                                            onClick={() => setVendorFilter(v)}
+                                            className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
+                                                isActive 
+                                                    ? 'bg-white text-black border-white shadow-xl' 
+                                                    : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                            }`}
+                                        >
+                                            <div 
+                                                className="w-2.5 h-2.5 rounded-full" 
+                                                style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
+                                            />
+                                            {v}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
                 </div>
-
                         {!selectedCrate ? (
                             <div className="flex flex-col items-center justify-center py-32 text-center opacity-40 gap-10">
                                 <div className="p-12 bg-white/[0.02] rounded-full border border-white/5 relative">

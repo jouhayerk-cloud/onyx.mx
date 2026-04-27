@@ -224,9 +224,9 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-black/40 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-white/[0.01] backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.02]">
+            <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.03]">
                 <div className="flex items-center gap-6">
                     <div className="w-14 h-14 rounded-2xl bg-(--main-color)/10 text-(--main-color) flex items-center justify-center shadow-[0_0_20px_rgba(var(--main-color-rgb),0.1)]">
                         <Nfc size={28} />
@@ -575,9 +575,9 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-xl" />
-            <div className="relative z-10 w-full max-w-md mx-4 rounded-[3rem] border border-white/10 p-10 flex flex-col gap-8 shadow-2xl bg-white/[0.03] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-500"
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-2xl" />
+            <div className="relative z-10 w-full max-w-md mx-4 rounded-[3rem] border border-white/10 p-10 flex flex-col gap-8 shadow-2xl bg-white/[0.01] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-500"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-start">
@@ -1088,104 +1088,95 @@ export const PackingModule: React.FC = () => {
             />
 
 
-            {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Glassmorphic Filter Bar */}
-            <div className={`shrink-0 z-50 overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 border-none'}`}>
-                <div className="px-1 sm:px-6 pt-0 pb-12">
-                    <div className="flex flex-col gap-10">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
-                            {/* Select All */}
-                            <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Bulk Selection</span>
-                                    <div className="h-px flex-1 bg-white/5" />
-                                </div>
-                                <button
-                                    onClick={selectAll}
-                                    className={`px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 w-fit ${
-                                        selectedIds.size === processedItems.length 
-                                            ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
-                                            : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >
-                                    {selectedIds.size === processedItems.length ? <CheckSquare size={14} /> : <Square size={14} />}
-                                    {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
-                                </button>
-                            </div>
-                            
-                            {/* Sort by UI */}
-                            <div className="flex flex-col gap-4 flex-1">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Sort Parameters</span>
-                                    <div className="h-px flex-1 bg-white/5" />
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Date', 'Status', 'Vendor', '#'].map((key) => {
-                                        const isActive = sortKey === key;
-                                        return (
-                                            <button
-                                                key={key}
-                                                onClick={() => {
-                                                    if (isActive) {
-                                                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                                                    } else {
-                                                        setSortKey(key as any);
-                                                    }
-                                                }}
-                                                className={`px-8 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
-                                                    isActive 
-                                                        ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
-                                                        : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
-                                                }`}
-                                            >
-                                                {key}
-                                                {isActive && (
-                                                    <div className="flex flex-col -space-y-1">
-                                                        <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
-                                                        <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+            {/* INDUSTRIAL CONFIG DRAWER - Redesigned as Sticky Glassmorphic Toolbars */}
+            <div className={`sticky top-20 sm:top-24 z-[90] overflow-hidden transition-all duration-700 bg-black/40 backdrop-blur-3xl border-b border-white/10 ${isConfigExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                <div className="flex flex-col">
+                    
+                    {/* Toolbar 1: Bulk Selection + Sort Parameters */}
+                    <div className="flex items-center gap-10 px-8 py-5 border-b border-white/5 overflow-x-auto no-scrollbar">
+                        
+                        {/* Bulk Selection */}
+                        <div className="flex items-center gap-4 shrink-0">
+                            <button
+                                onClick={selectAll}
+                                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 w-fit ${
+                                    selectedIds.size === processedItems.length 
+                                        ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                        : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                }`}
+                            >
+                                {selectedIds.size === processedItems.length ? <CheckSquare size={14} /> : <Square size={14} />}
+                                {selectedIds.size === processedItems.length ? 'Deselect All' : 'Select All'}
+                            </button>
                         </div>
 
-                        {/* Vendor chips */}
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4">
-                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20">Source Vendor Identity</span>
-                                <div className="h-px flex-1 bg-white/5" />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => setVendorFilter(null)}
-                                    className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
-                                        !vendorFilter ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >All Vendors</button>
-                                {availableVendors.map(v => {
-                                    const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
-                                    const isActive = vendorFilter === v;
+                        <div className="w-px h-8 bg-white/10 shrink-0" />
+
+                        {/* Sort Parameters */}
+                        <div className="flex items-center gap-4 shrink-0">
+                            <div className="flex items-center gap-2">
+                                {['Date', 'Status', 'Vendor', '#'].map((key) => {
+                                    const isActive = sortKey === key;
                                     return (
                                         <button
-                                            key={v}
-                                            onClick={() => setVendorFilter(v)}
-                                            className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
+                                            key={key}
+                                            onClick={() => {
+                                                if (isActive) {
+                                                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                                                } else {
+                                                    setSortKey(key as any);
+                                                }
+                                            }}
+                                            className={`px-6 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
                                                 isActive 
-                                                    ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
-                                                    : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                                    ? 'bg-(--main-color) text-black border-transparent shadow-[0_0_20px_rgba(var(--main-rgb),0.3)]' 
+                                                    : 'bg-white/5 text-white/20 border-white/5 hover:border-white/20 hover:text-white'
                                             }`}
                                         >
-                                            <div 
-                                                className="w-2 h-2 rounded-full" 
-                                                style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
-                                            />
-                                            {v}
+                                            {key}
+                                            {isActive && (
+                                                <div className="flex flex-col -space-y-1">
+                                                    <ChevronRight size={8} className={`-rotate-90 ${sortOrder === 'asc' ? 'text-black' : 'text-black/40'}`} />
+                                                    <ChevronRight size={8} className={`rotate-90 ${sortOrder === 'desc' ? 'text-black' : 'text-black/40'}`} />
+                                                </div>
+                                            )}
                                         </button>
                                     );
                                 })}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Toolbar 2: Source Vendor Identity (Horizontally Scrollable) */}
+                    <div className="flex items-center gap-8 px-8 py-5 overflow-x-auto no-scrollbar">
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={() => setVendorFilter(null)}
+                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border ${
+                                    !vendorFilter ? 'bg-white text-black border-white shadow-xl' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                }`}
+                            >ALL VENDORS</button>
+                            {availableVendors.map(v => {
+                                const vColor = vendors[v as keyof typeof vendors]?.color || 'white';
+                                const isActive = vendorFilter === v;
+                                return (
+                                    <button
+                                        key={v}
+                                        onClick={() => setVendorFilter(v)}
+                                        className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border flex items-center gap-3 ${
+                                            isActive 
+                                                ? 'bg-white text-black border-white shadow-xl' 
+                                                : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                                        }`}
+                                    >
+                                        <div 
+                                            className="w-2.5 h-2.5 rounded-full" 
+                                            style={{ backgroundColor: vColor, boxShadow: isActive ? `0 0 10px ${vColor}` : 'none' }} 
+                                        />
+                                        {v}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
