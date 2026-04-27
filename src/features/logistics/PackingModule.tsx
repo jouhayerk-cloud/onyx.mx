@@ -1313,17 +1313,17 @@ export const PackingModule: React.FC = () => {
                         
                         <button 
                             onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-14 h-14 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90 group"
+                            className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-[#FFD700] text-black hover:scale-110 active:scale-95 transition-all shadow-lg shadow-[#FFD700]/20 group"
                             title="Print Labels"
                         >
-                            <Printer size={28} strokeWidth={1.5} />
+                            <Printer size={28} strokeWidth={2} />
                         </button>
 
                         <div className="w-px h-8 bg-white/5" />
 
                         <button 
                             onClick={() => setIsNFCWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-xl shadow-(--main-color)/10"
+                            className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-[#8DC63F] text-black hover:scale-110 active:scale-95 transition-all shadow-xl shadow-[#8DC63F]/20"
                             title="NFC Wizard"
                         >
                             <Nfc size={30} strokeWidth={2.5} />
