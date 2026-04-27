@@ -1262,7 +1262,7 @@ export const UnifiedInventoryView = () => {
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
                 {/* ── STICKY GLASSMORPHIC HEADER (Tools + Filters) ── */}
-                <div className="sticky top-20 sm:top-24 z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
+                <div className="sticky top-[79px] sm:top-[95px] z-50 flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
                     {/* Row 1: Stats + Actions */}
                     <div className="flex items-center justify-between px-4 sm:px-10 py-4 gap-3 overflow-x-auto no-scrollbar">
                         {/* Left: Status Cycle */}
@@ -1437,7 +1437,7 @@ export const UnifiedInventoryView = () => {
                 </div>
 
                 {/* ── MAIN INVENTORY CONTENT ── */}
-                <div className="px-1 sm:px-6 py-8 md:py-12">
+                <div className="px-1 sm:px-6 pt-0 pb-32">
                     <div className={
                         viewMode === 'grid' 
                             ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-8 pb-32" 

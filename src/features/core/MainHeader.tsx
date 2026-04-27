@@ -1245,7 +1245,7 @@ export function MainHeader() {
 
     return (
         <>
-            <div className="main-header h-20 sm:h-24 flex items-center pl-6 pr-0 shrink-0 transition-all flex-nowrap w-full sticky top-0 z-[100] border-b border-white/10 bg-black/40 backdrop-blur-3xl">
+            <div className="main-header h-20 sm:h-24 max-h-20 sm:max-h-24 flex items-center pl-6 pr-0 shrink-0 transition-all flex-nowrap w-full sticky top-0 z-[100] border-b border-white/10 bg-black/40 backdrop-blur-3xl overflow-hidden">
                 {/* Integrated Sidebar Toggle & Logo - Only visible in HIDDEN mode */}
                 <div className="flex items-center shrink-0">
                     {sidebarState === 'hidden' && (
