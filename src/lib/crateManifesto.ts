@@ -44,10 +44,22 @@ export interface ManifestoMeta {
     // ── Trailer Export Props ──
     topViewImg?: string;      // Base64 top view of trailer
     sideViewImg?: string;     // Base64 side view of trailer
+    isoViewImg?: string;      // NEW: Base64 isometric 3D view of trailer
     allTruckCrates?: Array<{
         id: string; label: string; type: string; dims: string; weight: number; color: string;
         l: number; w: number; h: number;
     }>;
+    truckStats?: {
+        totalWeight: number;
+        payloadPct: number;
+        floorPct: number;
+        volPct: number;
+        status: string;
+        rPct: number;
+        mPct: number;
+        fPct: number;
+        itemCount: number;
+    };
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -112,9 +124,15 @@ async function loadImageDataUrl(url: string, maxPx = 80): Promise<{ dataUrl: str
 }
 
 function hexToRgb(hex: string): [number, number, number] {
-    const clean = hex.replace('#', '');
-    if (clean.length < 6) return [120, 120, 120];
-    const n = parseInt(clean, 16);
+    const h = (hex || '#6b7280').replace('#', '');
+    if (h.length === 3) {
+        return [
+            parseInt(h[0] + h[0], 16),
+            parseInt(h[1] + h[1], 16),
+            parseInt(h[2] + h[2], 16)
+        ];
+    }
+    const n = parseInt(h.slice(0, 6), 16) || 0;
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
@@ -157,8 +175,22 @@ export async function exportCrateManifesto(
     onProgress?: (pct: number) => void,
     returnBlob?: boolean
 ): Promise<Blob | void> {
-    // Sort items by descending vendor item count (index)
-    const sortedItems = [...items].sort((a, b) => b.index - a.index);
+    // Group by vendor and sort by descending item count within groups
+    const vendorGroups = items.reduce((acc, item) => {
+        const v = item.vendorPrefix || 'OTHER';
+        if (!acc[v]) acc[v] = [];
+        acc[v].push(item);
+        return acc;
+    }, {} as Record<string, ManifestoItem[]>);
+
+    const sortedVendors = Object.keys(vendorGroups).sort();
+    const sortedItems: ManifestoItem[] = [];
+    
+    sortedVendors.forEach(v => {
+        const itemsInGroup = [...vendorGroups[v]].sort((a, b) => b.qty - a.qty);
+        sortedItems.push(...itemsInGroup);
+    });
+
     const isMultiCrate = meta.crateType === 'Trailer Load';
 
     // Universal Safe Landscape: Fits inside both US Letter (279.4 width) and A4 (210 height)
@@ -205,7 +237,8 @@ export async function exportCrateManifesto(
             doc.setFillColor(...SURFACE);
             doc.rect(0, 0, PW, HDR_H, 'F');
 
-            // Header QR — Left side
+            /* Header QR REMOVED AS REQUESTED */
+            /*
             if (!meta.excludeHeaderQr) {
                 const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 200);
                 if (headerQrUrl) {
@@ -217,8 +250,9 @@ export async function exportCrateManifesto(
                     doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
                 }
             }
+            */
 
-            const ts = (meta.excludeHeaderQr && meta.excludeHeaderWireframe) ? ML : ML + 48; // shift text more to the right to clear wireframe
+            const ts = ML; // Title start at margin
             doc.setFontSize(8);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...TEXT_LO);
@@ -256,12 +290,14 @@ export async function exportCrateManifesto(
             if (meta.exportBruteWeight) weightStr += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
             doc.text(`${totalUnits} units  ·  ${weightStr}`, PW - MR, 17, { align: 'right' });
 
-            // Wireframe Icon (Top Header)
+            // Wireframe Icon REMOVED AS REQUESTED
+            /*
             if (!meta.excludeHeaderWireframe) {
                 const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
                 const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
                 drawWireframeIcon(doc, ML + 24, 4, 16, cw, cl, ch, meta.crateColor || '#d95a0a', meta.crateType);
             }
+            */
         } else if (pageNum > 1) {
             // Continuation Header
             doc.setFillColor(...SURFACE);
@@ -293,6 +329,41 @@ export async function exportCrateManifesto(
         await drawPageChrome(1);
         let sy = HDR_H + 8;
         
+        // Stats Panel (White background details)
+        if (meta.truckStats) {
+            const ts = meta.truckStats;
+            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+            doc.text('TRAILER LOAD METRICS & DISTRIBUTION', ML, sy);
+            sy += 5;
+            
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(...BORDER);
+            doc.rect(ML, sy, PW - ML - MR, 24, 'FD'); // Shorter box
+            
+            const bx = ML + 4;
+            const by = sy + 6;
+            
+            // Col 1: Payload
+            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('TOTAL PAYLOAD', bx, by);
+            doc.setFontSize(14); doc.setTextColor(...TEXT_HI); doc.text(`${Math.round(ts.totalWeight).toLocaleString()} KG`, bx, by + 6);
+            doc.setFontSize(7); doc.setTextColor(...TEXT_MID); doc.text(`${ts.payloadPct}% OF MAX`, bx, by + 10);
+            
+            // Col 2: Distribution + Utilization (Data Dense)
+            const cx2 = bx + 60;
+            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('WEIGHT DISTRIBUTION', cx2, by);
+            doc.setFontSize(10); doc.setTextColor(...TEXT_HI); doc.text(`REAR ${ts.rPct}%  ·  MID ${ts.mPct}%  ·  FRONT ${ts.fPct}%`, cx2, by + 6);
+            // Subtitle Utilization
+            doc.setFontSize(7); doc.setTextColor(...TEXT_MID); 
+            doc.text(`UTILIZATION  ·  FLOOR: ${ts.floorPct}%  ·  VOLUME: ${ts.volPct}%`, cx2, by + 10);
+            
+            // Status Badge
+            const cx4 = PW - MR - 4;
+            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('LOAD STATUS', cx4, by, { align: 'right' });
+            doc.setFontSize(11); doc.setTextColor(...TEXT_HI); doc.text(ts.status.toUpperCase(), cx4, by + 6, { align: 'right' });
+            
+            sy += 30; // Compacted
+        }
+
         // Trailer Maps
         if (meta.topViewImg) {
             doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
@@ -311,11 +382,29 @@ export async function exportCrateManifesto(
             const imgW = PW - ML - MR;
             const imgH = imgW / (1615/279);
             doc.addImage(meta.sideViewImg, 'JPEG', ML, sy, imgW, imgH);
+            sy += imgH + 8;
+        }
+
+        if (meta.isoViewImg) {
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
+            doc.text('TRAILER ISOMETRIC 3D LOAD VIEW', ML, sy);
+            sy += 3;
+            const imgW = PW - ML - MR;
+            const imgH = imgW * 0.45; // Estimated aspect
+            doc.addImage(meta.isoViewImg, 'JPEG', ML, sy, imgW, imgH);
             sy += imgH + 12;
         }
 
+
+
         // Crate Grid
         if (meta.allTruckCrates) {
+            if (sy + 20 > PH - MB) {
+                doc.addPage();
+                await drawPageChrome(doc.getNumberOfPages());
+                sy = HDR_H + 8;
+            }
+
             doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
             doc.text('PACKED CRATES & PALLETS SUMMARY', ML, sy);
             sy += 6;
@@ -323,15 +412,21 @@ export async function exportCrateManifesto(
             const gridCols = 3;
             const boxW = (PW - ML - MR) / gridCols - 4;
             const boxH = 18;
-            
+            let drawnOnThisPage = 0;
             for (let i = 0; i < meta.allTruckCrates.length; i++) {
                 const c = meta.allTruckCrates[i];
-                const col = i % gridCols;
-                const row = Math.floor(i / gridCols);
+                const col = drawnOnThisPage % gridCols;
+                const row = Math.floor(drawnOnThisPage / gridCols);
                 const bx = ML + col * (boxW + 4);
-                const by = sy + row * (boxH + 4);
+                let by = sy + row * (boxH + 4);
                 
-                if (by + boxH > PH - MB) continue; // safety
+                if (by + boxH > PH - MB) {
+                    doc.addPage();
+                    await drawPageChrome(doc.getNumberOfPages());
+                    sy = HDR_H + 8;
+                    drawnOnThisPage = 0;
+                    by = sy; // Start at top of new page
+                }
 
                 doc.setFillColor(252, 252, 252);
                 doc.rect(bx, by, boxW, boxH, 'F');
@@ -341,11 +436,17 @@ export async function exportCrateManifesto(
                 // Scaled wireframe icon
                 drawWireframeIcon(doc, bx + 2, by + 4, 10, c.w, c.l, c.h, c.color, c.type);
                 
-                doc.setTextColor(...TEXT_HI); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-                doc.text(c.label, bx + 14, by + 5);
+                const [cr, cg, cb] = hexToRgb(c.color);
+                doc.setFillColor(cr, cg, cb);
+                doc.roundedRect(bx + 14, by + 2.5, 2, 2, 0.4, 0.4, 'F');
+
+                doc.setTextColor(cr, cg, cb); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+                doc.text(c.label, bx + 17, by + 5);
                 doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
                 doc.text(`${c.type.toUpperCase()} · ${c.weight} KG`, bx + 14, by + 9);
                 doc.text(c.dims, bx + 14, by + 13);
+                
+                drawnOnThisPage++;
             }
         }
     }
@@ -398,6 +499,7 @@ export async function exportCrateManifesto(
             drawColHeaders(y);
             y += COL_HDR_H;
         }
+
 
         // Alternating background
         if (i % 2 === 0) {

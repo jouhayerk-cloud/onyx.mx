@@ -128,39 +128,53 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
         <button
             onClick={onLoad}
             title={`Load ${label} onto truck`}
-            className="flex flex-col gap-2 p-3 rounded-xl transition-all group shrink-0 text-left border cursor-pointer active:scale-[0.97]"
+            className="flex flex-col gap-3 p-4 rounded-2xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-xl"
             style={{
-                minWidth: 160, maxWidth: 190,
-                background: `${primaryColor}10`,
-                borderColor: `${primaryColor}30`,
+                minWidth: 200, maxWidth: 240,
+                background: `${primaryColor}15`,
+                borderColor: `${primaryColor}40`,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}22`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}60`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}10`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}30`; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}80`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}15`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}40`; }}
         >
             {/* Top row: wireframe + type badge */}
-            <div className="flex items-start justify-between w-full">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={52} />
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: `${primaryColor}25`, color: primaryColor }}>
-                    {typeLabel}
-                </span>
+            <div className="flex items-start justify-between w-full mb-1">
+                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={64} />
+                <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-black px-2 py-1 rounded bg-black/40 text-white border border-white/10">
+                        {typeLabel}
+                    </span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">ID: {crate.id.slice(0,6)}</span>
+                </div>
             </div>
             {/* Label */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-                {vendorList.slice(0,3).map(v => (
-                    <span key={v} className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
+            <div className="flex items-center gap-2 flex-wrap">
+                {vendorList.map(v => (
+                    <div key={v} className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
                 ))}
-                <span className="text-[13px] font-black uppercase tracking-tight leading-none truncate" style={{ color: primaryColor }}>
+                <span className="text-[16px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryColor }}>
                     {label}
                 </span>
             </div>
-            {/* Dims */}
-            <span className="text-[10px] font-black uppercase tracking-wide whitespace-nowrap" style={{ color: `${primaryColor}99` }}>
-                {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} cm
-            </span>
+            {/* Dims & Vol */}
+            <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-black uppercase tracking-widest text-white/80">
+                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} CM
+                </span>
+                <span className="text-[9px] font-bold text-white/20 uppercase">
+                    Vol: {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} Liters
+                </span>
+            </div>
             {/* Bottom stats */}
-            <div className="flex items-center justify-between w-full pt-1 border-t" style={{ borderColor: `${primaryColor}20` }}>
-                <span className="text-[10px] font-black text-white/60">{itemCount} <span className="text-white/30 font-normal">items</span></span>
-                <span className="text-[10px] font-black" style={{ color: primaryColor }}>{w}<span className="text-white/30 font-normal text-[8px]"> KG</span></span>
+            <div className="flex items-center justify-between w-full pt-2 border-t border-white/10 mt-1">
+                <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-white">{itemCount} SKU</span>
+                    <span className="text-[8px] text-white/40 uppercase font-bold">In Inventory</span>
+                </div>
+                <div className="flex flex-col items-end">
+                    <span className="text-[14px] font-black" style={{ color: primaryColor }}>{w} KG</span>
+                    <span className="text-[8px] text-white/40 uppercase font-bold">Estimated</span>
+                </div>
             </div>
         </button>
     );
@@ -207,7 +221,7 @@ const TruckCrate: React.FC<{
     }, [pos.x, pos.y, dimX, dimY, zoom, onSelect, onUpdatePos]);
 
     const iconSize = Math.min(pxX, pxY) * 0.38;
-    const textScale = Math.max(6, Math.min(11, pxX / 15));
+    const textScale = Math.max(10, Math.min(22, pxX / 8));
 
     return (
         <div className="absolute select-none" style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
@@ -231,15 +245,15 @@ const TruckCrate: React.FC<{
                 }}
             >
                 <Box size={iconSize} strokeWidth={0.6} color="rgba(0,0,0,0.4)" className="pointer-events-none" />
-                {pxX > 40 && (
-                    <span className="font-black uppercase text-center px-1 mt-0.5 pointer-events-none truncate w-full text-center text-black/70"
-                        style={{ fontSize: textScale }}>
+                {pxX > 30 && (
+                    <span className="font-black uppercase text-center px-1 mt-0.5 pointer-events-none truncate w-full text-center text-black/90"
+                        style={{ fontSize: textScale * 1.5 }}>
                         {label}
                     </span>
                 )}
-                {pxX > 60 && pxY > 24 && (
-                    <span className="font-mono pointer-events-none text-black/40" style={{ fontSize: Math.max(5, textScale - 2) }}>
-                        {crate.width_cm}W×{crate.length_cm}D
+                {pxX > 50 && pxY > 20 && (
+                    <span className="font-black pointer-events-none text-black/60" style={{ fontSize: Math.max(9, textScale) }}>
+                        {computeCrateWeight(crate, allInventory)} KG
                     </span>
                 )}
             </div>
@@ -496,18 +510,39 @@ function generateTrailerThumbnail(
         
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-        ctx.fillStyle = primaryColor;
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         (ctx as any).roundRect(pos.x * scale, pos.y * scale, lenX, lenY, 1.5);
-        ctx.fill(); ctx.stroke();
+        ctx.stroke();
     }
     
     // Watermark
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = 'bold 9px monospace';
-    ctx.fillText('ONYX · TRUCKLOAD', 10, H - 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
+    
+    // Labels & Weights (Larger)
+    for (const [id, pos] of Object.entries(positions)) {
+        const crate = crateMap.get(id) as any;
+        if (!crate) continue;
+        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const w = computeCrateWeight(crate, allInventory);
+        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        
+        const rotated = pos.r === 90;
+        const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+        const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
+        
+        ctx.fillStyle = col;
+        ctx.textAlign = 'center';
+        if (lenX > 100) {
+            ctx.font = 'bold 36px monospace';
+            ctx.fillText(label, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 12);
+            ctx.font = 'bold 24px monospace';
+            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 42);
+        }
+    }
     
     return canvas.toDataURL('image/jpeg', 0.85);
 }
@@ -549,19 +584,129 @@ function generateSideViewThumbnail(
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
-        ctx.fillStyle = primaryColor;
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = primaryColor;
+        ctx.lineWidth = 4;
         ctx.beginPath();
         (ctx as any).roundRect(pos.x * scale, H - zOff - h, lenX, h, 1.5);
-        ctx.fill(); ctx.stroke();
+        ctx.stroke();
     }
     
     // Watermark
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = 'bold 9px monospace';
-    ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 10, H - 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 40, H - 40);
+
+    // Labels & Weights (Larger)
+    for (const [id, pos] of Object.entries(positions)) {
+        const crate = crateMap.get(id) as any;
+        if (!crate) continue;
+        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const w = computeCrateWeight(crate, allInventory);
+        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        
+        const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+        const h = (crate.height_cm || 100) * scale;
+        const zOff = (pos.z || 0) * scale;
+        
+        ctx.fillStyle = col;
+        ctx.textAlign = 'center';
+        if (lenX > 100) {
+            ctx.font = 'bold 36px monospace';
+            ctx.fillText(label, pos.x * scale + lenX / 2, H - zOff - h / 2 + 12);
+            ctx.font = 'bold 24px monospace';
+            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, H - zOff - h / 2 + 42);
+        }
+    }
     
+    return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+function generateIsoViewThumbnail(
+    truckCrates: any[],
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>,
+    allCrates: any[],
+    allInventory: any[]
+): string {
+    const W = 2400;
+    const H = 1200;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    
+    ctx.fillStyle = '#F3F4F6';
+    ctx.fillRect(0, 0, W, H);
+    
+    const scale = W / (TRUCK_L_CM + TRUCK_W_CM);
+    const S = scale * 0.72; // Reduced scale to fit better
+    const ox = W * 0.28;   // Moved left to accommodate long tail
+    const oy = H * 0.18;   // Moved up to accommodate growth downwards
+    
+    const iso = (x: number, y: number, z: number): [number, number] => [
+        ox + (x - y) * S * 0.866,
+        oy + (x + y) * S * 0.5 - z * S
+    ];
+
+    // Draw trailer floor
+    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
+    ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
+    ctx.stroke();
+
+    // Sort crates for correct depth rendering (X+Y)
+    const sortedIds = Object.keys(positions).sort((a, b) => (positions[a].x + positions[a].y) - (positions[b].x + positions[b].y));
+
+    const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+    for (const id of sortedIds) {
+        const crate = crateMap.get(id);
+        if (!crate) continue;
+        const p = positions[id];
+        const rotated = p.r === 90;
+        const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+        const dX = rotated ? w : l, dY = rotated ? l : w;
+        const zOff = p.z || 0;
+        
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        
+        const pts = [
+            iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
+            iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+        ];
+
+        // Draw faces as wireframe
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = col;
+        
+        // Front faces (visible)
+        // Left
+        ctx.fillStyle = `${col}11`;
+        ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[3]); ctx.lineTo(...pts[7]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Right
+        ctx.beginPath(); ctx.moveTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[5]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Top
+        ctx.fillStyle = `${col}15`;
+        ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // Vertical connecting edges
+        ctx.stroke();
+
+        // Labels in Iso View
+        const { label } = getCrateDisplayName(crate, allCrates, allInventory);
+        const pMid = iso(p.x + dX/2, p.y + dY/2, zOff + h/2);
+        ctx.fillStyle = col;
+        ctx.font = 'bold 24px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, pMid[0], pMid[1]);
+    }
+    
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.font = 'bold 36px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('ONYX · TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
+
     return canvas.toDataURL('image/jpeg', 0.85);
 }
 
@@ -663,8 +808,11 @@ const TruckExportModal: React.FC<{
     allCrates: any[];
     allInventory: any[];
     positions: any;
+    totalWeight: number;
+    panelStats: any;
+    floorPct: number;
     onClose: () => void;
-}> = ({ truckCrates, allCrates, allInventory, positions, onClose }) => {
+}> = ({ truckCrates, allCrates, allInventory, positions, totalWeight, panelStats, floorPct, onClose }) => {
     const [name, setName] = useState(`Truck ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
     const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1 });
@@ -708,6 +856,7 @@ const TruckExportModal: React.FC<{
             { header: 'Description', key: 'desc', width: 50 },
             { header: 'Weight (KG)', key: 'weight', width: 15 },
             { header: 'Dimensions (CM)', key: 'dims', width: 20 },
+            { header: 'Acq. Cost MXN', key: 'cost', width: 20 },
         ];
         items.forEach((item, idx) => {
             setProgress(p => ({ ...p, manifesto: 5 + Math.round((idx / items.length) * 80) }));
@@ -718,7 +867,8 @@ const TruckExportModal: React.FC<{
             const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
             const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
             const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-            ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+            const cost = calculated.acquisitionCostMxn || 0;
+            ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims, cost });
         });
         ws.getRow(1).font = { bold: true };
         setProgress(p => ({ ...p, manifesto: 95 }));
@@ -738,8 +888,8 @@ const TruckExportModal: React.FC<{
             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
             // USE calculated workbook barcode
             const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
-            const vendorPrefix = Object.keys(vendors).find(v => tag.startsWith(v)) || '';
-            const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#333333';
+            const vendorPrefix = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+            const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#6b7280';
             return {
                 index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
                 name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
@@ -756,10 +906,11 @@ const TruckExportModal: React.FC<{
         // ── Enhanced Meta with Trailer Views ──
         const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
         const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
+        const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
         
         const allTruckCratesMeta = truckCrates.map(c => {
             const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
-            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#f59e0b') : '#f59e0b';
+            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
             return {
                 id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                 weight: computeCrateWeight(c, allInventory), color: col,
@@ -770,8 +921,19 @@ const TruckExportModal: React.FC<{
         const meta = {
             dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
             crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
-            topViewImg: topView, sideViewImg: sideView,
+            topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
             allTruckCrates: allTruckCratesMeta,
+            truckStats: {
+                totalWeight,
+                payloadPct: panelStats.payloadPct,
+                floorPct: floorPct,
+                volPct: panelStats.volPct,
+                status: panelStats.status,
+                rPct: panelStats.rPct,
+                mPct: panelStats.mPct,
+                fPct: panelStats.fPct,
+                itemCount: truckCrates.length
+            },
             excludeImages: true // FORCE REMOVAL OF PHOTOS
         };
         const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
@@ -792,8 +954,8 @@ const TruckExportModal: React.FC<{
             const ws = wb.addWorksheet(sheetName);
             ws.columns = [
                 { header: 'Book TAG ID', key: 'tag', width: 20 }, { header: 'Quantity', key: 'qty', width: 10 },
-                { header: 'Description', key: 'desc', width: 50 }, { header: 'Weight (KG)', key: 'weight', width: 15 },
-                { header: 'Dimensions (CM)', key: 'dims', width: 20 },
+                { header: 'Description', key: 'desc', width: 40 }, { header: 'Weight (KG)', key: 'weight', width: 15 },
+                { header: 'Dimensions (CM)', key: 'dims', width: 20 }
             ];
             getItemsFromCrate(crate).forEach((item: any) => {
                 const inv = item.inv; const data = inv.data || {};
@@ -802,6 +964,7 @@ const TruckExportModal: React.FC<{
                 const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
                 const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
+                const cost = calculated.acquisitionCostMxn || 0;
                 ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
             });
             ws.getRow(1).font = { bold: true };
@@ -1246,9 +1409,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 const ph = dimY * BASE_SCALE * svgScale;
                 const vendor = (cd.items[0] as any)?.vendor || '';
                 const col = (vendors as any)[vendor]?.color || '#6b7280';
-                return `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${col}22" stroke="${col}" stroke-width="0.8"/><text x="${px+pw/2}" y="${py+ph/2+4}" text-anchor="middle" font-size="7" fill="${col}" font-family="monospace">${cd.label}</text>`;
+                return `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="none" stroke="${col}" stroke-width="1.2"/><text x="${px+pw/2}" y="${py+ph/2+5}" text-anchor="middle" font-size="12" fill="black" font-weight="900" font-family="monospace">${cd.label}</text>`;
             }).join('');
-            const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"><rect width="${svgW}" height="${svgH}" fill="#F3F4F6" stroke="#ccc" stroke-width="1" rx="2"/>${crateRects}</svg>`;
+            const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"><rect width="${svgW}" height="${svgH}" fill="#F3F4F6" stroke="#000" stroke-width="2" rx="4"/>${crateRects}</svg>`;
 
             // 4. PDF (HTML print)
             const allItemsFlat = crateData.flatMap(cd => (cd.items as any[]).map(it => ({ ...it, crate: cd.label })));
@@ -1671,6 +1834,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     allCrates={allCrates}
                     allInventory={allInventory}
                     positions={positions}
+                    totalWeight={totalWeight}
+                    panelStats={panelStats}
+                    floorPct={floorPct}
                     onClose={() => setShowExportModal(false)}
                 />
             )}

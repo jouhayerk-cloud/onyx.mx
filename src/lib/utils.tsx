@@ -898,6 +898,7 @@ export const calculateCodesAndPrices = (data: any, exchangeRate: number, workboo
       bookBarcodeDisplay: displayTagId,
       bookBardcode: newTagId, // Legacy typo alias
       vendorColor: vendorData?.color || '#555',
+      acquisitionCostMxn: costMxn
     };
   } catch (e) {
     console.error('calculateCodesAndPrices error:', e);

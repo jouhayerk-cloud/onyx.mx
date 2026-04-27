@@ -63,11 +63,13 @@ interface CrateRecord {
     cost_mxn?: number;
     quantity?: number;
     updated_at?: string;
+    parent_id?: string | null;
 }
 
 interface GroupedCrateRecord extends CrateRecord {
     groupedCount: number;
     children: CrateRecord[];
+    isNestable?: boolean;
 }
 
 // --- Helpers ---
@@ -216,14 +218,16 @@ const ActiveCrateHUD: React.FC<{
     selectedItemIds: Set<string>;
     selectedQtys: Record<string, number>;
     allInventory: any[];
+    nestedUnits: CrateRecord[];
     exchangeRate: number;
     onClear: () => void;
     onPack: () => void;
     onUnpack: () => void;
+    onUnnest: (id: string) => void;
     onDelete: () => void;
     isSaving: boolean;
     itemCount: number;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, exchangeRate, onClear, onPack, onUnpack, onDelete, isSaving, itemCount }) => {
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -238,6 +242,8 @@ const ActiveCrateHUD: React.FC<{
 
     const internalCrateCm3 = getCrateInternalVolume(crate);
     const alreadyPackedMap = useMemo(() => parseInventoryIds(crate.inventory_ids), [crate.inventory_ids]);
+    
+    // Total Volume including nested units
     const alreadyPackedPaddedVol = useMemo(() => {
         let v = 0;
         alreadyPackedMap.forEach((qty, id) => {
@@ -245,14 +251,19 @@ const ActiveCrateHUD: React.FC<{
             if (!inv) return;
             v += getItemPaddedVolume(inv.data, qty === -1 ? 1 : qty);
         });
+        // Add volume of nested units
+        nestedUnits.forEach(u => {
+            v += (u.width_cm || 0) * (u.length_cm || 0) * (u.height_cm || 0);
+        });
         return v;
-    }, [alreadyPackedMap, allInventory]);
+    }, [alreadyPackedMap, allInventory, nestedUnits]);
 
     const pendingPaddedVol = selectedItems.reduce((s, i) => s + i.paddedVol, 0);
     const totalUsedPaddedVol = alreadyPackedPaddedVol + pendingPaddedVol;
     const fillPct = internalCrateCm3 > 0 ? clampN(totalUsedPaddedVol / internalCrateCm3 * 100, 0, 100) : 0;
 
     const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0);
+    const totalNested = nestedUnits.length;
 
     return (
         <div className="sticky top-20 sm:top-24 z-[60] w-full bg-black/60 backdrop-blur-3xl border-b border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
@@ -295,11 +306,36 @@ const ActiveCrateHUD: React.FC<{
                 </div>
 
                 {/* Center: Inventory Meta (Added to HUD) */}
-                <div className="hidden md:flex flex-col items-center gap-1">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Staging Sequence</span>
-                    <span className="text-xl font-black text-white uppercase tracking-tighter leading-none italic">
-                        {itemCount} <span className="text-(--main-color) ml-1">Items</span>
-                    </span>
+                <div className="hidden lg:flex items-center gap-12">
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Staging Sequence</span>
+                        <span className="text-xl font-black text-white uppercase tracking-tighter leading-none italic">
+                            {itemCount} <span className="text-(--main-color) ml-1">Items</span>
+                        </span>
+                    </div>
+
+                    {totalNested > 0 && (
+                        <div className="flex items-center gap-4 border-l border-white/5 pl-12">
+                            <div className="flex flex-col items-start gap-1">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">Nested Units</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xl font-black text-blue-400 uppercase tracking-tighter leading-none italic">{totalNested}</span>
+                                    <div className="flex -space-x-2">
+                                        {nestedUnits.map(u => (
+                                            <button 
+                                                key={u.id} 
+                                                onClick={() => onUnnest(u.id)}
+                                                title={`Unnest ${u.id.slice(0, 8).toUpperCase()}`}
+                                                className="w-6 h-6 rounded-full bg-blue-500 border-2 border-black flex items-center justify-center text-[8px] font-black hover:scale-110 transition-transform cursor-pointer"
+                                            >
+                                                📦
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Metrics */}
@@ -554,6 +590,7 @@ export const CratePackingManager: React.FC = () => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
     const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
+    const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
 
     const handleSelectCrate = useCallback((id: string | null) => {
         setSelectedCrateId(id);
@@ -587,14 +624,27 @@ export const CratePackingManager: React.FC = () => {
         return () => sub.unsubscribe();
     }, [db, cratesVersion]);
 
-    const activeCrates = useMemo(() => crates.filter(c => c.status !== 'Packed' && (c.type === 'crate' || c.type === 'pallet' || c.type === 'cardboard')), [crates]);
+    const activeCrates = useMemo(() => crates.filter(c => 
+        (c.status !== 'Packed' || (c.type === 'cardboard' && !c.parent_id)) && 
+        (c.type === 'crate' || c.type === 'pallet' || c.type === 'cardboard')
+    ), [crates]);
 
     const groupedAvailableCrates = useMemo(() => {
         const individualPartials: any[] = [];
+        const nestableBoxes: any[] = [];
         const emptyGroups: Record<string, any> = {};
         
         for (const c of activeCrates) {
-            if (c.status === 'Partial') {
+            if (c.status === 'Packed' && c.type === 'cardboard') {
+                nestableBoxes.push({
+                    ...c,
+                    groupedCount: 1,
+                    children: [c],
+                    groupKey: `NEST_${c.id}`,
+                    vendorKey: 'NESTABLE',
+                    isNestable: true
+                });
+            } else if (c.status === 'Partial') {
                 const parts = getDynamicCrateIdComponents(c, crates, allInventory);
                 const vKey = parts.vendors.length > 0 ? parts.vendors.join(',') : 'PARTIAL';
                 individualPartials.push({
@@ -622,6 +672,7 @@ export const CratePackingManager: React.FC = () => {
         }
         
         return [
+            ...nestableBoxes.sort((a, b) => a.id.localeCompare(b.id)),
             ...individualPartials.sort((a, b) => a.vendorKey.localeCompare(b.vendorKey)),
             ...Object.values(emptyGroups).sort((a, b) => {
                 if (a.width_cm !== b.width_cm) return b.width_cm - a.width_cm;
@@ -914,6 +965,60 @@ export const CratePackingManager: React.FC = () => {
         }
     };
 
+    const handleNestUnit = async (sourceId: string, parentId: string) => {
+        setIsSaving(true);
+        const tid = toast.loading(`Nesting unit...`);
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1000));
+                toast.success("Unit nested (Demo Mode)", { id: tid, icon: '🧪' });
+                setNestingUnit(null);
+                setCratesVersion(v => v + 1);
+                return;
+            }
+            const updatePayload = { parent_id: parentId, updated_at: new Date().toISOString() };
+            const { error: nestErr } = await supabase.from('logistics').update(updatePayload).eq('id', sourceId);
+            if (nestErr) throw nestErr;
+            if (db) {
+                const localUnit = await db.logistics.findOne({ selector: { id: sourceId } }).exec();
+                if (localUnit) await localUnit.patch(updatePayload);
+            }
+            toast.success("Unit successfully nested", { id: tid });
+            setNestingUnit(null);
+            setCratesVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(err.message || 'Nesting failed.', { id: tid });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleUnnestUnit = async (unitId: string) => {
+        setIsSaving(true);
+        const tid = toast.loading(`Unnesting unit...`);
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1000));
+                toast.success("Unit unnested (Demo Mode)", { id: tid, icon: '🧪' });
+                setCratesVersion(v => v + 1);
+                return;
+            }
+            const updatePayload = { parent_id: null, updated_at: new Date().toISOString() };
+            const { error: unnestErr } = await supabase.from('logistics').update(updatePayload).eq('id', unitId);
+            if (unnestErr) throw unnestErr;
+            if (db) {
+                const localUnit = await db.logistics.findOne({ selector: { id: unitId } }).exec();
+                if (localUnit) await localUnit.patch(updatePayload);
+            }
+            toast.success("Unit successfully unnested", { id: tid });
+            setCratesVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(err.message || 'Unnesting failed.', { id: tid });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleDeleteCrate = async () => {
         if (!selectedCrate) return;
         if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE this ${selectedCrate.type}? This action cannot be undone.`)) return;
@@ -966,14 +1071,12 @@ export const CratePackingManager: React.FC = () => {
         }
     };
 
-    const crateCm3 = useMemo(() => {
-        if (!selectedCrate) return 0;
-        return getCrateInternalVolume(selectedCrate);
-    }, [selectedCrate]);
-
+    const nestedUnits = useMemo(() => 
+        crates.filter(c => c.parent_id === selectedCrateId),
+    [crates, selectedCrateId]);
 
     return (
-        <div className="flex flex-col w-full">
+        <div className="flex-1 flex flex-col relative m-0 p-0 overflow-hidden bg-black select-none">
             {/* ─── Top Panel: HUD (Sticky when active) ─── */}
             {selectedCrate && (
                 <ActiveCrateHUD
@@ -981,10 +1084,12 @@ export const CratePackingManager: React.FC = () => {
                     selectedItemIds={selectedItemIds}
                     selectedQtys={selectedQtys}
                     allInventory={allInventory}
+                    nestedUnits={nestedUnits}
                     exchangeRate={exchangeRate}
                     onClear={() => handleSelectCrate(null)}
                     onPack={handlePackItems}
                     onUnpack={handleUnpackAll}
+                    onUnnest={handleUnnestUnit}
                     onDelete={handleDeleteCrate}
                     isSaving={isSaving}
                     itemCount={filteredInventory.length}
@@ -1003,10 +1108,10 @@ export const CratePackingManager: React.FC = () => {
                         <div className="max-w-7xl mx-auto flex items-center justify-between">
                             <div className="flex flex-col gap-2">
                                 <h3 className="text-[14px] font-black uppercase tracking-[0.6em] text-(--main-color) italic">
-                                    Available {activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}
+                                    {activeGroup?.isNestable ? 'Packed Boxes' : `Available ${activeGroup ? activeGroup.type === 'pallet' ? 'Pallets' : 'Crates' : 'Storage Units'}`}
                                 </h3>
                                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">
-                                    {activeCrates.length} Precision Units Ready for Assignment
+                                    {activeCrates.length} {activeGroup?.isNestable ? 'Ready for Nesting' : 'Precision Units Ready for Assignment'}
                                 </p>
                             </div>
                             {activeGroup && (
@@ -1051,31 +1156,46 @@ export const CratePackingManager: React.FC = () => {
                                 ) : (
                                     activeGroup.children.map(c => {
                                         const isSelected = selectedCrateId === c.id;
+                                        const isBox = c.type === 'cardboard';
+                                        const isPacked = c.status === 'Packed';
+                                        
                                         return (
-                                            <button
-                                                key={c.id}
-                                                onClick={() => handleSelectCrate(c.id)}
-                                                className={`flex flex-col gap-6 transition-all cursor-pointer relative group p-8 border-2 ${isSelected ? 'bg-black border-(--main-color) shadow-[0_0_60px_rgba(249,115,22,0.2)] scale-[1.05] z-10' : 'bg-black border-white/5 hover:border-white/20'}`}
-                                            >
-                                                <div className="flex items-center justify-between w-full">
-                                                    <span className={`text-[14px] font-mono font-black leading-none tracking-[0.2em] ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
-                                                        {c.id.slice(0, 8).toUpperCase()}
-                                                    </span>
-                                                    <div className={`w-3 h-3 rounded-none ${c.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'} ${isSelected ? 'shadow-[0_0_15px_currentColor]' : ''}`} />
-                                                </div>
-                                                <div className="flex flex-col gap-2 text-left">
-                                                    <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isSelected ? 'text-white' : 'text-white/20'}`}>
-                                                        {c.status}
-                                                    </span>
-                                                    <div className={`h-2 transition-all duration-1000 ${isSelected ? 'w-full bg-(--main-color)' : 'w-10 bg-white/10'}`} />
-                                                </div>
-
-                                                {isSelected && (
-                                                    <div className="absolute -top-3 -right-3 bg-(--main-color) text-black p-1.5 z-20">
-                                                        <CheckCircle2 size={16} strokeWidth={4} />
+                                            <div key={c.id} className="relative group/unit">
+                                                <button
+                                                    onClick={() => handleSelectCrate(c.id)}
+                                                    className={`w-full flex flex-col gap-6 transition-all cursor-pointer relative p-8 border-2 ${isSelected ? 'bg-black border-(--main-color) shadow-[0_0_60px_rgba(249,115,22,0.2)] scale-[1.05] z-10' : 'bg-black border-white/5 hover:border-white/20'}`}
+                                                >
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <span className={`text-[14px] font-mono font-black leading-none tracking-[0.2em] ${isSelected ? 'text-(--main-color)' : 'text-white/40'}`}>
+                                                            {c.id.slice(0, 8).toUpperCase()}
+                                                        </span>
+                                                        <div className={`w-3 h-3 rounded-none ${c.status === 'Partial' ? 'bg-amber-400' : isPacked ? 'bg-rose-400' : 'bg-emerald-400'} ${isSelected ? 'shadow-[0_0_15px_currentColor]' : ''}`} />
                                                     </div>
+                                                    <div className="flex flex-col gap-2 text-left">
+                                                        <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isSelected ? 'text-white' : 'text-white/20'}`}>
+                                                            {c.status}
+                                                        </span>
+                                                        <div className={`h-2 transition-all duration-1000 ${isSelected ? 'w-full bg-(--main-color)' : 'w-10 bg-white/10'}`} />
+                                                    </div>
+
+                                                    {isSelected && (
+                                                        <div className="absolute -top-3 -right-3 bg-(--main-color) text-black p-1.5 z-20">
+                                                            <CheckCircle2 size={16} strokeWidth={4} />
+                                                        </div>
+                                                    )}
+                                                </button>
+
+                                                {/* NEST Button for packed boxes */}
+                                                {isPacked && isBox && (
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); setNestingUnit(c); }}
+                                                        className="absolute bottom-2 right-2 bg-blue-500 text-white px-4 py-1.5 text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all z-20 flex items-center gap-2 shadow-lg opacity-0 group-hover/unit:opacity-100 translate-y-2 group-hover/unit:translate-y-0"
+                                                    >
+                                                        <PackagePlus size={12} />
+                                                        Nest
+                                                    </button>
                                                 )}
-                                            </button>
+                                            </div>
                                         );
                                     })
                                 )}
@@ -1260,6 +1380,48 @@ export const CratePackingManager: React.FC = () => {
                     <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 pointer-events-none drop-shadow-lg">
                         Confirm Pack
                     </span>
+                </div>
+            )}
+
+            {/* NESTING WIZARD MODAL */}
+            {nestingUnit && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="bg-black border border-white/10 w-full max-w-2xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col">
+                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                            <div className="flex flex-col gap-2">
+                                <h3 className="text-xl font-black uppercase tracking-[0.4em] text-(--main-color)">Nesting Wizard</h3>
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Select destination for {nestingUnit.id.slice(0, 8).toUpperCase()}</p>
+                            </div>
+                            <button onClick={() => setNestingUnit(null)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto no-scrollbar p-8 bg-black">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {crates.filter(c => (c.status !== 'Packed' || (c.type !== 'cardboard')) && (c.type === 'crate' || c.type === 'pallet') && c.id !== nestingUnit.id).map(dest => (
+                                    <button
+                                        key={dest.id}
+                                        onClick={() => handleNestUnit(nestingUnit.id, dest.id)}
+                                        className="flex flex-col items-start gap-4 p-6 bg-white/[0.03] border border-white/5 hover:border-(--main-color) transition-all text-left group"
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <span className="text-[12px] font-mono font-black text-white/40 tracking-widest uppercase">{dest.id.slice(0, 8).toUpperCase()}</span>
+                                            <div className={`w-2 h-2 ${dest.status === 'Partial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-lg font-black text-white tracking-tighter uppercase">{fmtDims(dest)}</span>
+                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {dest.status}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-8 border-t border-white/5 bg-white/[0.02] flex items-center justify-center">
+                            <p className="text-[10px] font-black text-white/10 uppercase tracking-widest">Nesting packed boxes maintains their inventory and status within the parent unit</p>
+                        </div>
+                    </div>
                 </div>
             )}
 
