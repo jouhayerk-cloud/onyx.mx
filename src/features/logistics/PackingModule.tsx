@@ -1308,25 +1308,25 @@ export const PackingModule: React.FC = () => {
             {/* ── MINIMAL FIXED BOTTOM ACTION BAR ── */}
             {selectedIds.size > 0 && (
                 <div className="sticky bottom-0 left-0 right-0 z-[100] animate-in slide-in-from-bottom duration-500 mt-auto">
-                    <div className="bg-black/80 backdrop-blur-3xl border-t border-white/10 px-8 py-4 flex items-center justify-around shadow-2xl relative overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent opacity-30" />
+                    <div className="bg-white/[0.02] backdrop-blur-3xl border-t border-white/5 px-8 py-3 flex items-center justify-around shadow-2xl relative overflow-hidden">
+                        <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent opacity-20" />
                         
                         <button 
                             onClick={() => setIsPrintablesWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-20 h-20 rounded-2xl text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 group"
+                            className="flex flex-col items-center justify-center w-14 h-14 rounded-xl text-white/30 hover:text-white hover:bg-white/5 transition-all active:scale-90 group"
                             title="Print Labels"
                         >
-                            <Printer size={40} strokeWidth={1.5} />
+                            <Printer size={28} strokeWidth={1.5} />
                         </button>
 
-                        <div className="w-px h-10 bg-white/10" />
+                        <div className="w-px h-8 bg-white/5" />
 
                         <button 
                             onClick={() => setIsNFCWizardOpen(true)}
-                            className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-(--main-color)/40"
+                            className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-(--main-color) text-black hover:scale-110 active:scale-95 transition-all shadow-xl shadow-(--main-color)/10"
                             title="NFC Wizard"
                         >
-                            <Nfc size={44} strokeWidth={2.5} />
+                            <Nfc size={30} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
