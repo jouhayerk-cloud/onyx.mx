@@ -224,7 +224,7 @@ const NFCWizard = ({ items, isOpen, onClose }: { items: any[], isOpen: boolean, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-black/60 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black/40 backdrop-blur-3xl animate-in fade-in duration-500 overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-10 py-8 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-6">
@@ -576,8 +576,8 @@ const PrintablesWizard = ({ items, isOpen, onClose, workbookPrefix, progress, se
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div className="relative z-10 w-full max-w-md mx-4 rounded-[3rem] border border-white/15 p-10 flex flex-col gap-8 shadow-2xl bg-black/60 backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-500"
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-xl" />
+            <div className="relative z-10 w-full max-w-md mx-4 rounded-[3rem] border border-white/10 p-10 flex flex-col gap-8 shadow-2xl bg-white/[0.03] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-500"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-start">
