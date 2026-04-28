@@ -139,9 +139,9 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
         <button
             onClick={onLoad}
             title={`Load ${label} onto truck`}
-            className="flex flex-col gap-3 p-4 rounded-2xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-xl"
+            className="flex flex-col gap-2 p-3 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-lg"
             style={{
-                minWidth: 200, maxWidth: 240,
+                minWidth: 160, maxWidth: 190,
                 background: `${primaryColor}15`,
                 borderColor: `${primaryColor}40`,
             }}
@@ -149,21 +149,13 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}15`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}40`; }}
         >
             {/* Top row: wireframe + type badge */}
-            <div className="flex items-start justify-between w-full mb-1">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={64} />
-                <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] font-black px-2 py-1 rounded bg-black/40 text-white border border-white/10">
+            <div className="flex items-start justify-between w-full mb-0">
+                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={44} />
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
                     </span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30">ID: {crate.id.slice(0,6)}</span>
-                    {onNest && crate.type === 'cardboard' && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onNest(); }}
-                            className="mt-1 px-2 py-1 rounded bg-emerald-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-1"
-                        >
-                            <Box size={10} /> Nest
-                        </button>
-                    )}
+                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">ID: {crate.id.slice(0,4)}</span>
                 </div>
             </div>
             {/* Label */}
@@ -218,8 +210,8 @@ const TruckCrate: React.FC<{
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
     const isDraggingRef = useRef(false);
 
-    // LANDSCAPE: X = truck length axis (1615cm, scrolls), Y = truck width axis (244cm)
-    // r=0: crate length along X, crate width along Y
+    const children = useMemo(() => allCrates.filter(c => c.parent_id === crate.id), [allCrates, crate.id]);
+
     const pxX = (pos.r === 0 ? crate.length_cm : crate.width_cm) * BASE_SCALE;
     const pxY = (pos.r === 0 ? crate.width_cm : crate.length_cm) * BASE_SCALE;
     const dimX = pos.r === 0 ? crate.length_cm : crate.width_cm;
@@ -231,7 +223,6 @@ const TruckCrate: React.FC<{
         const sx = e.clientX, sy = e.clientY, ox = pos.x, oy = pos.y;
         const onMove = (me: MouseEvent) => {
             if (!isDraggingRef.current) return;
-            // divide by zoom because parent is CSS-scaled
             const nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox + (me.clientX - sx) / (zoom * BASE_SCALE)));
             const ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + (me.clientY - sy) / (zoom * BASE_SCALE)));
             onUpdatePos(nx, ny);
@@ -262,13 +253,24 @@ const TruckCrate: React.FC<{
             )}
             <div
                 onMouseDown={handleMouseDown}
-                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative"
+                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group"
                 style={{
                     backgroundColor: primaryColor,
                     outline: isSelected ? `3px solid #fff` : `1px solid rgba(0,0,0,0.3)`,
                     boxShadow: isSelected ? `0 0 0 1px rgba(255,255,255,0.3), 0 8px 30px rgba(0,0,0,0.5)` : `0 4px 12px rgba(0,0,0,0.4)`,
                 }}
             >
+                {/* Visual children indicator */}
+                {children.length > 0 && (
+                    <div className="absolute inset-1 border border-black/10 rounded flex flex-wrap gap-1 p-1 content-start pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
+                        {children.map(child => (
+                            <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/20 text-[6px] font-black text-white uppercase tracking-tighter border border-white/5">
+                                {child.id.slice(0, 4)}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 <Box size={iconSize} strokeWidth={0.6} color="rgba(0,0,0,0.4)" className="pointer-events-none" />
                 {pxX > 30 && (
                     <div className="flex flex-col items-center pointer-events-none w-full">
@@ -312,12 +314,11 @@ const SideView: React.FC<{
     const SVG_H = TRUCK_H_CM * BASE_SCALE;
     const svgRef = useRef<SVGSVGElement>(null);
 
-    // Build crate draw list with z support
-    const crateItems = useMemo(() => truckCrates.map(c => {
+    // Build crate draw list with z support (Filter to root items only for main render)
+    const crateItems = useMemo(() => truckCrates.filter(c => !c.parent_id || !positions[c.parent_id]).map(c => {
         const pos = positions[c.id];
         if (!pos) return null;
         const rotated = pos.r === 90;
-        // r=0: length_cm goes along truck X axis (same as TruckCrate top-view)
         const lenX = rotated ? c.width_cm : c.length_cm;
         const h = c.height_cm || 100;
         const zOff = pos.z || 0;
@@ -328,8 +329,12 @@ const SideView: React.FC<{
         const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#a1a1aa') : '#a1a1aa';
         const isSelected = c.id === selectedId;
-        return { id: c.id, px, py, pw, ph, label, subtitle, col, h, lenX, zOff, isSelected, crate: c };
-    }).filter(Boolean) as any[], [truckCrates, positions, allCrates, allInventory, selectedId]);
+        
+        // Find children for side-view rendering
+        const childCrates = allCrates.filter(child => child.parent_id === c.id);
+
+        return { id: c.id, px, py, pw, ph, label, subtitle, col, h, lenX, zOff, isSelected, crate: c, children: childCrates };
+    }).filter(Boolean) as any[], [truckCrates, positions, allCrates, allInventory, selectedId, truckNumbering]);
 
     // SVG mouse drag
     const dragRef = useRef<{ id: string; startX: number; startZ: number; mouseX: number; mouseY: number } | null>(null);
@@ -474,6 +479,7 @@ const SideView: React.FC<{
                                         textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.6)"
                                         fontFamily="monospace" opacity={0.9}>
                                         {cr.h}H {cr.zOff > 0 ? `+${Math.round(cr.zOff)}Z` : ''}
+                                        {cr.children.length > 0 ? ` [${cr.children.length} BX]` : ''}
                                     </text>
                                 )}
                                 {/* Stack level indicator dot */}
@@ -1587,17 +1593,96 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         return { x: Math.max(MARGIN, TRUCK_L_CM - W - MARGIN), y: MARGIN, r: 0 };
     }, []);
 
-    const handleLoad = (id: string) => {
-        const crate = allCrates.find(c => c.id === id);
-        if (!crate) return;
-        const pos = computeAutoPosition(crate, positions, allCrates);
-        setPositions(p => ({ ...p, [id]: { ...pos, z: 0 } }));
+    const handleLoad = useCallback((id: string) => {
+        setPositions(p => {
+            const crate = allCrates.find(c => c.id === id);
+            if (!crate) return p;
+            const pos = computeAutoPosition(crate, p, allCrates);
+            const newPos = { ...p, [id]: { ...pos, z: 0 } };
+            
+            // Auto-load children
+            const children = allCrates.filter(c => c.parent_id === id);
+            children.forEach(child => {
+                newPos[child.id] = { ...pos, z: 0 };
+            });
+            
+            return newPos;
+        });
         setSelectedId(id);
-    };
-    const handleUnload = (id: string) => { setPositions(p => { const n = { ...p }; delete n[id]; return n; }); setSelectedId(null); };
-    const handleUpdatePos = (id: string, x: number, y: number) => setPositions(p => ({ ...p, [id]: { ...p[id], x, y } }));
-    // Side-view drag: updates longitudinal (x) and vertical stack (z)
-    const handleUpdateXZ = (id: string, x: number, z: number) => setPositions(p => ({ ...p, [id]: { ...p[id], x: Math.max(0, Math.min(TRUCK_L_CM - (p[id] ? (p[id].r === 90 ? allCrates.find(c=>c.id===id)?.length_cm : allCrates.find(c=>c.id===id)?.width_cm) || 0 : 0), x)), z: Math.max(0, z) } }));
+    }, [allCrates, computeAutoPosition]);
+
+    const handleUnload = useCallback((id: string) => {
+        setPositions(p => {
+            const n = { ...p };
+            const idsToUnload = [id];
+            
+            // Recursively find all children to unload
+            const findChildren = (parentId: string) => {
+                allCrates.filter(c => c.parent_id === parentId).forEach(child => {
+                    idsToUnload.push(child.id);
+                    findChildren(child.id);
+                });
+            };
+            findChildren(id);
+            
+            idsToUnload.forEach(unId => delete n[unId]);
+            return n;
+        });
+        setSelectedId(null);
+    }, [allCrates]);
+
+    const handleUpdatePos = useCallback((id: string, x: number, y: number) => {
+        setPositions(p => {
+            if (!p[id]) return p;
+            const dx = x - p[id].x;
+            const dy = y - p[id].y;
+            const n = { ...p, [id]: { ...p[id], x, y } };
+            
+            // Move children too
+            const moveChildren = (parentId: string) => {
+                allCrates.filter(c => c.parent_id === parentId).forEach(child => {
+                    if (n[child.id]) {
+                        n[child.id] = { ...n[child.id], x: n[child.id].x + dx, y: n[child.id].y + dy };
+                        moveChildren(child.id);
+                    }
+                });
+            };
+            moveChildren(id);
+            return n;
+        });
+    }, [allCrates]);
+
+    const handleUpdateXZ = useCallback((id: string, x: number, z: number) => {
+        setPositions(p => {
+            if (!p[id]) return p;
+            const crate = allCrates.find(c => c.id === id);
+            const unitW = (p[id].r === 90 ? crate?.length_cm : crate?.width_cm) || 0;
+            const nx = Math.max(0, Math.min(TRUCK_L_CM - unitW, x));
+            const nz = Math.max(0, z);
+            
+            const dx = nx - p[id].x;
+            const dz = nz - (p[id].z || 0);
+            const n = { ...p, [id]: { ...p[id], x: nx, z: nz } };
+            
+            const moveChildren = (parentId: string) => {
+                allCrates.filter(c => c.parent_id === parentId).forEach(child => {
+                    if (n[child.id]) {
+                        n[child.id] = { ...n[child.id], x: n[child.id].x + dx, z: (n[child.id].z || 0) + dz };
+                        moveChildren(child.id);
+                    }
+                });
+            };
+            moveChildren(id);
+            return n;
+        });
+    }, [allCrates]);
+
+    const handleRotate = useCallback((id: string) => {
+        setPositions(p => {
+            if (!p[id]) return p;
+            return { ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } };
+        });
+    }, []);
     // Stack: place selected crate on top of the tallest crate overlapping its x position
     const handleStack = (id: string) => {
         const crate = allCrates.find(c => c.id === id);
@@ -1622,7 +1707,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         setPositions(p => ({ ...p, [id]: { ...p[id], z: topZ } }));
         toast.success(`Stacked at ${topZ}cm above floor`, { icon: '📦' });
     };
-    const handleRotate = (id: string) => setPositions(p => ({ ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } }));
+
     const handleWheel = useCallback((e: React.WheelEvent) => { e.preventDefault(); setZoom(z => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001))); }, []);
     
     const handleNest = async (boxId: string, targetId: string) => {
@@ -1970,93 +2055,86 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             </div>
                         </div>
                     ) : (
-                        /* ── EXPANDED stats row ── */
-                        <div className="flex items-start gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                        {/* Units */}
-                        <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 90 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Units</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black tracking-tighter text-emerald-400">{truckCrates.length}</span>
-                                <span className="text-[10px] text-white/20">/ {allCrates.length}</span>
-                            </div>
-                            <div className="flex gap-1 text-[7px] font-black text-white/20 uppercase">
-                                {panelStats.nCrates > 0 && <span>{panelStats.nCrates}CR</span>}
-                                {panelStats.nPallets > 0 && <span>{panelStats.nPallets}PL</span>}
-                                {panelStats.nBoxes > 0 && <span>{panelStats.nBoxes}BX</span>}
-                            </div>
-                        </div>
-                        <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Payload */}
-                        <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 180 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Payload</span>
-                            <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-black tracking-tighter" style={{ color: 'var(--main-color)' }}>{Math.round(totalWeight).toLocaleString()}</span>
-                                <span className="text-[10px] text-white/30">KG</span>
-                                <span className="text-white/10 mx-1">·</span>
-                                <span className="text-sm font-black text-white/40">{(totalWeight/1000).toFixed(2)}</span>
-                                <span className="text-[9px] text-white/20">T</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="h-0.5 bg-white/10 rounded-full overflow-hidden" style={{ width: 120 }}>
-                                    <div className="h-full transition-all duration-700" style={{ width: `${panelStats.payloadPct}%`, backgroundColor: panelStats.statusColor }} />
-                                </div>
-                                <span className="text-[7px] font-black text-white/20 whitespace-nowrap">{panelStats.payloadPct}% of {(panelStats.MAX_KG/1000).toFixed(0)}T max</span>
-                            </div>
-                        </div>
-                        <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Floor */}
-                        <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 90 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Floor</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black tracking-tighter">{floorPct}</span>
-                                <span className="text-[10px] text-white/30">%</span>
-                            </div>
-                            <div className="h-0.5 bg-white/10 rounded-full overflow-hidden" style={{ width: 80 }}>
-                                <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${floorPct}%` }} />
-                            </div>
-                        </div>
-                        <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Volume */}
-                        <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 90 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Volume</span>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black tracking-tighter">{panelStats.volPct}</span>
-                                <span className="text-[10px] text-white/30">%</span>
-                            </div>
-                            <span className="text-[7px] font-black text-white/20 whitespace-nowrap">{panelStats.usedVol.toFixed(1)} / {panelStats.TRUCK_VOL_M3.toFixed(0)} m³</span>
-                        </div>
-                        <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Status */}
-                        <div className="flex flex-col gap-1 shrink-0" style={{ minWidth: 120 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Status</span>
-                            <span className="text-base font-black tracking-tighter" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
-                            <span className="text-[7px] font-black text-white/20 whitespace-nowrap">{panelStats.avgW > 0 ? `~${panelStats.avgW} KG/unit` : '—'}</span>
-                            <span className="text-[7px] font-black text-white/20 whitespace-nowrap">{panelStats.remaining > 0 ? `${Math.round(panelStats.remaining).toLocaleString()} KG rem.` : 'AT MAX'}</span>
-                        </div>
-                        <div className="w-px self-stretch bg-white/5 mx-5 shrink-0" />
-                        {/* Distribution */}
-                        <div className="flex flex-col gap-2 shrink-0" style={{ minWidth: 320 }}>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/25">Load Distribution</span>
-                            <div className="flex h-3 gap-0.5 rounded overflow-hidden">
-                                <div className="h-full bg-emerald-500/80 rounded-l transition-all duration-700" style={{ flex: panelStats.rPct || 1 }} />
-                                <div className="h-full bg-emerald-400/50 transition-all duration-700" style={{ flex: panelStats.mPct || 1 }} />
-                                <div className="h-full bg-emerald-300/30 rounded-r transition-all duration-700" style={{ flex: panelStats.fPct || 1 }} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex flex-col items-start">
-                                    <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">◀ Rear</span>
-                                    <span className="text-lg font-black tracking-tighter text-emerald-400">{panelStats.rPct}<span className="text-[10px] text-white/30">%</span></span>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Mid</span>
-                                    <span className="text-lg font-black tracking-tighter text-emerald-300/70">{panelStats.mPct}<span className="text-[10px] text-white/30">%</span></span>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Front ▶</span>
-                                    <span className="text-lg font-black tracking-tighter text-emerald-300/40">{panelStats.fPct}<span className="text-[10px] text-white/30">%</span></span>
+                        /* ── EXPANDED stats row (Optimized for density) ── */
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                            {/* Units Chip */}
+                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
+                                <Truck size={24} className="text-emerald-400 opacity-60" />
+                                <div className="flex flex-col">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl font-black tracking-tighter text-white">{truckCrates.length}</span>
+                                        <span className="text-[9px] text-white/30 font-bold">/ {allCrates.length}</span>
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20 -mt-1">Active Units</span>
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Payload Chip */}
+                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
+                                <Gauge size={24} style={{ color: 'var(--main-color)' }} className="opacity-60" />
+                                <div className="flex flex-col">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-xl font-black tracking-tighter" style={{ color: 'var(--main-color)' }}>{Math.round(totalWeight).toLocaleString()}</span>
+                                        <span className="text-[9px] text-white/30 font-bold">KG</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 -mt-0.5">
+                                        <span className="text-[8px] font-black text-white/40 uppercase">{(totalWeight / 1000).toFixed(1)}T</span>
+                                        <div className="h-1 bg-white/10 rounded-full overflow-hidden w-8">
+                                            <div className="h-full bg-emerald-500" style={{ width: `${panelStats.payloadPct}%` }} />
+                                        </div>
+                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{panelStats.payloadPct}%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Space Chip (Floor + Volume) */}
+                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
+                                <Maximize2 size={22} className="text-blue-400 opacity-60" />
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex flex-col">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-base font-black text-white leading-none">{floorPct}</span>
+                                                <span className="text-[8px] text-white/30 font-bold">%</span>
+                                            </div>
+                                            <span className="text-[7px] font-black uppercase text-white/20">Floor</span>
+                                        </div>
+                                        <div className="w-px h-6 bg-white/10" />
+                                        <div className="flex flex-col">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-base font-black text-white leading-none">{panelStats.volPct}</span>
+                                                <span className="text-[8px] text-white/30 font-bold">%</span>
+                                            </div>
+                                            <span className="text-[7px] font-black uppercase text-white/20">Vol ({panelStats.usedVol.toFixed(1)}m³)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Load Balance (Dist) */}
+                            <div className="flex items-center gap-4 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0 min-w-[200px]">
+                                <div className="flex flex-col flex-1 gap-1.5">
+                                    <div className="flex h-2 gap-0.5 rounded-full overflow-hidden bg-white/5">
+                                        <div className="h-full bg-emerald-500/80" style={{ flex: panelStats.rPct || 1 }} />
+                                        <div className="h-full bg-emerald-400/50" style={{ flex: panelStats.mPct || 1 }} />
+                                        <div className="h-full bg-emerald-300/30" style={{ flex: panelStats.fPct || 1 }} />
+                                    </div>
+                                    <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-widest text-white/30">
+                                        <span>R {panelStats.rPct}%</span>
+                                        <span>M {panelStats.mPct}%</span>
+                                        <span>F {panelStats.fPct}%</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Status Pill */}
+                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl border shrink-0" style={{ background: `${panelStats.statusColor}15`, borderColor: `${panelStats.statusColor}30` }}>
+                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: panelStats.statusColor }} />
+                                <div className="flex flex-col">
+                                    <span className="text-[12px] font-black uppercase tracking-tighter" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">{panelStats.remaining.toLocaleString()} KG REMAINING</span>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -2106,7 +2184,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
                                     </div>
                                 ))}
-                                {truckCrates.map(c => {
+                                {truckCrates.filter(c => !c.parent_id || !positions[c.parent_id]).map(c => {
                                     const pos = positions[c.id];
                                     if (!pos) return null;
                                     return (
