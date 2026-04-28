@@ -35,6 +35,67 @@ export function toTitleCase(str: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[], truckSeq?: number) {
+    const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const shortMonthYear = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+    
+    const vSet = new Set<string>();
+    
+    if (crate.vendors) {
+        crate.vendors.split(',').forEach((v: string) => {
+            const trimmed = v.trim().toUpperCase();
+            if (trimmed) vSet.add(trimmed);
+        });
+    }
+
+    if (vSet.size === 0 && crate.inventory_ids) {
+        crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+            const [id] = e.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) { 
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; 
+                if (p) vSet.add(p.toUpperCase()); 
+            }
+        });
+    }
+
+    if (vSet.size === 0 && crate.vendor_id) {
+        vSet.add(crate.vendor_id.toUpperCase());
+    }
+
+    const vendorList = Array.from(vSet).sort();
+    const vendorsStr = vendorList.join('');
+
+    if (truckSeq != null) {
+        const vSuffix = vendorList.length > 0 ? `-${vendorsStr}` : '';
+        return { 
+            label: `${shortMonthYear}${vSuffix}-${String(truckSeq).padStart(2, '0')}`, 
+            subtitle: crate.id.slice(0, 8).toUpperCase(), 
+            vendorList 
+        };
+    }
+    
+    const matching = allCrates.filter(c => {
+        if (c.status === 'Empty' || !c.inventory_ids) return false;
+        const s = new Set<string>();
+        c.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+            const [id] = e.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) { const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; if (p) s.add(p.toUpperCase()); }
+        });
+        return Array.from(s).sort().join('') === vendorsStr;
+    }).sort((a, b) => new Date(a.updated_at || a.date || 0).getTime() - new Date(b.updated_at || b.date || 0).getTime());
+    
+    const seq = matching.findIndex(c => c.id === crate.id);
+    const sequenceStr = String(seq >= 0 ? seq + 1 : 1).padStart(2, '0');
+    
+    return {
+        label: `${shortMonthYear}-${vendorsStr}${sequenceStr}`,
+        subtitle: crate.id.slice(0, 8).toUpperCase(),
+        vendorList
+    };
+}
 
 export function formatCurrency(amount: number | string, currency: string = 'MXN'): string {
   const value = typeof amount === 'string' ? parseFloat(amount) : amount;

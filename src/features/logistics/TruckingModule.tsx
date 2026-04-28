@@ -6,7 +6,7 @@ import { useDatabase } from '../../lib/hooks';
 import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getCrateDisplayName } from '../../lib/utils';
 import ExcelJS from 'exceljs';
 import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 
@@ -14,67 +14,9 @@ const TRUCK_L_CM = 1615;
 const TRUCK_W_CM = 244;
 const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
 
-function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[], truckSeq?: number) {
-    const d = crate.updated_at ? new Date(crate.updated_at) : new Date();
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const shortMonthYear = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
-    
-    const vSet = new Set<string>();
-    
-    // 1. Try to get from crate.vendors (comma-separated string from DB)
-    if (crate.vendors) {
-        crate.vendors.split(',').forEach((v: string) => {
-            const trimmed = v.trim().toUpperCase();
-            if (trimmed) vSet.add(trimmed);
-        });
-    }
+// getCrateDisplayName moved to utils.tsx
 
-    // 2. Fallback to inventory_ids if vSet is still empty
-    if (vSet.size === 0 && crate.inventory_ids) {
-        crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
-            const [id] = e.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
-            if (inv?.data) { 
-                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; 
-                if (p) vSet.add(p.toUpperCase()); 
-            }
-        });
-    }
 
-    // 3. Last fallback: crate.vendor_id
-    if (vSet.size === 0 && crate.vendor_id) {
-        vSet.add(crate.vendor_id.toUpperCase());
-    }
-
-    const vendorList = Array.from(vSet).sort();
-
-    if (truckSeq != null) {
-        const vSuffix = vendorList.length > 0 ? `-${vendorList.join('')}` : '';
-        return { 
-            label: `${shortMonthYear}${vSuffix}-${String(truckSeq).padStart(2, '0')}`, 
-            subtitle: crate.id.slice(0, 8).toUpperCase(), 
-            vendorList 
-        };
-    }
-    const vendorsStr = vendorList.join('');
-    
-    const matching = allCrates.filter(c => {
-        if (c.status === 'Empty' || !c.inventory_ids) return false;
-        const s = new Set<string>();
-        c.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
-            const [id] = e.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
-            if (inv?.data) { const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; if (p) s.add(p.toUpperCase()); }
-        });
-        return Array.from(s).sort().join('') === vendorsStr;
-    }).sort((a, b) => new Date(a.updated_at || a.date || 0).getTime() - new Date(b.updated_at || b.date || 0).getTime());
-    
-    const seq = matching.findIndex(c => c.id === crate.id);
-    const sequenceStr = String(seq >= 0 ? seq + 1 : 1).padStart(2, '0');
-    const oldLabel = `${shortMonthYear}-${vendorsStr}${sequenceStr}`;
-
-    return { label: oldLabel, vendorList };
-}
 
 function getTruckCrateNumbering(truckCrates: any[], positions: Record<string, any>) {
     const sorted = [...truckCrates].sort((a, b) => {
