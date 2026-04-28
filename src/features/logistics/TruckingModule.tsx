@@ -1632,23 +1632,27 @@ const ReadyTruckWizard: React.FC<{
                             </div>
                             <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar bg-white/[0.01] rounded-xl p-2 border border-white/5">
                                 {fields.packingItems.length === 0 ? (
-                                    <div className="py-4 text-center text-[9px] font-black text-white/10 uppercase tracking-widest italic">No extra packing items</div>
+                                    <div className="py-6 text-center text-[10px] font-black text-white/10 uppercase tracking-[0.2em] italic">No extra packing items added</div>
                                 ) : fields.packingItems.map((pi: any, i: number) => (
-                                    <div key={i} className="flex items-center gap-2 bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                                    <div key={i} className="flex items-center gap-3 bg-white/[0.03] p-3 rounded-2xl border border-white/10 shadow-lg animate-in slide-in-from-left-4 duration-200">
                                         <input type="text" value={pi.name} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, name: e.target.value }; onFieldChange({ ...fields, packingItems: n }); }}
-                                            className="flex-1 bg-transparent text-sm font-bold text-white outline-none focus:text-emerald-400 transition-colors" placeholder="Box Description" />
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
-                                                className="w-10 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[10px] font-black text-white outline-none" />
-                                            <span className="text-[8px] text-white/20 font-black">QTY</span>
+                                            className="flex-1 bg-transparent text-base font-black text-white outline-none focus:text-emerald-400 placeholder:text-white/10 transition-colors" placeholder="BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)" />
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Quantity</span>
+                                                <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                    className="w-16 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
-                                                className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[10px] font-black text-white outline-none" />
-                                            <span className="text-[8px] text-white/20 font-black">KG</span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Weight KG</span>
+                                                <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                    className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
+                                            </div>
                                         </div>
                                         <button onClick={() => { const n = fields.packingItems.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, packingItems: n }); }}
-                                            className="p-1 text-white/10 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                                            className="p-2 text-white/10 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all mt-3"><Trash2 size={18} /></button>
                                     </div>
                                 ))}
                             </div>
