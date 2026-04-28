@@ -516,6 +516,15 @@ interface TruckDraft {
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
     numbering?: Record<string, number>;
     thumbnail?: string; // base64 JPEG data URL
+    shipmentData?: {
+        sealNumber: string;
+        tractorNumber: string;
+        truckPlates: string;
+        trailerNumber: string;
+        trailerPlates: string;
+        senders: string[];
+        packingItems: Array<{ name: string; count: number; weight: number }>;
+    };
 }
 interface TruckloadFile {
     version: number;
@@ -526,6 +535,7 @@ interface TruckloadFile {
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
     numbering?: Record<string, number>;
     thumbnail?: string;
+    shipmentData?: TruckDraft['shipmentData'];
 }
 
 // ── Thumbnail generator — draws exact trailer map without padding ─────────────
@@ -864,7 +874,8 @@ function exportDraftFile(draft: TruckDraft) {
         savedAt: draft.savedAt,
         crateCount: draft.crateCount,
         positions: draft.positions,
-        numbering: draft.numbering
+        numbering: draft.numbering,
+        shipmentData: draft.shipmentData
     };
     const jsonString = JSON.stringify(payload, null, 2);
     let blob: Blob;
@@ -935,7 +946,8 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
             crateCount: data.crateCount || Object.keys(data.positions).length,
             positions: data.positions,
             numbering: data.numbering,
-            thumbnail: data.thumbnail || thumbnailBase64
+            thumbnail: data.thumbnail || thumbnailBase64,
+            shipmentData: data.shipmentData
         };
     } catch (e) { console.error('Draft import failed', e); return null; }
 }
@@ -1434,8 +1446,10 @@ const ReadyTruckWizard: React.FC<{
     onFieldChange: (f: any) => void;
     onClose: () => void;
     onConfirm: () => void;
+    onSaveDraft: () => void;
+    onOpenDraft: () => void;
     isBusy?: boolean;
-}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, isBusy }) => {
+}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, onSaveDraft, onOpenDraft, isBusy }) => {
     const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ pdf: -1, allCrates: -1 });
     const [urls, setUrls] = useState({ pdf: '', allCrates: '' });
@@ -1718,9 +1732,12 @@ const ReadyTruckWizard: React.FC<{
                         
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => toast.success('Truck metadata saved to session')} className="py-4 rounded-2xl bg-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/20 transition-all border border-white/10">
-                                    Save Truck
+                            <div className="grid grid-cols-3 gap-3">
+                                <button onClick={onOpenDraft} className="py-4 rounded-2xl bg-white/5 text-white/60 font-black uppercase tracking-widest text-[9px] hover:bg-white/10 transition-all border border-white/10 flex items-center justify-center gap-2">
+                                    <FolderOpen size={14} /> Load Previous
+                                </button>
+                                <button onClick={onSaveDraft} className="py-4 rounded-2xl bg-white/10 text-white font-black uppercase tracking-widest text-[9px] hover:bg-white/20 transition-all border border-white/10 flex items-center justify-center gap-2">
+                                    <Save size={14} /> Save Truck
                                 </button>
                                 <button onClick={onConfirm} disabled={isBusy} className="py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40">
                                     {isBusy ? 'Syncing...' : 'Dispatch'}
@@ -2193,7 +2210,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [truckReadyTrigger]);
 
     // ── Draft handlers ──
-    const buildDraft = useCallback((name: string): TruckDraft => {
+    const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
         const thumbnail = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
         return { 
             id: `draft_${Date.now()}`, 
@@ -2202,23 +2219,27 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             crateCount: truckCrates.length, 
             positions: { ...positions }, 
             numbering: { ...truckNumbering },
-            thumbnail: thumbnail || undefined 
+            thumbnail: thumbnail || undefined,
+            shipmentData: fields ? { ...fields } : undefined
         };
     }, [positions, truckCrates, allCrates, allInventory, truckNumbering]);
 
     const handleSaveDraft = useCallback((name: string) => {
-        saveDraft(buildDraft(name));
+        saveDraft(buildDraft(name, readyTruckFields));
         setShowSaveDraft(false);
         toast.success(`Draft "${name}" saved`);
-    }, [buildDraft]);
+    }, [buildDraft, readyTruckFields]);
 
     const handleExportDraft = useCallback((name: string) => {
-        exportDraftFile(buildDraft(name));
+        exportDraftFile(buildDraft(name, readyTruckFields));
         setShowSaveDraft(false);
-    }, [buildDraft]);
+    }, [buildDraft, readyTruckFields]);
 
     const handleLoadDraft = useCallback((draft: TruckDraft) => {
         setPositions(draft.positions as any);
+        if (draft.shipmentData) {
+            setReadyTruckFields(draft.shipmentData);
+        }
         // numbering will be re-calculated automatically based on positions,
         // but if we wanted to force a manual sequence, we'd store it in state.
         toast.success(`Loaded draft "${draft.name}"`);
@@ -2624,6 +2645,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     fields={readyTruckFields}
                     onFieldChange={setReadyTruckFields}
                     onConfirm={() => handleReadyTruck()}
+                    onSaveDraft={() => setShowSaveDraft(true)}
+                    onOpenDraft={() => setShowOpenDraft(true)}
                     onClose={() => setShowReadyWizard(false)}
                     isBusy={isSaving}
                 />
