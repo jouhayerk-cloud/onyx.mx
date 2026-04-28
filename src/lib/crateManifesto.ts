@@ -207,6 +207,28 @@ export async function exportCrateManifesto(
     if (meta.packingItems && meta.packingItems.length > 0) {
         meta.packingItems.forEach(pi => {
             allManifestoItems.push({
+                itemId: 'MISC-PACK', name: pi.name.toUpperCase(), qty: pi.count, weightKg: pi.weight,
+                vendorPrefix: 'MISC', tagColor: '#94a3b8', index: 999, rowId: 'MISC', material: 'MISC', color: 'BROWN', dims: '—', imageUrls: [], dbItemCount: pi.count, packetIn: 'MISC'
+            } as ManifestoItem);
+        });
+    }
+
+    const itemsByVendor = items.reduce((acc, item) => {
+        const v = item.vendorPrefix || 'OTHER';
+        if (!acc[v]) acc[v] = [];
+        acc[v].push(item);
+        return acc;
+    }, {} as Record<string, ManifestoItem[]>);
+
+    const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
+    Object.keys(itemsByVendor).sort().forEach(v => {
+        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
+    });
+
+    // 2. Append Manual Packing Items at the VERY BOTTOM
+    if (meta.packingItems && meta.packingItems.length > 0) {
+        meta.packingItems.forEach(pi => {
+            sortedItems.push({
                 itemId: 'MISC-PACK',
                 name: pi.name.toUpperCase(),
                 qty: pi.count,
@@ -224,18 +246,6 @@ export async function exportCrateManifesto(
             } as ManifestoItem);
         });
     }
-
-    const itemsByVendor = allManifestoItems.reduce((acc, item) => {
-        const v = item.vendorPrefix || 'OTHER';
-        if (!acc[v]) acc[v] = [];
-        acc[v].push(item);
-        return acc;
-    }, {} as Record<string, ManifestoItem[]>);
-
-    const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
-    Object.keys(itemsByVendor).sort().forEach(v => {
-        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
-    });
 
     const isMultiCrate = meta.crateType === 'Trailer Load';
 
@@ -755,7 +765,7 @@ export async function exportCrateManifesto(
         const xOffset = 0; 
 
         // Gallery Row Visibility & Count Calculation
-        const numImagesTotal = !meta.excludeImages ? item.qty : 0;
+        const numImagesTotal = (!meta.excludeImages && item.imageUrls && item.imageUrls.length > 0) ? item.qty : 0;
         const numImagesInGallery = numImagesTotal - 1;
         const hasGallery = numImagesInGallery > 0;
         const galleryImgSize = 20;
