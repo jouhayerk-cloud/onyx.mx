@@ -1105,6 +1105,9 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const items = buildConsolidatedItems();
+            const packingWeight = (fields.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
+            const packingUnits = (fields.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
+
             const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
                 const inv = item.inv;
                 const data = inv.data || {};
@@ -1160,9 +1163,13 @@ const TruckExportModal: React.FC<{
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                    totalWeight: totalWeight + packingWeight, 
+                    payloadPct: Math.round(((totalWeight + packingWeight) / 22000) * 100), // Updated payload pct
+                    floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
+                    itemCount: truckCrates.length + packingUnits
                 },
+                packingItems: fields.packingItems,
                 excludeImages: true,
                 excludeHeaderQr: true,
                 excludeHeaderWireframe: true
@@ -1620,10 +1627,39 @@ const ReadyTruckWizard: React.FC<{
                         
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between px-1">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Packing Items (Cardboard Boxes)</label>
+                                <button onClick={() => onFieldChange({ ...fields, packingItems: [...fields.packingItems, { name: '', count: 1, weight: 0 }] })} className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all text-[8px] font-black uppercase"><Plus size={10} /> Add Box</button>
+                            </div>
+                            <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar bg-white/[0.01] rounded-xl p-2 border border-white/5">
+                                {fields.packingItems.length === 0 ? (
+                                    <div className="py-4 text-center text-[9px] font-black text-white/10 uppercase tracking-widest italic">No extra packing items</div>
+                                ) : fields.packingItems.map((pi: any, i: number) => (
+                                    <div key={i} className="flex items-center gap-2 bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                                        <input type="text" value={pi.name} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, name: e.target.value }; onFieldChange({ ...fields, packingItems: n }); }}
+                                            className="flex-1 bg-transparent text-sm font-bold text-white outline-none focus:text-emerald-400 transition-colors" placeholder="Box Description" />
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                className="w-10 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[10px] font-black text-white outline-none" />
+                                            <span className="text-[8px] text-white/20 font-black">QTY</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-[10px] font-black text-white outline-none" />
+                                            <span className="text-[8px] text-white/20 font-black">KG</span>
+                                        </div>
+                                        <button onClick={() => { const n = fields.packingItems.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, packingItems: n }); }}
+                                            className="p-1 text-white/10 hover:text-red-400 transition-all"><Trash2 size={14} /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between px-1">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Senders Information</label>
                                 <button onClick={() => onFieldChange({ ...fields, senders: [...fields.senders, ''] })} className="p-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all"><Plus size={14} /></button>
                             </div>
-                            <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-2 custom-scrollbar">
                                 {fields.senders.map((s: string, i: number) => (
                                     <div key={i} className="flex gap-2">
                                         <input type="text" value={s} onChange={e => { const n = [...fields.senders]; n[i] = e.target.value; onFieldChange({ ...fields, senders: n }); }}
@@ -1847,7 +1883,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         truckPlates: '',
         trailerNumber: '',
         trailerPlates: '',
-        senders: ['']
+        senders: [''],
+        packingItems: [] as Array<{ name: string; count: number; weight: number }>
     });
 
     useEffect(() => {
