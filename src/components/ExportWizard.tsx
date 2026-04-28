@@ -18,6 +18,7 @@ interface ExportWizardProps {
     status: string;
     moduleName: string;
     showBruteWeight?: boolean;
+    initialBruteWeight?: string;
 }
 
 export const ExportWizard: React.FC<ExportWizardProps> = ({
@@ -27,7 +28,8 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
     progress,
     status,
     moduleName,
-    showBruteWeight = false
+    showBruteWeight = false,
+    initialBruteWeight = ''
 }) => {
     const [step, setStep] = useState<'config' | 'progress' | 'complete'>('config');
     const [config, setConfig] = useState<ExportConfig>({
@@ -35,15 +37,16 @@ export const ExportWizard: React.FC<ExportWizardProps> = ({
         method: 'grid',
         includeImages: true,
         notes: '',
-        bruteWeight: ''
+        bruteWeight: initialBruteWeight
     });
 
     // Reset step when opened
     React.useEffect(() => {
         if (isOpen) {
             setStep('config');
+            setConfig(prev => ({ ...prev, bruteWeight: initialBruteWeight }));
         }
-    }, [isOpen]);
+    }, [isOpen, initialBruteWeight]);
 
     // Transition to progress step when start is called
     const handleStart = () => {
