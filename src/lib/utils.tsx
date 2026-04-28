@@ -67,11 +67,20 @@ export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: 
     const vendorList = Array.from(vSet).sort();
     const vendorsStr = vendorList.join('');
 
+    const vendorCodes = vendorList.map(v => {
+        if (v.length >= 2) return v.toUpperCase();
+        // If single letter key like 'R', take first 2 chars of name
+        const full = (vendors as any)[v]?.name || v;
+        return full.slice(0, 2).toUpperCase();
+    }).join('&');
+
+    const primaryLabel = vendorCodes || (crate.type || 'UNIT').toUpperCase();
+    const subLabel = (crate.type || 'Unit').toUpperCase();
+
     if (truckSeq != null) {
-        const vSuffix = vendorList.length > 0 ? `-${vendorsStr}` : '';
         return { 
-            label: `${shortMonthYear}${vSuffix}-${String(truckSeq).padStart(2, '0')}`, 
-            subtitle: crate.id.slice(0, 8).toUpperCase(), 
+            label: `${primaryLabel}-${String(truckSeq).padStart(2, '0')}`, 
+            subtitle: subLabel, 
             vendorList 
         };
     }
@@ -91,8 +100,8 @@ export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: 
     const sequenceStr = String(seq >= 0 ? seq + 1 : 1).padStart(2, '0');
     
     return {
-        label: `${shortMonthYear}-${vendorsStr}${sequenceStr}`,
-        subtitle: crate.id.slice(0, 8).toUpperCase(),
+        label: `${primaryLabel}-${sequenceStr}`,
+        subtitle: subLabel,
         vendorList
     };
 }

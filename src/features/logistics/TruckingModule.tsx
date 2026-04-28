@@ -139,9 +139,9 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
         <button
             onClick={onLoad}
             title={`Load ${label} onto truck`}
-            className="flex flex-col gap-2 p-3 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-lg"
+            className="flex flex-col gap-1.5 p-2.5 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-lg"
             style={{
-                minWidth: 160, maxWidth: 190,
+                minWidth: 130, maxWidth: 150,
                 background: `${primaryColor}15`,
                 borderColor: `${primaryColor}40`,
             }}
@@ -150,12 +150,11 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
         >
             {/* Top row: wireframe + type badge */}
             <div className="flex items-start justify-between w-full mb-0">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={44} />
+                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} />
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
+                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
                     </span>
-                    <span className="text-[7px] font-black uppercase tracking-widest text-white/30">ID: {crate.id.slice(0,4)}</span>
                 </div>
             </div>
             {/* Label */}
@@ -163,7 +162,7 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
                 {vendorList.map(v => (
                     <div key={v} className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
                 ))}
-                <span className="text-[16px] font-black uppercase tracking-tighter leading-none" style={{ color: primaryColor }}>
+                <span className="text-[14px] font-black uppercase tracking-tighter leading-none truncate flex-1" style={{ color: primaryColor }}>
                     {label}
                 </span>
             </div>
@@ -263,11 +262,15 @@ const TruckCrate: React.FC<{
                 {/* Visual children indicator */}
                 {children.length > 0 && (
                     <div className="absolute inset-1 border border-black/10 rounded flex flex-wrap gap-1 p-1 content-start pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
-                        {children.map(child => (
-                            <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/20 text-[6px] font-black text-white uppercase tracking-tighter border border-white/5">
-                                {child.id.slice(0, 4)}
-                            </div>
-                        ))}
+                        {children.map(child => {
+                            const { vendorList } = getCrateDisplayName(child, allCrates, allInventory);
+                            const vStr = vendorList.join('') || 'BX';
+                            return (
+                                <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/20 text-[6px] font-black text-white uppercase tracking-tighter border border-white/5">
+                                    {vStr}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
@@ -278,10 +281,10 @@ const TruckCrate: React.FC<{
                             style={{ fontSize: textScale * 1.5 }}>
                             {label}
                         </span>
-                        {subtitle && (
+                        {vendorList.length > 1 && (
                             <span className="font-black opacity-60 uppercase text-center px-1 -mt-0.5 truncate w-full text-black/80"
                                 style={{ fontSize: textScale * 0.9 }}>
-                                {subtitle}
+                                MIXED
                             </span>
                         )}
                     </div>
@@ -552,20 +555,26 @@ function generateTrailerThumbnail(
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
-    // Crates Wireframes
+    // Crates - Solid Fills
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
-        if (!crate) continue;
+        if (!crate || crate.parent_id) continue; // Skip nested boxes
         
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
         
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-        ctx.strokeStyle = primaryColor;
-        ctx.lineWidth = 4;
+        
+        // Solid Fill
+        ctx.fillStyle = primaryColor + 'D0'; // ~80% opacity solid
         ctx.beginPath();
         (ctx as any).roundRect(pos.x * scale, pos.y * scale, lenX, lenY, 1.5);
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = '#00000033';
+        ctx.lineWidth = 2;
         ctx.stroke();
     }
     
@@ -577,10 +586,10 @@ function generateTrailerThumbnail(
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
-        if (!crate) continue;
-        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+        if (!crate || crate.parent_id) continue;
+        const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const w = computeCrateWeight(crate, allInventory, allCrates);
-        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        const col = '#000000'; // Dark text for contrast on solid fill
         
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
@@ -625,10 +634,10 @@ function generateSideViewThumbnail(
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
-    // Crates Wireframes
+    // Crates - Solid Fills
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
-        if (!crate) continue;
+        if (!crate || crate.parent_id) continue; // Skip nested boxes
         
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const h = (crate.height_cm || 100) * scale;
@@ -637,10 +646,15 @@ function generateSideViewThumbnail(
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
-        ctx.strokeStyle = primaryColor;
-        ctx.lineWidth = 4;
+        // Solid Fill
+        ctx.fillStyle = primaryColor + 'D0';
         ctx.beginPath();
         (ctx as any).roundRect(pos.x * scale, H - zOff - h, lenX, h, 1.5);
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = '#00000033';
+        ctx.lineWidth = 2;
         ctx.stroke();
     }
     
@@ -652,10 +666,10 @@ function generateSideViewThumbnail(
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
-        if (!crate) continue;
-        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+        if (!crate || crate.parent_id) continue;
+        const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const w = computeCrateWeight(crate, allInventory, allCrates);
-        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+        const col = '#000000'; // Dark text for contrast
         
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const h = (crate.height_cm || 100) * scale;
@@ -717,7 +731,7 @@ function generateIsoViewThumbnail(
 
     for (const id of sortedIds) {
         const crate = crateMap.get(id);
-        if (!crate) continue;
+        if (!crate || crate.parent_id) continue; // Skip nested boxes in ISO too
         const p = positions[id];
         const rotated = p.r === 90;
         const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
@@ -790,39 +804,52 @@ const NestingTargetModal: React.FC<{
     const targets = allCrates.filter(c => c.id !== boxId && c.type !== 'cardboard' && c.status !== 'Empty');
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in duration-300">
-            <div className="w-full max-w-lg bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/[0.01] backdrop-blur-2xl animate-in fade-in zoom-in duration-500">
+            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+            <div className="relative z-10 w-full max-w-lg bg-white/[0.03] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] backdrop-blur-3xl animate-in slide-in-from-bottom-8 duration-700">
+                <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div>
-                        <h3 className="text-lg font-black text-white">Nest Box into Container</h3>
-                        <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">Select a target crate or pallet for box {boxId.slice(0,6)}</p>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Nesting Wizard</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1.5">Select container for box {boxId.slice(0,6)}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 text-white/30 hover:text-white transition-colors">
-                        <X size={20} />
+                    <button onClick={onClose} className="w-12 h-12 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all flex items-center justify-center group">
+                        <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                     </button>
                 </div>
-                <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col gap-3">
                     {targets.length === 0 ? (
-                        <div className="py-12 text-center text-white/20 italic">No available containers found</div>
+                        <div className="py-20 text-center flex flex-col items-center gap-4">
+                            <Box size={48} className="text-white/5" />
+                            <p className="text-xs text-white/20 uppercase tracking-widest font-black italic">No compatible containers available</p>
+                        </div>
                     ) : targets.map(t => (
                         <button
                             key={t.id}
                             onClick={() => onSelect(t.id)}
-                            className="w-full p-4 flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group text-left"
+                            className="w-full p-5 flex items-center gap-5 rounded-[1.5rem] border border-white/5 bg-white/[0.03] hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group text-left shadow-lg hover:shadow-emerald-500/5 hover:scale-[1.02] active:scale-[0.98]"
                         >
-                            <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center border border-white/5 shrink-0 group-hover:border-emerald-500/20">
-                                <Box size={24} className="text-white/20 group-hover:text-emerald-500/50 transition-colors" />
+                            <div className="w-16 h-16 rounded-2xl bg-black/40 flex items-center justify-center border border-white/5 shrink-0 group-hover:border-emerald-500/20 group-hover:bg-emerald-500/5 transition-all">
+                                <Box size={32} className="text-white/20 group-hover:text-emerald-500/60 transition-colors" />
                             </div>
-                            <div className="flex-1">
-                                <div className="text-[11px] font-black uppercase text-white/30 tracking-[0.2em]">{t.type}</div>
-                                <div className="text-base font-black text-white group-hover:text-emerald-400 transition-colors">{t.id}</div>
-                                <div className="text-[10px] text-white/40">{t.width_cm}x{t.length_cm}x{t.height_cm} CM</div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-black uppercase text-(--main-color) tracking-[0.3em] mb-1">{t.type} UNIT</div>
+                                <div className="text-lg font-black text-white truncate leading-none group-hover:text-emerald-400 transition-colors">
+                                    {getCrateDisplayName(t, allCrates, []).label}
+                                </div>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{t.width_cm}x{t.length_cm}x{t.height_cm} CM</span>
+                                    <div className="w-1 h-1 rounded-full bg-white/10" />
+                                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-wider">{t.status}</span>
+                                </div>
                             </div>
-                            <div className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                                <ChevronRight size={20} />
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center text-emerald-400/40 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-all">
+                                <ChevronRight size={24} />
                             </div>
                         </button>
                     ))}
+                </div>
+                <div className="p-6 border-t border-white/5 bg-black/20 flex justify-center">
+                    <p className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Onyx Logistics Protocol · Nesting v1.2</p>
                 </div>
             </div>
         </div>
@@ -931,9 +958,13 @@ const TruckExportModal: React.FC<{
     const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '', allCrates: '', allCratesImages: '' });
     const [includePhotos, setIncludePhotos] = useState(true);
 
-    const getItemsFromCrate = (crate: any, parentLabel?: string, visited = new Set<string>()): any[] => {
+    const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
         if (!crate || visited.has(crate.id)) return [];
         visited.add(crate.id);
+
+        const { label: currentLabel } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+        const nextFloorLabel = floorLabel || currentLabel;
+        const nextBoxLabel = crate.type === 'cardboard' ? currentLabel : boxLabel;
 
         let results: any[] = [];
         
@@ -944,7 +975,7 @@ const TruckExportModal: React.FC<{
                 const qty = parseInt(qtyStr || '1', 10) || 1;
                 const inv = allInventory.find((i: any) => String(i.row) === id);
                 if (inv) {
-                    results.push({ id, qty, inv, packetIn: parentLabel });
+                    results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
                 }
             });
         }
@@ -952,8 +983,7 @@ const TruckExportModal: React.FC<{
         // 2. Nested units (recursive)
         const nested = allCrates.filter(c => c.parent_id === crate.id);
         nested.forEach(n => {
-            const { label } = getCrateDisplayName(n, allCrates, allInventory, truckNumbering[n.id]);
-            results = [...results, ...getItemsFromCrate(n, label, visited)];
+            results = [...results, ...getItemsFromCrate(n, nextFloorLabel, nextBoxLabel, visited)];
         });
         
         return results;
@@ -1045,13 +1075,27 @@ const TruckExportModal: React.FC<{
             const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
             const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
             
-            const allTruckCratesMeta = truckCrates.map(c => {
+            const floorCrates = truckCrates;
+            const nestedBoxes = allCrates.filter(c => c.type === 'cardboard' && c.parent_id && floorCrates.some(fc => fc.id === c.parent_id));
+            
+            const allTruckCratesMeta = [...floorCrates, ...nestedBoxes].map(c => {
                 const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
-                const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
+                const col = vendorList.length > 0 ? (vendors as any)[vendorList[0] as keyof typeof vendors]?.color || '#6b7280' : '#6b7280';
+                
+                let parentLabel = '';
+                if (c.parent_id) {
+                    const parent = allCrates.find(p => p.id === c.parent_id);
+                    if (parent) {
+                        const { label: pl } = getCrateDisplayName(parent, allCrates, allInventory, truckNumbering[parent.id]);
+                        parentLabel = pl;
+                    }
+                }
+
                 return {
                     id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
-                    l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
+                    l: c.length_cm, w: c.width_cm, h: c.height_cm || 100,
+                    parentLabel
                 };
             });
 
@@ -1087,7 +1131,10 @@ const TruckExportModal: React.FC<{
         const key = withImages ? 'allCratesImages' : 'allCrates';
         setProgress(p => ({ ...p, [key]: 5 }));
         
-        const cratesData = [...truckCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0)).map(crate => {
+        // Filter to only ROOT containers (those not nested inside others) and exclude cardboard boxes from individual exports
+        const rootCrates = truckCrates.filter(c => !c.parent_id && c.type !== 'cardboard');
+        
+        const cratesData = [...rootCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0)).map(crate => {
             const { label, subtitle, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
             const items = getItemsFromCrate(crate).map((item, idx) => {
                 const inv = item.inv; const data = inv.data || {};
@@ -1110,7 +1157,9 @@ const TruckExportModal: React.FC<{
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
                     imageUrls: photos,
-                    tagColor: vendors[vP as keyof typeof vendors]?.color || '#6b7280', dbItemCount: data.quantity || 1
+                    tagColor: vendors[vP as keyof typeof vendors]?.color || '#6b7280', dbItemCount: data.quantity || 1,
+                    packetIn: item.packetIn || '', // Floor level owner
+                    boxLabel: item.boxLabel || ''  // Immediate box owner
                 };
             });
             const meta = {
@@ -1164,9 +1213,13 @@ const TruckExportModal: React.FC<{
     const generatePacked = async () => {
         setProgress(p => ({ ...p, packed: 5 }));
         const wb = new ExcelJS.Workbook();
-        for (let i = 0; i < truckCrates.length; i++) {
-            setProgress(p => ({ ...p, packed: 5 + Math.round((i / truckCrates.length) * 80) }));
-            const crate = truckCrates[i];
+        
+        // Filter to only ROOT containers
+        const rootCrates = truckCrates.filter(c => !c.parent_id);
+        
+        for (let i = 0; i < rootCrates.length; i++) {
+            setProgress(p => ({ ...p, packed: 5 + Math.round((i / rootCrates.length) * 80) }));
+            const crate = rootCrates[i];
             const { label } = getCrateDisplayName(crate, allCrates, allInventory);
             const safeLabel = label.replace(/[\[\]\*\/\?\:\\]/g, '').substring(0, 31) || `Crate ${i+1}`;
             let sheetName = safeLabel; let counter = 1;
@@ -1175,7 +1228,8 @@ const TruckExportModal: React.FC<{
             ws.columns = [
                 { header: 'Book TAG ID', key: 'tag', width: 20 }, { header: 'Quantity', key: 'qty', width: 10 },
                 { header: 'Description', key: 'desc', width: 40 }, { header: 'Weight (KG)', key: 'weight', width: 15 },
-                { header: 'Dimensions (CM)', key: 'dims', width: 20 }
+                { header: 'Dimensions (CM)', key: 'dims', width: 20 },
+                { header: 'Container', key: 'container', width: 25 }
             ];
             getItemsFromCrate(crate).forEach((item: any) => {
                 const inv = item.inv; const data = inv.data || {};
@@ -1184,8 +1238,14 @@ const TruckExportModal: React.FC<{
                 const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
                 const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-                const cost = calculated.acquisitionCostMxn || 0;
-                ws.addRow({ tag, qty: item.qty, desc: desc || 'Artifact', weight: data.weightKg || data.weight_kg || '', dims });
+                ws.addRow({ 
+                    tag, 
+                    qty: item.qty, 
+                    desc: desc || 'Artifact', 
+                    weight: data.weightKg || data.weight_kg || '', 
+                    dims,
+                    container: item.packetIn || '' // Show nested box label if applicable
+                });
             });
             ws.getRow(1).font = { bold: true };
         }
@@ -1533,9 +1593,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [docs]);
 
     const allCrates = useMemo(() => docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status)), [docs]);
-    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id]), [allCrates, positions]);
+    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
     const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
+
+    const dockUnits = useMemo(() => dockCrates.filter(c => c.type !== 'cardboard'), [dockCrates]);
+    const dockBoxes = useMemo(() => dockCrates.filter(c => c.type === 'cardboard'), [dockCrates]);
     const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory, allCrates), 0), [truckCrates, allInventory, allCrates]);
     const floorPct = useMemo(() => Math.min(100, Math.round(truckCrates.reduce((s, c) => s + c.width_cm * c.length_cm, 0) / (TRUCK_W_CM * TRUCK_L_CM) * 100)), [truckCrates]);
 
@@ -1769,10 +1832,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const crateData = truckCrates.map(c => {
                 const pos = positions[c.id]!;
                 const { label } = getCrateDisplayName(c, allCrates, allInventory);
-                const items = (c.inventory_ids || '').split(',').filter(Boolean).map((e: string) => {
-                    const [id, qty] = e.split(':');
-                    const inv = allInventory.find((i: any) => String(i.row) === id);
-                    return inv ? { sku: inv.data?.itemId || id, desc: inv.data?.description || inv.data?.itemId || id, qty: qty || 1, vendor: (inv.data?.vendor_id || '').split('-')[0] } : null;
+                const items = getItemsFromCrate(c).map((item: any) => {
+                    const inv = item.inv;
+                    return { 
+                        sku: inv.data?.itemId || item.id, 
+                        desc: inv.data?.description || inv.data?.itemId || item.id, 
+                        qty: item.qty, 
+                        vendor: (inv.data?.vendor_id || '').split('-')[0] 
+                    };
                 }).filter(Boolean);
                 const w = computeCrateWeight(c, allInventory, allCrates);
                 return { id: c.id, label, pos: `${Math.round(pos.x)}cm, ${Math.round(pos.y)}cm`, rot: pos.r === 90 ? '90°' : '0°', w_cm: c.width_cm, l_cm: c.length_cm, h_cm: c.height_cm, weight: w, type: c.type, items };
@@ -1930,56 +1997,83 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         <span className="text-[9px] font-black uppercase tracking-[0.3em]">All units loaded</span>
                     </div>
                 ) : isCompact ? (
-                    /* ── COMPACT dock strip: small pill chips ── */
-                    <div className="flex items-center gap-1.5 overflow-x-auto px-4 py-2" style={{ scrollbarWidth: 'none' }}>
-                        <div className="flex flex-col items-center justify-center px-3 shrink-0 border-r border-white/8 mr-1">
-                            <span className="text-lg font-black tracking-tighter text-white/60">{dockCrates.length}</span>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">stg</span>
-                        </div>
-                        {dockCrates.map(c => {
-                            const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
-                            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
-                            const w = computeCrateWeight(c, allInventory, allCrates);
-                            const typeLabel = c.type === 'pallet' ? 'PLT' : c.type === 'cardboard' ? 'BOX' : 'CRT';
-                            return (
-                                <button key={c.id} onClick={() => handleLoad(c.id)}
-                                    title={`Load ${label}`}
-                                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border shrink-0 cursor-pointer active:scale-95 transition-all"
-                                    style={{ background: `${col}12`, borderColor: `${col}35` }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${col}28`; }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${col}12`; }}
-                                >
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: col }} />
-                                    <span className="text-[11px] font-black uppercase tracking-tight" style={{ color: col }}>{label}</span>
-                                    <span className="text-[8px] font-black text-white/30">{typeLabel}</span>
-                                    <span className="text-[8px] text-white/20 font-black">{w}KG</span>
-                                    {c.type === 'cardboard' && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setNestingBoxId(c.id); }}
-                                            className="ml-1 p-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-colors"
-                                            title="Nest into container"
+                    /* ── COMPACT dock strip: segmented chips ── */
+                    <div className="flex items-center gap-4 overflow-x-auto px-4 py-2" style={{ scrollbarWidth: 'none' }}>
+                        {dockUnits.length > 0 && (
+                            <div className="flex items-center gap-1.5 shrink-0 pr-4 border-r border-white/10">
+                                <span className="text-[7px] font-black uppercase tracking-widest text-white/20 mr-1">Units</span>
+                                {dockUnits.map(c => {
+                                    const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+                                    const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
+                                    const w = computeCrateWeight(c, allInventory, allCrates);
+                                    const typeLabel = c.type === 'pallet' ? 'PLT' : 'CRT';
+                                    return (
+                                        <button key={c.id} onClick={() => handleLoad(c.id)}
+                                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border shrink-0 cursor-pointer transition-all hover:bg-white/5"
+                                            style={{ borderColor: `${col}35` }}
                                         >
-                                            <Box size={10} />
+                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} />
+                                            <span className="text-[10px] font-black uppercase" style={{ color: col }}>{label}</span>
+                                            <span className="text-[7px] font-black text-white/20">{typeLabel} · {w}KG</span>
                                         </button>
-                                    )}
-                                </button>
-                            );
-                        })}
+                                    );
+                                })}
+                            </div>
+                        )}
+                        {dockBoxes.length > 0 && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-[7px] font-black uppercase tracking-widest text-white/20 mr-1">Boxes</span>
+                                {dockBoxes.map(c => {
+                                    const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+                                    const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#d97706') : '#d97706';
+                                    const w = computeCrateWeight(c, allInventory, allCrates);
+                                    return (
+                                        <button key={c.id} onClick={() => handleLoad(c.id)}
+                                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-amber-600/20 bg-amber-600/5 shrink-0 cursor-pointer transition-all hover:bg-amber-600/15"
+                                        >
+                                            <span className="text-[10px] font-black uppercase text-amber-500">{label}</span>
+                                            <span className="text-[7px] font-black text-white/20">{w}KG</span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setNestingBoxId(c.id); }}
+                                                className="ml-1 p-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-colors"
+                                            >
+                                                <Box size={9} />
+                                            </button>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 ) : (
-                    /* ── EXPANDED dock strip: large DockCards ── */
-                    <div className="flex items-stretch gap-1 overflow-x-auto px-4 py-3" style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}>
-                        {/* Count badge */}
-                        <div className="flex flex-col items-center justify-center px-4 shrink-0 border-r border-white/8 mr-2">
-                            <span className="text-3xl font-black tracking-tighter text-white/60">{dockCrates.length}</span>
-                            <span className="text-[7px] font-black uppercase tracking-widest text-white/20">staged</span>
-                        </div>
-                        {dockCrates.map(c => (
-                            <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
-                                onLoad={() => handleLoad(c.id)} 
-                                onNest={() => setNestingBoxId(c.id)}
-                            />
-                        ))}
+                    /* ── EXPANDED dock strip: Segmented sections ── */
+                    <div className="flex items-stretch gap-8 overflow-x-auto px-4 py-3" style={{ scrollbarWidth: 'none' }}>
+                        {dockUnits.length > 0 && (
+                            <div className="flex items-stretch gap-2 shrink-0 pr-8 border-r border-white/5">
+                                <div className="flex flex-col justify-center px-2">
+                                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20 [writing-mode:vertical-lr] rotate-180">Logistics</span>
+                                </div>
+                                {dockUnits.map(c => (
+                                    <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
+                                        onLoad={() => handleLoad(c.id)} 
+                                        onNest={() => setNestingBoxId(c.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {dockBoxes.length > 0 && (
+                            <div className="flex items-stretch gap-2 shrink-0">
+                                <div className="flex flex-col justify-center px-2">
+                                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-amber-500/30 [writing-mode:vertical-lr] rotate-180">Cardboard</span>
+                                </div>
+                                {dockBoxes.map(c => (
+                                    <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
+                                        onLoad={() => handleLoad(c.id)} 
+                                        onNest={() => setNestingBoxId(c.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

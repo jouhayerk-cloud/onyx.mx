@@ -242,6 +242,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
 
     const dynamicId = useMemo(() => generateDynamicCrateId(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     
+    const nestedCount = useMemo(() => allCrates.filter(nu => nu.parent_id === crate.id).length, [allCrates, crate.id]);
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
     const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
@@ -336,7 +337,8 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                     costUsd: Number(c.bookAcquisition || 0),
                     imageUrls,
                     tagColor: (vendors as any)[vendorPrefix]?.color || '#555',
-                    dbItemCount: Number(d.quantity || 0)
+                    dbItemCount: Number(d.quantity || 0),
+                    packetIn: item.packetIn
                 };
             });
 
@@ -446,6 +448,20 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                                 </p>
                             )}
 
+                            {crate.parent_id && (
+                                <div className="flex items-center gap-1.5 mt-2 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg self-end xl:self-start">
+                                    <Package size={11} className="text-blue-400" />
+                                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">
+                                        Packed Inside: {(() => {
+                                            const p = allCrates.find(pc => pc.id === crate.parent_id);
+                                            if (!p) return 'Parent Unit';
+                                            const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(p, allCrates, allInventory);
+                                            return `${date}${vList.join('')}${sequence}`;
+                                        })()}
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Repositioned Description / Summary */}
                             <div className="mt-4 hidden lg:block max-w-[280px]">
                                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-1.5">Contents / Notes</p>
@@ -510,6 +526,12 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                             <p className="text-[9px] uppercase tracking-[0.3em] text-white/40 font-black leading-none">Inventory</p>
                             <p className="text-[17px] font-mono font-black text-white leading-none">{itemCount} <span className="text-[9px] font-black text-white/20">ITEMS</span></p>
                         </div>
+                        {nestedCount > 0 && (
+                            <div className="flex flex-col gap-1.5">
+                                <p className="text-[9px] uppercase tracking-[0.3em] text-(--main-color) font-black leading-none">Nested</p>
+                                <p className="text-[17px] font-mono font-black text-white leading-none">{nestedCount} <span className="text-[9px] font-black text-white/20">BOXES</span></p>
+                            </div>
+                        )}
                     </div>
 
                 </div>
@@ -782,7 +804,7 @@ export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
     const [, setSubTab] = useAtom(logisticsSubTabAtom);
-    const [activeTab, setActiveTab] = useState<'empty' | 'packed' | 'deployed'>('empty');
+    const [activeTab, setActiveTab] = useState<'empty' | 'packed' | 'boxes' | 'deployed'>('empty');
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
@@ -907,19 +929,23 @@ export const CratesInventoryView: React.FC = () => {
         return crates.filter(c => {
             const matchesTab =
                 activeTab === 'empty'    ? c.status === 'Empty' :
-                activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') :
+                activeTab === 'packed'   ? (c.status === 'Packed' || c.status === 'Partial') && c.type !== 'cardboard' :
+                activeTab === 'boxes'    ? (c.status === 'Packed' || c.status === 'Partial') && c.type === 'cardboard' :
                 /* deployed */             (c.status === 'In Transit' || c.status === 'Deployed');
             const q = searchQuery.toLowerCase();
             const matchesSearch = !q
                 || c.id?.toLowerCase().includes(q)
                 || c.contents_summary?.toLowerCase().includes(q)
                 || c.description?.toLowerCase().includes(q);
-            return matchesTab && matchesSearch;
+            
+            // Nested units (with parent_id) should NOT show up in the top-level list,
+            // EXCEPT for the Packed Boxes tab which should show all boxes regardless of containment.
+            return matchesTab && matchesSearch && (activeTab === 'boxes' || !c.parent_id);
         });
     }, [crates, activeTab, searchQuery]);
 
     const displayCrates = useMemo(() => {
-        if (activeTab === 'packed') {
+        if (activeTab === 'packed' || activeTab === 'boxes') {
             const getVendors = (c: CrateRecord) => {
                 if (!c.inventory_ids) return 'ZZZZ';
                 const vSet = new Set<string>();
@@ -961,7 +987,8 @@ export const CratesInventoryView: React.FC = () => {
 
     const summary = useMemo(() => ({
         empty: crates.filter(c => c.status === 'Empty').length,
-        packed: crates.filter(c => c.status === 'Packed' || c.status === 'Partial').length,
+        packed: crates.filter(c => (c.status === 'Packed' || c.status === 'Partial') && c.type !== 'cardboard').length,
+        boxes: crates.filter(c => (c.status === 'Packed' || c.status === 'Partial') && c.type === 'cardboard').length,
         deployed: crates.filter(c => c.status === 'In Transit' || c.status === 'Deployed').length,
     }), [crates]);
 
@@ -1011,6 +1038,7 @@ export const CratesInventoryView: React.FC = () => {
                             {[
                                 { label: 'Empty', value: summary.empty, dot: 'bg-emerald-400', color: 'text-emerald-400' },
                                 { label: 'Packed', value: summary.packed, dot: 'bg-rose-400', color: 'text-rose-400' },
+                                { label: 'Boxes', value: summary.boxes, dot: 'bg-amber-400', color: 'text-amber-400' },
                                 { label: 'Deployed', value: summary.deployed, dot: 'bg-blue-400', color: 'text-blue-400' },
                             ].map(s => (
                                 <div key={s.label} className="flex items-center gap-1.5">
@@ -1026,6 +1054,7 @@ export const CratesInventoryView: React.FC = () => {
                         {[
                             ['empty',    'Empty Inventory'],
                             ['packed',   'Packed Crates'],
+                            ['boxes',    'Packed Boxes'],
                             ['deployed', 'Deployed'],
                         ].map(([val, label]) => (
                             <button
@@ -1072,25 +1101,52 @@ export const CratesInventoryView: React.FC = () => {
             <div className="relative">
                 <div className="px-4 lg:px-8 py-4 lg:py-10">
                     {displayCrates.length > 0 ? (
-                        <div className="flex flex-col gap-4 content-start">
-                            {displayCrates.map(crate => (
-                                <CrateCard 
-                                    key={crate.id} 
-                                    crate={crate} 
-                                    allCrates={crates} 
-                                    allInventory={allInventory} 
-                                    onPack={
-                                        activeTab === 'deployed' ? handleReturnToPacking
-                                        : activeTab === 'packed'  ? handleReopenForPacking
-                                        : handlePack
-                                    }
-                                    onDelete={handleDeleteCrate}
-                                    onNest={(c) => setNestingUnit(c)}
-                                    isDeployedView={activeTab === 'deployed'}
-                                    isPackedView={activeTab === 'packed'}
-                                />
-                            ))}
-                        </div>
+                        activeTab === 'packed' || activeTab === 'boxes' ? (
+                            <div className="flex flex-col gap-16">
+                                {displayCrates.length > 0 && (
+                                    <div className="flex flex-col gap-6">
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">
+                                                {activeTab === 'packed' ? 'Logistics Units (Crates & Pallets)' : 'Cardboard Inventory (Boxes)'}
+                                            </span>
+                                            <div className="h-px flex-1 bg-white/5" />
+                                        </div>
+                                        <div className="flex flex-col gap-4">
+                                            {displayCrates.map(crate => (
+                                                <CrateCard 
+                                                    key={crate.id} 
+                                                    crate={crate} 
+                                                    allCrates={crates} 
+                                                    allInventory={allInventory} 
+                                                    onPack={handleReopenForPacking}
+                                                    onDelete={handleDeleteCrate}
+                                                    onNest={(c) => setNestingUnit(c)}
+                                                    isPackedView={true}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-4 content-start">
+                                {displayCrates.map(crate => (
+                                    <CrateCard 
+                                        key={crate.id} 
+                                        crate={crate} 
+                                        allCrates={crates} 
+                                        allInventory={allInventory} 
+                                        onPack={
+                                            activeTab === 'deployed' ? handleReturnToPacking
+                                            : handlePack
+                                        }
+                                        onDelete={handleDeleteCrate}
+                                        onNest={(c) => setNestingUnit(c)}
+                                        isDeployedView={activeTab === 'deployed'}
+                                    />
+                                ))}
+                            </div>
+                        )
                     ) : (
                         <div className="flex flex-col items-center justify-center h-[60vh] text-center gap-6">
                             <div className="relative">
