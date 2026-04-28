@@ -44,7 +44,7 @@ const financeSchema = {
 
 const logisticsSchema = {
     title: 'logistics schema',
-    version: 3,
+    version: 4,
     primaryKey: 'id',
     type: 'object',
     properties: {
@@ -75,7 +75,8 @@ const logisticsSchema = {
         quantity: { type: ['number', 'null'] },
         cost_mxn: { type: ['number', 'null'] },
         date: { type: ['string', 'null'] },
-        updated_at: { type: ['string', 'null'] }
+        updated_at: { type: ['string', 'null'] },
+        parent_id: { type: ['string', 'null'] }
     }
 };
 
@@ -225,7 +226,7 @@ const createDatabase = async () => {
             logistics: {
                 schema: logisticsSchema,
                 migrationStrategies: {
-                    1: () => null, 2: () => null, 3: () => null,
+                    1: () => null, 2: () => null, 3: () => null, 4: () => null,
                 }
             },
             production: { 
