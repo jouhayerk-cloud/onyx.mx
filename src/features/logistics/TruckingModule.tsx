@@ -957,7 +957,7 @@ const ExportCard: React.FC<{
     const isDone = prog === 100;
     return (
         <div className="flex items-center gap-5 p-5 rounded-3xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.06] transition-all duration-500">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: `${color}15`, color: color }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ backgroundColor: `${color}15`, color: color }}>
                 <Icon size={28} strokeWidth={1.5} />
             </div>
             <div className="flex-1 min-w-0">
@@ -1460,21 +1460,25 @@ const ReadyTruckWizard: React.FC<{
         return results;
     };
 
+    const buildConsolidatedItems = () => {
+        const itemMap = new Map<string, { qty: number, inv: any, crates: Set<string> }>();
+        truckCrates.forEach(c => {
+            const { label } = getCrateDisplayName(c, allCrates, allInventory);
+            getItemsFromCrate(c).forEach((item: any) => {
+                const itemContainer = item.packetIn || label;
+                const existing = itemMap.get(item.id);
+                if (existing) { existing.qty += item.qty; existing.crates.add(itemContainer); }
+                else { itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([itemContainer]) }); }
+            });
+        });
+        return Array.from(itemMap.values());
+    };
+
     const generatePdf = async () => {
         const tid = toast.loading('Building trailer packing list...');
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
-            const itemMap = new Map<string, { qty: number, inv: any, crates: Set<string> }>();
-            truckCrates.forEach(c => {
-                const { label } = getCrateDisplayName(c, allCrates, allInventory);
-                getItemsFromCrate(c).forEach((item: any) => {
-                    const itemContainer = item.packetIn || label;
-                    const existing = itemMap.get(item.id);
-                    if (existing) { existing.qty += item.qty; existing.crates.add(itemContainer); }
-                    else { itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([itemContainer]) }); }
-                });
-            });
-            const items = Array.from(itemMap.values());
+            const items = buildConsolidatedItems();
             const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
                 const inv = item.inv; const data = inv.data || {};
                 const norm = normalizeInventoryData(inv);
@@ -1519,12 +1523,15 @@ const ReadyTruckWizard: React.FC<{
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0), 
+                    payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
+                    itemCount: (buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)
                 },
                 excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
                 sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
-                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders
+                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders,
+                packingItems: fields.packingItems
             };
             const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
             if (blob) { setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, pdf: 100 })); toast.success('Manifest ready', { id: tid }); }
@@ -1679,6 +1686,21 @@ const ReadyTruckWizard: React.FC<{
                             </div>
                         </div>
 
+                        <div className="mt-2 grid grid-cols-3 gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10 shadow-inner">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Live Total Payload</span>
+                                <span className="text-lg font-black text-emerald-400">{(totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()} KG</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Total Units</span>
+                                <span className="text-lg font-black text-white">{(buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Utilization</span>
+                                <span className="text-lg font-black text-white/60">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
+                            </div>
+                        </div>
+
                         <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -1696,10 +1718,15 @@ const ReadyTruckWizard: React.FC<{
                         
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
-                            <button onClick={onConfirm} disabled={isBusy} className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 shadow-[0_20px_40px_rgba(255,255,255,0.1)]">
-                                {isBusy ? <div className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={18} /> Syncing...</div> : 'Confirm & Mark Ready'}
-                            </button>
-                            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">Cancel Protocol</button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => toast.success('Truck metadata saved to session')} className="py-4 rounded-2xl bg-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/20 transition-all border border-white/10">
+                                    Save Truck
+                                </button>
+                                <button onClick={onConfirm} disabled={isBusy} className="py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40">
+                                    {isBusy ? 'Syncing...' : 'Dispatch'}
+                                </button>
+                            </div>
+                            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[8px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">Cancel Protocol</button>
                         </div>
                     </div>
                 </div>
