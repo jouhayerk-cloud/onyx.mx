@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
-import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
+import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom, truckShowReadyWizardAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getCrateDisplayName } from '../../lib/utils';
 import ExcelJS from 'exceljs';
-import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto } from '../../lib/crateManifesto';
+import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, ManifestoMeta } from '../../lib/crateManifesto';
 
 const TRUCK_L_CM = 1615;
 const TRUCK_W_CM = 244;
@@ -568,20 +568,22 @@ function generateTrailerThumbnail(
         
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0'; // ~80% opacity solid
-        ctx.beginPath();
-        (ctx as any).roundRect(pos.x * scale, pos.y * scale, lenX, lenY, 1.5);
-        ctx.fill();
+        ctx.fillRect(pos.x * scale, pos.y * scale, lenX, lenY);
 
         // Border
         ctx.strokeStyle = '#00000033';
         ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.strokeRect(pos.x * scale, pos.y * scale, lenX, lenY);
     }
     
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
     ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
+    
+    // Cab end marker (at front)
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(W - 10, 0, 10, H);
     
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
@@ -648,14 +650,12 @@ function generateSideViewThumbnail(
         
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0';
-        ctx.beginPath();
-        (ctx as any).roundRect(pos.x * scale, H - zOff - h, lenX, h, 1.5);
-        ctx.fill();
+        ctx.fillRect(pos.x * scale, H - zOff - h, lenX, h);
 
         // Border
         ctx.strokeStyle = '#00000033';
         ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.strokeRect(pos.x * scale, H - zOff - h, lenX, h);
     }
     
     // Watermark
@@ -939,6 +939,61 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
         };
     } catch (e) { console.error('Draft import failed', e); return null; }
 }
+
+// ─── Export Card Component ──────────────────────────────────────────────────
+const ExportCard: React.FC<{
+    id: string;
+    title: string;
+    type: string;
+    desc?: string;
+    icon: any;
+    color: string;
+    prog: number;
+    url?: string;
+    onGenerate: () => void;
+    onDownload?: (url: string, filename: string) => void;
+    filename?: string;
+}> = ({ id, title, type, desc, icon: Icon, color, prog, url, onGenerate, onDownload, filename }) => {
+    const isDone = prog === 100;
+    return (
+        <div className="flex items-center gap-5 p-5 rounded-3xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.06] transition-all duration-500">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: `${color}15`, color: color }}>
+                <Icon size={28} strokeWidth={1.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <span className="text-base font-black text-white uppercase tracking-tight">{title}</span>
+                    <span className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase">{type}</span>
+                </div>
+                {desc && <span className="block text-[10px] text-white/30 uppercase font-bold tracking-wider mt-1 leading-relaxed">{desc}</span>}
+                {prog >= 0 && (
+                    <div className="mt-4 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-full transition-all duration-300" style={{ width: `${prog}%`, backgroundColor: color }} />
+                    </div>
+                )}
+            </div>
+            <div className="shrink-0">
+                {isDone && url ? (
+                    <button 
+                        onClick={() => onDownload ? onDownload(url, filename || `${title.replace(/\s+/g, '_')}.${type.toLowerCase()}`) : window.open(url, '_blank')}
+                        className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
+                        style={{ background: color, color: '#fff' }}
+                    >
+                        Download
+                    </button>
+                ) : (
+                    <button 
+                        onClick={onGenerate}
+                        disabled={prog >= 0}
+                        className="px-5 py-2.5 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
+                    >
+                        {prog >= 0 ? 'Building...' : 'Generate'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // ─── Export Modal ────────────────────────────────────────────────────────────
 const TruckExportModal: React.FC<{
@@ -1265,54 +1320,6 @@ const TruckExportModal: React.FC<{
         const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
     };
 
-    const isDone = (k: keyof typeof progress) => progress[k] === 100;
-    const isWorking = (k: keyof typeof progress) => progress[k] >= 0 && progress[k] < 100;
-
-    const ExportCard = ({ id, title, type, desc, icon: Icon, color, onGenerate }: any) => {
-        const prog = progress[id as keyof typeof progress];
-        const url = urls[id as keyof typeof urls];
-        const isDone = prog === 100;
-
-        return (
-            <div className="flex items-center gap-5 p-5 rounded-3xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.06] transition-all duration-500">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: `${color}15`, color: color }}>
-                    <Icon size={28} strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-white uppercase tracking-tight">{title}</span>
-                        <span className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase">{type}</span>
-                    </div>
-                    <span className="block text-[10px] text-white/30 uppercase font-bold tracking-wider mt-1 leading-relaxed">{desc}</span>
-                    {prog >= 0 && (
-                        <div className="mt-4 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full transition-all duration-300" style={{ width: `${prog}%`, backgroundColor: color }} />
-                        </div>
-                    )}
-                </div>
-                <div className="shrink-0">
-                    {isDone ? (
-                        <button 
-                            onClick={() => triggerDownload(url, `${name}_${title.replace(/\s+/g, '_')}.${type.toLowerCase()}`)}
-                            className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
-                            style={{ background: color, color: '#fff' }}
-                        >
-                            Download
-                        </button>
-                    ) : (
-                        <button 
-                            onClick={onGenerate}
-                            disabled={prog >= 0}
-                            className="px-5 py-2.5 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
-                        >
-                            {prog >= 0 ? 'Building...' : 'Generate'}
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-2xl" />
@@ -1352,28 +1359,28 @@ const TruckExportModal: React.FC<{
                         <ExportCard 
                             id="manifesto" title="Consolidated Manifesto" type="XLSX" color="#3b82f6" icon={FileSpreadsheet}
                             desc="Global inventory list with all items combined. Best for accounting."
-                            onGenerate={generateManifesto}
+                            prog={progress.manifesto} url={urls.manifesto} onGenerate={generateManifesto} onDownload={triggerDownload} filename={`${name}_Consolidated_Manifesto.xlsx`}
                         />
                         <ExportCard 
                             id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText}
                             desc="Summary of trailer load with isometric and top views."
-                            onGenerate={generatePdf}
+                            prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} onDownload={triggerDownload} filename={`${name}_Packing_List.pdf`}
                         />
                         <ExportCard 
                             id="packed" title="Crate Spreadsheets" type="XLSX" color="#10b981" icon={FileSpreadsheet}
                             desc="One Excel sheet per crate. Detailed per-box breakdown."
-                            onGenerate={generatePacked}
+                            prog={progress.packed} url={urls.packed} onGenerate={generatePacked} onDownload={triggerDownload} filename={`${name}_Crate_Spreadsheets.xlsx`}
                         />
                         <div className="h-px bg-white/5 my-2" />
                         <ExportCard 
                             id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText}
                             desc="Combined PDF of all individual crate manifestos. (No photos)."
-                            onGenerate={() => generateAllManifestos(false)}
+                            prog={progress.allCrates} url={urls.allCrates} onGenerate={() => generateAllManifestos(false)} onDownload={triggerDownload} filename={`${name}_All_Crates_Manifesto.pdf`}
                         />
                         <ExportCard 
                             id="allCratesImages" title="Visual Manifesto" type="PDF" color="#f43f5e" icon={ImageIcon}
                             desc="High-fidelity visual verification with multi-row item photos."
-                            onGenerate={() => generateAllManifestos(true)}
+                            prog={progress.allCratesImages} url={urls.allCratesImages} onGenerate={() => generateAllManifestos(true)} onDownload={triggerDownload} filename={`${name}_Visual_Manifesto.pdf`}
                         />
                     </div>
                 </div>
@@ -1397,6 +1404,258 @@ const TruckExportModal: React.FC<{
                             <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                             <div className="w-1 h-1 rounded-full bg-emerald-500/40" />
                             <div className="w-1 h-1 rounded-full bg-emerald-500/20" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Ready Truck Wizard ──────────────────────────────────────────────────────
+const ReadyTruckWizard: React.FC<{
+    truckCrates: any[];
+    allCrates: any[];
+    allInventory: any[];
+    positions: any;
+    truckNumbering: Record<string, number>;
+    totalWeight: number;
+    panelStats: any;
+    floorPct: number;
+    fields: any;
+    onFieldChange: (f: any) => void;
+    onClose: () => void;
+    onConfirm: () => void;
+    isBusy?: boolean;
+}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, isBusy }) => {
+    const bookRate = useAtomValue(exchangeRateAtom);
+    const [progress, setProgress] = useState({ pdf: -1, allCrates: -1 });
+    const [urls, setUrls] = useState({ pdf: '', allCrates: '' });
+
+    const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
+        if (!crate || visited.has(crate.id)) return [];
+        visited.add(crate.id);
+        const { label: currentLabel } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+        const nextFloorLabel = floorLabel || currentLabel;
+        const nextBoxLabel = crate.type === 'cardboard' ? currentLabel : boxLabel;
+        let results: any[] = [];
+        if (crate.inventory_ids) {
+            crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+                const [id, qtyStr] = e.split(':');
+                const qty = parseInt(qtyStr || '1', 10) || 1;
+                const inv = allInventory.find((i: any) => String(i.row) === id);
+                if (inv) results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
+            });
+        }
+        const nested = allCrates.filter(c => c.parent_id === crate.id);
+        nested.forEach(n => { results = [...results, ...getItemsFromCrate(n, nextFloorLabel, nextBoxLabel, visited)]; });
+        return results;
+    };
+
+    const generatePdf = async () => {
+        const tid = toast.loading('Building trailer packing list...');
+        setProgress(p => ({ ...p, pdf: 5 }));
+        try {
+            const itemMap = new Map<string, { qty: number, inv: any, crates: Set<string> }>();
+            truckCrates.forEach(c => {
+                const { label } = getCrateDisplayName(c, allCrates, allInventory);
+                getItemsFromCrate(c).forEach((item: any) => {
+                    const itemContainer = item.packetIn || label;
+                    const existing = itemMap.get(item.id);
+                    if (existing) { existing.qty += item.qty; existing.crates.add(itemContainer); }
+                    else { itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([itemContainer]) }); }
+                });
+            });
+            const items = Array.from(itemMap.values());
+            const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
+                const inv = item.inv; const data = inv.data || {};
+                const norm = normalizeInventoryData(inv);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
+                const vP = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+                return {
+                    index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
+                    name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                    material: data.material || '', color: data.color || '',
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                    costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
+                    packetIn: Array.from(item.crates).join(', ')
+                };
+            });
+
+            const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
+            const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            
+            const floorCrates = truckCrates;
+            const nestedBoxes = allCrates.filter(c => c.type === 'cardboard' && c.parent_id && floorCrates.some(fc => fc.id === c.parent_id));
+            const allTruckCratesMeta = [...floorCrates, ...nestedBoxes].map(c => {
+                const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
+                const col = vendorList.length > 0 ? (vendors as any)[vendorList[0]]?.color || '#6b7280' : '#6b7280';
+                let parentLabel = '';
+                if (c.parent_id) {
+                    const parent = allCrates.find(p => p.id === c.parent_id);
+                    if (parent) parentLabel = getCrateDisplayName(parent, allCrates, allInventory, truckNumbering[parent.id]).label;
+                }
+                return {
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    weight: computeCrateWeight(c, allInventory, allCrates), color: col,
+                    l: c.length_cm, w: c.width_cm, h: c.height_cm || 100, parentLabel
+                };
+            });
+
+            const meta: ManifestoMeta = {
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
+                topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
+                allTruckCrates: allTruckCratesMeta,
+                truckStats: {
+                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                },
+                excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
+                sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
+                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders
+            };
+            const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
+            if (blob) { setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, pdf: 100 })); toast.success('Manifest ready', { id: tid }); }
+        } catch (err: any) { setProgress(p => ({ ...p, pdf: -1 })); toast.error(err.message || 'Failed', { id: tid }); }
+    };
+
+    const generateAllManifestos = async () => {
+        setProgress(p => ({ ...p, allCrates: 5 }));
+        try {
+            const rootCrates = truckCrates.filter(c => !c.parent_id && c.type !== 'cardboard');
+            const cratesData = [...rootCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0)).map(crate => {
+                const { label, subtitle, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+                const items = getItemsFromCrate(crate).map((item, idx) => {
+                    const inv = item.inv; const data = inv.data || {};
+                    const norm = normalizeInventoryData(inv);
+                    const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                    const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                    const vP = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+                    return {
+                        index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
+                        name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                        material: data.material || '', color: data.color || '',
+                        dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                        weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                        costMxn: 0, costUsd: 0, imageUrls: [], tagColor: (vendors as any)[vP]?.color || '#6b7280', dbItemCount: data.quantity || 1,
+                        packetIn: item.packetIn || '', boxLabel: item.boxLabel || ''
+                    };
+                });
+                const meta = {
+                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                    crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
+                    excludeImages: true, crateColor: (vendors as any)[vendorList[0]]?.color || '#6b7280',
+                    excludeHeaderQr: false, excludeHeaderWireframe: false, exportBruteWeight: crate.brute_weight_kg
+                };
+                return { items, meta };
+            });
+
+            const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
+            const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            const allTruckCratesMeta = truckCrates.map(c => {
+                const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
+                return {
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    weight: computeCrateWeight(c, allInventory, allCrates), color: (vendors as any)[vendorList[0]]?.color || '#6b7280',
+                    l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
+                };
+            });
+            const trailerMeta: ManifestoMeta = {
+                dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
+                topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView, allTruckCrates: allTruckCratesMeta,
+                truckStats: {
+                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                },
+                excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
+                sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
+                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders
+            };
+            const blob = await exportCombinedTruckManifesto({ items: [], meta: trailerMeta }, cratesData, pct => setProgress(p => ({ ...p, allCrates: 10 + Math.round(pct * 0.9) })), 'blob') as Blob;
+            if (blob) { setUrls(u => ({ ...u, allCrates: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, allCrates: 100 })); }
+        } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error('Combined PDF failed'); }
+    };
+
+    const triggerDownload = (url: string, filename: string) => { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
+
+    return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+            <div className="relative z-10 w-full max-w-4xl rounded-[2.5rem] border border-white/10 p-8 flex flex-col gap-6 shadow-2xl bg-[#0c0c12] max-h-[95vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner"><Truck size={24} className="text-white/60" /></div>
+                        <div>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Ready Truck Wizard</h3>
+                            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold">Final Dispatch & Manifest Protocol</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/10 transition-all"><X size={20} /></button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left side: Form */}
+                    <div className="flex flex-col gap-5">
+                        <div className="grid grid-cols-2 gap-4">
+                            {[
+                                { label: 'Seal Number', key: 'sealNumber', placeholder: 'S-0000000' },
+                                { label: 'Tractor Number', key: 'tractorNumber', placeholder: 'T-000' },
+                                { label: 'Truck Plates', key: 'truckPlates', placeholder: 'ABC-123-X' },
+                                { label: 'Trailer Number', key: 'trailerNumber', placeholder: 'TR-000' },
+                                { label: 'Trailer Plates', key: 'trailerPlates', placeholder: 'XYZ-789-Y' },
+                            ].map(f => (
+                                <div key={f.key} className="flex flex-col gap-1.5">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">{f.label}</label>
+                                    <input type="text" value={fields[f.key]} onChange={e => onFieldChange({ ...fields, [f.key]: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/30 transition-all" placeholder={f.placeholder} />
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between px-1">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Senders Information</label>
+                                <button onClick={() => onFieldChange({ ...fields, senders: [...fields.senders, ''] })} className="p-1 rounded-md bg-white/5 text-white/40 hover:text-white transition-all"><Plus size={14} /></button>
+                            </div>
+                            <div className="flex flex-col gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+                                {fields.senders.map((s: string, i: number) => (
+                                    <div key={i} className="flex gap-2">
+                                        <input type="text" value={s} onChange={e => { const n = [...fields.senders]; n[i] = e.target.value; onFieldChange({ ...fields, senders: n }); }}
+                                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder="Sender Name" />
+                                        <button onClick={() => { const n = fields.senders.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, senders: n.length?n:[''] }); }}
+                                            className="p-2 text-white/20 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">System Ready for Finalization</span>
+                            </div>
+                            <p className="text-[11px] text-white/30 leading-relaxed uppercase font-bold tracking-tight">Updating <span className="text-white/60">{truckCrates.length}</span> units to "In Transit" status. Positions will be baked into record descriptors.</p>
+                        </div>
+                    </div>
+
+                    {/* Right side: Exports & Action */}
+                    <div className="flex flex-col gap-4">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
+                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} />
+                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} />
+                        
+                        <div className="flex-1" />
+                        <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
+                            <button onClick={onConfirm} disabled={isBusy} className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 shadow-[0_20px_40px_rgba(255,255,255,0.1)]">
+                                {isBusy ? <div className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={18} /> Syncing...</div> : 'Confirm & Mark Ready'}
+                            </button>
+                            <button onClick={onClose} className="w-full py-3 rounded-2xl bg-white/5 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all border border-transparent hover:border-white/5">Cancel Protocol</button>
                         </div>
                     </div>
                 </div>
@@ -1579,7 +1838,17 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
+    const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
+
+    const [readyTruckFields, setReadyTruckFields] = useState({
+        sealNumber: '',
+        tractorNumber: '',
+        truckPlates: '',
+        trailerNumber: '',
+        trailerPlates: '',
+        senders: ['']
+    });
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -1807,9 +2076,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     };
 
     // ── Ready Truck — sync DB + PDF + XLSX ──
-    const handleReadyTruck = async () => {
+    const handleReadyTruck = async (f = readyTruckFields) => {
         setIsSaving(true);
-        const tid = toast.loading('Preparing manifest…');
+        const tid = toast.loading('Synchronizing shipment data…');
         try {
             // 1. Sync positions to DB
             if (!isDummyMode) {
@@ -1818,7 +2087,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const newStatus = pos ? 'In Transit' : (c.status === 'In Transit' ? 'Packed' : c.status);
                     const cleanDesc = (c.description || '').replace(/POS:\d+,\d+,\d+/, '').trim();
                     const finalDesc = pos ? `${cleanDesc} POS:${Math.round(pos.x)},${Math.round(pos.y)},${pos.r}`.trim() : cleanDesc;
-                    const { error } = await supabase.from('logistics').update({ status: newStatus, description: finalDesc, updated_at: new Date().toISOString() }).eq('id', c.id);
+                    const { error } = await supabase.from('logistics').update({ 
+                        status: newStatus, 
+                        description: finalDesc, 
+                        updated_at: new Date().toISOString() 
+                    }).eq('id', c.id);
                     if (error) throw error;
                     if (db) { const lDoc = await db.logistics.findOne({ selector: { id: c.id } }).exec(); if (lDoc) await lDoc.patch({ status: newStatus, description: finalDesc }); }
                 }
@@ -1828,80 +2101,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
             const ts = new Date().toLocaleString();
 
-            // 2. Build per-crate item data
-            const crateData = truckCrates.map(c => {
-                const pos = positions[c.id]!;
-                const { label } = getCrateDisplayName(c, allCrates, allInventory);
-                const items = getItemsFromCrate(c).map((item: any) => {
-                    const inv = item.inv;
-                    return { 
-                        sku: inv.data?.itemId || item.id, 
-                        desc: inv.data?.description || inv.data?.itemId || item.id, 
-                        qty: item.qty, 
-                        vendor: (inv.data?.vendor_id || '').split('-')[0] 
-                    };
-                }).filter(Boolean);
-                const w = computeCrateWeight(c, allInventory, allCrates);
-                return { id: c.id, label, pos: `${Math.round(pos.x)}cm, ${Math.round(pos.y)}cm`, rot: pos.r === 90 ? '90°' : '0°', w_cm: c.width_cm, l_cm: c.length_cm, h_cm: c.height_cm, weight: w, type: c.type, items };
-            });
-
-            // 3. Generate truck map SVG (800×120px, scale=0.5)
-            const svgScale = 0.5;
-            const svgW = Math.round(TRUCK_L_CM * BASE_SCALE * svgScale);
-            const svgH = Math.round(TRUCK_W_CM * BASE_SCALE * svgScale);
-            const crateRects = crateData.map(cd => {
-                const dimX = cd.rot === '90°' ? cd.w_cm : cd.l_cm;
-                const dimY = cd.rot === '90°' ? cd.l_cm : cd.w_cm;
-                const px = Math.round(parseFloat(cd.pos.split(',')[0].trim().replace('cm',''))) * BASE_SCALE * svgScale;
-                const py = Math.round(parseFloat(cd.pos.split(',')[1])) * BASE_SCALE * svgScale;
-                const pw = dimX * BASE_SCALE * svgScale;
-                const ph = dimY * BASE_SCALE * svgScale;
-                const vendor = (cd.items[0] as any)?.vendor || '';
-                const col = (vendors as any)[vendor]?.color || '#6b7280';
-                return `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="none" stroke="${col}" stroke-width="1.2"/><text x="${px+pw/2}" y="${py+ph/2+5}" text-anchor="middle" font-size="12" fill="black" font-weight="900" font-family="monospace">${cd.label}</text>`;
-            }).join('');
-            const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"><rect width="${svgW}" height="${svgH}" fill="#F3F4F6" stroke="#000" stroke-width="2" rx="4"/>${crateRects}</svg>`;
-
-            // 4. PDF (HTML print)
-            const allItemsFlat = crateData.flatMap(cd => (cd.items as any[]).map(it => ({ ...it, crate: cd.label })));
-            const crateRowsHTML = crateData.map(cd => `
-                <tr style="border-top:1px solid #333"><td colspan="5" style="padding:6px 4px 2px;font-weight:900;font-size:11px;letter-spacing:0.05em">${cd.label} &mdash; ${cd.type.toUpperCase()}</td></tr>
-                <tr style="color:#aaa;font-size:9px"><td style="padding:0 4px 4px">Pos: ${cd.pos} R:${cd.rot}</td><td>${cd.w_cm}W×${cd.l_cm}D×${cd.h_cm}H cm</td><td>${cd.weight} KG</td><td colspan="2">${(cd.items as any[]).length} items</td></tr>
-                ${(cd.items as any[]).map((it: any) => `<tr style="font-size:10px"><td style="padding:1px 4px 1px 16px">${it.sku}</td><td>${it.desc}</td><td>${it.vendor}</td><td style="text-align:right">${it.qty}</td><td></td></tr>`).join('')}
-            `).join('');
-            const itemTableHTML = allItemsFlat.map((it: any) => `<tr><td style="padding:2px 4px">${it.sku}</td><td>${it.desc}</td><td>${it.vendor}</td><td>${it.crate}</td><td style="text-align:right">${it.qty}</td></tr>`).join('');
-            const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Trucking Manifest ${manifestId}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:monospace;font-size:11px;color:#111;padding:24px}h1{font-size:18px;font-weight:900;letter-spacing:-0.03em;margin-bottom:4px}h2{font-size:13px;font-weight:900;margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.1em;border-bottom:1px solid #999;padding-bottom:4px}table{width:100%;border-collapse:collapse}tr:nth-child(even){background:#f9f9f9}.kv{display:flex;gap:32px;margin-bottom:12px;flex-wrap:wrap}.kv span{font-size:10px;color:#666;display:block}.kv strong{font-size:13px;font-weight:900}@media print{body{padding:16px}}</style></head><body>
-<h1>■ TRUCKING MANIFEST</h1><p style="color:#999;font-size:9px;margin-bottom:14px">${manifestId} &bull; Generated ${ts}</p>
-<div class="kv"><div><span>TRAILER</span><strong>53' &mdash; ${TRUCK_L_CM}cm × ${TRUCK_W_CM}cm</strong></div><div><span>UNITS LOADED</span><strong>${truckCrates.length} / ${allCrates.length}</strong></div><div><span>TOTAL PAYLOAD</span><strong>${Math.round(panelStats.payloadPct < 1 ? 0 : (panelStats.payloadPct / 100 * panelStats.MAX_KG))} KG</strong></div><div><span>FLOOR USED</span><strong>${floorPct}%</strong></div><div><span>STATUS</span><strong>${panelStats.status}</strong></div></div>
-<h2>Trailer Load Map</h2><div style="overflow:auto">${truckSvg}</div>
-<h2>Crates Packing List</h2><table><thead><tr style="background:#111;color:#fff"><th style="padding:4px;text-align:left">Crate</th><th>Dims</th><th>Weight</th><th>Items</th><th></th></tr></thead><tbody>${crateRowsHTML}</tbody></table>
-<h2>Unified Items Index</h2><table><thead><tr style="background:#111;color:#fff"><th style="padding:4px;text-align:left">SKU</th><th>Description</th><th>Vendor</th><th>Crate</th><th style="text-align:right">Qty</th></tr></thead><tbody>${itemTableHTML}</tbody></table>
-</body></html>`;
-            const pdfBlob = new Blob([htmlContent], { type: 'text/html' });
-            const pdfUrl = URL.createObjectURL(pdfBlob);
-            const pdfWin = window.open(pdfUrl, '_blank');
-            if (pdfWin) { pdfWin.onload = () => { pdfWin.print(); }; }
-
-            // 5. XLSX as CSV
-            const csvRows = [
-                ['TRUCKING MANIFEST', manifestId, ts],
-                [],
-                ['CRATE ID','TYPE','POS_X_CM','POS_Y_CM','ROTATION','WIDTH_CM','DEPTH_CM','HEIGHT_CM','WEIGHT_KG','ITEMS'],
-                ...crateData.map(cd => [cd.label, cd.type, cd.pos.split(',')[0], cd.pos.split(',')[1], cd.rot, cd.w_cm, cd.l_cm, cd.h_cm, cd.weight, (cd.items as any[]).length]),
-                [],
-                ['SKU','DESCRIPTION','VENDOR','CRATE','QTY'],
-                ...allItemsFlat.map((it: any) => [it.sku, it.desc, it.vendor, it.crate, it.qty]),
-            ];
-            const csv = csvRows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-            const csvBlob = new Blob([csv], { type: 'text/csv' });
-            const csvUrl = URL.createObjectURL(csvBlob);
-            const a = document.createElement('a'); a.href = csvUrl; a.download = `${manifestId}.csv`; a.click();
-            URL.revokeObjectURL(csvUrl);
-
-            toast.success(`Manifest ${manifestId} ready`, { id: tid, icon: '🚚', duration: 5000 });
-        } catch (err: any) { toast.error(err.message || 'Failed', { id: tid }); }
-        finally { setIsSaving(false); }
+            toast.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 5000 });
+            setShowReadyWizard(false);
+        } catch (err: any) { 
+            toast.error(err.message || 'Synchronization failed', { id: tid }); 
+        } finally { 
+            setIsSaving(false); 
+        }
     };
 
     // Listen to global Ready Truck trigger from MainHeader
@@ -2331,6 +2537,23 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     panelStats={panelStats}
                     floorPct={floorPct}
                     onClose={() => setShowExportModal(false)}
+                />
+            )}
+            {showReadyWizard && (
+                <ReadyTruckWizard
+                    truckCrates={truckCrates}
+                    allCrates={allCrates}
+                    allInventory={allInventory}
+                    positions={positions}
+                    truckNumbering={truckNumbering}
+                    totalWeight={totalWeight}
+                    panelStats={panelStats}
+                    floorPct={floorPct}
+                    fields={readyTruckFields}
+                    onFieldChange={setReadyTruckFields}
+                    onConfirm={() => handleReadyTruck()}
+                    onClose={() => setShowReadyWizard(false)}
+                    isBusy={isSaving}
                 />
             )}
             {nestingBoxId && (

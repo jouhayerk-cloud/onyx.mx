@@ -62,6 +62,13 @@ export interface ManifestoMeta {
         fPct: number;
         itemCount: number;
     };
+    // ── Final Shipping Info ──
+    sealNumber?: string;
+    tractorNumber?: string;
+    truckPlates?: string;
+    trailerNumber?: string;
+    trailerPlates?: string;
+    senders?: string[];
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -416,6 +423,38 @@ export async function exportCrateManifesto(
             doc.setFontSize(11); doc.setTextColor(...TEXT_HI); doc.text(ts.status.toUpperCase(), cx4, by + 6, { align: 'right' });
             
             sy += 30; // Compacted
+
+            // Final Shipping Details (Seal, Plates, etc.)
+            if (meta.sealNumber || meta.tractorNumber || meta.truckPlates || meta.trailerNumber || meta.trailerPlates) {
+                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_LO);
+                doc.text('SHIPMENT IDENTIFICATION & FINAL DATA', ML, sy);
+                sy += 4;
+                doc.setFillColor(255, 255, 255);
+                doc.rect(ML, sy, PW - ML - MR, 15, 'FD');
+                
+                let fx = ML + 4;
+                const fy = sy + 6;
+                const drawField = (label: string, val: string, w: number) => {
+                    doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.text(label, fx, fy);
+                    doc.setFontSize(9); doc.setTextColor(...TEXT_HI); doc.text(val || '—', fx, fy + 5);
+                    fx += w;
+                };
+                drawField('SEAL NUMBER', meta.sealNumber || '', 40);
+                drawField('TRACTOR #', meta.tractorNumber || '', 40);
+                drawField('TRUCK PLATES', meta.truckPlates || '', 40);
+                drawField('TRAILER #', meta.trailerNumber || '', 40);
+                drawField('TRAILER PLATES', meta.trailerPlates || '', 40);
+                
+                if (meta.senders && meta.senders.length > 0) {
+                    const senderText = meta.senders.filter(Boolean).join(', ');
+                    doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.text('SENDERS', fx, fy);
+                    doc.setFontSize(7); doc.setTextColor(...TEXT_HI); 
+                    const senderLines = doc.splitTextToSize(senderText.toUpperCase(), TABLE_END - fx - 2);
+                    doc.text(senderLines[0], fx, fy + 5);
+                }
+                
+                sy += 20;
+            }
         }
 
         // Trailer Maps

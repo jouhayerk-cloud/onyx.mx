@@ -81,6 +81,7 @@ import {
     truckShowSaveDraftAtom,
     truckShowOpenDraftAtom,
     truckShowExportModalAtom,
+    truckShowReadyWizardAtom,
     packingSelectedIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
@@ -512,6 +513,7 @@ const LogisticsBar: React.FC = () => {
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
+    const setShowReadyWizard = useSetAtom(truckShowReadyWizardAtom);
 
     const tabs = [
         { id: 'crates', label: 'CRATES', icon: 'package' },
@@ -592,7 +594,7 @@ const LogisticsBar: React.FC = () => {
                             </button>
                             {/* Ready Truck */}
                             <button
-                                onClick={() => setTruckReady(n => n + 1)}
+                                onClick={() => setShowReadyWizard(true)}
                                 disabled={truckBusy}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all disabled:opacity-40"
                                 style={{ background: 'var(--main-color)', color: '#000' }}
