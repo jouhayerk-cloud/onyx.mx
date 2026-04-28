@@ -793,6 +793,181 @@ function generateIsoViewThumbnail(
     return canvas.toDataURL('image/jpeg', 0.85);
 }
 
+function generateMasterThumbnail(
+    truckCrates: any[],
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>,
+    allCrates: any[],
+    allInventory: any[],
+    draftName?: string
+): string {
+    const W = 1920;
+    const H = 1080;
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    
+    // ── Background ──
+    ctx.fillStyle = '#0F111A'; // Deep midnight
+    ctx.fillRect(0, 0, W, H);
+    
+    // ── Layout Dividers ──
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+    ctx.moveTo(W/2, H/2); ctx.lineTo(W/2, H);
+    ctx.stroke();
+
+    const numbering = getTruckCrateNumbering(truckCrates, positions);
+    const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+
+    // ── 1. ISOMETRIC VIEW (Top Half) ──
+    const drawIso = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+        const scale = rect.w / (TRUCK_L_CM + TRUCK_W_CM) * 0.8;
+        const S = scale * 0.85;
+        const ox = rect.x + rect.w * 0.35;
+        const oy = rect.y + rect.h * 0.25;
+        
+        const iso = (x: number, y: number, z: number): [number, number] => [
+            ox + (x - y) * S * 0.866,
+            oy + (x + y) * S * 0.5 - z * S
+        ];
+
+        // Floor
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
+        ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
+        ctx.stroke();
+
+        const sortedIds = Object.keys(positions).sort((a, b) => (positions[a].x + positions[a].y) - (positions[b].x + positions[b].y));
+        for (const id of sortedIds) {
+            const crate = crateMap.get(id);
+            if (!crate || crate.parent_id) continue;
+            const p = positions[id];
+            const rotated = p.r === 90;
+            const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+            const dX = rotated ? w : l, dY = rotated ? l : w;
+            const zOff = p.z || 0;
+            const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+            
+            const pts = [
+                iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
+                iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+            ];
+
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = col;
+            ctx.fillStyle = `${col}15`; // Faint fill for wireframe look
+            
+            // Top face
+            ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
+            // Left face
+            ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[3]); ctx.lineTo(...pts[7]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
+            // Right face
+            ctx.beginPath(); ctx.moveTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[5]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('ISOMETRIC LOAD VIEW · WIREFRAME MATRIX', rect.x + 40, rect.y + rect.h - 40);
+    };
+
+    // ── 2. TOP VIEW (Bottom Left) ──
+    const drawTop = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+        const padding = 60;
+        const availW = rect.w - padding * 2;
+        const scale = availW / TRUCK_L_CM;
+        const availH = TRUCK_W_CM * scale;
+        const ox = rect.x + padding;
+        const oy = rect.y + (rect.h - availH) / 2;
+
+        // Trailer floor
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        ctx.fillRect(ox, oy, TRUCK_L_CM * scale, TRUCK_W_CM * scale);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.strokeRect(ox, oy, TRUCK_L_CM * scale, TRUCK_W_CM * scale);
+
+        for (const [id, pos] of Object.entries(positions)) {
+            const crate = crateMap.get(id) as any;
+            if (!crate || crate.parent_id) continue;
+            const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+            const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
+            const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
+            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+            
+            ctx.fillStyle = col;
+            ctx.fillRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
+        }
+        
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('TOP VIEW · DISTRIBUTION MAP', rect.x + 40, rect.y + rect.h - 40);
+    };
+
+    // ── 3. SIDE VIEW (Bottom Right) ──
+    const drawSide = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+        const padding = 60;
+        const TRUCK_H_CM = 279;
+        const availW = rect.w - padding * 2;
+        const scale = availW / TRUCK_L_CM;
+        const availH = TRUCK_H_CM * scale;
+        const ox = rect.x + padding;
+        const oy = rect.y + (rect.h - availH) / 2;
+
+        // Trailer shell
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        ctx.fillRect(ox, oy, TRUCK_L_CM * scale, TRUCK_H_CM * scale);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.strokeRect(ox, oy, TRUCK_L_CM * scale, TRUCK_H_CM * scale);
+
+        for (const [id, pos] of Object.entries(positions)) {
+            const crate = crateMap.get(id) as any;
+            if (!crate || crate.parent_id) continue;
+            const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
+            const h = (crate.height_cm || 100) * scale;
+            const zOff = (pos.z || 0) * scale;
+            const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
+            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+            
+            ctx.fillStyle = col;
+            ctx.fillRect(ox + pos.x * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(ox + pos.x * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
+        }
+
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('SIDE VIEW · STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
+    };
+
+    drawIso(ctx, {x:0, y:0, w:W, h:H/2});
+    drawTop(ctx, {x:0, y:H/2, w:W/2, h:H/2});
+    drawSide(ctx, {x:W/2, y:H/2, w:W/2, h:H/2});
+
+    // ── Master Branding ──
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '900 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`ONYX LOGISTICS · MASTER LOAD ARCHIVE · ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
+    
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} · v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
+
+    return canvas.toDataURL('image/jpeg', 0.90);
+}
+
 function getDrafts(): TruckDraft[] {
     try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || '[]'); } catch { return []; }
 }
@@ -2211,7 +2386,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     // ── Draft handlers ──
     const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
-        const thumbnail = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
+        const thumbnail = generateMasterThumbnail(truckCrates, positions, allCrates, allInventory, name);
         return { 
             id: `draft_${Date.now()}`, 
             name, 
