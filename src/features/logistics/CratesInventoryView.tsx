@@ -126,6 +126,7 @@ interface CrateRecord {
     width_cm: number;
     height_cm: number;
     weight_kg?: number;
+    brute_weight_kg?: number;
     contents_summary?: string;
     description?: string;
     inventory_ids?: string;
@@ -153,9 +154,8 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
     if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
     
     const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
-    const mm = d.getMonth() + 1;
-    const yy = String(d.getFullYear()).slice(-2);
-    const datePrefix = `${mm}${yy}`;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const datePrefix = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
     
     const vSet = new Set<string>();
     crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
@@ -236,48 +236,68 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeploye
     const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
 
-    // Volume Fill Calculation
-    const fillPct = useMemo(() => {
-        if (!crate.inventory_ids) return 0;
-        const internalVol = getCrateInternalVolume(crate);
-        if (internalVol <= 0) return 0;
-
-        let usedVol = 0;
-        const map = new Map<string, number>();
-        crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
-            const [id, qty] = entry.split(':');
-            map.set(id, qty ? parseInt(qty) : -1);
-        });
-
-        map.forEach((qty, id) => {
-            const inv = allInventory.find(i => String(i.row) === id);
-            if (!inv) return;
-            usedVol += getItemPaddedVolume(inv.data, qty === -1 ? 1 : qty);
-        });
-
-        return Math.min(100, (usedVol / internalVol) * 100);
-    }, [crate.inventory_ids, allInventory, crate.width_cm, crate.length_cm, crate.height_cm]);
-
-    // Top-level hooks for CrateCard
-    const packedItems = useMemo(() => {
-        if (!crate.inventory_ids) return [];
-        const result: any[] = [];
-        crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
-            const [id, qty] = entry.split(':');
-            const inv = allInventory.find(i => String(i.row) === id);
-            if (inv) {
-                const norm = normalizeInventoryData(inv.data);
-                const urls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
-                result.push({
-                    id, 
-                    norm,
-                    qty: qty ? parseInt(qty) : 1,
-                    mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null))
+    const { getItemsRecursive, getUsedVolRecursive } = useMemo(() => {
+        const getItems = (c: any, parentLabel?: string, visited = new Set<string>()): any[] => {
+            if (!c || visited.has(c.id)) return [];
+            visited.add(c.id);
+            
+            let res: any[] = [];
+            if (c.inventory_ids) {
+                c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+                    const [id, qtyStr] = entry.split(':');
+                    const qty = parseInt(qtyStr || '1', 10) || 1;
+                    const inv = allInventory.find(i => String(i.row) === id);
+                    if (inv) {
+                        const norm = normalizeInventoryData(inv.data);
+                        const urls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                        res.push({
+                            id, qty, norm, packetIn: parentLabel,
+                            mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null))
+                        });
+                    }
                 });
             }
-        });
-        return result;
-    }, [crate.inventory_ids, allInventory]);
+            const nested = allCrates.filter(nu => nu.parent_id === c.id);
+            nested.forEach(n => {
+                const { label } = getCrateDisplayName(n, allCrates, allInventory);
+                res = [...res, ...getItems(n, label, visited)];
+            });
+            return res;
+        };
+
+        const getVol = (c: any, visited = new Set<string>()): number => {
+            if (!c || visited.has(c.id)) return 0;
+            visited.add(c.id);
+
+            let v = 0;
+            if (c.inventory_ids) {
+                c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+                    const [id, qtyStr] = entry.split(':');
+                    const qty = parseInt(qtyStr || '1', 10) || 1;
+                    const inv = allInventory.find(i => String(i.row) === id);
+                    if (inv) v += getItemPaddedVolume(inv.data, qty);
+                });
+            }
+            const nested = allCrates.filter(nu => nu.parent_id === c.id);
+            nested.forEach(n => {
+                v += (n.width_cm || 0) * (n.length_cm || 0) * (n.height_cm || 0);
+                v += getVol(n, visited); // Also count items inside nested units? 
+                // Actually, getItemPaddedVolume for the unit itself handles the unit's space.
+                // If we nest BOX B in CRATE A, the volume taken in A is B's external dims.
+            });
+            return v;
+        };
+
+        return { getItemsRecursive: getItems, getUsedVolRecursive: getVol };
+    }, [allCrates, allInventory]);
+
+    const fillPct = useMemo(() => {
+        const internalVol = (crate.width_cm || 1) * (crate.length_cm || 1) * (crate.height_cm || 1);
+        if (internalVol <= 0) return 0;
+        return Math.min(100, (getUsedVolRecursive(crate) / internalVol) * 100);
+    }, [crate, getUsedVolRecursive]);
+
+    const packedItems = useMemo(() => getItemsRecursive(crate), [crate, getItemsRecursive]);
 
     const handleStartExport = async (cfg: any) => {
         if (packedItems.length === 0) return toast.error('Crate is empty');
@@ -419,13 +439,41 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeploye
                             {/* Repositioned Description / Summary */}
                             <div className="mt-4 hidden lg:block max-w-[280px]">
                                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-1.5">Contents / Notes</p>
-                                {crate.contents_summary ? (
-                                    <p className="text-[11px] text-white/80 font-medium italic line-clamp-2 leading-relaxed">{crate.contents_summary}</p>
-                                ) : crate.description ? (
-                                    <p className="text-[11px] text-white/60 line-clamp-2 font-mono italic leading-relaxed">{crate.description}</p>
-                                ) : (
-                                    <p className="text-[11px] text-white/20 italic">No notes provided</p>
-                                )}
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="number" 
+                                            placeholder="BRUTE KG" 
+                                            defaultValue={crate.brute_weight_kg || ''}
+                                            onBlur={async (e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (isNaN(val)) return;
+                                                const tid = toast.loading('Saving weight...');
+                                                try {
+                                                    const payload = { brute_weight_kg: val, updated_at: new Date().toISOString() };
+                                                    await supabase.from('logistics').update(payload).eq('id', crate.id);
+                                                    const db = (window as any).onyxDb;
+                                                    if (db) {
+                                                        const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                                                        if (lDoc) await lDoc.patch(payload);
+                                                    }
+                                                    toast.success('Weight recorded', { id: tid });
+                                                } catch (err) {
+                                                    toast.error('Failed to save', { id: tid });
+                                                }
+                                            }}
+                                            className="w-20 bg-white/5 border border-white/10 px-2 py-1 text-[10px] font-mono text-(--main-color) focus:outline-none focus:border-(--main-color)/50 transition"
+                                        />
+                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">BRUTE WEIGHT</span>
+                                    </div>
+                                    {crate.contents_summary ? (
+                                        <p className="text-[11px] text-white/80 font-medium italic line-clamp-2 leading-relaxed">{crate.contents_summary}</p>
+                                    ) : crate.description ? (
+                                        <p className="text-[11px] text-white/60 line-clamp-2 font-mono italic leading-relaxed">{crate.description}</p>
+                                    ) : (
+                                        <p className="text-[11px] text-white/20 italic">No notes provided</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -476,6 +524,7 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeploye
                                 status={exportStatus}
                                 moduleName={crate.type === 'pallet' ? 'Pallet' : (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) ? 'Box' : 'Crate'}
                                 showBruteWeight={true}
+                                initialBruteWeight={crate.brute_weight_kg ? String(crate.brute_weight_kg) : ''}
                             />
                         </div>
                     )}

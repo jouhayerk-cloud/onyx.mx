@@ -1,32 +1,63 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
 import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
-import { calculateCodesAndPrices, normalizeInventoryData } from '../../lib/utils';
+import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import ExcelJS from 'exceljs';
-import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
+import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto } from '../../lib/crateManifesto';
 
 const TRUCK_L_CM = 1615;
 const TRUCK_W_CM = 244;
 const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
 
-function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[]) {
-    if (!crate.inventory_ids || crate.status === 'Empty')
-        return { label: crate.id.slice(0, 8).toUpperCase(), vendorList: [] as string[] };
-    const vSet = new Set<string>();
-    crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
-        const [id] = e.split(':');
-        const inv = allInventory.find((i: any) => String(i.row) === id);
-        if (inv?.data) { const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; if (p) vSet.add(p.toUpperCase()); }
-    });
-    const vendorList = Array.from(vSet).sort();
-    const vendorsStr = vendorList.join('');
+function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[], truckSeq?: number) {
     const d = crate.updated_at ? new Date(crate.updated_at) : new Date();
-    const datePrefix = `${d.getMonth() + 1}${String(d.getFullYear()).slice(-2)}`;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const shortMonthYear = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
+    
+    const vSet = new Set<string>();
+    
+    // 1. Try to get from crate.vendors (comma-separated string from DB)
+    if (crate.vendors) {
+        crate.vendors.split(',').forEach((v: string) => {
+            const trimmed = v.trim().toUpperCase();
+            if (trimmed) vSet.add(trimmed);
+        });
+    }
+
+    // 2. Fallback to inventory_ids if vSet is still empty
+    if (vSet.size === 0 && crate.inventory_ids) {
+        crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+            const [id] = e.split(':');
+            const inv = allInventory.find((i: any) => String(i.row) === id);
+            if (inv?.data) { 
+                const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; 
+                if (p) vSet.add(p.toUpperCase()); 
+            }
+        });
+    }
+
+    // 3. Last fallback: crate.vendor_id
+    if (vSet.size === 0 && crate.vendor_id) {
+        vSet.add(crate.vendor_id.toUpperCase());
+    }
+
+    const vendorList = Array.from(vSet).sort();
+
+    if (truckSeq != null) {
+        const vSuffix = vendorList.length > 0 ? `-${vendorList.join('')}` : '';
+        return { 
+            label: `${shortMonthYear}${vSuffix}-${String(truckSeq).padStart(2, '0')}`, 
+            subtitle: crate.id.slice(0, 8).toUpperCase(), 
+            vendorList 
+        };
+    }
+    const vendorsStr = vendorList.join('');
+    
     const matching = allCrates.filter(c => {
         if (c.status === 'Empty' || !c.inventory_ids) return false;
         const s = new Set<string>();
@@ -37,23 +68,61 @@ function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[]) 
         });
         return Array.from(s).sort().join('') === vendorsStr;
     }).sort((a, b) => new Date(a.updated_at || a.date || 0).getTime() - new Date(b.updated_at || b.date || 0).getTime());
+    
     const seq = matching.findIndex(c => c.id === crate.id);
-    return { label: `${datePrefix}${vendorsStr}${seq >= 0 ? seq + 1 : 1}`, vendorList };
+    const sequenceStr = String(seq >= 0 ? seq + 1 : 1).padStart(2, '0');
+    const oldLabel = `${shortMonthYear}-${vendorsStr}${sequenceStr}`;
+
+    return { label: oldLabel, vendorList };
+}
+
+function getTruckCrateNumbering(truckCrates: any[], positions: Record<string, any>) {
+    const sorted = [...truckCrates].sort((a, b) => {
+        const pa = positions[a.id];
+        const pb = positions[b.id];
+        if (!pa || !pb) return 0;
+        // Front to Rear: X desc
+        if (Math.abs(pb.x - pa.x) > 5) return pb.x - pa.x;
+        // Left to Right: Y asc
+        if (Math.abs(pa.y - pb.y) > 5) return pa.y - pb.y;
+        // Bottom to Top: Z asc
+        return (pa.z || 0) - (pb.z || 0);
+    });
+    const map: Record<string, number> = {};
+    sorted.forEach((c, i) => { map[c.id] = i + 1; });
+    return map;
 }
 
 // ─── Weight: sum item.weight_kg × qty from inventory_ids ─────────────────────
-function computeCrateWeight(crate: any, allInventory: any[]): number {
+function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], visited = new Set<string>()): number {
+    if (!crate || visited.has(crate.id)) return 0;
+    visited.add(crate.id);
+
+    let total = 0;
+    let hasData = false;
+    
+    // 1. Direct items
     if (crate.inventory_ids) {
-        let total = 0; let hasData = false;
         crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
             const [id, qtyStr] = e.split(':');
             const qty = parseInt(qtyStr || '1', 10) || 1;
             const inv = allInventory.find((i: any) => String(i.row) === id);
             const w = inv?.data?.weight_kg ?? inv?.data?.weightKg;
-            if (w != null && !isNaN(Number(w))) { total += Number(w) * qty; hasData = true; }
+            if (w != null && !isNaN(Number(w))) {
+                total += Number(w) * qty;
+                hasData = true;
+            }
         });
-        if (hasData) return Math.round(total * 10) / 10;
     }
+
+    // 2. Nested units
+    const nested = allCrates.filter(c => c.parent_id === crate.id);
+    nested.forEach(n => {
+        total += computeCrateWeight(n, allInventory, allCrates, visited);
+        hasData = true;
+    });
+
+    if (hasData) return Math.round(total * 10) / 10;
     return crate.weight_kg || Math.round((crate.width_cm * crate.length_cm * (crate.height_cm || crate.width_cm)) / 5000);
 }
 
@@ -118,11 +187,11 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
 };
 
 // ─── Data-Dense Dock Card (larger, high-contrast) ────────────────────────────
-const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; onLoad: () => void }> = ({ crate, allCrates, allInventory, onLoad }) => {
+const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; onLoad: () => void; onNest?: () => void }> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
     const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
-    const w = computeCrateWeight(crate, allInventory);
+    const w = computeCrateWeight(crate, allInventory, allCrates);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     return (
         <button
@@ -145,6 +214,14 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
                         {typeLabel}
                     </span>
                     <span className="text-[8px] font-black uppercase tracking-widest text-white/30">ID: {crate.id.slice(0,6)}</span>
+                    {onNest && crate.type === 'cardboard' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onNest(); }}
+                            className="mt-1 px-2 py-1 rounded bg-emerald-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-1"
+                        >
+                            <Box size={10} /> Nest
+                        </button>
+                    )}
                 </div>
             </div>
             {/* Label */}
@@ -190,11 +267,12 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
 const TruckCrate: React.FC<{
     crate: any; allCrates: any[]; allInventory: any[];
     pos: { x: number; y: number; r: number };
+    truckSeq?: number;
     isSelected: boolean; zoom: number;
     onSelect: () => void; onUpdatePos: (x: number, y: number) => void;
-    onRotate: () => void; onUnload: () => void;
-}> = ({ crate, allCrates, allInventory, pos, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload }) => {
-    const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
+    onRotate: () => void; onUnload: () => void; onNest?: () => void;
+}> = ({ crate, allCrates, allInventory, pos, truckSeq, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload, onNest }) => {
+    const { label, subtitle, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory, truckSeq), [crate, allCrates, allInventory, truckSeq]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
     const isDraggingRef = useRef(false);
 
@@ -233,6 +311,11 @@ const TruckCrate: React.FC<{
                     <button onClick={e => { e.stopPropagation(); onUnload(); }} className="text-rose-400/60 hover:text-rose-400 transition-colors" title="Unload">
                         <Trash2 size={16} />
                     </button>
+                    {onNest && crate.type === 'cardboard' && (
+                        <button onClick={e => { e.stopPropagation(); onNest(); }} className="px-3 py-1 rounded bg-emerald-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-1 shadow-lg" title="Nest into Crate/Pallet">
+                            <Box size={12} /> NEST
+                        </button>
+                    )}
                 </div>
             )}
             <div
@@ -246,14 +329,22 @@ const TruckCrate: React.FC<{
             >
                 <Box size={iconSize} strokeWidth={0.6} color="rgba(0,0,0,0.4)" className="pointer-events-none" />
                 {pxX > 30 && (
-                    <span className="font-black uppercase text-center px-1 mt-0.5 pointer-events-none truncate w-full text-center text-black/90"
-                        style={{ fontSize: textScale * 1.5 }}>
-                        {label}
-                    </span>
+                    <div className="flex flex-col items-center pointer-events-none w-full">
+                        <span className="font-black uppercase text-center px-1 mt-0.5 truncate w-full text-black/90"
+                            style={{ fontSize: textScale * 1.5 }}>
+                            {label}
+                        </span>
+                        {subtitle && (
+                            <span className="font-black opacity-60 uppercase text-center px-1 -mt-0.5 truncate w-full text-black/80"
+                                style={{ fontSize: textScale * 0.9 }}>
+                                {subtitle}
+                            </span>
+                        )}
+                    </div>
                 )}
                 {pxX > 50 && pxY > 20 && (
                     <span className="font-black pointer-events-none text-black/60" style={{ fontSize: Math.max(9, textScale) }}>
-                        {computeCrateWeight(crate, allInventory)} KG
+                        {computeCrateWeight(crate, allInventory, allCrates)} KG
                     </span>
                 )}
             </div>
@@ -266,6 +357,7 @@ const TRUCK_H_CM = 279;
 const SideView: React.FC<{
     truckCrates: any[];
     positions: Record<string, {x:number;y:number;r:number;z?:number}>;
+    truckNumbering: Record<string, number>;
     allCrates: any[]; allInventory: any[];
     zoom: number;
     selectedId: string | null;
@@ -273,7 +365,7 @@ const SideView: React.FC<{
     onUpdateXZ: (id: string, x: number, z: number) => void;
     onStack: (id: string) => void;
     onUnload: (id: string) => void;
-}> = ({ truckCrates, positions, allCrates, allInventory, zoom, selectedId, onSelect, onUpdateXZ, onStack, onUnload }) => {
+}> = ({ truckCrates, positions, truckNumbering, allCrates, allInventory, zoom, selectedId, onSelect, onUpdateXZ, onStack, onUnload }) => {
     const SVG_W = TRUCK_L_CM * BASE_SCALE;
     const SVG_H = TRUCK_H_CM * BASE_SCALE;
     const svgRef = useRef<SVGSVGElement>(null);
@@ -291,10 +383,10 @@ const SideView: React.FC<{
         const pw = lenX * BASE_SCALE;
         const ph = h * BASE_SCALE;
         const py = SVG_H - (zOff + h) * BASE_SCALE;
-        const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+        const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#a1a1aa') : '#a1a1aa';
         const isSelected = c.id === selectedId;
-        return { id: c.id, px, py, pw, ph, label, col, h, lenX, zOff, isSelected, crate: c };
+        return { id: c.id, px, py, pw, ph, label, subtitle, col, h, lenX, zOff, isSelected, crate: c };
     }).filter(Boolean) as any[], [truckCrates, positions, allCrates, allInventory, selectedId]);
 
     // SVG mouse drag
@@ -354,7 +446,10 @@ const SideView: React.FC<{
                     return sel ? (
                         <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
                             <span className="text-[10px] font-black text-white/80 uppercase tracking-wide flex-1">
-                                {getCrateDisplayName(sel, allCrates, allInventory).label}
+                                {(() => {
+                                    const { label, subtitle } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
+                                    return `${label}${subtitle ? ` (${subtitle})` : ''}`;
+                                })()}
                                 <span className="text-white/30 ml-2">X:{Math.round(pos.x)}cm  Z:{Math.round(pos.z||0)}cm</span>
                             </span>
                             <button onClick={() => onStack(selectedId)}
@@ -421,10 +516,15 @@ const SideView: React.FC<{
                                     fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
                                 {/* Label — dark text over solid fill for contrast */}
                                 {cr.pw > 18 && cr.ph > 16 && (
-                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 4}
-                                        textAnchor="middle" fontSize={Math.min(13, cr.pw / 3.5)} fill="rgba(0,0,0,0.85)"
+                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 3}
+                                        textAnchor="middle" fontSize={Math.min(10, cr.pw / 4.2)} fill="rgba(0,0,0,0.85)"
                                         fontFamily="monospace" fontWeight="900" opacity={0.95}>
                                         {cr.label}
+                                        {cr.subtitle && (
+                                            <tspan x={cr.px + cr.pw / 2} dy={12} fontSize={Math.min(9, cr.pw / 5)} opacity={0.6} fontWeight="normal">
+                                                {cr.subtitle}
+                                            </tspan>
+                                        )}
                                     </text>
                                 )}
                                 {cr.ph > 28 && (
@@ -463,6 +563,7 @@ interface TruckDraft {
     savedAt: number;
     crateCount: number;
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+    numbering?: Record<string, number>;
     thumbnail?: string; // base64 JPEG data URL
 }
 interface TruckloadFile {
@@ -472,6 +573,7 @@ interface TruckloadFile {
     savedAt: number;
     crateCount: number;
     positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+    numbering?: Record<string, number>;
     thumbnail?: string;
 }
 
@@ -498,17 +600,19 @@ function generateTrailerThumbnail(
     ctx.fillStyle = 'rgba(0,0,0,0.06)';
     ctx.fillRect(0, 0, 6, H);
     
-    // Crates
+    // Pre-calculate numbering for performance
+    const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+
+    // Crates Wireframes
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
         
-        const rotated = pos.r === 90;
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
         
-        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         ctx.strokeStyle = primaryColor;
         ctx.lineWidth = 4;
@@ -522,25 +626,24 @@ function generateTrailerThumbnail(
     ctx.font = 'bold 36px monospace';
     ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
     
-    // Labels & Weights (Larger)
+    // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
-        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
-        const w = computeCrateWeight(crate, allInventory);
+        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+        const w = computeCrateWeight(crate, allInventory, allCrates);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
-        const rotated = pos.r === 90;
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
         
         ctx.fillStyle = col;
         ctx.textAlign = 'center';
-        if (lenX > 100) {
-            ctx.font = 'bold 36px monospace';
-            ctx.fillText(label, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 12);
-            ctx.font = 'bold 24px monospace';
-            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 42);
+        if (lenX > 60) {
+            ctx.font = 'bold 28px monospace';
+            ctx.fillText(label, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 10);
+            ctx.font = 'bold 18px monospace';
+            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 32);
         }
     }
     
@@ -570,18 +673,20 @@ function generateSideViewThumbnail(
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(0, H - 4, W, 4);
 
-    // Crates
+    // Pre-calculate numbering for performance
+    const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+
+    // Crates Wireframes
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
         
-        const rotated = pos.r === 90;
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const h = (crate.height_cm || 100) * scale;
         const zOff = (pos.z || 0) * scale;
         
-        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
         ctx.strokeStyle = primaryColor;
@@ -596,12 +701,12 @@ function generateSideViewThumbnail(
     ctx.font = 'bold 36px monospace';
     ctx.fillText('ONYX · TRUCKLOAD SIDEVIEW', 40, H - 40);
 
-    // Labels & Weights (Larger)
+    // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate) continue;
-        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
-        const w = computeCrateWeight(crate, allInventory);
+        const { label, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+        const w = computeCrateWeight(crate, allInventory, allCrates);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
@@ -610,11 +715,11 @@ function generateSideViewThumbnail(
         
         ctx.fillStyle = col;
         ctx.textAlign = 'center';
-        if (lenX > 100) {
-            ctx.font = 'bold 36px monospace';
-            ctx.fillText(label, pos.x * scale + lenX / 2, H - zOff - h / 2 + 12);
-            ctx.font = 'bold 24px monospace';
-            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, H - zOff - h / 2 + 42);
+        if (lenX > 60) {
+            ctx.font = 'bold 28px monospace';
+            ctx.fillText(label, pos.x * scale + lenX / 2, H - zOff - h / 2 + 10);
+            ctx.font = 'bold 18px monospace';
+            ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, H - zOff - h / 2 + 32);
         }
     }
     
@@ -658,7 +763,10 @@ function generateIsoViewThumbnail(
     // Sort crates for correct depth rendering (X+Y)
     const sortedIds = Object.keys(positions).sort((a, b) => (positions[a].x + positions[a].y) - (positions[b].x + positions[b].y));
 
+    // Pre-calculate numbering for performance
+    const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+
     for (const id of sortedIds) {
         const crate = crateMap.get(id);
         if (!crate) continue;
@@ -668,7 +776,7 @@ function generateIsoViewThumbnail(
         const dX = rotated ? w : l, dY = rotated ? l : w;
         const zOff = p.z || 0;
         
-        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory);
+        const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
         
         const pts = [
@@ -694,12 +802,15 @@ function generateIsoViewThumbnail(
         ctx.stroke();
 
         // Labels in Iso View
-        const { label } = getCrateDisplayName(crate, allCrates, allInventory);
+        const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+        const wKg = computeCrateWeight(crate, allInventory, allCrates);
         const pMid = iso(p.x + dX/2, p.y + dY/2, zOff + h/2);
         ctx.fillStyle = col;
-        ctx.font = 'bold 24px monospace';
+        ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(label, pMid[0], pMid[1]);
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`${wKg} KG`, pMid[0], pMid[1] + 18);
     }
     
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -720,6 +831,56 @@ function saveDraft(draft: TruckDraft) {
 function deleteDraft(id: string) {
     localStorage.setItem(DRAFTS_KEY, JSON.stringify(getDrafts().filter(d => d.id !== id)));
 }
+
+// ─── Nesting Target Selector ──────────────────────────────────────────────────
+const NestingTargetModal: React.FC<{
+    boxId: string;
+    allCrates: any[];
+    onSelect: (targetId: string) => void;
+    onClose: () => void;
+}> = ({ boxId, allCrates, onSelect, onClose }) => {
+    const targets = allCrates.filter(c => c.id !== boxId && c.type !== 'cardboard' && c.status !== 'Empty');
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+            <div className="w-full max-w-lg bg-zinc-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-black text-white">Nest Box into Container</h3>
+                        <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">Select a target crate or pallet for box {boxId.slice(0,6)}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-white/30 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                    {targets.length === 0 ? (
+                        <div className="py-12 text-center text-white/20 italic">No available containers found</div>
+                    ) : targets.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => onSelect(t.id)}
+                            className="w-full p-4 flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group text-left"
+                        >
+                            <div className="w-12 h-12 rounded-lg bg-zinc-800 flex items-center justify-center border border-white/5 shrink-0 group-hover:border-emerald-500/20">
+                                <Box size={24} className="text-white/20 group-hover:text-emerald-500/50 transition-colors" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-[11px] font-black uppercase text-white/30 tracking-[0.2em]">{t.type}</div>
+                                <div className="text-base font-black text-white group-hover:text-emerald-400 transition-colors">{t.id}</div>
+                                <div className="text-[10px] text-white/40">{t.width_cm}x{t.length_cm}x{t.height_cm} CM</div>
+                            </div>
+                            <div className="text-emerald-400 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                <ChevronRight size={20} />
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 function exportDraftFile(draft: TruckDraft) {
     const payload: TruckloadFile = {
         version: TRUCKLOAD_VERSION,
@@ -727,7 +888,8 @@ function exportDraftFile(draft: TruckDraft) {
         name: draft.name,
         savedAt: draft.savedAt,
         crateCount: draft.crateCount,
-        positions: draft.positions
+        positions: draft.positions,
+        numbering: draft.numbering
     };
     const jsonString = JSON.stringify(payload, null, 2);
     let blob: Blob;
@@ -788,7 +950,7 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
             // Pure JSON text fallback
             jsonText = new TextDecoder().decode(bytes);
         }
-
+        
         const data = JSON.parse(jsonText) as TruckloadFile;
         if (data.type !== 'onyx-truckload' || !data.positions) return null;
         return {
@@ -797,6 +959,7 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
             savedAt: data.savedAt || Date.now(),
             crateCount: data.crateCount || Object.keys(data.positions).length,
             positions: data.positions,
+            numbering: data.numbering,
             thumbnail: data.thumbnail || thumbnailBase64
         };
     } catch (e) { console.error('Draft import failed', e); return null; }
@@ -808,24 +971,44 @@ const TruckExportModal: React.FC<{
     allCrates: any[];
     allInventory: any[];
     positions: any;
+    truckNumbering: Record<string, number>;
     totalWeight: number;
     panelStats: any;
     floorPct: number;
     onClose: () => void;
-}> = ({ truckCrates, allCrates, allInventory, positions, totalWeight, panelStats, floorPct, onClose }) => {
-    const [name, setName] = useState(`Truck ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' })}`);
+}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, onClose }) => {
+    const [name, setName] = useState(`TRK ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' }).toUpperCase()}`);
     const bookRate = useAtomValue(exchangeRateAtom);
-    const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1 });
-    const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '' });
+    const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1, allCrates: -1, allCratesImages: -1 });
+    const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '', allCrates: '', allCratesImages: '' });
+    const [includePhotos, setIncludePhotos] = useState(true);
 
-    const getItemsFromCrate = (crate: any) => {
-        if (!crate.inventory_ids) return [];
-        return crate.inventory_ids.split(',').filter(Boolean).map((e: string) => {
-            const [id, qtyStr] = e.split(':');
-            const qty = parseInt(qtyStr || '1', 10) || 1;
-            const inv = allInventory.find((i: any) => String(i.row) === id);
-            return { id, qty, inv };
-        }).filter((item: any) => item.inv);
+    const getItemsFromCrate = (crate: any, parentLabel?: string, visited = new Set<string>()): any[] => {
+        if (!crate || visited.has(crate.id)) return [];
+        visited.add(crate.id);
+
+        let results: any[] = [];
+        
+        // 1. Direct items
+        if (crate.inventory_ids) {
+            crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+                const [id, qtyStr] = e.split(':');
+                const qty = parseInt(qtyStr || '1', 10) || 1;
+                const inv = allInventory.find((i: any) => String(i.row) === id);
+                if (inv) {
+                    results.push({ id, qty, inv, packetIn: parentLabel });
+                }
+            });
+        }
+        
+        // 2. Nested units (recursive)
+        const nested = allCrates.filter(c => c.parent_id === crate.id);
+        nested.forEach(n => {
+            const { label } = getCrateDisplayName(n, allCrates, allInventory, truckNumbering[n.id]);
+            results = [...results, ...getItemsFromCrate(n, label, visited)];
+        });
+        
+        return results;
     };
 
     const buildConsolidatedItems = () => {
@@ -833,12 +1016,13 @@ const TruckExportModal: React.FC<{
         truckCrates.forEach(c => {
             const { label } = getCrateDisplayName(c, allCrates, allInventory);
             getItemsFromCrate(c).forEach((item: any) => {
+                const itemContainer = item.packetIn || label;
                 const existing = itemMap.get(item.id);
                 if (existing) {
                     existing.qty += item.qty;
-                    existing.crates.add(label);
+                    existing.crates.add(itemContainer);
                 } else {
-                    itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([label]) });
+                    itemMap.set(item.id, { qty: item.qty, inv: item.inv, crates: new Set([itemContainer]) });
                 }
             });
         });
@@ -874,71 +1058,159 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, manifesto: 95 }));
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        setUrls(u => ({ ...u, manifesto: URL.createObjectURL(blob) }));
-        setProgress(p => ({ ...p, manifesto: 100 }));
+        if (blob) {
+            setUrls(u => ({ ...u, manifesto: URL.createObjectURL(blob) }));
+            setProgress(p => ({ ...p, manifesto: 100 }));
+        } else {
+            setProgress(p => ({ ...p, manifesto: -1 }));
+            toast.error('Failed to generate Excel file');
+        }
     };
 
     const generatePdf = async () => {
+        const tid = toast.loading('Generating consolidated trailer manifest...');
         setProgress(p => ({ ...p, pdf: 5 }));
-        const items = buildConsolidatedItems();
-        const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
-            const inv = item.inv;
-            const data = inv.data || {};
-            const norm = normalizeInventoryData(inv);
-            const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-            // USE calculated workbook barcode
-            const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
-            const vendorPrefix = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
-            const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#6b7280';
-            return {
-                index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
-                name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
-                material: data.material || data.Material || '', color: data.color || data.Color || '',
-                dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
-                weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
-                costMxn: 0, costUsd: 0,
-                imageUrls: [], // REMOVED PHOTO AS REQUESTED
-                tagColor: vendorCol, dbItemCount: data.quantity || 1,
-                packetIn: Array.from(item.crates).join(', ')
+        try {
+            const items = buildConsolidatedItems();
+            const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
+                const inv = item.inv;
+                const data = inv.data || {};
+                const norm = normalizeInventoryData(inv);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const tag = calculated.bookBarcode || data.book_barcode || data.bookBarcode || data.itemId || String(item.inv.row);
+                const vendorPrefix = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+                const vendorCol = vendors[vendorPrefix as keyof typeof vendors]?.color || '#6b7280';
+                return {
+                    index: idx, vendorPrefix, qty: item.qty, itemId: tag, rowId: String(item.inv.row),
+                    name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                    material: data.material || data.Material || '', color: data.color || data.Color || '',
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                    costMxn: 0, costUsd: 0,
+                    imageUrls: [], 
+                    tagColor: vendorCol, dbItemCount: data.quantity || 1,
+                    packetIn: Array.from(item.crates).join(', ')
+                };
+            });
+
+            const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
+            const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
+            
+            const allTruckCratesMeta = truckCrates.map(c => {
+                const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
+                const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
+                return {
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    weight: computeCrateWeight(c, allInventory, allCrates), color: col,
+                    l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
+                };
+            });
+
+            const meta = {
+                dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+                crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
+                topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
+                allTruckCrates: allTruckCratesMeta,
+                truckStats: {
+                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                },
+                excludeImages: true,
+                excludeHeaderQr: true,
+                excludeHeaderWireframe: true
             };
+            const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
+            if (blob) {
+                setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, pdf: 100 }));
+                toast.success('Manifest ready', { id: tid });
+            } else {
+                throw new Error('PDF Generation failed (empty blob)');
+            }
+        } catch (err: any) {
+            console.error('[TruckExport] PDF Error:', err);
+            setProgress(p => ({ ...p, pdf: -1 }));
+            toast.error(err.message || 'PDF Generation failed', { id: tid });
+        }
+    };
+
+    const generateAllManifestos = async (withImages: boolean) => {
+        const key = withImages ? 'allCratesImages' : 'allCrates';
+        setProgress(p => ({ ...p, [key]: 5 }));
+        
+        const cratesData = [...truckCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0)).map(crate => {
+            const { label, subtitle, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+            const items = getItemsFromCrate(crate).map((item, idx) => {
+                const inv = item.inv; const data = inv.data || {};
+                const norm = normalizeInventoryData(inv);
+                const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                const vP = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+                
+                let photos: string[] = [];
+                if (withImages) {
+                    const rawPhotos = data.generatedPngUrl ? [data.generatedPngUrl] : (data.mediaUrls ? (Array.isArray(data.mediaUrls) ? data.mediaUrls : String(data.mediaUrls).split(',')) : []);
+                    photos = rawPhotos.map((url: string) => getCleanImageUrl(url)).filter(Boolean) as string[];
+                }
+
+                return {
+                    index: idx, vendorPrefix: vP, qty: item.qty, itemId: tag, rowId: String(inv.row),
+                    name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                    material: data.material || '', color: data.color || '',
+                    dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
+                    weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                    costMxn: 0, costUsd: 0,
+                    imageUrls: photos,
+                    tagColor: vendors[vP as keyof typeof vendors]?.color || '#6b7280', dbItemCount: data.quantity || 1
+                };
+            });
+            const meta = {
+                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
+                excludeImages: !withImages, crateColor: vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280',
+                excludeHeaderQr: false, excludeHeaderWireframe: false,
+                exportBruteWeight: crate.brute_weight_kg
+            };
+            return { items, meta };
         });
 
-        // ── Enhanced Meta with Trailer Views ──
+        const trailerManifestoItems: ManifestoItem[] = [];
         const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
         const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
         const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
         
         const allTruckCratesMeta = truckCrates.map(c => {
-            const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
+            const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
             return {
                 id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
-                weight: computeCrateWeight(c, allInventory), color: col,
+                weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                 l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
             };
         });
 
-        const meta = {
-            dynamicId: name || 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
+        const trailerMeta = {
+            dynamicId: 'Trailer Load', crateId: `TRK-${Date.now()}`, crateDims: `${TRUCK_L_CM}×${TRUCK_W_CM} cm`,
             crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
             topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
             allTruckCrates: allTruckCratesMeta,
             truckStats: {
                 totalWeight,
-                payloadPct: panelStats.payloadPct,
-                floorPct: floorPct,
-                volPct: panelStats.volPct,
-                status: panelStats.status,
-                rPct: panelStats.rPct,
-                mPct: panelStats.mPct,
-                fPct: panelStats.fPct,
-                itemCount: truckCrates.length
+                payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
             },
-            excludeImages: true // FORCE REMOVAL OF PHOTOS
+            excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true
         };
-        const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), true) as Blob;
-        setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
-        setProgress(p => ({ ...p, pdf: 100 }));
+
+        const blob = await exportCombinedTruckManifesto({ items: trailerManifestoItems, meta: trailerMeta }, cratesData, pct => setProgress(p => ({ ...p, [key]: 10 + Math.round(pct * 0.9) })), 'blob') as any as Blob;
+        if (blob) {
+            setUrls(u => ({ ...u, [key]: URL.createObjectURL(blob) }));
+            setProgress(p => ({ ...p, [key]: 100 }));
+        } else {
+            setProgress(p => ({ ...p, [key]: -1 }));
+            toast.error('Failed to generate combined PDF');
+        }
     };
 
     const generatePacked = async () => {
@@ -972,8 +1244,13 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, packed: 95 }));
         const buffer = await wb.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        setUrls(u => ({ ...u, packed: URL.createObjectURL(blob) }));
-        setProgress(p => ({ ...p, packed: 100 }));
+        if (blob) {
+            setUrls(u => ({ ...u, packed: URL.createObjectURL(blob) }));
+            setProgress(p => ({ ...p, packed: 100 }));
+        } else {
+            setProgress(p => ({ ...p, packed: -1 }));
+            toast.error('Failed to generate Excel files');
+        }
     };
 
     const triggerDownload = (url: string, filename: string) => {
@@ -983,92 +1260,136 @@ const TruckExportModal: React.FC<{
     const isDone = (k: keyof typeof progress) => progress[k] === 100;
     const isWorking = (k: keyof typeof progress) => progress[k] >= 0 && progress[k] < 100;
 
+    const ExportCard = ({ id, title, type, desc, icon: Icon, color, onGenerate }: any) => {
+        const prog = progress[id as keyof typeof progress];
+        const url = urls[id as keyof typeof urls];
+        const isDone = prog === 100;
+
+        return (
+            <div className="flex items-center gap-5 p-5 rounded-3xl border border-white/10 bg-white/[0.03] group hover:bg-white/[0.06] transition-all duration-500">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: `${color}15`, color: color }}>
+                    <Icon size={28} strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-white uppercase tracking-tight">{title}</span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[8px] font-black text-white/40 uppercase">{type}</span>
+                    </div>
+                    <span className="block text-[10px] text-white/30 uppercase font-bold tracking-wider mt-1 leading-relaxed">{desc}</span>
+                    {prog >= 0 && (
+                        <div className="mt-4 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full transition-all duration-300" style={{ width: `${prog}%`, backgroundColor: color }} />
+                        </div>
+                    )}
+                </div>
+                <div className="shrink-0">
+                    {isDone ? (
+                        <button 
+                            onClick={() => triggerDownload(url, `${name}_${title.replace(/\s+/g, '_')}.${type.toLowerCase()}`)}
+                            className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            style={{ background: color, color: '#fff' }}
+                        >
+                            Download
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={onGenerate}
+                            disabled={prog >= 0}
+                            className="px-5 py-2.5 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
+                        >
+                            {prog >= 0 ? 'Building...' : 'Generate'}
+                        </button>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-6 shadow-2xl"
-                style={{ background: 'rgba(12,12,18,0.95)' }}
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-2xl" />
+            <div className="relative z-10 w-full max-w-2xl mx-4 rounded-[3.5rem] border border-white/10 p-12 flex flex-col gap-10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-white/[0.01] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-700"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="text-xl font-black uppercase tracking-tighter text-white">Exportation Wizard</h3>
-                        <p className="text-xs text-white/40 mt-1">Generate manifestos and packing lists</p>
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
+                                <LayoutGrid size={24} className="text-white/60" />
+                            </div>
+                            <h3 className="text-3xl font-black uppercase tracking-tighter text-white">Exportation Wizard</h3>
+                        </div>
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-bold ml-16">Advanced Logistics Protocol v2.5</p>
                     </div>
-                    <button onClick={onClose} className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
-                        <X size={18} />
+                    <button onClick={onClose} className="p-3 rounded-2xl text-white/30 hover:text-white hover:bg-white/10 transition-all cursor-pointer border border-transparent hover:border-white/10">
+                        <X size={24} />
                     </button>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/50">Truck Name</label>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
-                    />
+                <div className="flex flex-col gap-8">
+                    {/* Shipment Info */}
+                    <div className="flex flex-col gap-3 max-w-sm">
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Manifest Identity</label>
+                        <input 
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-base font-bold text-white focus:outline-none focus:border-white/20 transition-all placeholder:text-white/10"
+                            placeholder="TRK-ID-000"
+                        />
+                    </div>
+
+                    {/* Options List */}
+                    <div className="flex flex-col gap-4">
+                        <ExportCard 
+                            id="manifesto" title="Consolidated Manifesto" type="XLSX" color="#3b82f6" icon={FileSpreadsheet}
+                            desc="Global inventory list with all items combined. Best for accounting."
+                            onGenerate={generateManifesto}
+                        />
+                        <ExportCard 
+                            id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText}
+                            desc="Summary of trailer load with isometric and top views."
+                            onGenerate={generatePdf}
+                        />
+                        <ExportCard 
+                            id="packed" title="Crate Spreadsheets" type="XLSX" color="#10b981" icon={FileSpreadsheet}
+                            desc="One Excel sheet per crate. Detailed per-box breakdown."
+                            onGenerate={generatePacked}
+                        />
+                        <div className="h-px bg-white/5 my-2" />
+                        <ExportCard 
+                            id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText}
+                            desc="Combined PDF of all individual crate manifestos. (No photos)."
+                            onGenerate={() => generateAllManifestos(false)}
+                        />
+                        <ExportCard 
+                            id="allCratesImages" title="Visual Manifesto" type="PDF" color="#f43f5e" icon={ImageIcon}
+                            desc="High-fidelity visual verification with multi-row item photos."
+                            onGenerate={() => generateAllManifestos(true)}
+                        />
+                    </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                    {/* Manifesto.xlsx */}
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
-                        <div className="flex-1">
-                            <span className="block text-sm font-bold text-white">manifesto.xlsx</span>
-                            <span className="block text-[10px] text-white/40">Consolidated list of all items</span>
-                            {progress.manifesto >= 0 && (
-                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${progress.manifesto}%` }} />
-                                </div>
-                            )}
+                {/* Status Footer */}
+                <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Load Payload</span>
+                            <span className="text-xl font-black text-white italic tracking-tighter">{totalWeight.toLocaleString()} <span className="text-xs text-white/40 not-italic">KG</span></span>
                         </div>
-                        {isDone('manifesto') ? (
-                            <button onClick={() => triggerDownload(urls.manifesto, `${name}_Manifesto.xlsx`)} className="px-3 py-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
-                        ) : (
-                            <button onClick={generateManifesto} disabled={isWorking('manifesto')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
-                                {isWorking('manifesto') ? 'Generating...' : 'Generate'}
-                            </button>
-                        )}
+                        <div className="w-px h-10 bg-white/10" />
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units</span>
+                            <span className="text-xl font-black text-white italic tracking-tighter">{truckCrates.length} <span className="text-xs text-white/40 not-italic">Units</span></span>
+                        </div>
                     </div>
-
-                    {/* Packing List.pdf */}
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
-                        <div className="flex-1">
-                            <span className="block text-sm font-bold text-white">Packing List.pdf</span>
-                            <span className="block text-[10px] text-white/40">Multi-page printable manifesto</span>
-                            {progress.pdf >= 0 && (
-                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${progress.pdf}%` }} />
-                                </div>
-                            )}
+                    <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">Protocol Stable</span>
+                        <div className="flex gap-1 mt-1">
+                            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                            <div className="w-1 h-1 rounded-full bg-emerald-500/40" />
+                            <div className="w-1 h-1 rounded-full bg-emerald-500/20" />
                         </div>
-                        {isDone('pdf') ? (
-                            <button onClick={() => triggerDownload(urls.pdf, `${name}_Packing_List.pdf`)} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
-                        ) : (
-                            <button onClick={generatePdf} disabled={isWorking('pdf')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
-                                {isWorking('pdf') ? 'Generating...' : 'Generate'}
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Packed.xlsx */}
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5">
-                        <div className="flex-1">
-                            <span className="block text-sm font-bold text-white">Packed.xlsx</span>
-                            <span className="block text-[10px] text-white/40">One spreadsheet per crate</span>
-                            {progress.packed >= 0 && (
-                                <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress.packed}%` }} />
-                                </div>
-                            )}
-                        </div>
-                        {isDone('packed') ? (
-                            <button onClick={() => triggerDownload(urls.packed, `${name}_Packed.xlsx`)} className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">Download</button>
-                        ) : (
-                            <button onClick={generatePacked} disabled={isWorking('packed')} className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors cursor-pointer">
-                                {isWorking('packed') ? 'Generating...' : 'Generate'}
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -1241,7 +1562,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const setCratesVersion = useSetAtom(cratesVersionAtom);
-
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number }>>({});
@@ -1251,6 +1571,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
+    const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
 
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
@@ -1266,7 +1587,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const allCrates = useMemo(() => docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status)), [docs]);
     const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id]), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
-    const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory), 0), [truckCrates, allInventory]);
+    const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
+    const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory, allCrates), 0), [truckCrates, allInventory, allCrates]);
     const floorPct = useMemo(() => Math.min(100, Math.round(truckCrates.reduce((s, c) => s + c.width_cm * c.length_cm, 0) / (TRUCK_W_CM * TRUCK_L_CM) * 100)), [truckCrates]);
 
     // ── Memoized panel stats — independent of zoom ──
@@ -1360,6 +1682,39 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     };
     const handleRotate = (id: string) => setPositions(p => ({ ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } }));
     const handleWheel = useCallback((e: React.WheelEvent) => { e.preventDefault(); setZoom(z => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001))); }, []);
+    
+    const handleNest = async (boxId: string, targetId: string) => {
+        const box = allCrates.find(c => c.id === boxId);
+        const target = allCrates.find(c => c.id === targetId);
+        if (!box || !target) return;
+
+        const tid = toast.loading(`Nesting ${boxId.slice(0,6)} into ${targetId.slice(0,6)}...`);
+        try {
+            if (!isDummyMode) {
+                // Update box to point to target via parent_id
+                const { error: err } = await supabase.from('logistics').update({
+                    parent_id: targetId,
+                    status: 'Packed',
+                    description: (box.description || '').replace(/POS:\d+,\d+,\d+/, '').trim(),
+                    updated_at: new Date().toISOString()
+                }).eq('id', box.id);
+                if (err) throw err;
+            }
+
+            if (db) {
+                const bDoc = await db.logistics.findOne({ selector: { id: box.id } }).exec();
+                if (bDoc) await bDoc.patch({ parent_id: targetId, status: 'Packed' });
+            }
+
+            setPositions(p => { const n = { ...p }; delete n[boxId]; return n; });
+            setNestingBoxId(null);
+            toast.success('Successfully nested', { id: tid });
+            onRefresh();
+            setCratesVersion(v => v + 1);
+        } catch (err: any) {
+            toast.error(err.message || 'Nesting failed', { id: tid });
+        }
+    };
 
     // ── Ready Truck — sync DB + PDF + XLSX ──
     const handleReadyTruck = async () => {
@@ -1392,7 +1747,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const inv = allInventory.find((i: any) => String(i.row) === id);
                     return inv ? { sku: inv.data?.itemId || id, desc: inv.data?.description || inv.data?.itemId || id, qty: qty || 1, vendor: (inv.data?.vendor_id || '').split('-')[0] } : null;
                 }).filter(Boolean);
-                const w = computeCrateWeight(c, allInventory);
+                const w = computeCrateWeight(c, allInventory, allCrates);
                 return { id: c.id, label, pos: `${Math.round(pos.x)}cm, ${Math.round(pos.y)}cm`, rot: pos.r === 90 ? '90°' : '0°', w_cm: c.width_cm, l_cm: c.length_cm, h_cm: c.height_cm, weight: w, type: c.type, items };
             });
 
@@ -1468,8 +1823,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     // ── Draft handlers ──
     const buildDraft = useCallback((name: string): TruckDraft => {
         const thumbnail = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
-        return { id: `draft_${Date.now()}`, name, savedAt: Date.now(), crateCount: truckCrates.length, positions: { ...positions }, thumbnail: thumbnail || undefined };
-    }, [positions, truckCrates, allCrates, allInventory]);
+        return { 
+            id: `draft_${Date.now()}`, 
+            name, 
+            savedAt: Date.now(), 
+            crateCount: truckCrates.length, 
+            positions: { ...positions }, 
+            numbering: { ...truckNumbering },
+            thumbnail: thumbnail || undefined 
+        };
+    }, [positions, truckCrates, allCrates, allInventory, truckNumbering]);
 
     const handleSaveDraft = useCallback((name: string) => {
         saveDraft(buildDraft(name));
@@ -1484,6 +1847,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const handleLoadDraft = useCallback((draft: TruckDraft) => {
         setPositions(draft.positions as any);
+        // numbering will be re-calculated automatically based on positions,
+        // but if we wanted to force a manual sequence, we'd store it in state.
         toast.success(`Loaded draft "${draft.name}"`);
     }, []);
 
@@ -1547,7 +1912,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         {dockCrates.map(c => {
                             const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
                             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
-                            const w = computeCrateWeight(c, allInventory);
+                            const w = computeCrateWeight(c, allInventory, allCrates);
                             const typeLabel = c.type === 'pallet' ? 'PLT' : c.type === 'cardboard' ? 'BOX' : 'CRT';
                             return (
                                 <button key={c.id} onClick={() => handleLoad(c.id)}
@@ -1561,6 +1926,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     <span className="text-[11px] font-black uppercase tracking-tight" style={{ color: col }}>{label}</span>
                                     <span className="text-[8px] font-black text-white/30">{typeLabel}</span>
                                     <span className="text-[8px] text-white/20 font-black">{w}KG</span>
+                                    {c.type === 'cardboard' && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setNestingBoxId(c.id); }}
+                                            className="ml-1 p-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-colors"
+                                            title="Nest into container"
+                                        >
+                                            <Box size={10} />
+                                        </button>
+                                    )}
                                 </button>
                             );
                         })}
@@ -1574,7 +1948,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[7px] font-black uppercase tracking-widest text-white/20">staged</span>
                         </div>
                         {dockCrates.map(c => (
-                            <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} onLoad={() => handleLoad(c.id)} />
+                            <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
+                                onLoad={() => handleLoad(c.id)} 
+                                onNest={() => setNestingBoxId(c.id)}
+                            />
                         ))}
                     </div>
                 )}
@@ -1753,7 +2130,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 >
                     {viewMode === 'side' ? (
                         <SideView
-                            truckCrates={truckCrates} positions={positions}
+                            truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
                             allCrates={allCrates} allInventory={allInventory}
                             zoom={zoom}
                             selectedId={selectedId}
@@ -1792,11 +2169,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                     if (!pos) return null;
                                     return (
                                         <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
-                                            pos={pos} isSelected={selectedId === c.id} zoom={zoom}
+                                            pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
                                             onSelect={() => setSelectedId(c.id)}
                                             onUpdatePos={(x, y) => handleUpdatePos(c.id, x, y)}
                                             onRotate={() => handleRotate(c.id)}
-                                            onUnload={() => handleUnload(c.id)} />
+                                            onUnload={() => handleUnload(c.id)}
+                                            onNest={() => setNestingBoxId(c.id)} />
                                     );
                                 })}
                             </div>
@@ -1834,10 +2212,19 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     allCrates={allCrates}
                     allInventory={allInventory}
                     positions={positions}
+                    truckNumbering={truckNumbering}
                     totalWeight={totalWeight}
                     panelStats={panelStats}
                     floorPct={floorPct}
                     onClose={() => setShowExportModal(false)}
+                />
+            )}
+            {nestingBoxId && (
+                <NestingTargetModal
+                    boxId={nestingBoxId}
+                    allCrates={allCrates}
+                    onSelect={(targetId) => handleNest(nestingBoxId, targetId)}
+                    onClose={() => setNestingBoxId(null)}
                 />
             )}
         </div>

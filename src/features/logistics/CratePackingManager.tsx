@@ -56,7 +56,8 @@ interface CrateRecord {
     status: 'Empty' | 'Packed' | 'Partial';
     length_cm?: number;
     width_cm?: number;
-    height_cm?: number;
+    weight_kg?: number;
+    brute_weight_kg?: number;
     inventory_ids?: string;
     contents_summary?: string;
     description?: string;
@@ -167,9 +168,8 @@ function getDynamicCrateIdComponents(crate: CrateRecord, allCrates: CrateRecord[
     if (!crate.inventory_ids || crate.status === 'Empty') return { date: '', vendors: [], sequence: crate.id.slice(0, 8).toUpperCase() };
     
     const d = crate.updated_at ? new Date(crate.updated_at) : new Date();
-    const mm = d.getMonth() + 1;
-    const yy = String(d.getFullYear()).slice(-2);
-    const datePrefix = `${mm}${yy}`;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const datePrefix = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
     
     const vSet = new Set<string>();
     crate.inventory_ids.split(',').filter(Boolean).forEach(entry => {
@@ -227,7 +227,8 @@ const ActiveCrateHUD: React.FC<{
     onDelete: () => void;
     isSaving: boolean;
     itemCount: number;
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount }) => {
+    crates: CrateRecord[];
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount, crates }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -274,11 +275,32 @@ const ActiveCrateHUD: React.FC<{
                         <WireframeCrate w={crate.width_cm} l={crate.length_cm} h={crate.height_cm} type={crate.type} size={50} vibrant />
                     </div>
                     <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tighter truncate">
-                                {fmtDims(crate)}
-                                <span className="text-[10px] text-white/20 uppercase tracking-widest font-black ml-2 font-mono">cm</span>
-                            </h2>
+                        <div className="flex items-center gap-3 mt-1.5 overflow-x-auto no-scrollbar">
+                            {(() => {
+                                const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, crates, allInventory);
+                                if (!date && !sequence) return (
+                                    <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-widest">{crate.id.slice(0, 8).toUpperCase()}</span>
+                                );
+                                return (
+                                    <div className="flex items-center">
+                                        {date && (
+                                            <div className="bg-white/10 px-2 py-1">
+                                                <span className="text-[14px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
+                                            </div>
+                                        )}
+                                        {vList.map((v) => (
+                                            <div key={v} className="px-2 py-1 bg-(--main-color)">
+                                                <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                                            </div>
+                                        ))}
+                                        {sequence && (
+                                            <div className="px-3 py-1 bg-white/5">
+                                                <span className="text-[14px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             <span className="hidden sm:inline-block px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] font-black uppercase tracking-[0.2em] text-white/40">
                                 {crate.type}
                             </span>
@@ -304,7 +326,6 @@ const ActiveCrateHUD: React.FC<{
                         </div>
                     </div>
                 </div>
-
                 {/* Center: Inventory Meta (Added to HUD) */}
                 <div className="hidden lg:flex items-center gap-12">
                     <div className="flex flex-col items-center gap-1">
@@ -340,6 +361,37 @@ const ActiveCrateHUD: React.FC<{
 
                 {/* Right: Metrics */}
                 <div className="flex items-center gap-8 sm:gap-16 shrink-0">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1.5">Brute Weight</span>
+                        <div className="flex items-center gap-1.5">
+                            <input 
+                                type="number"
+                                step="0.1"
+                                defaultValue={crate.brute_weight_kg || ''}
+                                placeholder="0.0"
+                                onBlur={async (e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (isNaN(val)) return;
+                                    const tid = toast.loading('Syncing weight...');
+                                    try {
+                                        const payload = { brute_weight_kg: val, updated_at: new Date().toISOString() };
+                                        await supabase.from('logistics').update(payload).eq('id', crate.id);
+                                        const db = (window as any).onyxDb;
+                                        if (db) {
+                                            const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
+                                            if (lDoc) await lDoc.patch(payload);
+                                        }
+                                        toast.success('Recorded', { id: tid });
+                                    } catch (err) {
+                                        toast.error('Sync failed', { id: tid });
+                                    }
+                                }}
+                                className="w-14 bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono text-(--main-color) focus:outline-none focus:border-(--main-color)/50 transition text-right"
+                            />
+                            <span className="text-[9px] font-black text-white/20">KG</span>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col items-end">
                         <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-0.5">Volumetric Fill</span>
                         <div className="flex items-baseline gap-1">
@@ -397,8 +449,7 @@ const CrateSelectCard: React.FC<{
                         {dynamicParts.vendors.slice(0, 3).map(v => (
                             <div 
                                 key={v}
-                                style={{ backgroundColor: (vendors as any)[v]?.color || 'var(--main-color)' }}
-                                className="px-2 py-0.5 rounded-none text-black text-[8px] font-black uppercase tracking-widest"
+                                className="px-2 py-0.5 rounded-none bg-(--main-color) text-black text-[8px] font-black uppercase tracking-widest"
                             >
                                 {v}
                             </div>
@@ -456,7 +507,6 @@ const PackingInventoryCard: React.FC<{
     const d = item.data;
     const norm = normalizeInventoryData(d);
     const vendorPrefix = String(norm.itemId || d.vendor_id || '').split('-')[0] || '';
-    const vendorColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#555';
     const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
 
     const imageUrl = getCleanImageUrl(norm.generatedPngUrl || (norm.mediaUrls ? String(norm.mediaUrls).split(',')[0] : null));
@@ -1093,6 +1143,7 @@ export const CratePackingManager: React.FC = () => {
                     onDelete={handleDeleteCrate}
                     isSaving={isSaving}
                     itemCount={filteredInventory.length}
+                    crates={crates}
                 />
             )}
 
