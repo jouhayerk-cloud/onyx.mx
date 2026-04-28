@@ -23,6 +23,7 @@ export interface ManifestoItem {
     tagColor: string;
     dbItemCount: number;      // Total quantity in DB for this item
     packetIn?: string;        // NEW: Labels of crates/pallets containing this item
+    boxLabel?: string;        // NEW: Specific cardboard box containing this item
 }
 
 export interface ManifestoMeta {
@@ -48,7 +49,7 @@ export interface ManifestoMeta {
     isoViewImg?: string;      // NEW: Base64 isometric 3D view of trailer
     allTruckCrates?: Array<{
         id: string; label: string; type: string; dims: string; weight: number; color: string;
-        l: number; w: number; h: number;
+        l: number; w: number; h: number; parentLabel?: string;
     }>;
     truckStats?: {
         totalWeight: number;
@@ -147,6 +148,13 @@ function hexToRgb(hex: string): [number, number, number] {
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+function getContrastColor(hex: string): [number, number, number] {
+    const [r, g, b] = hexToRgb(hex);
+    // Relative luminance formula (approximate)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.65 ? [30, 30, 30] : [255, 255, 255];
+}
+
 function drawWireframeIcon(doc: jsPDF, x: number, y: number, sizePx: number, cw: number, cl: number, ch: number, colorHex: string, type: string) {
     try {
         const visH = type.toLowerCase().includes('pallet') ? 15 : ch;
@@ -187,20 +195,18 @@ export async function exportCrateManifesto(
     returnType: 'blob' | 'doc' | 'download' = 'download',
     existingDoc?: jsPDF
 ): Promise<Blob | jsPDF | void> {
-    // Group by vendor and sort by descending item count within groups
-    const vendorGroups = items.reduce((acc, item) => {
+    const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
+    
+    // Unified Sorting: All items together, sorted by vendor then quantity
+    const itemsByVendor = items.reduce((acc, item) => {
         const v = item.vendorPrefix || 'OTHER';
         if (!acc[v]) acc[v] = [];
         acc[v].push(item);
         return acc;
     }, {} as Record<string, ManifestoItem[]>);
 
-    const sortedVendors = Object.keys(vendorGroups).sort();
-    const sortedItems: ManifestoItem[] = [];
-    
-    sortedVendors.forEach(v => {
-        const itemsInGroup = [...vendorGroups[v]].sort((a, b) => b.qty - a.qty);
-        sortedItems.push(...itemsInGroup);
+    Object.keys(itemsByVendor).sort().forEach(v => {
+        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
     });
 
     const isMultiCrate = meta.crateType === 'Trailer Load';
@@ -229,13 +235,13 @@ export async function exportCrateManifesto(
     const TEXT_MID: [number, number, number] = [70, 70, 70];
     const TEXT_LO : [number, number, number] = [150, 150, 150];
 
-    // ─── Column definitions (Adjusted for Portrait Width) ───────────────────
+    // ─── Column definitions (Optimized for Readability & Distribution) ───────
     const TABLE_END = PW - MR;
     const COL_QR   = { x: ML,       w: 18  }; 
     const COL_IMG  = { x: COL_QR.x + COL_QR.w, w: meta.excludeImages ? 0 : 25 };
-    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 45  }; 
-    const COL_NAME = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 160 : 135 }; 
-    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 45  }; 
+    const COL_TAG  = { x: COL_IMG.x + COL_IMG.w,  w: 40  }; 
+    const COL_NAME = { x: COL_TAG.x + COL_TAG.w, w: meta.excludeImages ? 130 : 105 }; 
+    const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 70  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
     const HDR_H = meta.excludeHeader ? 0 : 45;
@@ -330,8 +336,8 @@ export async function exportCrateManifesto(
             doc.setFont('helvetica', 'normal');
             doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, 10, { align: 'right' });
 
-            const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase().includes('crate')).length;
-            const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase().includes('pallet')).length;
+            const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
+            const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
 
             doc.setTextColor(...TEXT_HI);
             doc.setFontSize(10);
@@ -421,11 +427,12 @@ export async function exportCrateManifesto(
             }
             doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
             doc.text('TRAILER TOP VIEW MAP (PLAN)', ML, sy);
-            sy += 3;
-            const imgW = PW - ML - MR;
+            sy += 4;
+            const imgW = (PW - ML - MR) * 0.72; // Reduced size
             const imgH = imgW / (1615/244);
-            doc.addImage(meta.topViewImg, 'JPEG', ML, sy, imgW, imgH);
-            sy += imgH + 8;
+            const ox = ML + (PW - ML - MR - imgW) / 2; // Centered
+            doc.addImage(meta.topViewImg, 'JPEG', ox, sy, imgW, imgH);
+            sy += imgH + 10;
         }
 
         if (meta.sideViewImg) {
@@ -436,11 +443,12 @@ export async function exportCrateManifesto(
             }
             doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
             doc.text('TRAILER SIDE VIEW MAP (LATERAL STACKING)', ML, sy);
-            sy += 3;
-            const imgW = PW - ML - MR;
+            sy += 4;
+            const imgW = (PW - ML - MR) * 0.72; // Reduced size
             const imgH = imgW / (1615/279);
-            doc.addImage(meta.sideViewImg, 'JPEG', ML, sy, imgW, imgH);
-            sy += imgH + 8;
+            const ox = ML + (PW - ML - MR - imgW) / 2; // Centered
+            doc.addImage(meta.sideViewImg, 'JPEG', ox, sy, imgW, imgH);
+            sy += imgH + 12;
         }
 
         if (meta.isoViewImg) {
@@ -479,6 +487,8 @@ export async function exportCrateManifesto(
             let drawnOnThisPage = 0;
             for (let i = 0; i < meta.allTruckCrates.length; i++) {
                 const c = meta.allTruckCrates[i];
+                if (c.type === 'cardboard') continue; // Do not show boxes in the summary grid
+
                 const col = drawnOnThisPage % gridCols;
                 const row = Math.floor(drawnOnThisPage / gridCols);
                 const bx = ML + col * (boxW + 4);
@@ -512,6 +522,105 @@ export async function exportCrateManifesto(
                 
                 drawnOnThisPage++;
             }
+
+            // ─── Cardboard Boxes Summary (Separate Page) ───────────────────────
+            const boxes = (meta.allTruckCrates || []).filter(c => c.type === 'cardboard');
+            if (boxes.length > 0) {
+                doc.addPage([PW, PH], 'landscape');
+                await drawPageChrome(false);
+                sy = MT + 8;
+
+                doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+                doc.text('PACKED CARDBOARD BOXES SUMMARY', ML, sy);
+                sy += 6;
+                
+                let boxDrawn = 0;
+                for (let i = 0; i < boxes.length; i++) {
+                    const c = boxes[i];
+                    const col = boxDrawn % gridCols;
+                    const row = Math.floor(boxDrawn / gridCols);
+                    const bx = ML + col * (boxW + 4);
+                    let by = sy + row * (boxH + 4);
+                    
+                    if (by + boxH > PH - MB) {
+                        doc.addPage([PW, PH], 'landscape');
+                        await drawPageChrome(false);
+                        sy = MT + 8;
+                        boxDrawn = 0;
+                        by = sy;
+                    }
+
+                    doc.setFillColor(252, 252, 252);
+                    doc.rect(bx, by, boxW, boxH, 'F');
+                    doc.setDrawColor(230, 230, 230);
+                    doc.rect(bx, by, boxW, boxH, 'S');
+                    
+                    drawWireframeIcon(doc, bx + 2, by + 4, 15, c.w, c.l, c.h, c.color, c.type);
+                    
+                    const [cr, cg, cb] = hexToRgb(c.color);
+                    doc.setFillColor(cr, cg, cb);
+                    doc.roundedRect(bx + 18, by + 3.5, 2.5, 2.5, 0.5, 0.5, 'F');
+
+                    doc.setTextColor(cr, cg, cb); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+                    doc.text(c.label, bx + 22, by + 6);
+                    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+                    doc.text(`${c.type.toUpperCase()} · ${c.weight} KG`, bx + 18, by + 11);
+                    doc.text(c.dims, bx + 18, by + 16);
+                    
+                    if (c.parentLabel) {
+                        doc.setFontSize(6.5); doc.setFont('helvetica', 'bold italic'); doc.setTextColor(...ACCENT);
+                        doc.text(`NESTED IN: ${c.parentLabel}`, bx + 18, by + 20);
+                    }
+
+                    boxDrawn++;
+                }
+            }
+        }
+    }
+
+    async function drawBoxContentsPage() {
+        const boxes = (meta.allTruckCrates || []).filter(c => c.type === 'cardboard');
+        if (boxes.length === 0) return;
+        
+        doc.addPage([PW, PH], 'landscape');
+        await drawPageChrome(false);
+        let sy = MT + 8;
+        
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+        doc.text('CARDBOARD BOX CONTENTS DETAIL', ML, sy);
+        sy += 8;
+        
+        for (const box of boxes) {
+            const boxItems = items.filter(i => i.boxLabel === box.label);
+            if (boxItems.length === 0) continue;
+            
+            // Check for space
+            const needed = 8 + (boxItems.length * 6);
+            if (sy + needed > PH - MB) {
+                doc.addPage([PW, PH], 'landscape');
+                await drawPageChrome(false);
+                sy = MT + 8;
+            }
+            
+            // Box Title
+            const [br, bg, bb] = hexToRgb(box.color);
+            doc.setFillColor(br, bg, bb);
+            doc.rect(ML, sy, PW - ML - MR, 6, 'F');
+            doc.setTextColor(getTextColorForBg(box.color) === '#FFFFFF' ? 255 : 30);
+            doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+            doc.text(`BOX: ${box.label} (${box.dims}) · ${box.weight} KG`, ML + 2, sy + 4.5);
+            sy += 8;
+            
+            // List Items
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+            for (const it of boxItems) {
+                doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+                doc.text(`${it.qty}×`, ML + 4, sy);
+                doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+                doc.text(`${it.itemId}  ·  ${it.name}`, ML + 15, sy);
+                sy += 6;
+            }
+            sy += 4; // Gap
         }
     }
 
@@ -527,11 +636,12 @@ export async function exportCrateManifesto(
         doc.text('BOOK TAG ID', COL_TAG.x + 2, ty);
         doc.text('ITEM DESCRIPTION', COL_NAME.x + 2, ty);
         doc.text('DIMENSIONS · WEIGHT', COL_DIMS.x + 2, ty);
-        doc.text('QTY', COL_QTY.x + 2, ty);
+        doc.text('QTY', COL_QTY.x + COL_QTY.w - 2, ty, { align: 'right' });
     }
 
     if (isMultiCrate) {
         await drawSummaryPage();
+        await drawBoxContentsPage();
         doc.addPage([PW, PH], 'landscape');
         await drawPageChrome(false);
         y = MT;
@@ -545,17 +655,18 @@ export async function exportCrateManifesto(
 
     console.log(`[PDF] Starting items table render...`);
     for (let i = 0; i < sortedItems.length; i++) {
+        const item = sortedItems[i] as ManifestoItem;
         onProgress?.(Math.round((i / sortedItems.length) * 95));
-        const item = sortedItems[i];
         
+        // Indent removed to ensure unified "containing crate" attribution
+        const xOffset = 0; 
+
         // Gallery Row Visibility & Count Calculation
-        // We show one image in the PHOTO column, and the rest in the gallery row.
-        // The total number of images to show is the greater of the quantity or the URL count.
         const numImagesTotal = !meta.excludeImages ? item.qty : 0;
         const numImagesInGallery = numImagesTotal - 1;
         const hasGallery = numImagesInGallery > 0;
         const galleryImgSize = 20;
-        const imagesPerRow = Math.max(1, Math.floor((TABLE_END - (COL_QR.x + 2)) / (galleryImgSize + 2)));
+        const imagesPerRow = Math.max(1, Math.floor((TABLE_END - (COL_QR.x + 2 + xOffset)) / (galleryImgSize + 2)));
         const galleryRows = hasGallery ? Math.ceil(numImagesInGallery / imagesPerRow) : 0;
         const totalRowH = ROW_H + (galleryRows * (galleryImgSize + 2)) + (galleryRows > 0 ? 2 : 0);
 
@@ -579,10 +690,10 @@ export async function exportCrateManifesto(
         doc.setLineWidth(0.1);
         doc.line(ML, y + totalRowH, TABLE_END, y + totalRowH);
 
-        // 1. SCAN (QR Code)
+        // 1. SCAN (QR Code with Padding)
         const qrDataUrl = await loadQrDataUrl(item.itemId, 150);
         if (qrDataUrl) {
-            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 2, y + 4, 14, 14);
+            doc.addImage(qrDataUrl, 'PNG', COL_QR.x + 3 + xOffset, y + 5, 12, 12);
         }
 
         // 2. PHOTO (Main Item Photo)
@@ -595,30 +706,30 @@ export async function exportCrateManifesto(
                 if (aspect > 1) dh = 18 / aspect; else dw = 18 * aspect;
                 
                 doc.setDrawColor(230, 230, 230);
-                doc.rect(COL_IMG.x + (COL_IMG.w - dw) / 2 - 0.2, y + (ROW_H - dh) / 2 - 0.2, dw + 0.4, dh + 0.4, 'S');
-                doc.addImage(dataUrl, 'JPEG', COL_IMG.x + (COL_IMG.w - dw) / 2, y + (ROW_H - dh) / 2, dw, dh);
+                doc.rect(COL_IMG.x + (COL_IMG.w - dw) / 2 - 0.2 + xOffset, y + (ROW_H - dh) / 2 - 0.2, dw + 0.4, dh + 0.4, 'S');
+                doc.addImage(dataUrl, 'JPEG', COL_IMG.x + (COL_IMG.w - dw) / 2 + xOffset, y + (ROW_H - dh) / 2, dw, dh);
             }
         }
 
-        // 3. BOOK TAG ID
+        // 4. BOOK TAG ID (with Contrast Check)
         const [tr, tg, tb] = hexToRgb(item.tagColor);
         doc.setFillColor(tr, tg, tb);
         doc.setFontSize(10); 
         doc.setFont('helvetica', 'bold');
         const textW = doc.getTextWidth(item.itemId);
-        const badgeW = Math.min(COL_TAG.w - 4, textW + 6);
-        doc.roundedRect(COL_TAG.x + 2, y + (ROW_H - 7) / 2, badgeW, 7, 0.5, 0.5, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.text(item.itemId, COL_TAG.x + 2 + badgeW/2, y + (ROW_H + 3) / 2, { align: 'center' });
+        const badgeW = Math.min(COL_TAG.w - 4 - xOffset, textW + 6);
+        doc.roundedRect(COL_TAG.x + 2 + xOffset, y + (ROW_H - 7) / 2, badgeW, 7, 0.5, 0.5, 'F');
+        doc.setTextColor(...getContrastColor(item.tagColor));
+        doc.text(item.itemId, COL_TAG.x + 2 + xOffset + badgeW/2, y + (ROW_H + 3) / 2, { align: 'center' });
 
         // 5. ITEM DESCRIPTION
         doc.setTextColor(...TEXT_HI);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        const nameLines = doc.splitTextToSize(item.name.toUpperCase(), COL_NAME.w - 4);
-        doc.text(nameLines[0], COL_NAME.x + 2, y + 8);
+        const nameLines = doc.splitTextToSize(item.name.toUpperCase(), COL_NAME.w - 4 - xOffset);
+        doc.text(nameLines[0], COL_NAME.x + 2 + xOffset, y + 8);
         
-        let pillX = COL_NAME.x + 2;
+        let pillX = COL_NAME.x + 2 + xOffset;
         const pillY = y + 12;
         const drawPill = (txt: string, br: number, bg: number, bb: number) => {
             if (!txt) return;
@@ -632,29 +743,25 @@ export async function exportCrateManifesto(
         };
         if (item.color) drawPill(item.color, 240, 240, 240);
         if (item.material) drawPill(item.material, 230, 230, 230);
-        if (item.packetIn) {
-            doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...ACCENT);
-            doc.text(`PACKED IN: ${item.packetIn.toUpperCase()}`, pillX, pillY + 3.8);
-        }
 
-        // 6. DIMENSIONS · WEIGHT
-        doc.setTextColor(...TEXT_MID);
+        // 6. DIMENSIONS · WEIGHT (Larger & Bolder)
+        doc.setTextColor(...TEXT_HI);
+        doc.setFontSize(11.5);
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.dims || '—', COL_DIMS.x + 2, y + 8);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(item.dims || '—', COL_DIMS.x + 2, y + 8);
-        doc.setFontSize(9);
         doc.text(`${item.weightKg} kg  ·  ${(item.weightKg * 2.20462).toFixed(1)} lbs`, COL_DIMS.x + 2, y + 14);
 
-        // 7. QTY
+        // 7. QTY (Slightly Smaller)
         doc.setTextColor(0, 0, 0);
-        doc.setFontSize(22);
+        doc.setFontSize(15);
         doc.setFont('helvetica', 'bold');
-        doc.text(`×${item.qty}`, COL_QTY.x + 2, y + 14);
+        doc.text(`×${item.qty}`, COL_QTY.x + COL_QTY.w - 2, y + 13.5, { align: 'right' });
 
         // ─── Extended Gallery (Non-duplicated) ───────────────────────────────
         if (hasGallery) {
-            let gx = COL_QR.x + 2;
+            let gx = COL_QR.x + 2 + xOffset;
             let gy = y + ROW_H + 2;
             
             doc.setDrawColor(245, 245, 245);
@@ -685,7 +792,7 @@ export async function exportCrateManifesto(
                     
                     gx += galleryImgSize + 2;
                     if (gx + galleryImgSize > TABLE_END) {
-                        gx = COL_QR.x + 2;
+                        gx = COL_QR.x + 2 + xOffset;
                         gy += galleryImgSize + 2;
                     }
                 }

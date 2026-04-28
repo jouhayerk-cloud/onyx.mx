@@ -15,10 +15,7 @@ export const colors = [
 ];
 
 export const vendors = {
-  R: { name: 'RAMSES', color: '#737104' },
-  M: { name: 'MARTHA', color: '#4f2068' },
-  W: { name: 'WAYNE', color: '#e67e22' },
-  C: { name: 'CHAD', color: '#d35400' },
+  // Multi-letter codes (Primary Vendors) - Sorted by length descending to prevent greedy matching
   JM: { name: 'JOSE MEZA', color: '#6BCEBB' },
   EM: { name: 'EMMANUEL DE LOS SANTOS', color: '#00AEEF' },
   CA: { name: 'CARLOS ARENAS', color: '#85C1E9' },
@@ -37,6 +34,12 @@ export const vendors = {
   CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
   GM: { name: 'GEMA MARTIN', color: '#E6194B' },
   MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
+  
+  // Single-letter codes (Internal/Archive)
+  R: { name: 'RAMSES', color: '#737104' },
+  M: { name: 'MARTHA', color: '#4f2068' },
+  W: { name: 'WAYNE', color: '#e67e22' },
+  C: { name: 'CHAD', color: '#d35400' },
 };
 
 export const appUsers = {
