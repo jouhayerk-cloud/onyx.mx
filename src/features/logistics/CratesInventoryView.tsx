@@ -136,6 +136,7 @@ interface CrateRecord {
     updated_at?: string;
     groupedCount?: number;
     groupedIds?: string[];
+    parent_id?: string | null;
 }
 
 // --- Extract item number from workbook barcode ---
@@ -218,7 +219,16 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeployedView = false, isPackedView = false }: { crate: CrateRecord; allCrates: CrateRecord[]; allInventory: any[]; onPack: (c: CrateRecord) => void; onDelete: (c: CrateRecord) => void; isDeployedView?: boolean; isPackedView?: boolean }) => {
+const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, isDeployedView = false, isPackedView = false }: { 
+    crate: CrateRecord; 
+    allCrates: CrateRecord[]; 
+    allInventory: any[]; 
+    onPack: (c: CrateRecord) => void; 
+    onDelete: (c: CrateRecord) => void; 
+    onNest: (c: CrateRecord) => void;
+    isDeployedView?: boolean; 
+    isPackedView?: boolean 
+}) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [showExportMenu, setShowExportMenu] = useState(false);
@@ -528,6 +538,17 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, isDeploye
                             />
                         </div>
                     )}
+                    
+                    {isPackedView && (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) && !crate.parent_id && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onNest(crate); }}
+                            className="flex items-center justify-center w-12 h-12 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 text-blue-400 rounded-2xl transition-all duration-300 cursor-pointer"
+                            title="Nest this Box"
+                        >
+                            <Plus size={18} />
+                        </button>
+                    )}
+
                     <button
                         onClick={() => onPack(crate)}
                         className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer border ${
@@ -765,6 +786,8 @@ export const CratesInventoryView: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
+    const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
+    const [isSavingNest, setIsSavingNest] = useState(false);
     const allInventory = useAtomValue(inventoryAtom);
     const isDummyMode = useAtomValue(isDummyModeAtom);
 
@@ -849,6 +872,34 @@ export const CratesInventoryView: React.FC = () => {
             handleRefresh();
         } catch (err: any) {
             toast.error(err.message || 'Failed to reset crate', { id: tid });
+        }
+    };
+
+    const handleNestUnit = async (sourceId: string, parentId: string) => {
+        setIsSavingNest(true);
+        const tid = toast.loading(`Nesting unit...`);
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 1000));
+                toast.success("Unit nested (Demo Mode)", { id: tid, icon: '🧪' });
+                setNestingUnit(null);
+                handleRefresh();
+                return;
+            }
+            const updatePayload = { parent_id: parentId, updated_at: new Date().toISOString() };
+            const { error: nestErr } = await supabase.from('logistics').update(updatePayload).eq('id', sourceId);
+            if (nestErr) throw nestErr;
+            if (db) {
+                const localUnit = await db.logistics.findOne({ selector: { id: sourceId } }).exec();
+                if (localUnit) await localUnit.patch(updatePayload);
+            }
+            toast.success("Unit successfully nested", { id: tid });
+            setNestingUnit(null);
+            handleRefresh();
+        } catch (err: any) {
+            toast.error(err.message || 'Nesting failed.', { id: tid });
+        } finally {
+            setIsSavingNest(false);
         }
     };
 
@@ -1034,6 +1085,7 @@ export const CratesInventoryView: React.FC = () => {
                                         : handlePack
                                     }
                                     onDelete={handleDeleteCrate}
+                                    onNest={(c) => setNestingUnit(c)}
                                     isDeployedView={activeTab === 'deployed'}
                                     isPackedView={activeTab === 'packed'}
                                 />
@@ -1072,6 +1124,79 @@ export const CratesInventoryView: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* NESTING WIZARD MODAL */}
+            {nestingUnit && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+                    <div className="bg-black border border-white/10 w-full max-w-2xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col">
+                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                            <div className="flex flex-col gap-2">
+                                <h3 className="text-xl font-black uppercase tracking-[0.4em] text-(--main-color)">Nesting Wizard</h3>
+                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Select destination for {nestingUnit.id.slice(0, 8).toUpperCase()}</p>
+                            </div>
+                            <button onClick={() => setNestingUnit(null)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 cursor-pointer">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto no-scrollbar p-8 bg-black max-h-[60vh]">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {crates.filter(c => (c.status !== 'Packed' || (c.type !== 'cardboard')) && (c.type === 'crate' || c.type === 'pallet') && c.id !== nestingUnit.id && !c.parent_id).map(dest => (
+                                    <button
+                                        key={dest.id}
+                                        onClick={() => handleNestUnit(nestingUnit.id, dest.id)}
+                                        disabled={isSavingNest}
+                                        className="flex flex-col items-start gap-4 p-6 bg-white/[0.03] border border-white/5 hover:border-(--main-color) transition-all text-left group cursor-pointer"
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center">
+                                                {(() => {
+                                                    const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(dest, crates, allInventory);
+                                                    if (!date && !sequence) return (
+                                                        <span className="text-[10px] font-mono font-black text-white/40 uppercase tracking-widest">{dest.id.slice(0, 8).toUpperCase()}</span>
+                                                    );
+                                                    return (
+                                                        <>
+                                                            {date && (
+                                                                <div className="bg-white/10 px-1.5 py-0.5">
+                                                                    <span className="text-[11px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
+                                                                </div>
+                                                            )}
+                                                            {vList.map((v) => (
+                                                                <div 
+                                                                    key={v} 
+                                                                    className="px-1.5 py-0.5"
+                                                                    style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}
+                                                                >
+                                                                    <span className="text-[11px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                                                                </div>
+                                                            ))}
+                                                            {sequence && (
+                                                                <div className="px-2 py-0.5 bg-white/5">
+                                                                    <span className="text-[11px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div className={`w-2 h-2 ${dest.status === 'Partial' ? 'bg-amber-400' : dest.status === 'Packed' ? 'bg-rose-400' : 'bg-emerald-400'}`} />
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-lg font-black text-white tracking-tighter uppercase">{dest.width_cm}×{dest.length_cm}×{dest.height_cm}</span>
+                                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">{dest.type} · {dest.status}</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-8 border-t border-white/5 bg-white/[0.02] flex items-center justify-center">
+                            <p className="text-[10px] font-black text-white/10 uppercase tracking-widest">Nesting packed boxes maintains their inventory and status within the parent unit</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {isModalOpen && (
                 <CrateCreationModal
