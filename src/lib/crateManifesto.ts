@@ -203,24 +203,10 @@ export async function exportCrateManifesto(
     returnType: 'blob' | 'doc' | 'download' = 'download',
     existingDoc?: jsPDF
 ): Promise<Blob | jsPDF | void> {
-    const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
-    
-    // Unified Sorting: All items together, sorted by vendor then quantity
-    const itemsByVendor = items.reduce((acc, item) => {
-        const v = item.vendorPrefix || 'OTHER';
-        if (!acc[v]) acc[v] = [];
-        acc[v].push(item);
-        return acc;
-    }, {} as Record<string, ManifestoItem[]>);
-
-    Object.keys(itemsByVendor).sort().forEach(v => {
-        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
-    });
-
-    // Append Packing Items from Wizard (Cardboard boxes, misc)
+    const allManifestoItems = [...items];
     if (meta.packingItems && meta.packingItems.length > 0) {
         meta.packingItems.forEach(pi => {
-            sortedItems.push({
+            allManifestoItems.push({
                 itemId: 'MISC-PACK',
                 name: pi.name.toUpperCase(),
                 qty: pi.count,
@@ -238,6 +224,18 @@ export async function exportCrateManifesto(
             } as ManifestoItem);
         });
     }
+
+    const itemsByVendor = allManifestoItems.reduce((acc, item) => {
+        const v = item.vendorPrefix || 'OTHER';
+        if (!acc[v]) acc[v] = [];
+        acc[v].push(item);
+        return acc;
+    }, {} as Record<string, ManifestoItem[]>);
+
+    const sortedItems: Array<ManifestoItem | { isHeader: boolean; label: string }> = [];
+    Object.keys(itemsByVendor).sort().forEach(v => {
+        sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
+    });
 
     const isMultiCrate = meta.crateType === 'Trailer Load';
 
@@ -356,11 +354,8 @@ export async function exportCrateManifesto(
             }
 
             // 4. Stats block (Right Aligned)
-            const packingUnits = (meta.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
-            const packingWeight = (meta.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
-
-            const totalUnits = items.reduce((s, i) => s + (i.qty || 1), 0) + packingUnits;
-            const totalWeight = items.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0) + packingWeight;
+            const totalUnits = allManifestoItems.reduce((s, i) => s + (i.qty || 1), 0);
+            const totalWeight = allManifestoItems.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0);
             let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg NET`;
             if (meta.exportBruteWeight) summaryWeight += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
 
@@ -376,10 +371,12 @@ export async function exportCrateManifesto(
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             
+            const totalSkus = allManifestoItems.length;
+
             if (isMultiCrate) {
-                doc.text(`${nCrates} Crates  ·  ${nPallets} Pallets  ·  ${items.length} SKU(s)`, PW - MR, 13, { align: 'right' });
+                doc.text(`${nCrates} Crates  ·  ${nPallets} Pallets  ·  ${totalSkus} SKU(s)`, PW - MR, 13, { align: 'right' });
             } else {
-                doc.text(`${meta.crateType.toUpperCase()}  ·  ${items.length} SKU(s)`, PW - MR, 13, { align: 'right' });
+                doc.text(`${meta.crateType.toUpperCase()}  ·  ${totalSkus} SKU(s)`, PW - MR, 13, { align: 'right' });
             }
 
             doc.setFontSize(9);
@@ -645,7 +642,10 @@ export async function exportCrateManifesto(
 
     async function drawBoxContentsPage() {
         const boxes = (meta.allTruckCrates || []).filter(c => c.type === 'cardboard');
-        if (boxes.length === 0) return;
+        const hasBoxes = boxes.length > 0;
+        const hasPacking = meta.packingItems && meta.packingItems.length > 0;
+        
+        if (!hasBoxes && !hasPacking) return;
         
         doc.addPage([PW, PH], 'landscape');
         await drawPageChrome(false);
@@ -655,37 +655,65 @@ export async function exportCrateManifesto(
         doc.text('CARDBOARD BOX CONTENTS DETAIL', ML, sy);
         sy += 8;
         
-        for (const box of boxes) {
-            const boxItems = items.filter(i => i.boxLabel === box.label);
-            if (boxItems.length === 0) continue;
-            
+        if (hasBoxes) {
+            for (const box of boxes) {
+                const boxItems = allManifestoItems.filter(i => i.boxLabel === box.label);
+                if (boxItems.length === 0) continue;
+                
+                // Check for space
+                const needed = 8 + (boxItems.length * 6);
+                if (sy + needed > PH - MB) {
+                    doc.addPage([PW, PH], 'landscape');
+                    await drawPageChrome(false);
+                    sy = MT + 8;
+                }
+                
+                // Box Title
+                const [br, bg, bb] = hexToRgb(box.color);
+                doc.setFillColor(br, bg, bb);
+                doc.rect(ML, sy, PW - ML - MR, 6, 'F');
+                doc.setTextColor(getTextColorForBg(box.color) === '#FFFFFF' ? 255 : 30);
+                doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+                doc.text(`BOX: ${box.label} (${box.dims}) · ${box.weight} KG`, ML + 2, sy + 4.5);
+                sy += 8;
+                
+                // List Items
+                doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+                for (const it of boxItems) {
+                    doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+                    doc.text(`${it.qty}×`, ML + 4, sy);
+                    doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
+                    doc.text(`${it.itemId}  ·  ${it.name}`, ML + 15, sy);
+                    sy += 6;
+                }
+                sy += 4; // Gap
+            }
+        }
+
+        // 2. Manual Packing Items (Loose)
+        if (hasPacking) {
             // Check for space
-            const needed = 8 + (boxItems.length * 6);
+            const needed = 12 + (meta.packingItems!.length * 6);
             if (sy + needed > PH - MB) {
                 doc.addPage([PW, PH], 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
             }
-            
-            // Box Title
-            const [br, bg, bb] = hexToRgb(box.color);
-            doc.setFillColor(br, bg, bb);
+
+            doc.setFillColor(240, 240, 240);
             doc.rect(ML, sy, PW - ML - MR, 6, 'F');
-            doc.setTextColor(getTextColorForBg(box.color) === '#FFFFFF' ? 255 : 30);
+            doc.setTextColor(...TEXT_HI);
             doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-            doc.text(`BOX: ${box.label} (${box.dims}) · ${box.weight} KG`, ML + 2, sy + 4.5);
+            doc.text('MISCELLANEOUS PACKING ITEMS (EXTRA BOXES)', ML + 2, sy + 4.5);
             sy += 8;
-            
-            // List Items
-            doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
-            for (const it of boxItems) {
+
+            for (const pi of meta.packingItems!) {
                 doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
-                doc.text(`${it.qty}×`, ML + 4, sy);
+                doc.text(`${pi.count}×`, ML + 4, sy);
                 doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
-                doc.text(`${it.itemId}  ·  ${it.name}`, ML + 15, sy);
+                doc.text(`${pi.name.toUpperCase()}  ·  ${pi.weight} KG`, ML + 15, sy);
                 sy += 6;
             }
-            sy += 4; // Gap
         }
     }
 

@@ -1107,6 +1107,7 @@ const TruckExportModal: React.FC<{
             const items = buildConsolidatedItems();
             const packingWeight = (fields.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
             const packingUnits = (fields.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
+            const crateItemsCount = items.reduce((s, i) => s + (i.qty || 1), 0);
 
             const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
                 const inv = item.inv;
@@ -1164,10 +1165,10 @@ const TruckExportModal: React.FC<{
                 allTruckCrates: allTruckCratesMeta,
                 truckStats: {
                     totalWeight: totalWeight + packingWeight, 
-                    payloadPct: Math.round(((totalWeight + packingWeight) / 22000) * 100), // Updated payload pct
+                    payloadPct: Math.round(((totalWeight + packingWeight) / 22000) * 100), 
                     floorPct: floorPct, volPct: panelStats.volPct,
                     status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
-                    itemCount: truckCrates.length + packingUnits
+                    itemCount: crateItemsCount + packingUnits
                 },
                 packingItems: fields.packingItems,
                 excludeImages: true,
@@ -1577,12 +1578,15 @@ const ReadyTruckWizard: React.FC<{
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView, allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight, payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, itemCount: truckCrates.length
+                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0), 
+                    payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
+                    itemCount: (buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)
                 },
                 excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
                 sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
-                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders
+                trailerNumber: fields.trailerNumber, trailerPlates: fields.trailerPlates, senders: fields.senders,
+                packingItems: fields.packingItems
             };
             const blob = await exportCombinedTruckManifesto({ items: [], meta: trailerMeta }, cratesData, pct => setProgress(p => ({ ...p, allCrates: 10 + Math.round(pct * 0.9) })), 'blob') as Blob;
             if (blob) { setUrls(u => ({ ...u, allCrates: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, allCrates: 100 })); }
