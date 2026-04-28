@@ -69,6 +69,7 @@ export interface ManifestoMeta {
     trailerNumber?: string;
     trailerPlates?: string;
     senders?: string[];
+    packingItems?: Array<{ name: string; count: number; weight: number }>;
 }
 
 // ─── QR Code via free API ────────────────────────────────────────────────────
@@ -216,6 +217,28 @@ export async function exportCrateManifesto(
         sortedItems.push(...itemsByVendor[v].sort((a, b) => b.qty - a.qty));
     });
 
+    // Append Packing Items from Wizard (Cardboard boxes, misc)
+    if (meta.packingItems && meta.packingItems.length > 0) {
+        meta.packingItems.forEach(pi => {
+            sortedItems.push({
+                itemId: 'MISC-PACK',
+                name: pi.name.toUpperCase(),
+                qty: pi.count,
+                weightKg: pi.weight,
+                vendorPrefix: 'MISC',
+                tagColor: '#94a3b8',
+                index: 999,
+                rowId: 'MISC',
+                material: 'MISC',
+                color: 'BROWN',
+                dims: '—',
+                imageUrls: [],
+                dbItemCount: pi.count,
+                packetIn: 'MISC'
+            } as ManifestoItem);
+        });
+    }
+
     const isMultiCrate = meta.crateType === 'Trailer Load';
 
     // Universal Safe Landscape: Fits inside both US Letter (279.4 width) and A4 (210 height)
@@ -333,8 +356,11 @@ export async function exportCrateManifesto(
             }
 
             // 4. Stats block (Right Aligned)
-            const totalUnits = items.reduce((s, i) => s + (i.qty || 1), 0);
-            const totalWeight = items.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0);
+            const packingUnits = (meta.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
+            const packingWeight = (meta.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
+
+            const totalUnits = items.reduce((s, i) => s + (i.qty || 1), 0) + packingUnits;
+            const totalWeight = items.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0) + packingWeight;
             let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg NET`;
             if (meta.exportBruteWeight) summaryWeight += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
 
