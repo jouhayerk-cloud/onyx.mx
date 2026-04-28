@@ -263,6 +263,8 @@ export async function exportCrateManifesto(
     const MR = 10; // margin right
     const MT = 10; // margin top for continuation pages
     const MB = 10; // margin bottom (including footer)
+    const HDR_H = 26; // Height of the primary header area
+    const FOOTER_H = 15;
 
     // ─── Palette (light theme) ────────────────────────────────────────────────
     const BG      : [number, number, number] = [255, 255, 255];
@@ -282,13 +284,10 @@ export async function exportCrateManifesto(
     const COL_DIMS = { x: COL_NAME.x + COL_NAME.w, w: 70  }; 
     const COL_QTY  = { x: COL_DIMS.x + COL_DIMS.w, w: TABLE_END - (COL_DIMS.x + COL_DIMS.w) };
 
-    const HDR_H = meta.excludeHeader ? 0 : 45;
     const COL_HDR_H = 8;
     const ROW_H = 22;
-    const FOOTER_H = 10;
     let y = 0;
 
-    // ─── Helper: Draw Page Chrome ──────────────────────────────────────────
     // ─── Helper: Draw Page Chrome ──────────────────────────────────────────
     async function drawPageChrome(isPrimaryHeader: boolean) {
         const pageNum = doc.getNumberOfPages();
@@ -296,244 +295,240 @@ export async function exportCrateManifesto(
         doc.rect(0, 0, PW, PH, 'F');
 
         if (isPrimaryHeader && !meta.excludeHeader) {
-            // Premium Header Background
-            doc.setFillColor(...SURFACE);
-            doc.rect(0, 0, PW, HDR_H, 'F');
-            
-            // Decorative Accent Bar
+            // ─── Primary Header (Premium Dashboard Style) ───
+            const BAR_H = 14;
+            doc.setFillColor(33, 37, 41); // Dark Theme
+            doc.rect(0, 0, PW, BAR_H, 'F');
             doc.setFillColor(...ACCENT);
-            doc.rect(0, 0, 1.5, HDR_H, 'F');
+            doc.rect(0, 0, 1.5, BAR_H, 'F');
 
             let textX = ML;
-
-            // 1. QR Code (Leftmost)
             if (!meta.excludeHeaderQr) {
                 const headerQrUrl = await loadQrDataUrl(meta.dynamicId, 300);
                 if (headerQrUrl) {
-                    const qrSize = 34;
-                    const bx = ML;
-                    const by = 5;
+                    const qrSize = 10;
                     doc.setFillColor(255, 255, 255);
-                    doc.rect(bx - 1, by - 1, qrSize + 2, qrSize + 2, 'F');
-                    doc.addImage(headerQrUrl, 'PNG', bx, by, qrSize, qrSize);
-                    textX = bx + qrSize + 8;
+                    doc.rect(ML, 2, qrSize, qrSize, 'F');
+                    doc.addImage(headerQrUrl, 'PNG', ML, 2, qrSize, qrSize);
+                    textX = ML + qrSize + 4;
                 }
             }
 
-            // 2. Wireframe Icon (Between QR and Text)
-            if (!meta.excludeHeaderWireframe) {
-                const dims = meta.crateDims.split(/[x×]/).map(n => parseFloat(n));
-                const cw = dims[0] || 60, cl = dims[1] || 60, ch = dims[2] || 60;
-                const iconSize = 25;
-                drawWireframeIcon(doc, textX, 10, iconSize, cw, cl, ch, meta.crateColor || '#d95a0a', meta.crateType);
-                textX += iconSize + 10;
+            // Title in the dark bar
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+            doc.text(`${meta.dynamicId.toUpperCase()}`, textX, 9.5);
+
+            // Stats in the dark bar (Right aligned)
+            const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
+            const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
+            const nBoxes = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'cardboard').length;
+            const totalSkus = allManifestoItems.length;
+            
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+            let parts = [];
+            if (isMultiCrate) {
+                if (nCrates > 0) parts.push(`${nCrates} Crates`);
+                if (nPallets > 0) parts.push(`${nPallets} Pallets`);
+                // Removed nBoxes as requested
+            } else {
+                parts.push(meta.crateType.toUpperCase());
             }
+            parts.push(`${totalSkus} SKU(S)`);
+            doc.text(parts.join('  ·  '), PW - MR, 9.5, { align: 'right' });
 
-            // 3. Header Text
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...TEXT_LO);
-            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), textX, 10);
+            // Sub-info Area (Immediately below bar)
+            let subY = BAR_H + 6;
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+            doc.text((meta.customTitle || "LOGISTICS MANIFESTO").toUpperCase(), textX, BAR_H + 4);
 
-            doc.setFontSize(32);
-            doc.setTextColor(...TEXT_HI);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${meta.dynamicId.toUpperCase()}`, textX, 22, { charSpace: -0.2 });
-
-            let subY = 28;
             if (meta.subtitle) {
-                doc.setFontSize(10);
-                doc.setTextColor(...TEXT_MID);
+                doc.setFontSize(9); doc.setTextColor(...TEXT_MID);
                 doc.text(meta.subtitle.toUpperCase(), textX, subY);
+                subY += 4.5;
+            }
+            if (!isMultiCrate && meta.crateDims) {
+                doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
+                doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY);
                 subY += 5;
             }
 
-            if (!isMultiCrate && meta.crateDims) {
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(...TEXT_MID);
-                doc.text(`${meta.crateDims} · ${meta.crateType.toUpperCase()}`, textX, subY);
-                subY += 6;
-            }
-
-            if (meta.exportNotes) {
-                doc.setFontSize(8);
-                doc.setTextColor(...TEXT_LO);
-                doc.setFont('helvetica', 'italic');
-                doc.text(meta.exportNotes, textX, subY);
-            }
-
-            // 4. Stats block (Right Aligned)
+            // Right-side metrics (Below bar)
             const totalUnits = allManifestoItems.reduce((s, i) => s + (i.qty || 1), 0);
             const totalWeight = allManifestoItems.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0);
-            let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg NET`;
-            if (meta.exportBruteWeight) summaryWeight += `  ·  ${meta.exportBruteWeight.trim()} BRUTE`;
+            let summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+            if (meta.exportBruteWeight) summaryWeight += ` · ${meta.exportBruteWeight.trim()} BRUTE`;
 
-            doc.setTextColor(...TEXT_LO);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, 10, { align: 'right' });
-
-            const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
-            const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
-
-            doc.setTextColor(...TEXT_HI);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            
-            const totalSkus = allManifestoItems.length;
-
-            if (isMultiCrate) {
-                doc.text(`${nCrates} Crates  ·  ${nPallets} Pallets  ·  ${totalSkus} SKU(s)`, PW - MR, 13, { align: 'right' });
-            } else {
-                doc.text(`${meta.crateType.toUpperCase()}  ·  ${totalSkus} SKU(s)`, PW - MR, 13, { align: 'right' });
-            }
-
-            doc.setFontSize(9);
-            doc.text(`${totalUnits} units  ·  ${summaryWeight}`, PW - MR, 18, { align: 'right' });
+            doc.setTextColor(...TEXT_HI); doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+            doc.text(`${totalUnits} UNITS  ·  ${summaryWeight.toUpperCase()}`, PW - MR, BAR_H + 8, { align: 'right' });
+            doc.setTextColor(...TEXT_LO); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+            doc.text(`ONYX LOGISTICS · ${meta.exportedAt}`, PW - MR, BAR_H + 12, { align: 'right' });
         } else {
-            // Continuation Header
+            // ─── Continuation Header ───
             doc.setFillColor(...SURFACE);
             doc.rect(0, 0, PW, MT, 'F');
-            doc.setTextColor(...TEXT_LO);
-            doc.setFontSize(7);
             const pageTitle = meta.customTitle || (meta.dynamicId.toUpperCase() + '  ·  PACKING LIST');
             doc.text(`${pageTitle}  ·  PAGE ${pageNum}`, ML, MT - 4);
         }
 
-        // Footer (Strict 10mm margin compliance)
         doc.setFillColor(...SURFACE);
         doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
         doc.setDrawColor(...BORDER);
         doc.setLineWidth(0.1);
         doc.line(0, PH - FOOTER_H, PW, PH - FOOTER_H);
-        doc.setTextColor(...TEXT_LO);
-        doc.setFontSize(7);
-        // Move text up to be within the 10mm safe zone (PH - 10 = 205.9)
-        // Actually, if FOOTER_H is 10, the top of footer is at PH-10.
-        // Let's place text at PH - 5 for vertical center of the footer bar, 
-        // but wait, if strict margin is 10mm, we can't have text at PH-5.
-        // It must be at PH - 10 or higher.
-        doc.text('CONFIDENTIAL · LOGISTICS MANIFESTO', ML, PH - 12);
+        doc.setTextColor(...TEXT_LO); doc.setFontSize(7);
+        doc.text('ONYX MX - LOGISTICS MANIFESTO', ML, PH - 12);
         doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
     }
 
     async function drawSummaryPage() {
-        console.log(`[PDF] Rendering summary maps and stats...`);
-        await drawPageChrome(true);
-        let sy = HDR_H + 8;
+        console.log(`[PDF] Rendering Unified Load Dashboard...`);
         
-        // Stats Panel (White background details)
+        // Draw Footer manually for the summary page
+        doc.setFillColor(...SURFACE);
+        doc.rect(0, PH - FOOTER_H, PW, FOOTER_H, 'F');
+        doc.setTextColor(...TEXT_LO); doc.setFontSize(7);
+        doc.text('ONYX MX - LOGISTICS MANIFESTO', ML, PH - 12);
+        doc.text(`Artifact ID: ${meta.crateId.slice(0, 12)}`, PW - MR, PH - 12, { align: 'right' });
+
+        let sy = 8;
+        const DASH_W = PW - ML - MR;
+        const DASH_H = 68; // Compact unified height
+        
+        // 1. Dashboard Container
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...BORDER);
+        doc.setLineWidth(0.1);
+        doc.rect(ML, sy, DASH_W, DASH_H, 'FD');
+
+        // 2. Premium Header Bar (Orange)
+        doc.setFillColor(...ACCENT);
+        doc.rect(ML, sy, DASH_W, 14, 'F');
+        
+        // Title & Branding
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+        const shortDate = meta.exportedAt.split(',')[0];
+        doc.text(`ONYX MX - RARE EARTH GALLERY - ${shortDate}`, ML + 4, sy + 9.5);
+        
+        // Counts (Right Aligned in Bar)
+        const nCrates = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'crate').length;
+        const nPallets = (meta.allTruckCrates || []).filter(c => c.type.toLowerCase() === 'pallet').length;
+        // const nBoxes removed
+        const totalUnits = allManifestoItems.reduce((s, i) => s + (i.qty || 1), 0);
+        const totalWeight = allManifestoItems.reduce((s, i) => s + (i.weightKg || 0) * (i.qty || 1), 0);
+        const summaryWeight = `${totalWeight.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        const statsStr = `${nCrates} Crates  ·  ${nPallets} Pallets  ·  ${totalUnits} Units  ·  ${summaryWeight}`;
+        doc.text(statsStr, PW - MR - 4, sy + 9.5, { align: 'right' });
+
+        sy += 14;
+
+        // 3. Central Metrics Grid (Large Text)
         if (meta.truckStats) {
             const ts = meta.truckStats;
-            doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
-            doc.text('TRAILER LOAD METRICS & DISTRIBUTION', ML, sy);
-            sy += 5;
+            const midY = sy + 4;
             
-            doc.setFillColor(255, 255, 255);
-            doc.setDrawColor(...BORDER);
-            doc.rect(ML, sy, PW - ML - MR, 24, 'FD'); // Shorter box
-            
-            const bx = ML + 4;
-            const by = sy + 6;
-            
-            // Col 1: Payload
-            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('TOTAL PAYLOAD', bx, by);
-            doc.setFontSize(14); doc.setTextColor(...TEXT_HI); doc.text(`${Math.round(ts.totalWeight).toLocaleString()} KG`, bx, by + 6);
-            doc.setFontSize(7); doc.setTextColor(...TEXT_MID); doc.text(`${ts.payloadPct}% OF MAX`, bx, by + 10);
-            
-            // Col 2: Distribution + Utilization (Data Dense)
-            const cx2 = bx + 60;
-            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('WEIGHT DISTRIBUTION', cx2, by);
-            doc.setFontSize(10); doc.setTextColor(...TEXT_HI); doc.text(`REAR ${ts.rPct}%  ·  MID ${ts.mPct}%  ·  FRONT ${ts.fPct}%`, cx2, by + 6);
-            // Subtitle Utilization
-            doc.setFontSize(7); doc.setTextColor(...TEXT_MID); 
-            doc.text(`UTILIZATION  ·  FLOOR: ${ts.floorPct}%  ·  VOLUME: ${ts.volPct}%`, cx2, by + 10);
-            
-            // Status Badge
-            const cx4 = PW - MR - 4;
-            doc.setFontSize(7); doc.setTextColor(...TEXT_LO); doc.text('LOAD STATUS', cx4, by, { align: 'right' });
-            doc.setFontSize(11); doc.setTextColor(...TEXT_HI); doc.text(ts.status.toUpperCase(), cx4, by + 6, { align: 'right' });
-            
-            sy += 30; // Compacted
+            // Column 1: Total Payload
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.setFont('helvetica', 'bold');
+            doc.text('TOTAL LOAD PAYLOAD', ML + 6, midY + 4);
+            doc.setFontSize(32); doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+            doc.text(`${Math.round(ts.totalWeight).toLocaleString()} KG`, ML + 6, midY + 18);
+            doc.setFontSize(9); doc.setTextColor(...TEXT_MID); doc.setFont('helvetica', 'normal');
+            doc.text(`${ts.payloadPct}% OF MAX CAPACITY`, ML + 6, midY + 25);
 
-            // Final Shipping Details (Seal, Plates, etc.)
-            if (meta.sealNumber || meta.tractorNumber || meta.truckPlates || meta.trailerNumber || meta.trailerPlates) {
-                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_LO);
-                doc.text('SHIPMENT IDENTIFICATION & FINAL DATA', ML, sy);
-                sy += 4;
-                doc.setFillColor(255, 255, 255);
-                doc.rect(ML, sy, PW - ML - MR, 15, 'FD');
-                
-                let fx = ML + 4;
-                const fy = sy + 6;
-                const drawField = (label: string, val: string, w: number) => {
-                    doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.text(label, fx, fy);
-                    doc.setFontSize(9); doc.setTextColor(...TEXT_HI); doc.text(val || '—', fx, fy + 5);
-                    fx += w;
-                };
-                drawField('SEAL NUMBER', meta.sealNumber || '', 40);
-                drawField('TRACTOR #', meta.tractorNumber || '', 40);
-                drawField('TRUCK PLATES', meta.truckPlates || '', 40);
-                drawField('TRAILER #', meta.trailerNumber || '', 40);
-                drawField('TRAILER PLATES', meta.trailerPlates || '', 40);
-                
-                if (meta.senders && meta.senders.length > 0) {
-                    const senderText = meta.senders.filter(Boolean).join(', ');
-                    doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.text('SENDERS', fx, fy);
-                    doc.setFontSize(7); doc.setTextColor(...TEXT_HI); 
-                    const senderLines = doc.splitTextToSize(senderText.toUpperCase(), TABLE_END - fx - 2);
-                    doc.text(senderLines[0], fx, fy + 5);
-                }
-                
-                sy += 20;
-            }
+            // Separator
+            doc.setDrawColor(240, 240, 240);
+            doc.line(ML + 95, midY + 4, ML + 95, midY + 28);
+
+            // Column 2: Distribution & Utilization
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.setFont('helvetica', 'bold');
+            doc.text('WEIGHT DISTRIBUTION', ML + 102, midY + 4);
+            doc.setFontSize(11); doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+            doc.text(`REAR: ${ts.rPct}%  ·  MID: ${ts.mPct}%  ·  FRONT: ${ts.fPct}%`, ML + 102, midY + 13);
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.setFont('helvetica', 'bold');
+            doc.text('UTILIZATION METRICS', ML + 102, midY + 20);
+            doc.setFontSize(9); doc.setTextColor(...TEXT_MID); doc.setFont('helvetica', 'normal');
+            doc.text(`FLOOR: ${ts.floorPct}%  ·  VOLUME: ${ts.volPct}%`, ML + 102, midY + 26);
+
+            // Separator
+            doc.line(PW - MR - 65, midY + 4, PW - MR - 65, midY + 28);
+
+            // Column 3: Load Status
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.setFont('helvetica', 'bold');
+            doc.text('LOAD STABILITY STATUS', PW - MR - 6, midY + 4, { align: 'right' });
+            doc.setFontSize(22); doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+            doc.text(ts.status.toUpperCase(), PW - MR - 6, midY + 18, { align: 'right' });
+            doc.setFontSize(8); doc.setTextColor(...TEXT_MID); doc.setFont('helvetica', 'normal');
+            doc.text(`EXPORTED AT: ${meta.exportedAt}`, PW - MR - 6, midY + 25, { align: 'right' });
+            
+            sy += 36;
         }
 
-        // Trailer Maps
-        if (meta.topViewImg) {
-            if (sy + 45 > PH - MB) {
-                doc.addPage([PW, PH], 'landscape');
-                await drawPageChrome(false);
-                sy = MT + 8;
-            }
-            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
-            doc.text('TRAILER TOP VIEW MAP (PLAN)', ML, sy);
-            sy += 4;
-            const imgW = (PW - ML - MR) * 0.72; // Reduced size
-            const imgH = imgW / (1615/244);
-            const ox = ML + (PW - ML - MR - imgW) / 2; // Centered
-            doc.addImage(meta.topViewImg, 'JPEG', ox, sy, imgW, imgH);
-            sy += imgH + 10;
+        // 4. Shipment Metadata (Unified Footer of Dashboard)
+        doc.setFillColor(252, 252, 252);
+        doc.rect(ML + 0.2, sy, DASH_W - 0.4, DASH_H - (sy - 8) - 0.2, 'F');
+        doc.setDrawColor(240, 240, 240);
+        doc.line(ML, sy, PW - MR, sy);
+
+        let fx = ML + 6;
+        const fy = sy + 6;
+        const drawField = (label: string, val: string, w: number) => {
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.setFont('helvetica', 'bold'); doc.text(label, fx, fy);
+            doc.setFontSize(11); doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold'); doc.text((val || '—').toUpperCase(), fx, fy + 8);
+            fx += w;
+        };
+
+        drawField('SEAL NUMBER', meta.sealNumber || '', 38);
+        drawField('TRACTOR #', meta.tractorNumber || '', 38);
+        drawField('TRUCK PLATES', meta.truckPlates || '', 42);
+        drawField('TRAILER #', meta.trailerNumber || '', 38);
+        drawField('TRAILER PLATES', meta.trailerPlates || '', 42);
+        
+        if (meta.senders && meta.senders.length > 0) {
+            const senderText = meta.senders.filter(Boolean).join(', ').toUpperCase();
+            doc.setFontSize(6); doc.setTextColor(...TEXT_LO); doc.text('SENDERS / SHIPPER', fx, fy);
+            doc.setFontSize(7); doc.setTextColor(...TEXT_HI); doc.setFont('helvetica', 'bold');
+            const senderLines = doc.splitTextToSize(senderText, PW - MR - fx - 6);
+            doc.text(senderLines[0], fx, fy + 6);
         }
 
-        if (meta.sideViewImg) {
-            if (sy + 50 > PH - MB) {
-                doc.addPage([PW, PH], 'landscape');
-                await drawPageChrome(false);
-                sy = MT + 8;
-            }
-            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
-            doc.text('TRAILER SIDE VIEW MAP (LATERAL STACKING)', ML, sy);
-            sy += 4;
-            const imgW = (PW - ML - MR) * 0.72; // Reduced size
-            const imgH = imgW / (1615/279);
-            const ox = ML + (PW - ML - MR - imgW) / 2; // Centered
-            doc.addImage(meta.sideViewImg, 'JPEG', ox, sy, imgW, imgH);
-            sy += imgH + 12;
-        }
+        sy = 8 + DASH_H + 12;
 
+        if (meta.topViewImg || meta.sideViewImg) {
+            const mapScale = 0.62;
+            const mapW = (PW - ML - MR) * mapScale;
+            const ox = ML + (PW - ML - MR - mapW) / 2;
+
+            if (meta.topViewImg) {
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
+                doc.text('TRAILER TOP VIEW MAP (PLAN)', ML, sy);
+                sy += 2;
+                const mapH = mapW / (1615/244);
+                doc.addImage(meta.topViewImg, 'JPEG', ox, sy, mapW, mapH);
+                sy += mapH + 4;
+            }
+
+            if (meta.sideViewImg) {
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_MID);
+                doc.text('TRAILER SIDE VIEW MAP (LATERAL STACKING)', ML, sy);
+                sy += 2;
+                const mapH = mapW / (1615/279);
+                doc.addImage(meta.sideViewImg, 'JPEG', ox, sy, mapW, mapH);
+                sy += mapH + 6;
+            }
+        }
+        
         if (meta.isoViewImg) {
-            // Always force Isometric View to its own page
             doc.addPage([PW, PH], 'landscape');
             await drawPageChrome(false);
-            sy = MT + 8; // Start at top margin of new page
-
+            sy = MT + 8;
             doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
             doc.text('TRAILER ISOMETRIC 3D LOAD VIEW', ML, sy);
             sy += 6;
             const imgW = PW - ML - MR;
-            const imgH = imgW * 0.45; // Larger aspect for dedicated page
+            const imgH = imgW * 0.45; 
             doc.addImage(meta.isoViewImg, 'JPEG', ML, sy, imgW, imgH);
             sy += imgH + 12;
             doc.addPage([PW, PH], 'landscape');
@@ -541,17 +536,15 @@ export async function exportCrateManifesto(
             sy = MT + 8; 
         }
 
-        // Crate Grid
         if (meta.allTruckCrates) {
             if (sy + 25 > PH - MB) {
                 doc.addPage([PW, PH], 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
             }
-
             doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
             doc.text('PACKED CRATES & PALLETS SUMMARY', ML, sy);
-            sy += 6; // Reduced from 8
+            sy += 6;
             
             const gridCols = 5;
             const boxW = (PW - ML - MR) / gridCols - 4;
@@ -559,7 +552,7 @@ export async function exportCrateManifesto(
             let drawnOnThisPage = 0;
             for (let i = 0; i < meta.allTruckCrates.length; i++) {
                 const c = meta.allTruckCrates[i];
-                if (c.type === 'cardboard') continue; // Do not show boxes in the summary grid
+                if (c.type === 'cardboard') continue;
 
                 const col = drawnOnThisPage % gridCols;
                 const row = Math.floor(drawnOnThisPage / gridCols);
@@ -578,34 +571,26 @@ export async function exportCrateManifesto(
                 doc.rect(bx, by, boxW, boxH, 'F');
                 doc.setDrawColor(230, 230, 230);
                 doc.rect(bx, by, boxW, boxH, 'S');
-                
-                // Scaled wireframe icon
                 drawWireframeIcon(doc, bx + 2, by + 4, 15, c.w, c.l, c.h, c.color, c.type);
-                
                 const [cr, cg, cb] = hexToRgb(c.color);
                 doc.setFillColor(cr, cg, cb);
                 doc.roundedRect(bx + 18, by + 3.5, 2.5, 2.5, 0.5, 0.5, 'F');
-
                 doc.setTextColor(cr, cg, cb); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
                 doc.text(c.label, bx + 22, by + 6);
                 doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
                 doc.text(`${c.type.toUpperCase()} · ${c.weight} KG`, bx + 18, by + 11);
                 doc.text(c.dims, bx + 18, by + 16);
-                
                 drawnOnThisPage++;
             }
 
-            // ─── Cardboard Boxes Summary (Separate Page) ───────────────────────
             const boxes = (meta.allTruckCrates || []).filter(c => c.type === 'cardboard');
             if (boxes.length > 0) {
                 doc.addPage([PW, PH], 'landscape');
                 await drawPageChrome(false);
                 sy = MT + 8;
-
                 doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...TEXT_HI);
                 doc.text('PACKED CARDBOARD BOXES SUMMARY', ML, sy);
                 sy += 6;
-                
                 let boxDrawn = 0;
                 for (let i = 0; i < boxes.length; i++) {
                     const c = boxes[i];
@@ -613,7 +598,6 @@ export async function exportCrateManifesto(
                     const row = Math.floor(boxDrawn / gridCols);
                     const bx = ML + col * (boxW + 4);
                     let by = sy + row * (boxH + 4);
-                    
                     if (by + boxH > PH - MB) {
                         doc.addPage([PW, PH], 'landscape');
                         await drawPageChrome(false);
@@ -621,29 +605,23 @@ export async function exportCrateManifesto(
                         boxDrawn = 0;
                         by = sy;
                     }
-
                     doc.setFillColor(252, 252, 252);
                     doc.rect(bx, by, boxW, boxH, 'F');
                     doc.setDrawColor(230, 230, 230);
                     doc.rect(bx, by, boxW, boxH, 'S');
-                    
                     drawWireframeIcon(doc, bx + 2, by + 4, 15, c.w, c.l, c.h, c.color, c.type);
-                    
                     const [cr, cg, cb] = hexToRgb(c.color);
                     doc.setFillColor(cr, cg, cb);
                     doc.roundedRect(bx + 18, by + 3.5, 2.5, 2.5, 0.5, 0.5, 'F');
-
                     doc.setTextColor(cr, cg, cb); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
                     doc.text(c.label, bx + 22, by + 6);
                     doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...TEXT_MID);
                     doc.text(`${c.type.toUpperCase()} · ${c.weight} KG`, bx + 18, by + 11);
                     doc.text(c.dims, bx + 18, by + 16);
-                    
                     if (c.parentLabel) {
                         doc.setFontSize(6.5); doc.setFont('helvetica', 'bold italic'); doc.setTextColor(...ACCENT);
                         doc.text(`NESTED IN: ${c.parentLabel}`, bx + 18, by + 20);
                     }
-
                     boxDrawn++;
                 }
             }
@@ -744,7 +722,6 @@ export async function exportCrateManifesto(
 
     if (isMultiCrate) {
         await drawSummaryPage();
-        await drawBoxContentsPage();
         doc.addPage([PW, PH], 'landscape');
         await drawPageChrome(false);
         y = MT;
