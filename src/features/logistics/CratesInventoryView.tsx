@@ -1127,29 +1127,34 @@ export const CratesInventoryView: React.FC = () => {
 
             {/* NESTING WIZARD MODAL */}
             {nestingUnit && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="bg-black border border-white/10 w-full max-w-2xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] flex flex-col">
-                        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                            <div className="flex flex-col gap-2">
-                                <h3 className="text-xl font-black uppercase tracking-[0.4em] text-(--main-color)">Nesting Wizard</h3>
-                                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Select destination for {nestingUnit.id.slice(0, 8).toUpperCase()}</p>
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-2xl animate-in fade-in duration-500">
+                    <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 w-full max-w-2xl overflow-hidden shadow-[0_0_150px_rgba(0,0,0,0.5)] flex flex-col rounded-[2rem] relative">
+                        {/* Glassmorphic Shine Effect */}
+                        <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-(--main-color)/30 to-transparent pointer-events-none" />
+                        
+                        <div className="p-10 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                            <div className="flex flex-col gap-3">
+                                <h3 className="text-2xl font-black uppercase tracking-[0.5em] text-(--main-color) italic">Nesting Protocol</h3>
+                                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] font-mono">Assign {nestingUnit.id.slice(0, 8).toUpperCase()} to logical container</p>
                             </div>
-                            <button onClick={() => setNestingUnit(null)} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 cursor-pointer">
-                                <X size={20} />
+                            <button onClick={() => setNestingUnit(null)} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-(--main-color) hover:text-black text-white transition-all border border-white/10 rounded-full cursor-pointer group">
+                                <X size={20} className="group-hover:rotate-90 transition-transform duration-500" />
                             </button>
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto no-scrollbar p-8 bg-black max-h-[60vh]">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex-1 overflow-y-auto no-scrollbar p-10 max-h-[60vh]">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {crates.filter(c => (c.status !== 'Packed' || (c.type !== 'cardboard')) && (c.type === 'crate' || c.type === 'pallet') && c.id !== nestingUnit.id && !c.parent_id).map(dest => (
                                     <button
                                         key={dest.id}
                                         onClick={() => handleNestUnit(nestingUnit.id, dest.id)}
                                         disabled={isSavingNest}
-                                        className="flex flex-col items-start gap-4 p-6 bg-white/[0.03] border border-white/5 hover:border-(--main-color) transition-all text-left group cursor-pointer"
+                                        className="flex flex-col items-start gap-6 p-8 bg-white/[0.02] border border-white/5 hover:border-(--main-color)/50 hover:bg-white/[0.05] transition-all text-left group cursor-pointer relative overflow-hidden rounded-3xl"
                                     >
-                                        <div className="flex items-center justify-between w-full">
-                                            <div className="flex items-center">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-(--main-color)/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        
+                                        <div className="flex items-center justify-between w-full relative z-10">
+                                            <div className="flex items-center gap-1">
                                                 {(() => {
                                                     const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(dest, crates, allInventory);
                                                     if (!date && !sequence) return (
