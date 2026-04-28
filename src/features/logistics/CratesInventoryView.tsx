@@ -244,10 +244,9 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
     
     const nestedCount = useMemo(() => allCrates.filter(nu => nu.parent_id === crate.id).length, [allCrates, crate.id]);
     const itemCount = crate.inventory_ids ? crate.inventory_ids.split(',').filter(Boolean).length : 0;
-    const netWeight = ((crate.weight_kg ?? 0) * (crate.quantity ?? 1));
     const vol = ((crate.width_cm ?? 0) * (crate.length_cm ?? 0) * (crate.height_cm ?? 0) / 1_000_000).toFixed(3);
 
-    const { getItemsRecursive, getUsedVolRecursive } = useMemo(() => {
+    const { getItemsRecursive, getUsedVolRecursive, getNetWeightRecursive } = useMemo(() => {
         const getItems = (c: any, parentLabel?: string, visited = new Set<string>()): any[] => {
             if (!c || visited.has(c.id)) return [];
             visited.add(c.id);
@@ -261,9 +260,13 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                     if (inv) {
                         const norm = normalizeInventoryData(inv.data);
                         const urls = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
+                        const barcode = calculateCodesAndPrices(norm, liveRate, '326').bookBarcode || norm.book_barcode || norm.itemId || 'UNK';
+                        const weight = (parseFloat(norm.weightKg || norm.weight_kg) || 0);
                         res.push({
                             id, qty, norm, packetIn: parentLabel,
-                            mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null))
+                            mainImage: getCleanImageUrl(norm.generatedPngUrl || (urls.length > 0 ? urls[0] : null)),
+                            barcode,
+                            weight
                         });
                     }
                 });
@@ -299,8 +302,33 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
             return v;
         };
 
-        return { getItemsRecursive: getItems, getUsedVolRecursive: getVol };
-    }, [allCrates, allInventory]);
+        const getWeight = (c: any, visited = new Set<string>()): number => {
+            if (!c || visited.has(c.id)) return 0;
+            visited.add(c.id);
+
+            let w = 0;
+            if (c.inventory_ids) {
+                c.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+                    const [id, qtyStr] = entry.split(':');
+                    const qty = parseInt(qtyStr || '1', 10) || 1;
+                    const inv = allInventory.find(i => String(i.row) === id);
+                    if (inv) {
+                        const norm = normalizeInventoryData(inv.data);
+                        w += (parseFloat(norm.weightKg || norm.weight_kg) || 0) * qty;
+                    }
+                });
+            }
+            const nested = allCrates.filter(nu => nu.parent_id === c.id);
+            nested.forEach(n => {
+                w += getWeight(n, visited);
+            });
+            return w;
+        };
+
+        return { getItemsRecursive: getItems, getUsedVolRecursive: getVol, getNetWeightRecursive: getWeight };
+    }, [allCrates, allInventory, liveRate]);
+
+    const netWeight = useMemo(() => getNetWeightRecursive(crate), [crate, getNetWeightRecursive]);
 
     const fillPct = useMemo(() => {
         const internalVol = (crate.width_cm || 1) * (crate.length_cm || 1) * (crate.height_cm || 1);
@@ -601,19 +629,26 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
 
             {/* Expandable Packed Contents List */}
             {isExpanded && crate.status !== 'Empty' && packedItems.length > 0 && (
-                <div className="border-t border-white/5 bg-black/20 p-4 max-h-64 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-300">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 px-1">{dynamicId} — Packing List</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="border-t border-white/5 bg-black/20 p-6 max-h-[500px] overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-300">
+                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/40 mb-6 px-1">{dynamicId} — Packing List</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {packedItems.map((item, idx) => (
-                            <div key={`${item.id}-${idx}`} className="flex items-center gap-3 bg-white/2 border border-white/5 rounded-xl p-2 hover:bg-white/5 transition-colors">
-                                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/50">
-                                    {item.mainImage ? <img src={item.mainImage} className="w-full h-full object-cover" /> : <div className="w-full h-full border border-white/10" />}
+                            <div key={`${item.id}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-3 hover:bg-white/8 hover:border-white/20 transition-all duration-300">
+                                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-black/50 border border-white/10">
+                                    {item.mainImage ? <img src={item.mainImage} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-bold text-white truncate">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
-                                    <p className="text-[8px] font-mono text-white/40">{item.norm.itemId || 'UNK'}</p>
+                                    <p className="text-[13px] font-black text-white truncate uppercase tracking-tight">{item.norm.shape || ''} {item.norm.shortDescription || item.norm.description || ''}</p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.1em]">{item.barcode}</p>
+                                        {item.weight > 0 && (
+                                            <p className="text-[10px] font-black text-(--main-color) uppercase tracking-tighter bg-(--main-color)/10 px-2 py-0.5 rounded-md">
+                                                {item.weight.toFixed(1)} KG
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="w-auto px-2 py-1 bg-white/5 text-[10px] font-black font-mono text-(--main-color)">
+                                <div className="w-auto px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[12px] font-black font-mono text-(--main-color)">
                                     x{item.qty}
                                 </div>
                             </div>
