@@ -1,7 +1,7 @@
 import { vendors } from '../../lib/consts';
 
 export function generatePackingListHtml(manifestId: string, metadata: any, payload: any) {
-    const { crates, truckStats, timestamp } = payload;
+    const { crates, truckStats, timestamp, isoView } = payload;
     
     const crateRows = crates.map((c: any) => {
         const crateColor = c.color || (vendors as any)[c.subtitle]?.color || '#adb5bd';
@@ -115,16 +115,21 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
             </div>
             <div style="grid-column: span 2; border-left: 1px solid #f1f5f9; padding-left: 40px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                 <div>
+                    <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Volume Status</label>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: ${truckStats?.statusColor || '#111827'};">${truckStats?.status || 'OPTIMAL'}</span>
+                    <span style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-left: 4px;">${truckStats?.volPct || 0}% FILLED</span>
+                </div>
+                <div>
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Seal Number</label>
                     <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.sealNumber || '—'}</span>
                 </div>
                 <div>
-                    <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Tractor</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.tractorNumber || '—'}</span>
+                    <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Tractor / Plates</label>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.tractorNumber || '—'} ${metadata?.truckPlates ? '· ' + metadata.truckPlates : ''}</span>
                 </div>
-                <div>
-                    <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Trailer</label>
-                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.trailerNumber || '—'}</span>
+                <div style="grid-column: span 3;">
+                    <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Trailer / Plates</label>
+                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase;">${metadata?.trailerNumber || '—'} ${metadata?.trailerPlates ? '· ' + metadata.trailerPlates : ''}</span>
                 </div>
                 <div style="grid-column: span 3;">
                     <label style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 5px; display: block;">Dispatch Personnel</label>
@@ -132,6 +137,21 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
                 </div>
             </div>
         </div>
+
+        <!-- 3D Map Section -->
+        ${isoView ? `
+        <div style="margin-bottom: 60px;">
+            <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.4em; color: #cbd5e1; margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
+                Live Load Simulation <div style="flex: 1; height: 1px; background: #f1f5f9;"></div>
+            </h2>
+            <div style="width: 100%; border: 1px solid #f1f5f9; border-radius: 20px; padding: 20px; background: #f8fafc; text-align: center;">
+                <img src="${isoView}" style="max-width: 100%; height: auto; border-radius: 10px;" />
+                <div style="margin-top: 15px; font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em;">
+                    VIRTUAL TWIN · SCALE 1:1 · LIDAR SCAN SYNC
+                </div>
+            </div>
+        </div>
+        ` : ''}
 
         <!-- Inventory Breakdown -->
         <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.4em; color: #cbd5e1; margin-bottom: 40px; display: flex; align-items: center; gap: 20px;">

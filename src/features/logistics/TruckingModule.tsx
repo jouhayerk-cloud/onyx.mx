@@ -2545,6 +2545,26 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         packingItems: [] as Array<{ name: string; count: number; weight: number }>
     });
 
+    const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
+        if (!crate || visited.has(crate.id)) return [];
+        visited.add(crate.id);
+        const { label: currentLabel } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+        const nextFloorLabel = floorLabel || currentLabel;
+        const nextBoxLabel = crate.type === 'cardboard' ? currentLabel : boxLabel;
+        let results: any[] = [];
+        if (crate.inventory_ids) {
+            crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
+                const [id, qtyStr] = e.split(':');
+                const qty = parseInt(qtyStr || '1', 10) || 1;
+                const inv = allInventory.find((i: any) => String(i.row) === id);
+                if (inv) results.push({ id, qty, inv, packetIn: floorLabel, boxLabel: nextBoxLabel });
+            });
+        }
+        const nested = allCrates.filter(c => c.parent_id === crate.id);
+        nested.forEach(n => { results = [...results, ...getItemsFromCrate(n, nextFloorLabel, nextBoxLabel, visited)]; });
+        return results;
+    };
+
     useEffect(() => {
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
         docs.forEach(d => {
@@ -2802,6 +2822,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 return sum + items.reduce((iSum, i) => iSum + (parseFloat(i.inv?.data?.weightKg || i.inv?.data?.weight_kg || 0) * (i.qty || 1)), 0);
             }, 0);
 
+            const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
+
             const shipmentPayload = JSON.parse(JSON.stringify({
                 crates: truckCrates.map(c => {
                     const pos = positions[c.id];
@@ -2849,6 +2871,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     ...panelStats,
                     totalWeight
                 },
+                isoView,
                 timestamp: ts
             }));
 
