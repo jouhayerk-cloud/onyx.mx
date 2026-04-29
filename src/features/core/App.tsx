@@ -10,8 +10,10 @@ import { SCRIPT_URL } from '../../lib/consts';
 import { WelcomePage } from '../auth/WelcomePage';
 import { TagView } from '../logistics/TagView';
 import { ViewerView } from '../viewer/ViewerView';
+import { SentTruckViewer } from '../logistics/SentTruckViewer';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
+import { sentTruckIdAtom } from '../../lib/atoms';
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
@@ -20,6 +22,7 @@ export default function App() {
   const setLanguage = useSetAtom(languageAtom);
   const [showWelcome, setShowWelcome] = useState(false);
   const [tagId, setTagId] = useAtom(tagIdAtom);
+  const [sentTruckId, setSentTruckId] = useAtom(sentTruckIdAtom);
   const [view, setView] = useAtom(universalViewAtom);
 
   /**
@@ -63,7 +66,15 @@ export default function App() {
         return true;
       }
 
-      // 4. Viewer detection
+      // 4. Truck detection
+      let tId = params.get('truckid') || params.get('manifestid');
+      if (tId && tId !== sentTruckId) {
+        setSentTruckId(tId);
+        setView('truck');
+        return true;
+      }
+
+      // 5. Viewer detection
       if (params.get('viewer') === 'true' || window.location.hash.includes('viewer')) {
         setView('viewer');
         return true;
@@ -200,6 +211,8 @@ export default function App() {
       <PullToRefresh />
       {view === 'tag' && tagId ? (
          <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
+      ) : view === 'truck' && sentTruckId ? (
+         <SentTruckViewer />
       ) : view === 'viewer' ? (
          <ViewerView onOpenArtifact={(id) => { setTagId(id); setView('tag'); }} />
       ) : (

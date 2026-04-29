@@ -106,6 +106,21 @@ const productionSchema = {
     }
 };
 
+const shipmentsSchema = {
+    title: 'shipments schema',
+    version: 1,
+    primaryKey: 'id',
+    type: 'object',
+    properties: {
+        id: { type: 'string', maxLength: 100 },
+        manifest_id: { type: 'string' },
+        metadata: { type: 'object' },
+        payload: { type: 'object' },
+        timestamp: { type: 'string' },
+        updated_at: { type: 'string' }
+    }
+};
+
 const inventorySchema = {
     title: 'inventory schema',
     version: 10,
@@ -175,6 +190,7 @@ export type OnyxDatabase = RxDatabase<{
     finance: RxCollection<any>;
     logistics: RxCollection<any>;
     production: RxCollection<any>;
+    shipments: RxCollection<any>;
 }>;
 
 let dbPromise: Promise<OnyxDatabase> | null = null;
@@ -234,6 +250,12 @@ const createDatabase = async () => {
                 migrationStrategies: {
                     1: () => null, 2: () => null, 3: () => null, 4: () => null,
                 }
+            },
+            shipments: {
+                schema: shipmentsSchema,
+                migrationStrategies: {
+                    1: () => null,
+                }
             }
         });
 
@@ -261,7 +283,16 @@ const createDatabase = async () => {
 
                             const { data, error } = await query;
                             if (error) {
-                                console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
+                                // Gracefully handle missing shipments table (PGRST204)
+                                if (error.code === 'PGRST204' || error.message.includes('not found')) {
+                                    if (table === 'shipments') {
+                                        console.warn('ℹ️ [DB] Shipment Registry table not found. Run the SQL setup to enable the 3D Digital Mirror.');
+                                    } else {
+                                        console.error(`❌ [DB] ${table} not found:`, error.message);
+                                    }
+                                } else {
+                                    console.error(`❌ [DB] ${table} fetch page ${page} error:`, error.message);
+                                }
                                 success = false;
                                 break;
                             }
@@ -307,6 +338,7 @@ const createDatabase = async () => {
                 await syncCollection('finance', db.finance);
                 await syncCollection('logistics', db.logistics);
                 await syncCollection('production', db.production);
+                await syncCollection('shipments', db.shipments);
 
                 console.log('🏁 [DB] Prioritized paginated sync complete.');
             } catch (err) {

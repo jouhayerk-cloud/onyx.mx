@@ -393,14 +393,17 @@ export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({
 // Viewer & Artifact Atoms
 export const viewerSearchQueryAtom = atomWithStorage<string>('viewerSearchQuery', '', sessionJSONStorage);
 export const tagIdAtom = atom<string | null, [string | null], void>(null, (get, set, update) => set(tagIdAtom, update));
-const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' => {
+export const sentTruckIdAtom = atom<string | null>(null);
+
+const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' | 'truck' => {
   if (typeof window === 'undefined') return 'app';
   const params = new URLSearchParams(window.location.search);
+  if (params.get('truckid') || params.get('manifestid')) return 'truck';
   if (params.get('tagid') || params.get('tagID')) return 'tag';
   if (params.get('viewer') === 'true' || window.location.hash.includes('viewer')) return 'viewer';
   return 'app';
 };
-export const universalViewAtom = atom<'app' | 'tag' | 'viewer', ['app' | 'tag' | 'viewer'], void>(getInitialUniversalView(), (get, set, update) => set(universalViewAtom, update));
+export const universalViewAtom = atom<'app' | 'tag' | 'viewer' | 'truck', ['app' | 'tag' | 'viewer' | 'truck'], void>(getInitialUniversalView(), (get, set, update) => set(universalViewAtom, update));
 
 // Packing Module Atoms
 export const packingViewModeAtom = atomWithStorage<'grid' | 'list'>('packingViewMode', 'list');
