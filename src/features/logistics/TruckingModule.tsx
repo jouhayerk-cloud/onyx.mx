@@ -2013,11 +2013,12 @@ const ReadyTruckWizard: React.FC<{
                         </div>
                     </div>
 
-                    {/* Right side: Exports & Action */}
+                    <div className="flex flex-col gap-4">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
                         <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${new Date().getTime()}.pdf`} />
                         <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${new Date().getTime()}.xlsx`} />
                         <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${new Date().getTime()}.pdf`} />
-                        
+                    </div>
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                             <div className="grid grid-cols-3 gap-3">
