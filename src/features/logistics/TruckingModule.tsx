@@ -1671,9 +1671,14 @@ const InteractiveTruckViewer: React.FC<{
             const geo = new THREE.BoxGeometry(dl, dh, dw);
             const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#6b7280';
             const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.2, metalness: 0.5, emissive: col, emissiveIntensity: 0.05 });
+            const isRotated = pos.r === 90;
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set((pos.x / 100) - 8.075 + (dl/2), (pos.z || 0)/100 + dh/2, (pos.y / 100) - 1.22 + (dw/2));
-            if (pos.r === 90) mesh.rotation.y = Math.PI / 2;
+            mesh.position.set(
+                (pos.x / 100) - 8.075 + (isRotated ? dw : dl) / 2, 
+                (pos.z || 0)/100 + dh/2, 
+                (pos.y / 100) - 1.22 + (isRotated ? dl : dw) / 2
+            );
+            if (isRotated) mesh.rotation.y = Math.PI / 2;
             scene.add(mesh);
             cratesMap.set(c.id, mesh);
         });
@@ -2045,8 +2050,8 @@ const ReadyTruckWizard: React.FC<{
                         label,
                         subtitle,
                         x: pos.x,
-                        y: pos.y,
-                        z: pos.z || 0,
+                        y: pos.z || 0, // Height
+                        z: pos.y,      // Width/Depth
                         w: c.width_cm,
                         l: c.length_cm,
                         h: c.height_cm || 100,
