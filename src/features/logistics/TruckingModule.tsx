@@ -2845,6 +2845,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             };
 
             // 3. Save to Supabase Registry
+            console.log('[Shipment] Saving Payload to Cloud Registry:', shipmentPayload);
             if (!isDummyMode) {
                 const { error: shipError } = await supabase.from('shipments').insert({
                     manifest_id: manifestId,
@@ -2853,7 +2854,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     timestamp: ts,
                     updated_at: new Date().toISOString()
                 });
-                if (shipError) throw shipError;
+                if (shipError) {
+                    console.error('[Shipment] Save Error:', shipError);
+                    throw shipError;
+                }
+                console.log('[Shipment] Successfully saved to cloud.');
+            } else {
+                console.warn('[Shipment] Dummy mode active, skipping cloud save.');
             }
 
             // 4. Generate HTML Manifesto
