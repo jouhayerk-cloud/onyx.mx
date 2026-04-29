@@ -2800,28 +2800,44 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const shipmentPayload = {
                 crates: truckCrates.map(c => {
                     const pos = positions[c.id];
+                    const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
+                    const crateColor = (vendors as any)[vendorList[0]]?.color || '#6b7280';
+                    
                     return {
                         id: c.id,
-                        label: c.label || c.id.slice(0, 8),
-                        subtitle: c.description?.split('POS:')[0]?.trim() || '',
+                        label,
+                        subtitle,
                         x: pos?.x || 0,
-                        y: pos?.z || 0, // In Three.js Y is up, but in wizard Z is vertical. Mapping wizard Z to Three.js Y.
-                        z: pos?.y || 0, // Mapping wizard Y (depth) to Three.js Z.
+                        y: pos?.z || 0, // Height
+                        z: pos?.y || 0, // Width/Depth
                         w: c.width_cm,
                         l: c.length_cm,
                         h: c.height_cm || 100,
                         r: pos?.r || 0,
-                        vendorList: [c.vendor_id || 'VAR'],
-                        items: allInventory
-                            .filter(i => i.crate_id === c.id || (i as any).sent_pack === c.id)
-                            .map(i => ({
-                                itemId: i.item_id,
-                                name: i.description,
-                                qty: i.quantity || 1,
-                                weightKg: i.weight_kg || 0,
-                                material: i.material || '',
-                                color: i.color || ''
-                            }))
+                        color: crateColor,
+                        vendorList,
+                        items: getItemsFromCrate(c).map(item => {
+                            const inv = item.inv;
+                            const data = inv.data || {};
+                            const norm = normalizeInventoryData(inv);
+                            const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                            const tagId = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                            const vP = Object.keys(vendors).find(k => tagId.toUpperCase().startsWith(k)) || 'OTHER';
+                            
+                            return {
+                                itemId: tagId,
+                                vendorPrefix: vP,
+                                tagColor: (vendors as any)[vP]?.color || '#6b7280',
+                                name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                                type: data.shape || 'Unit',
+                                desc: data.shortDescription || '',
+                                qty: item.qty,
+                                weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                                material: data.material || '',
+                                color: data.color || '',
+                                combinedAttr: `${data.color || ''} ${data.material ? '/ ' + data.material : ''}`.trim()
+                            };
+                        })
                     };
                 }),
                 truckStats: panelStats,
