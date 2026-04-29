@@ -123,11 +123,12 @@ export const SentTruckViewer: React.FC = () => {
         const cratesMap = new Map<string, THREE.Mesh>();
 
         cratesData.forEach((c: any) => {
-            // Convert cm to meters
+            // Convert cm to meters for dimensions
             const dw = (c.w || 100) / 100;
             const dl = (c.l || 100) / 100;
             const dh = (c.h || 100) / 100;
 
+            // Geometry (Length, Height, Width)
             const geometry = new THREE.BoxGeometry(dl, dh, dw);
             const vendorCol = vendors[c.vendorList?.[0] as keyof typeof vendors]?.color || '#6b7280';
             const material = new THREE.MeshStandardMaterial({ 
@@ -140,9 +141,23 @@ export const SentTruckViewer: React.FC = () => {
 
             const mesh = new THREE.Mesh(geometry, material);
             
-            // Positioning (Payload coords are relative to trailer front-left-bottom)
-            // Coords from wizard are in meters normalized to trailer center
-            mesh.position.set(c.x - 8.25 + dl/2, c.z + dh/2, c.y - 1.3 + dw/2);
+            // Positioning (Payload coords are in CM relative to trailer bottom-left-rear)
+            const x_m = (c.x || 0) / 100;
+            const y_m = (c.y || 0) / 100; // Height (Up)
+            const z_m = (c.z || 0) / 100; // Width (Across)
+
+            // Center relative to trailer origin (0, 1.4, 0)
+            // Trailer is 16.5m (X), 2.8m (Y), 2.6m (Z)
+            mesh.position.set(
+                x_m - 8.25 + dl/2, 
+                y_m + dh/2, 
+                z_m - 1.3 + dw/2
+            );
+
+            // Rotation (if c.r is 90, rotate around Y axis)
+            if (c.r) {
+                mesh.rotation.y = (c.r * Math.PI) / 180;
+            }
             
             mesh.userData = { id: c.id, data: c };
             scene.add(mesh);
