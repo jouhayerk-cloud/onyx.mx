@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { useAtom, useAtomValue } from 'jotai';
 import { sentTruckIdAtom, universalViewAtom } from '../../lib/atoms';
 import { supabase } from '../../lib/supabase';
-import { vendors } from '../../lib/vendors';
+import { vendors } from '../../lib/consts';
 import { 
     ChevronLeft, Truck, Package, Maximize2, Move, X, List, 
     Layers, Info, ArrowUpRight, Scale, Box, Map as MapIcon, 
