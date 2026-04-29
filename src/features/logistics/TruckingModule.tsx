@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
+import { 
     inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
     truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom,
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
