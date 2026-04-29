@@ -11,12 +11,12 @@ import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
-import { 
     inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
     truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom,
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
     truckShowExportModalAtom, truckShowReadyWizardAtom,
-    truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom 
+    truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom,
+    sentTruckIdAtom, universalViewAtom
 } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
@@ -2460,14 +2460,34 @@ const ReadyTruckWizard: React.FC<{
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-                                <div className="absolute bottom-4 left-6 flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md">
-                                        <Maximize2 size={14} className="text-emerald-400" />
+                                <div className="absolute bottom-4 left-6 flex items-center justify-between right-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md">
+                                            <Maximize2 size={14} className="text-emerald-400" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-white uppercase tracking-tight">Trailer Isometric</span>
+                                            <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">Active Mirror Sync</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-white uppercase tracking-tight">Trailer Isometric</span>
-                                        <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">Active Mirror Sync</span>
-                                    </div>
+                                    
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Handle case where we might want to view current draft in 3D
+                                            // For now, if we have a recalled shipment, use that
+                                            if (recalledShipment?.manifest_id) {
+                                                setSentTruckId(recalledShipment.manifest_id);
+                                                setView('truck');
+                                            } else {
+                                                toast.error("3D View requires a finalized or recalled shipment");
+                                            }
+                                        }}
+                                        className="p-2.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all shadow-xl flex items-center gap-2 group/btn"
+                                    >
+                                        <Share2 size={14} />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">View 3D</span>
+                                    </button>
                                 </div>
                                 <div className="absolute top-4 right-6 px-3 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
                                     <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em]">3D Lidar Point-Cloud</span>
@@ -2674,6 +2694,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const isDummyMode = useAtomValue(isDummyModeAtom);
     const allInventory = useAtomValue(inventoryAtom);
     const setCratesVersion = useSetAtom(cratesVersionAtom);
+    const setSentTruckId = useSetAtom(sentTruckIdAtom);
+    const setView = useSetAtom(universalViewAtom);
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number; z?: number }>>({});
@@ -3454,6 +3476,19 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             >
                                 <Trash2 size={16} />
                             </button>
+
+                            {recalledShipment && (
+                                <button
+                                    onClick={() => {
+                                        setSentTruckId(recalledShipment.manifest_id);
+                                        setView('truck');
+                                    }}
+                                    title="Open 3D Interactive Viewer"
+                                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400/40 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer"
+                                >
+                                    <Share2 size={16} />
+                                </button>
+                            )}
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
