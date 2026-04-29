@@ -1632,10 +1632,10 @@ const InteractiveTruckViewer: React.FC<{
         const height = containerRef.current.clientHeight;
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0f);
+        scene.background = new THREE.Color(0xf8fafc);
 
-        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-        camera.position.set(15, 10, 20);
+        const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
+        camera.position.set(22, 14, 22);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
@@ -1646,20 +1646,21 @@ const InteractiveTruckViewer: React.FC<{
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.4);
         sun.position.set(10, 20, 10);
         scene.add(sun);
-        const rim = new THREE.DirectionalLight(0x3b82f6, 0.3);
-        rim.position.set(-10, 5, -10);
-        scene.add(rim);
+        
+        const grid = new THREE.GridHelper(40, 40, 0xe2e8f0, 0xf1f5f9);
+        grid.position.y = -0.06;
+        scene.add(grid);
 
-        const trailerGeo = new THREE.BoxGeometry(16.15, 2.8, 2.44);
-        const trailerWire = new THREE.LineSegments(new THREE.EdgesGeometry(trailerGeo), new THREE.LineBasicMaterial({ color: 0x333344, transparent: true, opacity: 0.3 }));
-        trailerWire.position.set(0, 1.4, 0);
-        scene.add(trailerWire);
-
-        scene.add(new THREE.GridHelper(40, 40, 0x1f2937, 0x111827));
+        const bed = new THREE.Mesh(
+            new THREE.BoxGeometry(16.15, 0.05, 2.44),
+            new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.1, roughness: 0.8 })
+        );
+        bed.position.y = -0.025;
+        scene.add(bed);
 
         const cratesMap = new Map<string, THREE.Mesh>();
         truckCrates.forEach(c => {
@@ -1668,18 +1669,36 @@ const InteractiveTruckViewer: React.FC<{
             const dw = c.width_cm / 100;
             const dl = c.length_cm / 100;
             const dh = (c.height_cm || 100) / 100;
-            const geo = new THREE.BoxGeometry(dl, dh, dw);
-            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#6b7280';
-            const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.2, metalness: 0.5, emissive: col, emissiveIntensity: 0.05 });
             const isRotated = pos.r === 90;
+
+            const geo = new THREE.BoxGeometry(dl, dh, dw);
+            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#adb5bd';
+            const mat = new THREE.MeshPhongMaterial({ 
+                color: col, 
+                transparent: true, 
+                opacity: 0.85,
+                shininess: 30
+            });
             const mesh = new THREE.Mesh(geo, mat);
+            
             mesh.position.set(
-                (pos.x / 100) - 8.075 + (isRotated ? dw : dl) / 2, 
-                (pos.z || 0)/100 + dh/2, 
-                (pos.y / 100) - 1.22 + (isRotated ? dl : dw) / 2
+                (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2, 
+                (pos.z || 0)/100 + dh/2 + 0.01, 
+                (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2
             );
+            
             if (isRotated) mesh.rotation.y = Math.PI / 2;
             scene.add(mesh);
+
+            // Edges
+            const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geo),
+                new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 })
+            );
+            edges.position.copy(mesh.position);
+            edges.rotation.copy(mesh.rotation);
+            scene.add(edges);
+
             cratesMap.set(c.id, mesh);
         });
 
@@ -2534,6 +2553,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
+    const bookRate = useAtomValue(exchangeRateAtom);
 
     const [readyTruckFields, setReadyTruckFields] = useState({
         sealNumber: '',
