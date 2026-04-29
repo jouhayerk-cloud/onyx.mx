@@ -76,8 +76,10 @@ export default function App() {
 
       // 5. Viewer detection
       if (params.get('viewer') === 'true' || window.location.hash.includes('viewer')) {
-        setView('viewer');
-        return true;
+        if (view !== 'viewer' && view !== 'tag' && view !== 'truck') {
+            setView('viewer');
+            return true;
+        }
       }
 
       return false;
@@ -88,7 +90,7 @@ export default function App() {
     // Check one more time after a short delay for slow-loading iframes
     const timeout = setTimeout(attemptSync, 1000);
     return () => clearTimeout(timeout);
-  }, [tagId]);
+  }, [tagId, sentTruckId, setTagId, setSentTruckId, setView, view]);
 
   useEffect(() => {
     // Detect Supabase Confirmation/Recovery links
