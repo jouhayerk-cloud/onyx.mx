@@ -327,14 +327,14 @@ export const SentTruckViewer: React.FC = () => {
 
                 <div className="mt-32 pt-10 border-t border-black/5 flex justify-between items-center opacity-20 hover:opacity-100 transition-opacity">
                     <div className="text-[9px] font-black uppercase tracking-[0.3em]">SECURE MIRROR PROTOCOL · {new Date().getFullYear()}</div>
-                    <ShieldCheck size={18} />
+                    <StatusShield size={18} />
                 </div>
             </div>
         </div>
     );
 };
 
-const ShieldCheck = ({ size }: { size: number }) => (
+const StatusShield = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>
     </svg>

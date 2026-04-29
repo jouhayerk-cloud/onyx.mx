@@ -1,11 +1,23 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List } from 'lucide-react';
+import { 
+    Truck, RotateCcw, Trash2, Box, Layers, Grid3x3, 
+    ZoomIn, ZoomOut, Maximize2, Gauge, 
+    CheckCircle2, AlertCircle, Clock, History,
+    Package, Filter, Search, ArrowRight,
+    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List 
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
-import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom, truckShowReadyWizardAtom } from '../../lib/atoms';
+import { 
+    inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
+    truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom,
+    truckShowSaveDraftAtom, truckShowOpenDraftAtom,
+    truckShowExportModalAtom, truckShowReadyWizardAtom,
+    truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom 
+} from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getCrateDisplayName } from '../../lib/utils';
@@ -130,7 +142,128 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
     );
 };
 
-// ─── Data-Dense Dock Card (larger, high-contrast) ────────────────────────────
+// ─── Compact Data-Dense Card components ─────────────────────────────────────
+const CompactDockCard: React.FC<{ 
+    crate: any; allCrates: any[]; allInventory: any[]; 
+    onLoad: () => void; onNest?: () => void 
+}> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
+    const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
+    const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd') : '#adb5bd';
+    const w = computeCrateWeight(crate, allInventory, allCrates);
+    const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
+    
+    return (
+        <button
+            onClick={onLoad}
+            className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all group shrink-0 text-left cursor-pointer active:scale-[0.98] h-[52px]"
+        >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 shrink-0 shadow-inner" style={{ backgroundColor: `${primaryColor}15` }}>
+                <Box size={16} style={{ color: primaryColor }} strokeWidth={2} />
+            </div>
+            <div className="flex flex-col min-w-[70px]">
+                <div className="flex items-center gap-1.5 leading-none mb-0.5">
+                    <span className="text-[12px] font-black uppercase tracking-tighter" style={{ color: primaryColor }}>{label}</span>
+                    <span className="text-[7px] font-black px-1 py-0.5 rounded-sm bg-black/40 text-white/30 border border-white/5">{typeLabel}</span>
+                </div>
+                <div className="flex items-center gap-2 leading-none">
+                    <span className="text-[9px] font-bold text-white/30">{crate.width_cm}×{crate.length_cm}</span>
+                    <span className="text-[10px] font-black text-white/60">{w}KG</span>
+                </div>
+            </div>
+            {onNest && crate.type === 'cardboard' && (
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onNest(); }}
+                    className="ml-1 p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all opacity-0 group-hover:opacity-100"
+                    title="Nest into another crate"
+                >
+                    <CornerDownRight size={12} />
+                </button>
+            )}
+        </button>
+    );
+};
+
+const CompactItemCard: React.FC<{ 
+    item: any; 
+    onLoad: () => void 
+}> = ({ item, onLoad }) => {
+    const data = item.data || {};
+    const norm = normalizeInventoryData(item);
+    const calculated = calculateCodesAndPrices(norm, 17.5, '326');
+    const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(item.row);
+    const vendorPrefix = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
+    const primaryColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#adb5bd';
+    const w = parseFloat(data.weightKg || data.weight_kg) || 0;
+    
+    return (
+        <button
+            onClick={onLoad}
+            className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] transition-all group shrink-0 text-left cursor-pointer active:scale-[0.98] h-[52px]"
+        >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/5 shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
+                <Package size={16} style={{ color: primaryColor }} strokeWidth={1.5} />
+            </div>
+            <div className="flex flex-col min-w-[100px] max-w-[150px]">
+                <div className="flex items-center gap-1.5 leading-none mb-0.5">
+                    <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || 'Unit'}</span>
+                    <span className="text-[7px] font-black px-1 py-0.5 rounded-sm bg-black/40 text-white/20 border border-white/5">{tag}</span>
+                </div>
+                <div className="flex items-center gap-2 leading-none">
+                    <span className="text-[9px] font-bold text-white/20 truncate flex-1">{data.shortDescription || 'Artifact'}</span>
+                    <span className="text-[10px] font-black text-white/50">{w}KG</span>
+                </div>
+            </div>
+        </button>
+    );
+};
+
+const DeployedTrailerCard: React.FC<{ 
+    shipment: any; 
+    onRecall: () => void;
+    onDelete: () => void;
+}> = ({ shipment, onRecall, onDelete }) => {
+    const ts = new Date(shipment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const payload = useMemo(() => {
+        try { return typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload; } catch (e) { return null; }
+    }, [shipment]);
+    const crateCount = payload?.crates?.length || 0;
+    const weight = Math.round(payload?.truckStats?.totalWeight || 0);
+    
+    return (
+        <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-all group shrink-0 text-left h-[52px]">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 shrink-0 bg-white/5 shadow-inner">
+                <Truck size={16} className="text-white/40" />
+            </div>
+            <div className="flex flex-col min-w-[110px]">
+                <div className="flex items-center gap-1.5 leading-none mb-0.5">
+                    <span className="text-[11px] font-black uppercase tracking-tighter text-white">{shipment.manifest_id}</span>
+                </div>
+                <div className="flex items-center gap-2 leading-none">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{ts}</span>
+                    <div className="w-1 h-1 rounded-full bg-white/10" />
+                    <span className="text-[9px] font-bold text-white/40 uppercase">{crateCount} Units</span>
+                    <span className="text-[9px] font-black text-emerald-400/60 uppercase">{weight}KG</span>
+                </div>
+            </div>
+            <div className="flex items-center gap-1.5 ml-2">
+                <button 
+                    onClick={onRecall}
+                    className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white hover:text-black transition-all text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm active:scale-95"
+                >
+                    <History size={11} /> Recall
+                </button>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    className="p-2 rounded-lg bg-rose-500/10 text-rose-400/40 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-95"
+                    title="Delete Record"
+                >
+                    <Trash2 size={13} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; onLoad: () => void; onNest?: () => void }> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
@@ -2543,8 +2676,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const setCratesVersion = useSetAtom(cratesVersionAtom);
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number }>>({});
+    const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number; z?: number }>>({});
     const [zoom, setZoom] = useState(1.0);
+    const [topBarState, setTopBarState] = useAtom(truckTopBarStateAtom);
+    const [recentShipments, setRecentShipments] = useState<any[]>([]);
+    const [loadingShipments, setLoadingShipments] = useState(false);
     const [viewMode, setViewMode] = useAtom(truckViewModeAtom);
     const [isCompact, setIsCompact] = useAtom(truckIsCompactAtom);
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
@@ -2553,8 +2689,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
-    const bookRate = useAtomValue(exchangeRateAtom);
-
+    const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
     const [readyTruckFields, setReadyTruckFields] = useState({
         sealNumber: '',
         tractorNumber: '',
@@ -2564,6 +2699,66 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         senders: [''],
         packingItems: [] as Array<{ name: string; count: number; weight: number }>
     });
+    const bookRate = useAtomValue(exchangeRateAtom);
+
+    const looseItems = useMemo(() => {
+        return allInventory.filter(item => {
+            const data = item.data || {};
+            const parentId = data.parent_id || data.crate_id;
+            return !parentId && !positions[String(item.row)];
+        });
+    }, [allInventory, positions]);
+
+    useEffect(() => {
+        if (topBarState === 'trailers') {
+            const fetchRecent = async () => {
+                setLoadingShipments(true);
+                try {
+                    const { data, error } = await supabase.from('shipments')
+                        .select('*')
+                        .order('timestamp', { ascending: false })
+                        .limit(10);
+                    if (error) throw error;
+                    setRecentShipments(data || []);
+                } catch (err) { console.error('Recent shipments fetch error:', err); }
+                finally { setLoadingShipments(false); }
+            };
+            fetchRecent();
+        }
+    }, [topBarState]);
+
+    const handleRecall = useCallback((shipment: any) => {
+        try {
+            const payload = typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload;
+            if (!payload) return;
+            const newPos: Record<string, any> = {};
+            payload.crates?.forEach((c: any) => {
+                // Correctly map saved shipment coordinates back to internal state
+                // x is length axis (cab to rear)
+                // y in payload is height, z in payload is depth (side to side)
+                newPos[c.id] = { 
+                    x: c.x, 
+                    y: c.z || 0, // Depth axis
+                    r: c.r || 0, 
+                    z: c.y || 0  // Height axis
+                };
+            });
+            setPositions(newPos);
+            setRecalledShipment(shipment);
+            setReadyTruckFields({
+                sealNumber: shipment.metadata?.sealNumber || '',
+                tractorNumber: shipment.metadata?.tractorNumber || '',
+                truckPlates: shipment.metadata?.truckPlates || '',
+                trailerNumber: shipment.metadata?.trailerNumber || '',
+                trailerPlates: shipment.metadata?.trailerPlates || '',
+                senders: shipment.metadata?.senders || [''],
+                packingItems: payload.packingItems || []
+            });
+            toast.success(`Recalled manifest ${shipment.manifest_id}`);
+            setTopBarState('crates');
+        } catch (e) { toast.error('Failed to recall shipment'); }
+    }, [setPositions, setTopBarState, setRecalledShipment, setReadyTruckFields]);
+
 
     const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
         if (!crate || visited.has(crate.id)) return [];
@@ -2586,6 +2781,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     };
 
     useEffect(() => {
+        // Guard: Do not overwrite positions if we are in a "Recall" state
+        if (recalledShipment) return;
+
         const map: Record<string, { x: number; y: number; r: number; z?: number }> = {};
         docs.forEach(d => {
             if (d.description?.includes('POS:')) {
@@ -2594,9 +2792,35 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             }
         });
         setPositions(map);
-    }, [docs]);
+    }, [docs, recalledShipment]);
 
-    const allCrates = useMemo(() => docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status)), [docs]);
+    const allCrates = useMemo(() => {
+        const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status));
+        
+        // If we have a recalled shipment, we might need to inject "virtual" crates 
+        // for IDs that are in positions but NOT in the live docs (e.g. because status changed or record missing)
+        if (recalledShipment) {
+            const payload = typeof recalledShipment.payload === 'string' ? JSON.parse(recalledShipment.payload) : recalledShipment.payload;
+            const recalledCrates = (payload?.crates || []).filter((rc: any) => !live.some(l => l.id === rc.id));
+            
+            // Map virtual crates to the expected doc schema
+            const virtual = recalledCrates.map((rc: any) => ({
+                id: rc.id,
+                type: rc.h > 40 ? 'crate' : 'pallet', // heuristics
+                status: 'In Transit',
+                width_cm: rc.w,
+                length_cm: rc.l,
+                height_cm: rc.h,
+                inventory_ids: (rc.items || []).map((i: any) => `${i.itemId}:${i.qty}`).join(','),
+                description: `RECALLED: ${rc.label || rc.id}`,
+                isVirtual: true
+            }));
+            
+            return [...live, ...virtual];
+        }
+        
+        return live;
+    }, [docs, recalledShipment]);
     const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
     const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
@@ -2676,6 +2900,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             return newPos;
         });
         setSelectedId(id);
+        setRecalledShipment(null);
     }, [allCrates, computeAutoPosition]);
 
     const handleUnload = useCallback((id: string) => {
@@ -2696,6 +2921,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             return n;
         });
         setSelectedId(null);
+        setRecalledShipment(null);
     }, [allCrates]);
 
     const handleUpdatePos = useCallback((id: string, x: number, y: number) => {
@@ -2802,6 +3028,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             setPositions(p => { const n = { ...p }; delete n[boxId]; return n; });
             setNestingBoxId(null);
+            setRecalledShipment(null);
             toast.success('Successfully nested', { id: tid });
             onRefresh();
             setCratesVersion(v => v + 1);
@@ -2810,11 +3037,74 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     };
 
+    const handleClearTrailer = useCallback(() => {
+        if (Object.keys(positions).length === 0) return;
+        if (confirm('Are you sure you want to clear all loaded units from the trailer?')) {
+            setPositions({});
+            setSelectedId(null);
+            setRecalledShipment(null);
+            toast.success('Trailer cleared');
+        }
+    }, [positions]);
+
+    const handleLoadItem = useCallback((item: any) => {
+        const id = String(item.row);
+        // Integrity check: ensure item isn't already crated
+        const data = item.data || {};
+        if (data.parent_id || data.crate_id) {
+            toast.error('Item is already packed in a crate');
+            return;
+        }
+        setPositions(p => {
+            const pos = { x: TRUCK_L_CM - 120, y: 10, r: 0, z: 0 }; // Default drop pos
+            return { ...p, [id]: pos };
+        });
+        setSelectedId(id);
+        setRecalledShipment(null);
+    }, []);
+
     // ── Ready Truck — sync DB + PDF + XLSX ──
     const handleReadyTruck = async (f = readyTruckFields) => {
+        if (!confirm('Are you sure you want to finalize this shipment and synchronize with the cloud?')) return;
         setIsSaving(true);
-        const tid = toast.loading('Synchronizing shipment data…');
+        const tid = toast.loading('Validating shipment integrity...');
         try {
+            // 0. Integrity Check: Ensure no items are already in another active shipment
+            if (!isDummyMode) {
+                const currentItemIds = new Set<string>();
+                truckCrates.forEach(c => {
+                    getItemsFromCrate(c).forEach(item => currentItemIds.add(String(item.id)));
+                });
+
+                // Fetch all recent shipments to check for overlaps
+                const { data: activeShipments, error: fetchError } = await supabase
+                    .from('shipments')
+                    .select('manifest_id, payload')
+                    .order('timestamp', { ascending: false })
+                    .limit(50);
+
+                if (fetchError) throw fetchError;
+
+                const conflicts: string[] = [];
+                for (const ship of activeShipments || []) {
+                    const payload = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                    const shipItems = payload?.crates?.flatMap((c: any) => c.items || []) || [];
+                    
+                    for (const item of shipItems) {
+                        if (currentItemIds.has(String(item.itemId))) {
+                            conflicts.push(`${item.itemId} (in ${ship.manifest_id})`);
+                        }
+                    }
+                }
+
+                if (conflicts.length > 0) {
+                    toast.error(`Deployment Blocked: Duplicate items found!\n${conflicts.slice(0, 3).join(', ')}${conflicts.length > 3 ? '...' : ''}`, { id: tid, duration: 6000 });
+                    setIsSaving(false);
+                    return;
+                }
+            }
+
+            toast.loading('Synchronizing shipment data...', { id: tid });
             // 1. Sync positions to DB
             if (!isDummyMode) {
                 for (const c of allCrates) {
@@ -2947,44 +3237,52 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     // ── Draft handlers ──
     const buildDraft = useCallback((name: string, fields?: any): TruckDraft => {
-        const thumbnail = generateMasterThumbnail(truckCrates, positions, allCrates, allInventory, name);
-        return { 
-            id: `draft_${Date.now()}`, 
-            name, 
-            savedAt: Date.now(), 
-            crateCount: truckCrates.length, 
-            positions: { ...positions }, 
-            numbering: { ...truckNumbering },
-            thumbnail: thumbnail || undefined,
-            shipmentData: fields ? { ...fields } : undefined
+        const payload = {
+            id: `draft_${Date.now()}`,
+            name,
+            savedAt: Date.now(),
+            crateCount: truckCrates.length,
+            positions,
+            numbering: truckNumbering,
+            thumbnail: generateMasterThumbnail(truckCrates, positions, allCrates, allInventory, name),
+            shipmentData: fields || readyTruckFields
         };
-    }, [positions, truckCrates, allCrates, allInventory, truckNumbering]);
+        return payload;
+    }, [truckCrates, positions, truckNumbering, allCrates, allInventory, readyTruckFields]);
 
-    const handleSaveDraft = useCallback((name: string) => {
-        saveDraft(buildDraft(name, readyTruckFields));
+    const handleSaveDraft = (name: string) => {
+        const draft = buildDraft(name);
+        saveDraft(draft);
+        toast.success(`Draft "${name}" saved to local storage`, { icon: '💾' });
         setShowSaveDraft(false);
-        toast.success(`Draft "${name}" saved`);
-    }, [buildDraft, readyTruckFields]);
+    };
 
-    const handleExportDraft = useCallback((name: string) => {
-        exportDraftFile(buildDraft(name, readyTruckFields));
+    const handleExportDraft = (name: string) => {
+        const draft = buildDraft(name);
+        exportDraftFile(draft);
+        toast.success(`Draft "${name}" exported as file`, { icon: '📤' });
         setShowSaveDraft(false);
-    }, [buildDraft, readyTruckFields]);
+    };
 
-    const handleLoadDraft = useCallback((draft: TruckDraft) => {
-        setPositions(draft.positions as any);
-        if (draft.shipmentData) {
-            setReadyTruckFields(draft.shipmentData);
+    const handleDeleteShipment = async (manifest_id: string) => {
+        if (!confirm('Are you sure you want to permanently delete this shipment record? This action cannot be undone.')) return;
+        
+        const tid = toast.loading('Deleting shipment record...');
+        try {
+            const { error } = await supabase
+                .from('shipments')
+                .delete()
+                .eq('manifest_id', manifest_id);
+
+            if (error) throw error;
+
+            setRecentShipments(prev => prev.filter(s => s.manifest_id !== manifest_id));
+            toast.success('Shipment record deleted', { id: tid });
+        } catch (err: any) {
+            toast.error(err.message || 'Deletion failed', { id: tid });
         }
-        // numbering will be re-calculated automatically based on positions,
-        // but if we wanted to force a manual sequence, we'd store it in state.
-        toast.success(`Loaded draft "${draft.name}"`);
-    }, []);
+    };
 
-    const canvasW = TRUCK_L_CM * BASE_SCALE;
-    const canvasH = TRUCK_W_CM * BASE_SCALE;
-
-    // ── Touch pinch-zoom ──
     const canvasRef = useRef<HTMLDivElement>(null);
     const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
     useEffect(() => {
@@ -3021,96 +3319,106 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     return (
         <div className="flex flex-col text-white relative" onClick={() => setSelectedId(null)}>
 
-            {/* ── HORIZONTAL DOCK STRIP ── */}
-            <div
-                className="sticky top-20 sm:top-24 z-[60] shrink-0 border-b border-white/10 backdrop-blur-3xl bg-black/40"
-                onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
+            {/* ── HYBRID SMART SELECTION BARS ── */}
+            <div 
+                className="sticky top-20 sm:top-24 z-[60] flex flex-col border-b border-white/10 backdrop-blur-3xl bg-black/40"
+                onWheel={e => { e.stopPropagation(); }}
             >
-                {dockCrates.length === 0 ? (
-                    <div className="flex items-center gap-3 px-6 py-3 text-white/10">
-                        <Truck size={14} strokeWidth={0.8} />
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em]">All units loaded</span>
+                {/* Bar 1: Primary Selector (Crates or Deployed) */}
+                <div className="flex items-center gap-4 px-4 py-2.5 border-b border-white/5">
+                    <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10 shrink-0 shadow-inner">
+                        <button 
+                            onClick={() => setTopBarState('crates')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${topBarState === 'crates' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                        >
+                            <Box size={13} /> Crates
+                        </button>
+                        <button 
+                            onClick={() => setTopBarState('trailers')}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${topBarState === 'trailers' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
+                        >
+                            <History size={13} /> Deployed
+                        </button>
                     </div>
-                ) : isCompact ? (
-                    /* ── COMPACT dock strip: segmented chips ── */
-                    <div className="flex items-center gap-4 overflow-x-auto px-4 py-2" style={{ scrollbarWidth: 'none' }}>
-                        {dockUnits.length > 0 && (
-                            <div className="flex items-center gap-1.5 shrink-0 pr-4 border-r border-white/10">
-                                <span className="text-[7px] font-black uppercase tracking-widest text-white/20 mr-1">Units</span>
-                                {dockUnits.map(c => {
-                                    const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
-                                    const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
-                                    const w = computeCrateWeight(c, allInventory, allCrates);
-                                    const typeLabel = c.type === 'pallet' ? 'PLT' : 'CRT';
-                                    return (
-                                        <button key={c.id} onClick={() => handleLoad(c.id)}
-                                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border shrink-0 cursor-pointer transition-all hover:bg-white/5"
-                                            style={{ borderColor: `${col}35` }}
-                                        >
-                                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} />
-                                            <span className="text-[10px] font-black uppercase" style={{ color: col }}>{label}</span>
-                                            <span className="text-[7px] font-black text-white/20">{typeLabel} · {w}KG</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                        {dockBoxes.length > 0 && (
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="text-[7px] font-black uppercase tracking-widest text-white/20 mr-1">Boxes</span>
-                                {dockBoxes.map(c => {
-                                    const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory);
-                                    const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#d97706') : '#d97706';
-                                    const w = computeCrateWeight(c, allInventory, allCrates);
-                                    return (
-                                        <button key={c.id} onClick={() => handleLoad(c.id)}
-                                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-amber-600/20 bg-amber-600/5 shrink-0 cursor-pointer transition-all hover:bg-amber-600/15"
-                                        >
-                                            <span className="text-[10px] font-black uppercase text-amber-500">{label}</span>
-                                            <span className="text-[7px] font-black text-white/20">{w}KG</span>
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); setNestingBoxId(c.id); }}
-                                                className="ml-1 p-1 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-colors"
-                                            >
-                                                <Box size={9} />
-                                            </button>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    /* ── EXPANDED dock strip: Segmented sections ── */
-                    <div className="flex items-stretch gap-8 overflow-x-auto px-4 py-3" style={{ scrollbarWidth: 'none' }}>
-                        {dockUnits.length > 0 && (
-                            <div className="flex items-stretch gap-2 shrink-0 pr-8 border-r border-white/5">
-                                <div className="flex flex-col justify-center px-2">
-                                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-white/20 [writing-mode:vertical-lr] rotate-180">Logistics</span>
-                                </div>
-                                {dockUnits.map(c => (
-                                    <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
-                                        onLoad={() => handleLoad(c.id)} 
-                                        onNest={() => setNestingBoxId(c.id)}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                        {dockBoxes.length > 0 && (
-                            <div className="flex items-stretch gap-2 shrink-0">
-                                <div className="flex flex-col justify-center px-2">
-                                    <span className="text-[7px] font-black uppercase tracking-[0.3em] text-amber-500/30 [writing-mode:vertical-lr] rotate-180">Cardboard</span>
-                                </div>
-                                {dockBoxes.map(c => (
-                                    <DockCard key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory} 
-                                        onLoad={() => handleLoad(c.id)} 
-                                        onNest={() => setNestingBoxId(c.id)}
-                                    />
-                                ))}
-                            </div>
+
+                    <div className="flex-1 overflow-x-auto custom-scrollbar flex items-center gap-3 py-0.5 no-scrollbar">
+                        {topBarState === 'crates' ? (
+                            <>
+                                {dockCrates.length === 0 ? (
+                                    <div className="flex items-center gap-3 px-4 text-white/10">
+                                        <CheckCircle2 size={14} strokeWidth={1} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">All Primary Units Manifested</span>
+                                    </div>
+                                ) : (
+                                    dockCrates.map(c => (
+                                        <CompactDockCard 
+                                            key={c.id} 
+                                            crate={c} 
+                                            allCrates={allCrates} 
+                                            allInventory={allInventory} 
+                                            onLoad={() => handleLoad(c.id)} 
+                                            onNest={() => setNestingBoxId(c.id)} 
+                                        />
+                                    ))
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {loadingShipments ? (
+                                    <div className="flex items-center gap-3 px-4">
+                                        <Loader2 size={14} className="animate-spin text-emerald-500/40" />
+                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Synchronizing Registry...</span>
+                                    </div>
+                                ) : recentShipments.length === 0 ? (
+                                    <div className="flex items-center gap-3 px-4 text-white/10">
+                                        <AlertCircle size={14} strokeWidth={1} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Recent Records</span>
+                                    </div>
+                                ) : (
+                                    recentShipments.map(s => (
+                                        <DeployedTrailerCard 
+                                            key={s.manifest_id} 
+                                            shipment={s} 
+                                            onRecall={() => handleRecall(s)} 
+                                            onDelete={() => handleDeleteShipment(s.manifest_id)}
+                                        />
+                                    ))
+                                )}
+                            </>
                         )}
                     </div>
-                )}
+                    
+                    <div className="w-px h-8 bg-white/5 mx-2 shrink-0" />
+                    
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button 
+                            onClick={() => setIsCompact(!isCompact)}
+                            className={`p-2.5 rounded-xl border transition-all ${isCompact ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                            title="Toggle Compact Mode"
+                        >
+                            <Grid3x3 size={15} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Bar 2: Items Selector (Loose inventory) */}
+                <div className="flex items-center gap-4 px-4 py-2 bg-white/[0.02] overflow-x-auto no-scrollbar border-t border-white/[0.02]">
+                    <div className="flex items-center gap-2 shrink-0 pr-4 border-r border-white/5 mr-1 group">
+                        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                            <Package size={11} className="text-white/30" />
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Loose Items</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {looseItems.length === 0 ? (
+                            <span className="text-[9px] font-black uppercase text-white/5 italic ml-2">All inventory items are currently crated or loaded</span>
+                        ) : (
+                            looseItems.map(item => (
+                                <CompactItemCard key={String(item.row)} item={item} onLoad={() => handleLoadItem(item)} />
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* ── CANVAS AREA (info panel + trailer viewer) ── */}
@@ -3125,7 +3433,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     {/* Row 1: title + view toggle + zoom controls */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-baseline gap-3">
-                            <h2 className="text-xl font-black uppercase tracking-tighter text-white">53' Trailer</h2>
+                            <h2 className="text-xl font-black uppercase tracking-tighter text-white">53&apos; Trailer</h2>
                             <span className="text-[9px] font-black text-white/40">{Math.round(zoom * 100)}%</span>
                             <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
                         </div>
@@ -3137,6 +3445,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 className="text-white/40 hover:text-white transition-colors cursor-pointer"
                             >
                                 {viewMode === 'top' ? <Layers size={16} /> : <Grid3x3 size={16} />}
+                            </button>
+                            {/* Clear Trailer */}
+                            <button
+                                onClick={handleClearTrailer}
+                                title="Clear All Units from Trailer"
+                                className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400/40 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                            >
+                                <Trash2 size={16} />
                             </button>
                             {/* Zoom controls */}
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
@@ -3267,7 +3583,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         </div>
                     )}
 
-                 </div>
+                </div>
 
 
                 {/* Canvas / Side View */}
@@ -3289,7 +3605,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             onUnload={handleUnload}
                         />
                     ) : (
-                    <div className="p-8" style={{ minWidth: canvasW * zoom + 64, minHeight: canvasH * zoom + 64 }}>
+                    <div className="p-8" style={{ minWidth: TRUCK_L_CM * zoom + 64, minHeight: TRUCK_W_CM * zoom + 64 }}>
                         {/* Direction labels */}
                         <div className="flex items-center gap-3 mb-2">
                             <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
@@ -3300,16 +3616,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/40">Cab Front</span>
                             <div className="w-2 h-2 rounded-full bg-white/40 shrink-0" />
                         </div>
-                        <div style={{ width: canvasW * zoom, height: canvasH * zoom, position: 'relative' }}>
+                        <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }}>
                             <div
                                 className="absolute top-0 left-0 border border-white/15"
-                                style={{ width: canvasW, height: canvasH, transform: `scale(${zoom})`, transformOrigin: 'top left', backgroundColor: 'rgba(255,255,255,0.025)' }}
+                                style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left', backgroundColor: 'rgba(255,255,255,0.025)' }}
                                 onClick={e => e.stopPropagation()}
                             >
                                 <CmGrid />
                                 {/* Axle markers at 72%, 82%, 90% of truck length (vertical lines) */}
                                 {[0.72, 0.82, 0.90].map(frac => (
-                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/15 pointer-events-none" style={{ left: frac * canvasW }}>
+                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/15 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
                                         <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
                                     </div>
                                 ))}
