@@ -392,8 +392,13 @@ export const paymentsArtifactConfigAtom = atom<PaymentsArtifactConfig>({
 
 // Viewer & Artifact Atoms
 export const viewerSearchQueryAtom = atomWithStorage<string>('viewerSearchQuery', '', sessionJSONStorage);
-export const tagIdAtom = atom<string | null, [string | null], void>(null, (get, set, update) => set(tagIdAtom, update));
-export const sentTruckIdAtom = atom<string | null>(null);
+export const tagIdAtom = atom<string | null, [string | null], void>(
+  typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('tagid') || new URLSearchParams(window.location.search).get('tagID')) : null, 
+  (get, set, update) => set(tagIdAtom, update)
+);
+export const sentTruckIdAtom = atom<string | null>(
+  typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('truckid') || new URLSearchParams(window.location.search).get('manifestid')) : null
+);
 
 const getInitialUniversalView = (): 'app' | 'tag' | 'viewer' | 'truck' => {
   if (typeof window === 'undefined') return 'app';

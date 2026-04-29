@@ -55,9 +55,27 @@ export const SentTruckViewer: React.FC = () => {
         fetchShipment();
     }, [sentTruckId]);
 
+    // Memoized Payload parsing
+    const payload = useMemo(() => {
+        if (!shipment?.payload) return null;
+        try {
+            return typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload;
+        } catch (e) {
+            console.error('[TruckViewer] Payload parse error:', e);
+            return null;
+        }
+    }, [shipment]);
+
+    const cratesData = useMemo(() => payload?.crates || [], [payload]);
+
+    const selectedCrateData = useMemo(() => {
+        if (!selectedCrateId || !payload) return null;
+        return payload.crates?.find((c: any) => c.id === selectedCrateId);
+    }, [selectedCrateId, payload]);
+
     // Initialize Three.js Scene
     useEffect(() => {
-        if (!containerRef.current || !shipment) return;
+        if (!containerRef.current || !shipment || !payload) return;
 
         const width = containerRef.current.clientWidth;
         const height = containerRef.current.clientHeight;
@@ -103,8 +121,6 @@ export const SentTruckViewer: React.FC = () => {
 
         // Crate Meshes
         const cratesMap = new Map<string, THREE.Mesh>();
-        const payload = typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload;
-        const cratesData = payload.crates || [];
 
         cratesData.forEach((c: any) => {
             // Convert cm to meters
@@ -125,9 +141,8 @@ export const SentTruckViewer: React.FC = () => {
             const mesh = new THREE.Mesh(geometry, material);
             
             // Positioning (Payload coords are relative to trailer front-left-bottom)
-            // Assuming trailer is centered at 0,1.4,0 and is 16.5m long (X), 2.6m wide (Z)
-            // Coords from wizard are likely in meters already if normalized
-            mesh.position.set(c.x - 8.25 + dl/2, c.y + dh/2, c.z - 1.3 + dw/2);
+            // Coords from wizard are in meters normalized to trailer center
+            mesh.position.set(c.x - 8.25 + dl/2, c.z + dh/2, c.y - 1.3 + dw/2);
             
             mesh.userData = { id: c.id, data: c };
             scene.add(mesh);
@@ -186,7 +201,7 @@ export const SentTruckViewer: React.FC = () => {
                 containerRef.current.removeChild(renderer.domElement);
             }
         };
-    }, [shipment]);
+    }, [shipment, payload]);
 
     // Handle Selection Visuals (Ghost Mode)
     useEffect(() => {
@@ -228,12 +243,6 @@ export const SentTruckViewer: React.FC = () => {
             }
         });
     }, [selectedCrateId]);
-
-    const selectedCrateData = useMemo(() => {
-        if (!selectedCrateId || !shipment) return null;
-        const payload = typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload;
-        return payload.crates.find((c: any) => c.id === selectedCrateId);
-    }, [selectedCrateId, shipment]);
 
     if (loading) return (
         <div className="w-full h-screen bg-[#0a0a0f] flex flex-col items-center justify-center gap-4">
@@ -279,7 +288,7 @@ export const SentTruckViewer: React.FC = () => {
                     <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-4 text-right">
                         <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Total Payload</div>
                         <div className="text-2xl font-black text-white tabular-nums">
-                            {JSON.parse(shipment.payload).truckStats.totalWeight.toLocaleString()} <span className="text-sm font-bold text-white/40">KG</span>
+                            {Math.round(payload?.truckStats?.totalWeight || 0).toLocaleString()} <span className="text-sm font-bold text-white/40">KG</span>
                         </div>
                     </div>
                 </div>
