@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid, Plus } from 'lucide-react';
+import { Truck, Box, Trash2, RotateCcw, Info, ChevronRight, Loader2, Gauge, ZoomIn, ZoomOut, Maximize2, Layers, Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, FileText, FileSpreadsheet, Image as ImageIcon, LayoutGrid, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { generatePackingListHtml } from './generatePackingListHtml';
+import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
 import { exchangeRateAtom, isDummyModeAtom, cratesVersionAtom, inventoryAtom, truckReadyTriggerAtom, truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom, truckShowSaveDraftAtom, truckShowOpenDraftAtom, truckShowExportModalAtom, truckShowReadyWizardAtom } from '../../lib/atoms';
 import toast from 'react-hot-toast';
@@ -317,8 +319,8 @@ const SideView: React.FC<{
     const SVG_H = TRUCK_H_CM * BASE_SCALE;
     const svgRef = useRef<SVGSVGElement>(null);
 
-    // Build crate draw list with z support (Filter to root items only for main render)
-    const crateItems = useMemo(() => truckCrates.filter(c => !c.parent_id || !positions[c.parent_id]).map(c => {
+    // Build crate draw list with z support (Render all crates that have a position)
+    const crateItems = useMemo(() => truckCrates.filter(c => !!positions[c.id]).map(c => {
         const pos = positions[c.id];
         if (!pos) return null;
         const rotated = pos.r === 90;
@@ -1164,7 +1166,7 @@ const ExportCard: React.FC<{
                     <button 
                         onClick={() => onDownload ? onDownload(url, filename || `${title.replace(/\s+/g, '_')}.${type.toLowerCase()}`) : window.open(url, '_blank')}
                         className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
-                        style={{ background: color, color: '#fff' }}
+                        style={{ backgroundColor: color, color: '#fff' }}
                     >
                         Download
                     </button>
@@ -1607,6 +1609,102 @@ const TruckExportModal: React.FC<{
     );
 };
 
+// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
+const InteractiveTruckViewer: React.FC<{
+    truckCrates: any[];
+    positions: Record<string, any>;
+    allCrates: any[];
+    allInventory: any[];
+    truckNumbering: Record<string, number>;
+}> = ({ truckCrates, positions, allCrates, allInventory, truckNumbering }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const sceneRef = useRef<{
+        scene: THREE.Scene;
+        camera: THREE.PerspectiveCamera;
+        renderer: THREE.WebGLRenderer;
+        controls: OrbitControls;
+        crates: Map<string, THREE.Mesh>;
+    } | null>(null);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0f);
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(15, 10, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        containerRef.current.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(10, 20, 10);
+        scene.add(sun);
+        const rim = new THREE.DirectionalLight(0x3b82f6, 0.3);
+        rim.position.set(-10, 5, -10);
+        scene.add(rim);
+
+        const trailerGeo = new THREE.BoxGeometry(16.15, 2.8, 2.44);
+        const trailerWire = new THREE.LineSegments(new THREE.EdgesGeometry(trailerGeo), new THREE.LineBasicMaterial({ color: 0x333344, transparent: true, opacity: 0.3 }));
+        trailerWire.position.set(0, 1.4, 0);
+        scene.add(trailerWire);
+
+        scene.add(new THREE.GridHelper(40, 40, 0x1f2937, 0x111827));
+
+        const cratesMap = new Map<string, THREE.Mesh>();
+        truckCrates.forEach(c => {
+            const pos = positions[c.id];
+            if (!pos) return;
+            const dw = c.width_cm / 100;
+            const dl = c.length_cm / 100;
+            const dh = (c.height_cm || 100) / 100;
+            const geo = new THREE.BoxGeometry(dl, dh, dw);
+            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#6b7280';
+            const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.2, metalness: 0.5, emissive: col, emissiveIntensity: 0.05 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set((pos.x / 100) - 8.075 + (dl/2), (pos.z || 0)/100 + dh/2, (pos.y / 100) - 1.22 + (dw/2));
+            if (pos.r === 90) mesh.rotation.y = Math.PI / 2;
+            scene.add(mesh);
+            cratesMap.set(c.id, mesh);
+        });
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        };
+        animate();
+
+        const handleResize = () => {
+            if (!containerRef.current) return;
+            const w = containerRef.current.clientWidth;
+            const h = containerRef.current.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            renderer.dispose();
+            if (containerRef.current?.contains(renderer.domElement)) containerRef.current.removeChild(renderer.domElement);
+        };
+    }, [truckCrates, positions]);
+
+    return <div ref={containerRef} className="w-full h-full" />;
+};
+
 // ─── Ready Truck Wizard ──────────────────────────────────────────────────────
 const ReadyTruckWizard: React.FC<{
     truckCrates: any[];
@@ -1624,10 +1722,12 @@ const ReadyTruckWizard: React.FC<{
     onSaveDraft: () => void;
     onOpenDraft: () => void;
     isBusy?: boolean;
-}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, onSaveDraft, onOpenDraft, isBusy }) => {
+    publicUrl?: string | null;
+}> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, onSaveDraft, onOpenDraft, isBusy, publicUrl }) => {
     const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ pdf: -1, allCrates: -1, xlsx: -1 });
-    const [urls, setUrls] = useState({ pdf: '', allCrates: '', xlsx: '' });
+    const [urls, setUrls] = useState({ pdf: '', allCrates: '', xlsx: '', html: '' });
+    const [showLiveViewer, setShowLiveViewer] = useState(false);
     const exportTimestamp = useRef(new Date().getTime());
 
     const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
@@ -1904,38 +2004,142 @@ const ReadyTruckWizard: React.FC<{
         } catch (err: any) { setProgress(p => ({ ...p, allCrates: -1 })); toast.error('Combined PDF failed'); }
     };
 
+    const generateHtml = async () => {
+        try {
+            setProgress(p => ({ ...p, html: 10 }));
+            const dateStr = new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+            const manifestId = `ONYX MX - ${dateStr}`;
+            const extraWeight = (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0);
+            const finalTotalWeight = totalWeight + extraWeight;
+            
+            const shipmentPayload = {
+                crates: truckCrates.map(c => {
+                    const pos = positions[c.id] || { x: 0, y: 0, r: 0 };
+                    const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
+                    const crateColor = (vendors as any)[vendorList[0]]?.color || '#6b7280';
+                    const items = getItemsFromCrate(c).map((item, idx) => {
+                        const inv = item.inv; 
+                        const data = inv.data || {};
+                        const norm = normalizeInventoryData(inv);
+                        const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                        const tagId = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                        const vP = Object.keys(vendors).find(k => tagId.toUpperCase().startsWith(k)) || 'OTHER';
+                        
+                        return {
+                            itemId: tagId,
+                            vendorPrefix: vP,
+                            tagColor: (vendors as any)[vP]?.color || '#6b7280',
+                            name: (data.shape && data.shortDescription && data.shape !== data.shortDescription) ? `${data.shape} - ${data.shortDescription}` : (data.shape || data.shortDescription || 'Artifact'),
+                            type: data.shape || 'Unit',
+                            desc: data.shortDescription || '',
+                            qty: item.qty,
+                            weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                            material: data.material || '',
+                            color: data.color || '',
+                            combinedAttr: `${data.color || ''} ${data.material ? '/ ' + data.material : ''}`.trim()
+                        };
+                    });
+                    
+                    return {
+                        id: c.id,
+                        label,
+                        subtitle,
+                        x: pos.x,
+                        y: pos.y,
+                        z: pos.z || 0,
+                        w: c.width_cm,
+                        l: c.length_cm,
+                        h: c.height_cm || 100,
+                        r: pos.r || 0,
+                        color: crateColor,
+                        vendorList,
+                        items
+                    };
+                }),
+                truckStats: {
+                    ...panelStats,
+                    totalWeight: finalTotalWeight,
+                    payloadPct: Math.round((finalTotalWeight / 22000) * 100)
+                },
+                timestamp: new Date().toLocaleString()
+            };
+            const htmlContent = generatePackingListHtml(manifestId, fields, shipmentPayload);
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            if (blob) { 
+                setUrls(u => ({ ...u, html: URL.createObjectURL(blob) })); 
+                setProgress(p => ({ ...p, html: 100 })); 
+            }
+        } catch (err: any) { 
+            setProgress(p => ({ ...p, html: -1 })); 
+            toast.error('HTML Generation failed'); 
+        }
+    };
+
     const triggerDownload = (url: string, filename: string) => { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <div className="relative z-10 w-full max-w-4xl rounded-[2.5rem] border border-white/10 p-8 flex flex-col gap-6 shadow-2xl bg-[#0c0c12] max-h-[95vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center bg-white/[0.02] -mx-8 -mt-8 px-8 py-6 border-b border-white/10 rounded-t-[2.5rem]">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner"><Truck size={24} className="text-white/60" /></div>
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+                            <Truck size={24} className="text-white/60" />
+                        </div>
                         <div>
-                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Ready Truck Wizard</h3>
-                            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold">Final Dispatch & Manifest Protocol</p>
+                            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Ready Trailer</h3>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <p className="text-[9px] text-white/30 uppercase tracking-[0.3em] font-black">Ready for Finalization Sequence</p>
+                            </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-xl text-white/30 hover:text-white hover:bg-white/10 transition-all"><X size={20} /></button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Protocol ID</span>
+                            <span className="text-[10px] font-mono text-white/40 tracking-wider">ONYX-LOG-2.5</span>
+                        </div>
+                        <button onClick={onClose} className="p-3 rounded-2xl text-white/20 hover:text-white hover:bg-white/10 transition-all border border-transparent hover:border-white/10"><X size={20} /></button>
+                    </div>
                 </div>
+
+                {publicUrl && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">✓</div>
+                                <div>
+                                    <h4 className="text-sm font-black text-white uppercase tracking-tight">Shipment Live in Registry</h4>
+                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">3D Digital Mirror Created</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
+                                <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-emerald-500 text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">Launch 3D Viewer</button>
+                            </div>
+                        </div>
+                        <div className="text-[10px] font-mono text-white/40 break-all bg-black/20 p-3 rounded-xl border border-white/5">{publicUrl}</div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Left side: Form */}
                     <div className="flex flex-col gap-5">
                         <div className="grid grid-cols-2 gap-4">
                             {[
-                                { label: 'Seal Number', key: 'sealNumber', placeholder: 'S-0000000' },
-                                { label: 'Tractor Number', key: 'tractorNumber', placeholder: 'T-000' },
-                                { label: 'Truck Plates', key: 'truckPlates', placeholder: 'ABC-123-X' },
-                                { label: 'Trailer Number', key: 'trailerNumber', placeholder: 'TR-000' },
-                                { label: 'Trailer Plates', key: 'trailerPlates', placeholder: 'XYZ-789-Y' },
+                                { label: 'Seal Number', key: 'sealNumber', placeholder: 'S-0000000', icon: Shield },
+                                { label: 'Tractor Number', key: 'tractorNumber', placeholder: 'T-000', icon: IdCard },
+                                { label: 'Truck Plates', key: 'truckPlates', placeholder: 'ABC-123-X', icon: ClipboardCheck },
+                                { label: 'Trailer Number', key: 'trailerNumber', placeholder: 'TR-000', icon: Hash },
+                                { label: 'Trailer Plates', key: 'trailerPlates', placeholder: 'XYZ-789-Y', icon: FileText },
                             ].map(f => (
-                                <div key={f.key} className="flex flex-col gap-1.5">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">{f.label}</label>
+                                <div key={f.key} className="group flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 focus-within:border-white/20 transition-all">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-white/20">{f.label}</label>
+                                        <f.icon size={12} className="text-white/10 group-focus-within:text-white/30 transition-colors" />
+                                    </div>
                                     <input type="text" value={fields[f.key]} onChange={e => onFieldChange({ ...fields, [f.key]: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-white/30 transition-all" placeholder={f.placeholder} />
+                                        className="w-full bg-transparent text-sm font-black text-white outline-none placeholder:text-white/10" placeholder={f.placeholder} />
                                 </div>
                             ))}
                         </div>
@@ -1990,18 +2194,90 @@ const ReadyTruckWizard: React.FC<{
                             </div>
                         </div>
 
-                        <div className="mt-2 grid grid-cols-3 gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10 shadow-inner">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Live Total Payload</span>
-                                <span className="text-lg font-black text-emerald-400">{(totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()} KG</span>
+                        <div className="mt-2 flex flex-col gap-4">
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Payload</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl font-black text-white">{(totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()}</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase">KG</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-1">
+                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, ((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%` }} />
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl font-black text-white">{(buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)}</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase">Units</span>
+                                    </div>
+                                    <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Ready for In-Transit</div>
+                                </div>
+                                <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Utilization</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl font-black text-white">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
+                                        <span className="text-[10px] font-bold text-white/30 uppercase">Volume</span>
+                                    </div>
+                                    <div className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest mt-1">High Density</div>
+                                </div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Total Units</span>
-                                <span className="text-lg font-black text-white">{(buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)}</span>
+
+                            {/* Large Share Card */}
+                            <div className={`p-6 rounded-[2.5rem] border transition-all duration-500 ${publicUrl ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-5">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${publicUrl ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white/20'}`}>
+                                            <Share2 size={24} />
+                                        </div>
+                                        <div>
+                                            <h4 className={`text-lg font-black uppercase tracking-tighter ${publicUrl ? 'text-white' : 'text-white/20'}`}>Cloud Registry Link</h4>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                                                {publicUrl ? 'Sync Active · Publicly Accessible' : 'Pending Dispatch · Registry Offline'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {publicUrl && (
+                                        <button 
+                                            onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }}
+                                            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
+                                        >
+                                            Copy URL
+                                        </button>
+                                    )}
+                                </div>
+                                {publicUrl && (
+                                    <div className="mt-4 p-3 bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                        <p className="text-[10px] font-mono text-emerald-400/60 truncate">{publicUrl}</p>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Utilization</span>
-                                <span className="text-lg font-black text-white/60">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
+
+                            {/* Axle Distribution Visualization */}
+                            <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 shadow-inner">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2"><Move className="w-3 h-3 text-emerald-500" /> Axle Load Distribution</span>
+                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest">Balanced Load</span>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex h-4 gap-1 rounded-lg overflow-hidden bg-white/5 p-0.5">
+                                        <div className="h-full bg-emerald-500/80 rounded-sm relative group cursor-help" style={{ flex: panelStats.rPct || 1 }}>
+                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="h-full bg-emerald-400/50 rounded-sm relative group cursor-help" style={{ flex: panelStats.mPct || 1 }}>
+                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="h-full bg-emerald-300/30 rounded-sm relative group cursor-help" style={{ flex: panelStats.fPct || 1 }}>
+                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-widest text-white/20 px-1">
+                                        <span>Rear Axle ({panelStats.rPct}%)</span>
+                                        <span>Mid Section ({panelStats.mPct}%)</span>
+                                        <span>Front Axle ({panelStats.fPct}%)</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -2015,10 +2291,40 @@ const ReadyTruckWizard: React.FC<{
                     </div>
 
                     <div className="flex flex-col gap-4">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
-                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${exportTimestamp.current}.pdf`} />
-                        <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
-                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                        <div className="flex flex-col gap-4">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Preview</label>
+                            <div 
+                                onClick={() => setShowLiveViewer(true)}
+                                className="relative group rounded-[2rem] border border-white/10 bg-white/5 overflow-hidden aspect-video shadow-2xl cursor-pointer hover:border-emerald-500/30 transition-all"
+                            >
+                                <img 
+                                    src={generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory)} 
+                                    alt="Preview" 
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                                <div className="absolute bottom-4 left-6 flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md">
+                                        <Maximize2 size={14} className="text-emerald-400" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black text-white uppercase tracking-tight">Trailer Isometric</span>
+                                        <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">Active Mirror Sync</span>
+                                    </div>
+                                </div>
+                                <div className="absolute top-4 right-6 px-3 py-1 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
+                                    <span className="text-[8px] font-black text-white/60 uppercase tracking-[0.2em]">3D Lidar Point-Cloud</span>
+                                </div>
+                            </div>
+
+                            <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1 mt-2">Documentation Engine</label>
+                            <div className="grid grid-cols-1 gap-2">
+                                <ExportCard id="html" title="Interactive HTML Manifest" type="HTML" color="#3b82f6" icon={Globe} prog={progress.html} url={urls.html} onGenerate={generateHtml} filename={`Manifesto_${exportTimestamp.current}.html`} />
+                                <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${exportTimestamp.current}.pdf`} />
+                                <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
+                                <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                            </div>
+                        </div>
                     
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
@@ -2056,7 +2362,7 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-5"
-                style={{ background: 'rgba(12,12,18,0.95)' }}
+                style={{ backgroundColor: 'rgba(12,12,18,0.95)' }}
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-start justify-between">
@@ -2094,7 +2400,7 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
                         onClick={() => name.trim() && onSave(name.trim())}
                         disabled={!name.trim()}
                         className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40"
-                        style={{ background: 'var(--main-color)', color: '#000' }}
+                        style={{ backgroundColor: 'var(--main-color)', color: '#000' }}
                     >
                         Save
                     </button>
@@ -2129,7 +2435,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
-                style={{ background: 'rgba(12,12,18,0.95)', maxHeight: '82vh' }}
+                style={{ backgroundColor: 'rgba(12,12,18,0.95)', maxHeight: '82vh' }}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
@@ -2175,7 +2481,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                         {draft.thumbnail ? (
                                             <img src={draft.thumbnail} alt="" className="w-14 h-7 rounded object-cover shrink-0 border border-white/10" />
                                         ) : (
-                                            <div className="w-14 h-7 rounded shrink-0 border border-white/8 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                                            <div className="w-14 h-7 rounded shrink-0 border border-white/8 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
                                                 <Truck size={12} className="text-white/20" />
                                             </div>
                                         )}
@@ -2190,7 +2496,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                         <div className="flex items-center gap-2 shrink-0">
                                             <button onClick={() => exportDraftFile(draft)} className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white transition-all cursor-pointer" title="Export .truckload"><Download size={13} /></button>
                                             <button onClick={() => handleDelete(draft.id)} className="opacity-0 group-hover:opacity-100 text-rose-400/60 hover:text-rose-400 transition-all cursor-pointer" title="Delete"><Trash2 size={13} /></button>
-                                            <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ background: 'var(--main-color)', color: '#000' }}>Load</button>
+                                            <button onClick={() => { onLoad(draft); onClose(); }} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all" style={{ backgroundColor: 'var(--main-color)', color: '#000' }}>Load</button>
                                         </div>
                                     </div>
                                 </div>
@@ -2222,6 +2528,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
+    const [publicUrl, setPublicUrl] = useState<string | null>(null);
 
     const [readyTruckFields, setReadyTruckFields] = useState({
         sealNumber: '',
@@ -2484,8 +2791,64 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
             const ts = new Date().toLocaleString();
 
-            toast.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 5000 });
-            setShowReadyWizard(false);
+            // 2. Prepare Payload for Cloud Registry
+            const shipmentPayload = {
+                crates: truckCrates.map(c => {
+                    const pos = positions[c.id];
+                    return {
+                        id: c.id,
+                        label: c.label || c.id.slice(0, 8),
+                        subtitle: c.description?.split('POS:')[0]?.trim() || '',
+                        x: pos?.x || 0,
+                        y: pos?.z || 0, // In Three.js Y is up, but in wizard Z is vertical. Mapping wizard Z to Three.js Y.
+                        z: pos?.y || 0, // Mapping wizard Y (depth) to Three.js Z.
+                        w: c.width_cm,
+                        l: c.length_cm,
+                        h: c.height_cm || 100,
+                        r: pos?.r || 0,
+                        vendorList: [c.vendor_id || 'VAR'],
+                        items: allInventory
+                            .filter(i => i.crate_id === c.id || (i as any).sent_pack === c.id)
+                            .map(i => ({
+                                itemId: i.item_id,
+                                name: i.description,
+                                qty: i.quantity || 1,
+                                weightKg: i.weight_kg || 0,
+                                material: i.material || '',
+                                color: i.color || ''
+                            }))
+                    };
+                }),
+                truckStats: panelStats,
+                timestamp: ts
+            };
+
+            // 3. Save to Supabase Registry
+            if (!isDummyMode) {
+                const { error: shipError } = await supabase.from('shipments').insert({
+                    manifest_id: manifestId,
+                    metadata: f,
+                    payload: shipmentPayload,
+                    timestamp: ts,
+                    updated_at: new Date().toISOString()
+                });
+                if (shipError) throw shipError;
+            }
+
+            // 4. Generate HTML Manifesto
+            const htmlContent = generatePackingListHtml(manifestId, f, shipmentPayload);
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const htmlUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = htmlUrl;
+            a.download = `Manifesto_${manifestId}.html`;
+            a.click();
+
+            const shareUrl = `${window.location.origin}${window.location.pathname}?truckid=${manifestId}`;
+            setPublicUrl(shareUrl);
+
+            toast.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
+            // Wizard stays open to show the public link
         } catch (err: any) { 
             toast.error(err.message || 'Synchronization failed', { id: tid }); 
         } finally { 
@@ -2677,7 +3040,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 {/* ══ FIXED HEADER PANEL ══ */}
                 <div
                     className="shrink-0 px-6 pt-3 pb-3 flex flex-col gap-3 border-b border-white/6"
-                    style={{ background: 'transparent' }}
+                    style={{ backgroundColor: 'transparent' }}
                     onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
                 >
                     {/* Row 1: title + view toggle + zoom controls */}
@@ -2697,7 +3060,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 {viewMode === 'top' ? <Layers size={16} /> : <Grid3x3 size={16} />}
                             </button>
                             {/* Zoom controls */}
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
                                 <button onClick={() => setZoom(1.0)} className="text-white/30 hover:text-white transition-colors cursor-pointer text-[8px] font-black w-8 text-center" title="Reset">{Math.round(zoom*100)}%</button>
                                 <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom in"><ZoomIn size={15} /></button>
@@ -2709,29 +3072,29 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     {isCompact ? (
                         /* ── COMPACT stats row ── */
                         <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <span className="text-[9px] text-white/40 font-black uppercase">Units</span>
                                 <span className="text-[13px] font-black text-emerald-400">{truckCrates.length}</span>
                                 <span className="text-[9px] text-white/30">/ {allCrates.length}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <span className="text-[9px] text-white/40 font-black uppercase">KG</span>
                                 <span className="text-[13px] font-black" style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
                                 <span className="text-[9px] text-white/30">{panelStats.payloadPct}%</span>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <span className="text-[9px] text-white/40 font-black uppercase">Floor</span>
                                 <span className="text-[13px] font-black text-white/80">{floorPct}%</span>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <span className="text-[9px] text-white/40 font-black uppercase">Vol</span>
                                 <span className="text-[13px] font-black text-white/80">{panelStats.volPct}%</span>
                             </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shrink-0" style={{ background: 'rgba(255,255,255,0.04)', borderColor: `${panelStats.statusColor}40` }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderColor: `${panelStats.statusColor}40` }}>
                                 <span className="text-[11px] font-black uppercase" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
                             </div>
                             {/* Mini dist bar */}
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0 min-w-[120px]" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0 min-w-[120px]" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                                 <span className="text-[9px] text-white/40 font-black uppercase">Dist</span>
                                 <div className="flex h-1.5 gap-0.5 rounded overflow-hidden flex-1">
                                     <div className="h-full bg-emerald-500/80 rounded-l" style={{ flex: panelStats.rPct || 1 }} />
@@ -2815,7 +3178,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             </div>
 
                             {/* Status Pill */}
-                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl border shrink-0" style={{ background: `${panelStats.statusColor}15`, borderColor: `${panelStats.statusColor}30` }}>
+                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl border shrink-0" style={{ backgroundColor: `${panelStats.statusColor}15`, borderColor: `${panelStats.statusColor}30` }}>
                                 <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: panelStats.statusColor }} />
                                 <div className="flex flex-col">
                                     <span className="text-[12px] font-black uppercase tracking-tighter" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
@@ -2832,7 +3195,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 <div
                     ref={canvasRef}
                     className="flex-1 overflow-auto custom-scrollbar"
-                    style={{ background: 'transparent', touchAction: 'pan-x pan-y' }}
+                    style={{ backgroundColor: 'transparent', touchAction: 'pan-x pan-y' }}
                     onWheel={handleWheel}
                 >
                     {viewMode === 'side' ? (
@@ -2861,7 +3224,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         <div style={{ width: canvasW * zoom, height: canvasH * zoom, position: 'relative' }}>
                             <div
                                 className="absolute top-0 left-0 border border-white/15"
-                                style={{ width: canvasW, height: canvasH, transform: `scale(${zoom})`, transformOrigin: 'top left', background: 'rgba(255,255,255,0.025)' }}
+                                style={{ width: canvasW, height: canvasH, transform: `scale(${zoom})`, transformOrigin: 'top left', backgroundColor: 'rgba(255,255,255,0.025)' }}
                                 onClick={e => e.stopPropagation()}
                             >
                                 <CmGrid />
@@ -2871,7 +3234,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
                                     </div>
                                 ))}
-                                {truckCrates.filter(c => !c.parent_id || !positions[c.parent_id]).map(c => {
+                                {truckCrates.filter(c => !!positions[c.id]).map(c => {
                                     const pos = positions[c.id];
                                     if (!pos) return null;
                                     return (
@@ -2943,6 +3306,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     onOpenDraft={() => setShowOpenDraft(true)}
                     onClose={() => setShowReadyWizard(false)}
                     isBusy={isSaving}
+                    publicUrl={publicUrl}
                 />
             )}
             {nestingBoxId && (
