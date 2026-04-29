@@ -2796,8 +2796,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
             const ts = new Date().toLocaleString();
 
-            // 2. Prepare Payload for Cloud Registry
-            const shipmentPayload = {
+            // Calculate stats locally to avoid stale state
+            const totalWeight = truckCrates.reduce((sum, c) => {
+                const items = getItemsFromCrate(c);
+                return sum + items.reduce((iSum, i) => iSum + (parseFloat(i.inv?.data?.weightKg || i.inv?.data?.weight_kg || 0) * (i.qty || 1)), 0);
+            }, 0);
+
+            const shipmentPayload = JSON.parse(JSON.stringify({
                 crates: truckCrates.map(c => {
                     const pos = positions[c.id];
                     const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
@@ -2840,9 +2845,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         })
                     };
                 }),
-                truckStats: panelStats,
+                truckStats: {
+                    ...panelStats,
+                    totalWeight
+                },
                 timestamp: ts
-            };
+            }));
 
             // 3. Save to Supabase Registry
             console.log('[Shipment] Saving Payload to Cloud Registry:', shipmentPayload);
