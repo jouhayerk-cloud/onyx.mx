@@ -1628,6 +1628,7 @@ const ReadyTruckWizard: React.FC<{
     const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ pdf: -1, allCrates: -1, xlsx: -1 });
     const [urls, setUrls] = useState({ pdf: '', allCrates: '', xlsx: '' });
+    const exportTimestamp = useRef(new Date().getTime());
 
     const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
         if (!crate || visited.has(crate.id)) return [];
@@ -2015,10 +2016,10 @@ const ReadyTruckWizard: React.FC<{
 
                     <div className="flex flex-col gap-4">
                         <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
-                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${new Date().getTime()}.pdf`} />
-                        <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${new Date().getTime()}.xlsx`} />
-                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${new Date().getTime()}.pdf`} />
-                    </div>
+                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${exportTimestamp.current}.pdf`} />
+                        <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${exportTimestamp.current}.xlsx`} />
+                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
+                    
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                             <div className="grid grid-cols-3 gap-3">
@@ -2042,12 +2043,14 @@ const ReadyTruckWizard: React.FC<{
 };
 
 // Save Draft Modal
-const SaveDraftModal: React.FC<{
+interface SaveDraftProps {
     crateCount: number;
     onSave: (name: string) => void;
     onExport: (name: string) => void;
     onClose: () => void;
-}> = ({ crateCount, onSave, onExport, onClose }) => {
+}
+
+const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProps) => {
     const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}`);
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
@@ -2059,7 +2062,7 @@ const SaveDraftModal: React.FC<{
                 <div className="flex items-start justify-between">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Save Draft</h3>
-                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates · positions + thumbnail</p>
+                        <p className="text-[10px] text-white/40 mt-0.5">{crateCount} crates - positions + thumbnail</p>
                     </div>
                     <button onClick={onClose} className="text-white/30 hover:text-white cursor-pointer"><X size={16} /></button>
                 </div>
@@ -2073,7 +2076,7 @@ const SaveDraftModal: React.FC<{
                         className="w-full bg-white/8 border border-white/15 rounded-lg px-3 py-2.5 text-[13px] font-black text-white outline-none focus:border-white/40 transition-colors"
                         placeholder="e.g. Monday AM Load"
                     />
-                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exports as <span className="text-white/40">.truckload</span> · includes map thumbnail · shareable</p>
+                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest">Exports as .truckload - includes map thumbnail</p>
                 </div>
                 <div className="flex gap-2">
                     <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-white/10 text-[10px] font-black text-white/40 hover:text-white hover:border-white/20 transition-all cursor-pointer">
@@ -2102,10 +2105,12 @@ const SaveDraftModal: React.FC<{
 };
 
 // Open Draft Modal
-const OpenDraftModal: React.FC<{
+interface OpenDraftProps {
     onLoad: (draft: TruckDraft) => void;
     onClose: () => void;
-}> = ({ onLoad, onClose }) => {
+}
+
+const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
     const [drafts, setDrafts] = React.useState<TruckDraft[]>(getDrafts);
     const [preview, setPreview] = React.useState<string | null>(null); // thumbnail on hover import
     const importRef = React.useRef<HTMLInputElement>(null);
