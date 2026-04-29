@@ -1,7 +1,8 @@
 import { vendors } from '../../lib/consts';
 
 export function generatePackingListHtml(manifestId: string, metadata: any, payload: any) {
-    const { crates, truckStats, timestamp, isoView } = payload;
+    const { crates, truckStats, timestamp } = payload;
+    const cratesJson = JSON.stringify(crates);
     
     const crateRows = crates.map((c: any) => {
         const crateColor = c.color || (vendors as any)[c.subtitle]?.color || '#adb5bd';
@@ -75,6 +76,8 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
+            #three-container { display: none; }
+            #static-thumbnail { display: block !important; }
         }
     </style>
 </head>
@@ -138,20 +141,24 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
             </div>
         </div>
 
-        <!-- 3D Map Section -->
-        ${isoView ? `
+        <!-- 3D Interactive Map Section -->
         <div style="margin-bottom: 60px;">
             <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.4em; color: #cbd5e1; margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
-                Live Load Simulation <div style="flex: 1; height: 1px; background: #f1f5f9;"></div>
+                Live 3D Load Simulation <div style="flex: 1; height: 1px; background: #f1f5f9;"></div>
             </h2>
-            <div style="width: 100%; border: 1px solid #f1f5f9; border-radius: 20px; padding: 20px; background: #f8fafc; text-align: center;">
-                <img src="${isoView}" style="max-width: 100%; height: auto; border-radius: 10px;" />
-                <div style="margin-top: 15px; font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em;">
-                    VIRTUAL TWIN · SCALE 1:1 · LIDAR SCAN SYNC
+            <div id="three-container" style="width: 100%; height: 500px; background: #0c0c12; border-radius: 20px; border: 1px solid #1e293b; position: relative; overflow: hidden; cursor: grab;">
+                <div style="position: absolute; top: 20px; right: 20px; z-index: 10; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); padding: 8px 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); font-size: 8px; font-weight: 900; color: rgba(255,255,255,0.4); letter-spacing: 0.2em; text-transform: uppercase;">
+                    Digital Twin · Interactive View
+                </div>
+                <div style="position: absolute; bottom: 20px; left: 20px; z-index: 10; font-size: 8px; font-weight: 900; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; text-transform: uppercase;">
+                    Drag to Rotate · Scroll to Zoom
                 </div>
             </div>
+            <!-- Fallback for print -->
+            <div id="static-thumbnail" style="display: none; width: 100%; border: 1px solid #f1f5f9; border-radius: 20px; padding: 20px; background: #f8fafc; text-align: center;">
+                <div style="font-size: 12px; font-weight: 900; color: #94a3b8; text-transform: uppercase;">3D Simulation View (Interactive in Web Browser)</div>
+            </div>
         </div>
-        ` : ''}
 
         <!-- Inventory Breakdown -->
         <h2 style="font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.4em; color: #cbd5e1; margin-bottom: 40px; display: flex; align-items: center; gap: 20px;">
@@ -165,6 +172,118 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
             <div style="font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3em;">End of Document</div>
         </div>
     </div>
+
+    <!-- Live 3D Simulation Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        (function() {
+            const crates = ${cratesJson};
+            const container = document.getElementById('three-container');
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c0c12);
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+            camera.position.set(2500, 1500, 2500);
+            camera.lookAt(800, 0, 120);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            directional.position.set(1000, 2000, 1000);
+            scene.add(directional);
+
+            // Truck Bed
+            const bedGeo = new THREE.BoxGeometry(1615, 5, 244);
+            const bedMat = new THREE.MeshPhongMaterial({ color: 0x1e293b, transparent: true, opacity: 0.5 });
+            const bed = new THREE.Mesh(bedGeo, bedMat);
+            bed.position.set(1615/2, -2.5, 244/2);
+            scene.add(bed);
+
+            // Grid
+            const grid = new THREE.GridHelper(2000, 20, 0x334155, 0x1e293b);
+            grid.position.y = -0.1;
+            scene.add(grid);
+
+            // Crates
+            crates.forEach(c => {
+                const geo = new THREE.BoxGeometry(c.w, c.h || 100, c.l);
+                const mat = new THREE.MeshPhongMaterial({ color: c.color || 0x6b7280 });
+                const mesh = new THREE.Mesh(geo, mat);
+                
+                // Position adjustment (center-based in Three.js)
+                mesh.position.set(c.x + c.w/2, (c.h || 100)/2 + (c.y || 0), c.z + c.l/2);
+                if (c.r) mesh.rotation.y = (c.r * Math.PI) / 180;
+
+                // Edges
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 }));
+                mesh.add(line);
+
+                scene.add(mesh);
+            });
+
+            // Interaction (Basic rotation)
+            let isDragging = false;
+            let previousMouseX = 0;
+            let previousMouseY = 0;
+            let rotationY = 0;
+            let rotationX = 0;
+
+            container.addEventListener('mousedown', e => { isDragging = true; container.style.cursor = 'grabbing'; });
+            window.addEventListener('mouseup', e => { isDragging = false; container.style.cursor = 'grab'; });
+            window.addEventListener('mousemove', e => {
+                if (!isDragging) return;
+                const deltaX = e.clientX - previousMouseX;
+                const deltaY = e.clientY - previousMouseY;
+                
+                const target = new THREE.Vector3(800, 0, 120);
+                const radius = camera.position.distanceTo(target);
+                
+                rotationY -= deltaX * 0.005;
+                rotationX = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, rotationX + deltaY * 0.005));
+                
+                camera.position.x = target.x + radius * Math.cos(rotationX) * Math.sin(rotationY);
+                camera.position.y = target.y + radius * Math.sin(rotationX);
+                camera.position.z = target.z + radius * Math.cos(rotationX) * Math.cos(rotationY);
+                camera.lookAt(target);
+
+                previousMouseX = e.clientX;
+                previousMouseY = e.clientY;
+            });
+
+            container.addEventListener('wheel', e => {
+                e.preventDefault();
+                const target = new THREE.Vector3(800, 0, 120);
+                const dir = camera.position.clone().sub(target).normalize();
+                const zoomSpeed = 50;
+                if (e.deltaY < 0) camera.position.sub(dir.multiplyScalar(zoomSpeed));
+                else camera.position.add(dir.multiplyScalar(zoomSpeed));
+                camera.lookAt(target);
+            }, { passive: false });
+
+            previousMouseX = 0; previousMouseY = 0;
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        })();
+    </script>
 </body>
 </html>
     `;
