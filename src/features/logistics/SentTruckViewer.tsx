@@ -58,7 +58,17 @@ export const SentTruckViewer: React.FC = () => {
     }, [shipment]);
 
     const cratesData = useMemo(() => payload?.crates || [], [payload]);
-    const truckStats = useMemo(() => payload?.truckStats || {}, [payload]);
+    
+    // Robust stats calculation if payload is missing them
+    const truckStats = useMemo(() => {
+        const stats = payload?.truckStats || {};
+        if (!stats.totalWeight || stats.totalWeight === 0) {
+            stats.totalWeight = cratesData.reduce((sum: number, c: any) => {
+                return sum + (c.items?.reduce((iSum: number, i: any) => iSum + ((i.weightKg || 0) * (i.qty || 1)), 0) || 0);
+            }, 0);
+        }
+        return stats;
+    }, [payload, cratesData]);
 
     useEffect(() => {
         if (!containerRef.current || !payload) return;
@@ -106,7 +116,10 @@ export const SentTruckViewer: React.FC = () => {
 
             const geometry = new THREE.BoxGeometry(dl, dh, dw);
             
-            const fallbackCol = (vendors as any)[c.subtitle]?.color || '#adb5bd';
+            // Stronger fallback for vendor color: use first 2 chars of label if subtitle is raw
+            const vPrefix = (c.subtitle && c.subtitle.length <= 3) ? c.subtitle : (c.label?.slice(0, 2).toUpperCase());
+            const fallbackCol = (vendors as any)[vPrefix]?.color || '#adb5bd';
+            
             const material = new THREE.MeshStandardMaterial({ 
                 color: c.color || fallbackCol,
                 metalness: 0,
@@ -150,7 +163,7 @@ export const SentTruckViewer: React.FC = () => {
                 containerRef.current.removeChild(renderer.domElement);
             }
         };
-    }, [payload]);
+    }, [payload, cratesData]);
 
     if (loading) return null;
 
@@ -167,7 +180,7 @@ export const SentTruckViewer: React.FC = () => {
                             </button>
                             <div>
                                 <h1 className="text-2xl font-black tracking-tight uppercase leading-none mb-1">ONYX LOGISTICS TRAILER MANIFEST</h1>
-                                <p className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em]">Protocol v2.8 · Issued {shipment?.timestamp}</p>
+                                <p className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em]">Digital Mirror Protocol v2.8 · Issued {shipment?.timestamp}</p>
                             </div>
                         </div>
                         <div className="text-right">
@@ -193,30 +206,30 @@ export const SentTruckViewer: React.FC = () => {
                                 <div style={{ flex: truckStats?.fPct || 1 }} className="bg-black/5" />
                             </div>
                             <div className="flex justify-between text-[9px] font-black text-black/30 uppercase tracking-widest">
-                                <span>R: {truckStats?.rPct || 0}%</span>
-                                <span>F: {truckStats?.fPct || 0}%</span>
+                                <span>REAR: {truckStats?.rPct || 0}%</span>
+                                <span>FRONT: {truckStats?.fPct || 0}%</span>
                             </div>
                         </div>
                         <div className="col-span-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-black/20 block mb-3">Status</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-black/20 block mb-3">Volume Status</label>
                             <div className="text-2xl font-black uppercase tracking-tight text-[#D95A0A]">{truckStats?.status || 'OPTIMAL'}</div>
                             <div className="text-[9px] font-black text-black/20 uppercase mt-1">{truckStats?.volPct || 0}% FILLED</div>
                         </div>
                         <div className="col-span-4 flex flex-wrap gap-x-8 gap-y-4 border-l border-black/5 pl-8">
                             <div>
-                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Seal</label>
+                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Seal Number</label>
                                 <span className="text-[11px] font-bold uppercase">{metadata?.sealNumber || '—'}</span>
                             </div>
                             <div>
-                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Tractor</label>
-                                <span className="text-[11px] font-bold uppercase">{metadata?.tractorNumber || '—'}</span>
+                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Tractor / Plates</label>
+                                <span className="text-[11px] font-bold uppercase">{metadata?.tractorNumber || '—'} · {metadata?.truckPlates || '—'}</span>
                             </div>
                             <div>
-                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Trailer</label>
-                                <span className="text-[11px] font-bold uppercase">{metadata?.trailerNumber || '—'}</span>
+                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Trailer / Plates</label>
+                                <span className="text-[11px] font-bold uppercase">{metadata?.trailerNumber || '—'} · {metadata?.trailerPlates || '—'}</span>
                             </div>
                             <div className="w-full">
-                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Dispatch</label>
+                                <label className="text-[8px] font-black uppercase tracking-widest text-black/20 block mb-1">Dispatch Personnel</label>
                                 <span className="text-[11px] font-bold uppercase">{(metadata?.senders || []).join(' / ') || '—'}</span>
                             </div>
                         </div>
@@ -245,21 +258,25 @@ export const SentTruckViewer: React.FC = () => {
                     </h2>
                     
                     {cratesData.map((c: any) => {
-                        const crateCol = c.color || (vendors as any)[c.subtitle]?.color || '#adb5bd';
+                        const vPrefix = (c.subtitle && c.subtitle.length <= 3) ? c.subtitle : (c.label?.slice(0, 2).toUpperCase());
+                        const crateCol = c.color || (vendors as any)[vPrefix]?.color || '#adb5bd';
+                        const crateLabel = (c.label && c.label.length > 10) ? `CRATE ${c.id.slice(-4)}` : c.label;
+                        const crateSub = (c.subtitle && c.subtitle.length < 15) ? c.subtitle : 'CRATE';
+
                         return (
                             <div key={c.id} className="mb-20 last:mb-0">
                                 <div className="flex justify-between items-end mb-8 px-2">
                                     <div className="flex items-center gap-5">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: crateCol }} />
-                                        <h3 className="text-2xl font-black tracking-tight uppercase leading-none">{c.label}</h3>
-                                        <span className="text-[10px] font-black text-black/20 uppercase tracking-widest ml-4">{c.subtitle}</span>
+                                        <h3 className="text-2xl font-black tracking-tight uppercase leading-none">{crateLabel}</h3>
+                                        <span className="text-[10px] font-black text-black/20 uppercase tracking-widest ml-4">{crateSub}</span>
                                     </div>
                                     <div className="text-[10px] font-black uppercase tracking-widest text-black/20">
-                                        {c.l}×{c.w}×{c.h} CM · {(c.items?.reduce((s:number,i:any)=>s+((i.weightKg||0)*(i.qty||1)),0) || 0).toFixed(1)} KG
+                                        {c.l}×{c.w}×{c.h} CM · {(c.items?.reduce((s:number,i:any)=>s+((i.weightKg || i.weight_kg || 0)*(i.qty||1)),0) || 0).toFixed(1)} KG
                                     </div>
                                 </div>
                                 <div className="border-t border-black/5">
-                                    <table className="w-full">
+                                    <table className="w-full border-collapse">
                                         <thead>
                                             <tr className="border-b border-black">
                                                 <th className="text-left py-6 text-[9px] font-black text-black/20 uppercase tracking-[0.2em] w-16">Seq</th>
@@ -271,9 +288,12 @@ export const SentTruckViewer: React.FC = () => {
                                         </thead>
                                         <tbody className="divide-y divide-black/5">
                                             {(c.items || []).map((it: any, ii: number) => {
-                                                const tagCol = it.tagColor || (vendors as any)[it.vendorPrefix]?.color || '#000';
+                                                const tagCol = it.tagColor || (vendors as any)[it.vendorPrefix]?.color || (vendors as any)[it.itemId?.slice(0, 2)]?.color || '#000';
+                                                // Fallback for missing name: use type + desc or Artifact
+                                                const itemName = it.name || `${it.type || ''} ${it.desc || ''}`.trim() || 'Artifact';
+                                                
                                                 return (
-                                                    <tr key={ii} className="group">
+                                                    <tr key={ii} className="group hover:bg-black/[0.01] transition-colors">
                                                         <td className="py-8 align-top text-[10px] font-black text-black/10">{String(ii + 1).padStart(2, '0')}</td>
                                                         <td className="py-8 align-top">
                                                             <div className="inline-flex px-4 py-2 rounded-lg border border-black font-mono text-[11px] font-black bg-white text-black mb-3" 
@@ -282,14 +302,14 @@ export const SentTruckViewer: React.FC = () => {
                                                             </div>
                                                         </td>
                                                         <td className="py-8 align-top pr-10">
-                                                            <div className="text-lg font-black uppercase tracking-tight leading-tight mb-3 group-hover:text-orange-600 transition-colors">{it.name}</div>
+                                                            <div className="text-lg font-black uppercase tracking-tight leading-tight mb-3 group-hover:text-orange-600 transition-colors">{itemName}</div>
                                                             <div className="flex gap-2">
                                                                 <span className="text-[8px] font-black uppercase tracking-widest text-black/40 bg-black/[0.03] px-3 py-1.5 rounded-md">{it.type || 'Unit'}</span>
                                                                 <span className="text-[8px] font-black uppercase tracking-widest text-black/40 bg-black/[0.03] px-3 py-1.5 rounded-md">{it.desc || '—'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="py-8 align-top text-[10px] font-bold uppercase tracking-widest text-black/30">
-                                                            {it.combinedAttr || '—'}
+                                                            {it.combinedAttr || `${it.color || ''} / ${it.material || ''}` || '—'}
                                                         </td>
                                                         <td className="py-8 align-top text-right text-4xl font-black tabular-nums tracking-tighter">
                                                             {it.qty}
