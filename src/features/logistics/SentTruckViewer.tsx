@@ -173,7 +173,7 @@ export const SentTruckViewer: React.FC = () => {
     );
 
     return (
-        <div className="w-full min-h-screen bg-[#f8f9fb] text-[#111827] font-['Inter'] selection:bg-orange-500 selection:text-white">
+        <div className="w-full h-screen overflow-y-auto bg-[#f8f9fb] text-[#111827] font-['Inter'] selection:bg-orange-500 selection:text-white custom-scrollbar">
             {/* Redesigned Document-Style Header */}
             <div className="max-w-[1300px] mx-auto px-10 py-20">
                 <div className="flex justify-between items-center mb-16">
