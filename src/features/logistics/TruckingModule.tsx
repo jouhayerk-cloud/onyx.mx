@@ -1626,8 +1626,8 @@ const ReadyTruckWizard: React.FC<{
     isBusy?: boolean;
 }> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, fields, onFieldChange, onClose, onConfirm, onSaveDraft, onOpenDraft, isBusy }) => {
     const bookRate = useAtomValue(exchangeRateAtom);
-    const [progress, setProgress] = useState({ pdf: -1, allCrates: -1 });
-    const [urls, setUrls] = useState({ pdf: '', allCrates: '' });
+    const [progress, setProgress] = useState({ pdf: -1, allCrates: -1, xlsx: -1 });
+    const [urls, setUrls] = useState({ pdf: '', allCrates: '', xlsx: '' });
 
     const getItemsFromCrate = (crate: any, floorLabel?: string, boxLabel?: string, visited = new Set<string>()): any[] => {
         if (!crate || visited.has(crate.id)) return [];
@@ -1725,6 +1725,120 @@ const ReadyTruckWizard: React.FC<{
             const blob = await exportCrateManifesto(manifestoItems, meta, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob') as Blob;
             if (blob) { setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) })); setProgress(p => ({ ...p, pdf: 100 })); toast.success('Manifest ready', { id: tid }); }
         } catch (err: any) { setProgress(p => ({ ...p, pdf: -1 })); toast.error(err.message || 'Failed', { id: tid }); }
+    };
+
+    const generatePackingListXlsx = async () => {
+        const tid = toast.loading('Generating XLSX Packing List...');
+        setProgress(p => ({ ...p, xlsx: 5 }));
+        try {
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('Trailer Packing List');
+
+            // Header Styling
+            const headerFill: any = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF97316' } }; // Orange
+            const sectionFill: any = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; // Light Gray
+            const textWhite: any = { color: { argb: 'FFFFFFFF' }, bold: true };
+
+            // 1. Shipment Info
+            ws.addRow(['ONYX LOGISTICS · TRAILER PACKING LIST']);
+            ws.getCell('A1').font = { size: 16, bold: true, color: { argb: 'FFF97316' } };
+            ws.addRow([`Exported At: ${new Date().toLocaleString()}`]);
+            ws.addRow([]);
+
+            ws.addRow(['SHIPMENT METADATA']);
+            ws.getRow(4).font = { bold: true };
+            ws.addRow(['Seal #', fields.sealNumber || 'N/A']);
+            ws.addRow(['Tractor #', fields.tractorNumber || 'N/A']);
+            ws.addRow(['Truck Plates', fields.truckPlates || 'N/A']);
+            ws.addRow(['Trailer #', fields.trailerNumber || 'N/A']);
+            ws.addRow(['Trailer Plates', fields.trailerPlates || 'N/A']);
+            ws.addRow(['Senders', (fields.senders || []).join(', ') || 'N/A']);
+            ws.addRow([]);
+
+            // 2. Item List Header
+            const startRow = ws.rowCount + 1;
+            ws.addRow(['Crate / Unit', 'Book TAG ID', 'Qty', 'Description', 'Dimensions (CM)', 'Weight (KG)', 'Sub-Container']);
+            const headerRow = ws.getRow(startRow);
+            headerRow.font = textWhite;
+            headerRow.eachCell(cell => { cell.fill = headerFill; cell.alignment = { horizontal: 'center' }; });
+
+            ws.columns = [
+                { key: 'crate', width: 25 },
+                { key: 'tag', width: 22 },
+                { key: 'qty', width: 8 },
+                { key: 'desc', width: 50 },
+                { key: 'dims', width: 22 },
+                { key: 'weight', width: 12 },
+                { key: 'box', width: 25 }
+            ];
+
+            // 3. Sectioned Items
+            const rootCrates = [...truckCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0));
+            
+            rootCrates.forEach((crate, cIdx) => {
+                const { label } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
+                
+                // Section Header Row
+                const sRow = ws.addRow([`UNIT ${truckNumbering[crate.id] || cIdx + 1}: ${label.toUpperCase()}`]);
+                ws.mergeCells(sRow.number, 1, sRow.number, 7);
+                sRow.font = { bold: true };
+                sRow.getCell(1).fill = sectionFill;
+
+                const items = getItemsFromCrate(crate);
+                items.forEach(item => {
+                    const inv = item.inv; const data = inv.data || {};
+                    const norm = normalizeInventoryData(inv);
+                    const calculated = calculateCodesAndPrices(norm, bookRate, '326');
+                    const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                    const desc = [data.color, data.material, data.shape, data.shortDescription].filter(Boolean).join(' - ');
+                    const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
+                    
+                    const row = ws.addRow({
+                        crate: label,
+                        tag: tag,
+                        qty: item.qty,
+                        desc: desc || 'Artifact',
+                        dims: dims || 'N/A',
+                        weight: data.weightKg || data.weight_kg || 0,
+                        box: item.boxLabel || ''
+                    });
+                    row.getCell('qty').alignment = { horizontal: 'center' };
+                    row.getCell('weight').alignment = { horizontal: 'center' };
+                });
+            });
+
+            // 4. Packing Items (Cardboard boxes)
+            if (fields.packingItems && fields.packingItems.length > 0) {
+                ws.addRow([]);
+                const pRow = ws.addRow(['EXTERNAL PACKING & CARDBOARD UNITS']);
+                ws.mergeCells(pRow.number, 1, pRow.number, 7);
+                pRow.font = { bold: true };
+                pRow.getCell(1).fill = sectionFill;
+
+                fields.packingItems.forEach((p: any) => {
+                    ws.addRow({
+                        crate: 'PACKING',
+                        tag: 'BOX',
+                        qty: p.count,
+                        desc: p.name || 'Packing Unit',
+                        dims: 'N/A',
+                        weight: p.weight || 0,
+                        box: ''
+                    });
+                });
+            }
+
+            setProgress(p => ({ ...p, xlsx: 90 }));
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
+            setProgress(p => ({ ...p, xlsx: 100 }));
+            toast.success('Packing List Ready', { id: tid });
+        } catch (err: any) {
+            console.error('[TruckExport] XLSX Error:', err);
+            setProgress(p => ({ ...p, xlsx: -1 }));
+            toast.error('Failed to generate XLSX', { id: tid });
+        }
     };
 
     const generateAllManifestos = async () => {
@@ -1900,10 +2014,9 @@ const ReadyTruckWizard: React.FC<{
                     </div>
 
                     {/* Right side: Exports & Action */}
-                    <div className="flex flex-col gap-4">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Documentation Engine</label>
-                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} />
-                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} />
+                        <ExportCard id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText} prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} filename={`Packing_List_${new Date().getTime()}.pdf`} />
+                        <ExportCard id="xlsx" title="Master Packing List" type="XLSX" color="#10b981" icon={FileSpreadsheet} prog={progress.xlsx} url={urls.xlsx} onGenerate={generatePackingListXlsx} filename={`Master_Packing_List_${new Date().getTime()}.xlsx`} />
+                        <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${new Date().getTime()}.pdf`} />
                         
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
