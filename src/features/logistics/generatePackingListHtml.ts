@@ -302,8 +302,8 @@ export function generatePackingListHtml(shipmentId: string, metadata: any, paylo
                 
                 mesh.position.set(
                     c.x / 100 - 8.075 + (isRotated ? dw : dl) / 2, 
-                    c.z / 100 + dh/2 + 0.001,
-                    c.y / 100 - 1.22 + (isRotated ? dl : dw) / 2
+                    c.y / 100 + dh/2 + 0.001,
+                    c.z / 100 - 1.22 + (isRotated ? dl : dw) / 2
                 );
                 
                 if (isRotated) mesh.rotation.y = Math.PI / 2;
