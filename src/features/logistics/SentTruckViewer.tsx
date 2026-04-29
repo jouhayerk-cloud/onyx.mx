@@ -35,18 +35,6 @@ export const SentTruckViewer: React.FC = () => {
     const TRUCK_W = 2.44;
     const TRUCK_H = 2.8;
 
-    // Design Tokens (Premium Light Glass Theme)
-    const DESIGN = {
-        bg: '#f8f9fb',
-        surface: 'rgba(255, 255, 255, 0.7)',
-        border: 'rgba(0, 0, 0, 0.05)',
-        text: '#111827',
-        textDim: '#6b7280',
-        accent: '#D95A0A', // PDF Orange Accent
-        emerald: '#059669',
-        blur: 'backdrop-blur-2xl'
-    };
-
     useEffect(() => {
         if (!sentTruckId) return;
         const fetchShipment = async () => {
@@ -102,21 +90,14 @@ export const SentTruckViewer: React.FC = () => {
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2.1;
 
-        // Soft Studio Lighting
         scene.add(new THREE.AmbientLight(0xffffff, 0.8));
         const sun = new THREE.DirectionalLight(0xffffff, 0.5);
         sun.position.set(10, 20, 10);
         scene.add(sun);
         
-        const fill = new THREE.PointLight(0xffffff, 0.2);
-        fill.position.set(-10, 5, -10);
-        scene.add(fill);
-
-        // Ground Protocol (Light Grid)
         const grid = new THREE.GridHelper(100, 100, 0xe2e8f0, 0xf1f5f9);
         scene.add(grid);
 
-        // Trailer Chassis
         const bedGeo = new THREE.BoxGeometry(TRUCK_L, 0.05, TRUCK_W);
         const bedMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.1, roughness: 0.8 });
         const bed = new THREE.Mesh(bedGeo, bedMat);
@@ -131,11 +112,8 @@ export const SentTruckViewer: React.FC = () => {
             const isRotated = c.r === 90;
 
             const geometry = new THREE.BoxGeometry(dl, dh, dw);
-            const vendorKey = c.vendorList?.[0] as keyof typeof vendors;
-            const vendorCol = vendors[vendorKey]?.color || '#adb5bd';
-            
             const material = new THREE.MeshStandardMaterial({ 
-                color: vendorCol,
+                color: c.color || '#adb5bd',
                 metalness: 0.0,
                 roughness: 1.0,
                 transparent: true,
@@ -147,8 +125,8 @@ export const SentTruckViewer: React.FC = () => {
 
             const mesh = new THREE.Mesh(geometry, material);
             const x_m = (c.x || 0) / 100;
-            const y_m = (c.y || 0) / 100; // Height
-            const z_m = (c.z || 0) / 100; // Width/Depth
+            const y_m = (c.y || 0) / 100;
+            const z_m = (c.z || 0) / 100;
 
             mesh.position.set(
                 x_m - (TRUCK_L / 2) + (isRotated ? dw : dl) / 2,
@@ -257,60 +235,56 @@ export const SentTruckViewer: React.FC = () => {
         <div className="relative w-full h-screen overflow-hidden bg-[#f8f9fb] font-['Inter'] text-[#111827]">
             <div ref={containerRef} className="absolute inset-0 z-0" />
 
-            {/* Premium Light Header */}
+            {/* Premium Header - Mirror Interface */}
             <div className="absolute top-8 left-8 right-8 z-10 flex justify-between items-start pointer-events-none">
                 <div className="flex gap-4 pointer-events-auto">
                     <button onClick={() => setView('app')} className="w-16 h-16 rounded-[2rem] bg-white border border-black/[0.05] flex items-center justify-center hover:shadow-xl transition-all shadow-lg text-gray-400 hover:text-black">
                         <ChevronLeft size={24} />
                     </button>
-                    <div className="bg-white/70 backdrop-blur-3xl border border-black/[0.05] rounded-[2.5rem] px-12 py-6 flex flex-col shadow-xl min-w-[420px] relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-[#D95A0A]" />
+                    <div className="bg-white border border-black/[0.05] rounded-[2.5rem] px-12 py-6 flex flex-col shadow-xl min-w-[420px] relative overflow-hidden">
+                        <div className="absolute top-0 left-0 bottom-0 w-2 bg-[#D95A0A]" />
                         <div className="flex items-center gap-4">
                             <QrCode size={18} className="text-[#D95A0A]" />
-                            <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">{sentTruckId}</h1>
+                            <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">{sentTruckId}</h1>
                         </div>
                         <div className="text-[10px] font-black text-black/20 uppercase tracking-[0.4em] mt-3 ml-8">Mirror Interface v2.8</div>
                     </div>
                 </div>
 
                 <div className="flex gap-4 pointer-events-auto">
-                    <div className="bg-white/70 backdrop-blur-3xl border border-black/[0.05] rounded-[2rem] px-10 py-6 flex flex-col shadow-lg text-right">
+                    <div className="bg-white border border-black/[0.05] rounded-[2.5rem] px-12 py-7 flex flex-col shadow-lg text-right">
                         <div className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em] mb-1">Payload Weight</div>
-                        <div className="text-3xl font-black tabular-nums tracking-tighter">
+                        <div className="text-4xl font-black tabular-nums tracking-tighter">
                             {Math.round(payload?.truckStats?.totalWeight || 0).toLocaleString()} <span className="text-sm font-bold text-black/20 ml-1">KG</span>
                         </div>
-                    </div>
-                    <div className="bg-white/70 backdrop-blur-3xl border border-black/[0.05] rounded-[2rem] px-10 py-6 flex flex-col shadow-lg text-right">
-                        <div className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em] mb-1">Status</div>
-                        <div className="text-3xl font-black text-[#059669] tracking-tighter uppercase">{(payload?.truckStats?.status || 'Active')}</div>
                     </div>
                 </div>
             </div>
 
-            {/* Unit Registry (Left) */}
-            <div className="absolute top-36 left-8 bottom-32 w-96 z-10 flex flex-col gap-4 pointer-events-none">
-                <div className="bg-white/60 backdrop-blur-3xl border border-black/[0.05] rounded-[3rem] flex-1 flex flex-col overflow-hidden pointer-events-auto shadow-xl">
-                    <div className="p-10 pb-6 border-b border-black/[0.05] flex items-center justify-between">
+            {/* Unit Registry (Left) - Matching Screenshot Card Style */}
+            <div className="absolute top-44 left-8 bottom-32 w-[340px] z-10 flex flex-col gap-4 pointer-events-none">
+                <div className="bg-white border border-black/[0.05] rounded-[3.5rem] flex-1 flex flex-col overflow-hidden pointer-events-auto shadow-2xl">
+                    <div className="p-10 pb-8 border-b border-black/[0.03] flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <Layers size={18} className="text-[#D95A0A]" />
                             <span className="text-[11px] font-black uppercase tracking-[0.3em] text-black/40">Unit Breakdown</span>
                         </div>
                         <span className="text-[11px] font-black text-[#D95A0A]">{cratesData.length} UNITS</span>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-3">
+                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-4">
                         {cratesData.map((c: any) => {
                             const isSelected = selectedCrateId === c.id;
-                            const vCol = vendors[c.vendorList?.[0] as keyof typeof vendors]?.color || '#adb5bd';
+                            const vCol = c.color || '#adb5bd';
                             return (
                                 <button 
                                     key={c.id}
                                     onClick={() => setSelectedCrateId(isSelected ? null : c.id)}
-                                    className={`w-full text-left p-6 rounded-[2rem] border transition-all flex items-center gap-6 group ${isSelected ? 'bg-white border-black/10 shadow-lg' : 'bg-transparent border-transparent hover:bg-white/30'}`}
+                                    className={`w-full text-left p-6 rounded-[2.5rem] border transition-all flex items-center gap-6 group ${isSelected ? 'bg-white border-black/10 shadow-xl scale-[1.02]' : 'bg-transparent border-transparent hover:bg-black/[0.02]'}`}
                                 >
-                                    <div className="w-2.5 h-12 rounded-full" style={{ backgroundColor: vCol }} />
+                                    <div className="w-2.5 h-14 rounded-full" style={{ backgroundColor: vCol }} />
                                     <div className="flex-1 min-w-0">
-                                        <div className={`text-sm font-black uppercase truncate tracking-tight ${isSelected ? 'text-black' : 'text-black/50 group-hover:text-black'}`}>{c.label}</div>
-                                        <div className="text-[10px] font-bold text-black/20 uppercase tracking-widest mt-1.5 truncate">{c.subtitle}</div>
+                                        <div className={`text-lg font-black uppercase truncate tracking-tighter ${isSelected ? 'text-black' : 'text-black/50 group-hover:text-black'}`}>{c.label}</div>
+                                        <div className="text-[10px] font-bold text-black/20 uppercase tracking-widest mt-1 truncate">{c.subtitle}</div>
                                     </div>
                                     <ArrowUpRight size={18} className={`transition-all ${isSelected ? 'text-[#D95A0A]' : 'text-black/5 group-hover:text-black/20'}`} />
                                 </button>
@@ -320,23 +294,23 @@ export const SentTruckViewer: React.FC = () => {
                 </div>
             </div>
 
-            {/* Item Inspector (Overlay PDF Style) */}
+            {/* Item Inspector (Overlay PDF Style) - Redesigned to match Screenshot exactly */}
             {selectedCrateData && (
-                <div className="absolute top-1/2 -translate-y-1/2 right-12 w-[760px] max-h-[85vh] z-20 animate-in slide-in-from-right-32 fade-in duration-700 pointer-events-auto">
-                    <div className="bg-white/90 backdrop-blur-3xl border-2 border-black rounded-[4rem] overflow-hidden flex flex-col shadow-[0_80px_200px_rgba(0,0,0,0.15)]">
-                        <div className="p-16 pb-10 border-b-2 border-black relative">
-                            <button onClick={() => setSelectedCrateId(null)} className="absolute top-12 right-12 w-14 h-14 rounded-2xl bg-black/5 border border-black/10 flex items-center justify-center text-black/30 hover:text-black hover:bg-black/10 transition-all">
-                                <X size={24} />
+                <div className="absolute top-1/2 -translate-y-1/2 right-12 w-[840px] max-h-[88vh] z-20 animate-in slide-in-from-right-32 fade-in duration-700 pointer-events-auto">
+                    <div className="bg-white border-[2.5px] border-black rounded-[4rem] overflow-hidden flex flex-col shadow-[0_100px_250px_rgba(0,0,0,0.15)]">
+                        <div className="p-16 pb-12 border-b-[2.5px] border-black relative">
+                            <button onClick={() => setSelectedCrateId(null)} className="absolute top-14 right-14 w-14 h-14 rounded-2xl bg-black/5 flex items-center justify-center text-black/30 hover:text-black hover:bg-black/10 transition-all">
+                                <X size={26} />
                             </button>
                             
-                            <div className="flex items-center gap-6 mb-6">
-                                <div className="w-6 h-6 rounded-lg border border-black/10" style={{ backgroundColor: vendors[selectedCrateData.vendorList?.[0] as keyof typeof vendors]?.color || '#adb5bd' }} />
-                                <h2 className="text-5xl font-black tracking-tighter uppercase leading-none">{selectedCrateData.label}</h2>
+                            <div className="flex items-center gap-8 mb-10">
+                                <div className="w-8 h-8 rounded-xl" style={{ backgroundColor: selectedCrateData.color || '#adb5bd' }} />
+                                <h2 className="text-6xl font-black tracking-tighter uppercase leading-none">{selectedCrateData.label}</h2>
                             </div>
-                            <div className="flex items-center gap-12 text-black/40">
-                                <p className="text-xs font-black uppercase tracking-[0.4em]">{selectedCrateData.subtitle}</p>
-                                <div className="h-4 w-px bg-black/10" />
-                                <p className="text-xs font-black uppercase tracking-[0.2em]">
+                            <div className="flex items-center gap-14 text-black/30">
+                                <p className="text-xs font-black uppercase tracking-[0.5em]">{selectedCrateData.subtitle}</p>
+                                <div className="h-5 w-[2px] bg-black/10" />
+                                <p className="text-xs font-black uppercase tracking-[0.3em]">
                                     {selectedCrateData.l}×{selectedCrateData.w}×{selectedCrateData.h} CM · {(selectedCrateData.items?.reduce((s: number, i: any) => s + ((i.weightKg || 0) * (i.qty || 1)), 0) || 0).toFixed(1)} KG
                                 </p>
                             </div>
@@ -345,32 +319,31 @@ export const SentTruckViewer: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-16 pt-0 custom-scrollbar">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b-2 border-black">
-                                        <th className="text-left py-8 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] w-20">Seq</th>
-                                        <th className="text-left py-8 text-[10px] font-black text-black/30 uppercase tracking-[0.3em]">Identity / Tag ID</th>
-                                        <th className="text-right py-8 text-[10px] font-black text-black/30 uppercase tracking-[0.3em] w-24">Qty</th>
+                                    <tr className="border-b-[2.5px] border-black">
+                                        <th className="text-left py-10 text-[10px] font-black text-black/30 uppercase tracking-[0.4em] w-24">Seq</th>
+                                        <th className="text-left py-10 text-[10px] font-black text-black/30 uppercase tracking-[0.4em]">Identity / Tag ID</th>
+                                        <th className="text-right py-10 text-[10px] font-black text-black/30 uppercase tracking-[0.4em] w-32">Qty</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-black/10">
+                                <tbody className="divide-y-[2px] divide-black/5">
                                     {selectedCrateData.items?.map((item: any, idx: number) => (
-                                        <tr key={idx} className="group hover:bg-black/[0.02] transition-colors">
-                                            <td className="py-10 align-top text-[11px] font-black text-black/10">
+                                        <tr key={idx} className="group hover:bg-black/[0.01] transition-colors">
+                                            <td className="py-12 align-top text-[12px] font-black text-black/10">
                                                 {String(idx + 1).padStart(2, '0')}
                                             </td>
-                                            <td className="py-10">
-                                                {/* PDF Style Badge - Book Calculated Tag ID */}
-                                                <div className="inline-flex px-4 py-2 rounded-xl border-2 font-mono text-xs font-black bg-white text-black mb-4 shadow-sm" 
-                                                     style={{ borderColor: item.tagColor || '#000', borderLeftWidth: '8px' }}>
+                                            <td className="py-12">
+                                                <div className="inline-flex px-6 py-3 rounded-2xl border-[2.5px] border-black font-mono text-sm font-black bg-white text-black mb-6 shadow-[6px_6px_0_rgba(0,0,0,0.05)]" 
+                                                     style={{ borderLeftWidth: '12px', borderLeftColor: item.tagColor || '#000' }}>
                                                     {item.itemId}
                                                 </div>
-                                                <div className="text-xl font-black uppercase tracking-tight leading-snug mb-3">{item.name}</div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-black/30 bg-black/5 px-3 py-1.5 rounded-lg">{item.material}</span>
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-black/30 bg-black/5 px-3 py-1.5 rounded-lg">{item.color}</span>
+                                                <div className="text-2xl font-black uppercase tracking-tight leading-snug mb-4">{item.name}</div>
+                                                <div className="flex items-center gap-4">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-black/40 bg-black/5 px-4 py-2 rounded-xl border border-black/5">{item.type}</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-black/40 bg-black/5 px-4 py-2 rounded-xl border border-black/5">{item.desc}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-10 text-right align-top">
-                                                <div className="text-4xl font-black tabular-nums tracking-tighter">×{item.qty}</div>
+                                            <td className="py-12 text-right align-top">
+                                                <div className="text-5xl font-black tabular-nums tracking-tighter">×{item.qty}</div>
                                             </td>
                                         </tr>
                                     ))}
@@ -379,11 +352,11 @@ export const SentTruckViewer: React.FC = () => {
                         </div>
 
                         <div className="p-12 bg-black/[0.02] flex justify-between items-center border-t border-black/5">
-                            <div className="flex items-center gap-4">
-                                <ShieldCheck className="text-[#059669]" size={24} />
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-black/30">Verified Mirror Protocol</span>
+                            <div className="flex items-center gap-5">
+                                <ShieldCheck className="text-[#059669]" size={28} />
+                                <span className="text-[11px] font-black uppercase tracking-[0.4em] text-black/30">Verified Mirror Protocol Protocol active</span>
                             </div>
-                            <div className="text-[10px] font-mono text-black/10">{Math.random().toString(16).slice(2, 14).toUpperCase()}</div>
+                            <div className="text-[11px] font-mono text-black/10">{Math.random().toString(16).slice(2, 14).toUpperCase()}</div>
                         </div>
                     </div>
                 </div>
@@ -391,17 +364,17 @@ export const SentTruckViewer: React.FC = () => {
 
             {/* Floating Navigation Controls */}
             <div className="absolute bottom-10 left-10 right-10 z-10 flex justify-between items-center pointer-events-none">
-                <div className="bg-white/80 backdrop-blur-3xl border border-black/5 rounded-full px-12 py-6 flex items-center gap-10 shadow-xl pointer-events-auto">
-                    <Activity size={18} className="text-[#D95A0A]" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-black/40">Load Analysis Protocol active</span>
+                <div className="bg-white border border-black/5 rounded-full px-12 py-7 flex items-center gap-10 shadow-2xl pointer-events-auto">
+                    <Activity size={20} className="text-[#D95A0A]" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-black/40">Load Analysis Protocol active</span>
                 </div>
 
-                <div className="flex gap-4 pointer-events-auto">
-                    <div className="bg-white/80 backdrop-blur-3xl border border-black/5 rounded-full p-6 shadow-xl text-black/40">
-                        <MapIcon size={20} />
+                <div className="flex gap-5 pointer-events-auto">
+                    <div className="bg-white border border-black/5 rounded-full p-7 shadow-2xl text-black/40 hover:text-black transition-all cursor-pointer">
+                        <MapIcon size={24} />
                     </div>
-                    <div className="bg-white/80 backdrop-blur-3xl border border-black/5 rounded-full p-6 shadow-xl text-black/40">
-                        <Maximize2 size={20} />
+                    <div className="bg-white border border-black/5 rounded-full p-7 shadow-2xl text-black/40 hover:text-black transition-all cursor-pointer">
+                        <Maximize2 size={24} />
                     </div>
                 </div>
             </div>
