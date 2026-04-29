@@ -182,9 +182,9 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
             if (!container) return;
 
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0c0c12);
+            scene.background = new THREE.Color(0xf8fafc);
 
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 10000);
+            const camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 1, 10000);
             camera.position.set(2500, 1500, 2500);
             camera.lookAt(800, 0, 120);
 
@@ -194,37 +194,44 @@ export function generatePackingListHtml(manifestId: string, metadata: any, paylo
             container.appendChild(renderer.domElement);
 
             // Lighting
-            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            const ambient = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambient);
-            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            const directional = new THREE.DirectionalLight(0xffffff, 0.4);
             directional.position.set(1000, 2000, 1000);
             scene.add(directional);
 
             // Truck Bed
             const bedGeo = new THREE.BoxGeometry(1615, 5, 244);
-            const bedMat = new THREE.MeshPhongMaterial({ color: 0x1e293b, transparent: true, opacity: 0.5 });
+            const bedMat = new THREE.MeshPhongMaterial({ color: 0xf1f5f9, transparent: true, opacity: 0.9 });
             const bed = new THREE.Mesh(bedGeo, bedMat);
             bed.position.set(1615/2, -2.5, 244/2);
             scene.add(bed);
 
             // Grid
-            const grid = new THREE.GridHelper(2000, 20, 0x334155, 0x1e293b);
+            const grid = new THREE.GridHelper(2000, 40, 0xe2e8f0, 0xf1f5f9);
             grid.position.y = -0.1;
             scene.add(grid);
 
             // Crates
             crates.forEach(c => {
-                const geo = new THREE.BoxGeometry(c.w, c.h || 100, c.l);
-                const mat = new THREE.MeshPhongMaterial({ color: c.color || 0x6b7280 });
+                const isRotated = c.r === 90;
+                const dw = isRotated ? c.l : c.w;
+                const dl = isRotated ? c.w : c.l;
+                
+                const geo = new THREE.BoxGeometry(dl, c.h || 100, dw);
+                const mat = new THREE.MeshPhongMaterial({ 
+                    color: c.color || 0xadb5bd,
+                    transparent: true,
+                    opacity: 0.85
+                });
                 const mesh = new THREE.Mesh(geo, mat);
                 
-                // Position adjustment (center-based in Three.js)
-                mesh.position.set(c.x + c.w/2, (c.h || 100)/2 + (c.y || 0), c.z + c.l/2);
-                if (c.r) mesh.rotation.y = (c.r * Math.PI) / 180;
-
+                // Position adjustment (center-based)
+                mesh.position.set(c.x + dl/2, (c.h || 100)/2 + (c.y || 0), c.z + dw/2);
+                
                 // Edges
                 const edges = new THREE.EdgesGeometry(geo);
-                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 }));
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 }));
                 mesh.add(line);
 
                 scene.add(mesh);
