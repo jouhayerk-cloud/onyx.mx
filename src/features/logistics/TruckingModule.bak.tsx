@@ -1,18 +1,18 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useAtomValue, useSetAtom, useAtom } from 'jotai';
-import { 
-    Truck, RotateCcw, Trash2, Box, Layers, Grid3x3, 
-    ZoomIn, ZoomOut, Maximize2, Gauge, 
+import {
+    Truck, RotateCcw, Trash2, Box, Layers, Grid3x3,
+    ZoomIn, ZoomOut, Maximize2, Gauge,
     CheckCircle2, AlertCircle, Clock, History,
     Package, Filter, Search, ArrowRight,
-    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List 
+    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Maximize, Minimize, AlignLeft
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
 import { generatePackingListXlsx } from '../../lib/xlsxUtils';
 import { useDatabase } from '../../lib/hooks';
-import { 
-    inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom, 
+import {
+    inventoryAtom, cratesVersionAtom, truckReadyTriggerAtom,
     truckIsBusyAtom, truckViewModeAtom, truckIsCompactAtom,
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
     truckShowExportModalAtom, truckShowReadyWizardAtom,
@@ -57,7 +57,7 @@ function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], v
 
     let total = 0;
     let hasData = false;
-    
+
     // 1. Direct items
     if (crate.inventory_ids) {
         crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
@@ -110,8 +110,383 @@ const CmGrid: React.FC = () => {
 };
 
 // ─── Dock Card ────────────────────────────────────────────────────────────────
+// ─── Isometric Solid 3D Icon ────────────────────────────────────────────────────
+const CrateThumbnail3D: React.FC<{ w: number; l: number; h: number; color: string; size?: number }> = ({ w, l, h, color, size = 44 }) => {
+    const maxDim = Math.max(w, l, h, 1);
+    const W = (w / maxDim) || 1;
+    const L = (l / maxDim) || 1;
+    const H = (h / maxDim) || 1;
+    const S = 13; const ox = 24; const oy = 30;
+    const iso = (x: number, y: number, z: number): [number, number] => [
+        ox + (x - y) * S * 0.866,
+        oy + (x + y) * S * 0.5 - z * S
+    ];
+
+    const corners = [
+        iso(0, 0, 0), iso(W, 0, 0), iso(W, L, 0), iso(0, L, 0),
+        iso(0, 0, H), iso(W, 0, H), iso(W, L, H), iso(0, L, H),
+    ];
+    const [a, b, c, d, e, f, g, hh] = corners;
+    const pts = (arr: [number, number][]) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+
+    return (
+        <svg width={size} height={size} viewBox="0 0 48 48" style={{ overflow: 'visible' }}>
+            {/* Left face */}
+            <polygon points={pts([a, d, hh, e])} fill={color} fillOpacity={0.85} />
+            {/* Right face */}
+            <polygon points={pts([b, c, g, f])} fill={color} fillOpacity={0.95} />
+            {/* Top face */}
+            <polygon points={pts([e, f, g, hh])} fill={color} fillOpacity={1} stroke="#fff" strokeWidth={0.6} strokeOpacity={0.2} />
+        </svg>
+    );
+};
+
+const getItemsFromCrate = (crate: any, allInventory: any[]) => {
+    if (!crate || !crate.inventory_ids) return [];
+    return crate.inventory_ids.split(',').filter(Boolean).map((e: string) => {
+        const [id, qtyStr] = e.split(':');
+        const qty = parseInt(qtyStr || '1', 10) || 1;
+        const inv = allInventory.find((i: any) => String(i.row) === id);
+        return inv ? { ...inv, qty } : null;
+    }).filter((i: any) => i !== null);
+};
+
+/* ══ HIGH-FIDELITY STUDIO ITEM CARD ══ */
+const CrateItemCard: React.FC<{ item: any; qty: number }> = ({ item, qty }) => {
+    const bookRate = useAtomValue(exchangeRateAtom);
+    const norm = normalizeInventoryData(item);
+    
+    // 1. Data extraction from normalized or raw
+    const shape = (norm.shape || 'UNIT').toUpperCase();
+    const description = (norm.shortDescription || '').toUpperCase();
+    const material = (norm.material || '').toUpperCase();
+    const color = (norm.color || '').toUpperCase();
+    const tag = norm.book_barcode || norm.itemId || String(item.row || '0');
+    
+    const colorMaterial = [color, material].filter(Boolean).join(' | ') || 'SPECS PENDING';
+    
+    const l = parseFloat(norm.lengthCm) || 0;
+    const w = parseFloat(norm.widthCm) || 0;
+    const h = parseFloat(norm.heightCm) || 0;
+    const weightKg = parseFloat(norm.weightKg) || 0;
+    const imageUrl = getCleanImageUrl(norm.generatedPngUrl || norm.mediaUrls);
+
+    const rawPrice = parseFloat(norm.price) || 0;
+    const calc = calculateCodesAndPrices({ ...norm, price: rawPrice }, bookRate || 17.5, '326');
+
+    const cmToIn = (cm: number) => {
+        if (!cm) return "";
+        const totalInches = cm / 2.54;
+        const feet = Math.floor(totalInches / 12);
+        const inches = Math.floor(totalInches % 12);
+        return `${feet}' ${inches}"`;
+    };
+
+    const dimsStr = [l, w, h].filter(v => v > 0).join('×') + 'cm';
+    const totalMxn = (rawPrice) * qty;
+
+    return (
+        <div className="flex items-center gap-4 px-4 py-3 bg-white/[0.02] border border-white/5 hover:border-[var(--main-color)]/20 transition-all group relative">
+            {/* Visual Thumbnail */}
+            <div className="w-14 h-14 flex items-center justify-center shrink-0 relative overflow-hidden bg-black/40 border border-white/5">
+
+                {imageUrl ? (
+                    <img src={imageUrl} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                ) : (
+                    <Package size={20} strokeWidth={1} className="opacity-10" />
+                )}
+            </div>
+
+            {/* Identity & Specs */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <h4 className="text-[15px] font-black text-white tracking-tight uppercase truncate">
+                        {shape} <span className="text-white/20 font-medium text-[11px] ml-1">{description}</span>
+                    </h4>
+                    <span className="text-[13px] font-black text-[var(--main-color)]">x{qty}</span>
+                </div>
+                
+                <div className="flex items-center gap-3 mb-1.5">
+                    <Layers size={10} className="text-[var(--main-color)] opacity-40" />
+                    <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{colorMaterial}</span>
+                </div>
+
+                <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-tighter">
+                    <div className="flex items-center gap-2">
+                        <Maximize2 size={10} className="text-white/10" />
+                        <span className="text-white/50">{dimsStr}</span>
+                        <span className="text-white/10">({cmToIn(l)} x {cmToIn(w)})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Gauge size={10} className="text-white/10" />
+                        <span className="text-white/50">{weightKg}KG</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Financials & Codes */}
+            <div className="flex flex-col items-end gap-1 shrink-0 border-l border-white/5 pl-4">
+                <div className="flex flex-col items-end leading-none">
+                    <span className="text-[10px] font-black text-white tracking-tighter">${Math.round(totalMxn).toLocaleString()}</span>
+                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-0.5">TOTAL MXN</span>
+                </div>
+                <div className="px-2 py-1 bg-[var(--main-color)]/10 border border-[var(--main-color)]/20">
+                    <span className="text-[9px] font-black text-[var(--main-color)] tracking-widest leading-none">{calc.bookAqCode || '-'}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[8px] font-black text-white/10 uppercase tracking-widest truncate max-w-[80px]" title={tag}>
+                    <Hash size={8} />
+                    {tag.slice(-8)}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const LoadDistributionIndicator: React.FC<{ distribution: number[] }> = ({ distribution }) => {
+    return (
+        <div className="flex flex-col gap-2 w-40 h-full justify-center">
+            <div className="flex items-end gap-0.5 h-6">
+                {distribution.map((pct, i) => (
+                    <div 
+                        key={i} 
+                        className="flex-1 rounded-t-sm transition-all duration-1000"
+                        style={{ 
+                            height: `${Math.max(10, pct * 100)}%`, 
+                            backgroundColor: pct > 0.8 ? '#ef4444' : pct > 0.5 ? '#f97316' : 'var(--main-color)',
+                            opacity: 0.2 + (pct * 0.8)
+                        }} 
+                    />
+                ))}
+            </div>
+            <div className="flex justify-between text-[6px] font-black text-white/10 uppercase tracking-widest leading-none">
+                <span>R</span>
+                <div className="flex-1 border-b border-white/5 mx-2 mb-0.5" />
+                <span>F</span>
+            </div>
+        </div>
+    );
+};
+
+
+/* ══ BORDERLESS GLASS RIGHT SIDEBAR INVENTORY PANEL ══ */
+const CrateInventoryPanel: React.FC<{ 
+    crate: any | null; 
+    items: any[]; 
+    onClear: () => void;
+    isExpanded: boolean;
+    allCrates: any[];
+    allInventory: any[];
+    truckSeq?: number;
+    // Lists
+    dockCrates: any[];
+    recentShipments: any[];
+    // Handlers
+    onRotate: (id: string) => void;
+    onUnload: (id: string) => void;
+    onNest: (id: string) => void;
+    onStack: (id: string) => void;
+    onClearTrailer: () => void;
+    onZoomIn: () => void;
+    onZoomOut: () => void;
+    onToggleView: () => void;
+    onToggleInventory: () => void;
+    onLoadCrate: (id: string) => void;
+    onRecallShipment: (shipment: any) => void;
+    onDeleteShipment: (id: string) => void;
+    onMove: (dir: 'up' | 'down' | 'front' | 'rear') => void;
+    // State
+    viewMode: string;
+    topBarState: 'crates' | 'trailers';
+    zoom: number;
+    stats: { units: number; weight: number; fill: number; statusColor: string };
+}> = ({ 
+    crate, items, onClear, isExpanded, allCrates, allInventory, truckSeq,
+    dockCrates, recentShipments,
+    onRotate, onUnload, onNest, onStack, onClearTrailer, onZoomIn, onZoomOut, onToggleView, onToggleInventory,
+    onLoadCrate, onRecallShipment, onDeleteShipment, onMove,
+    viewMode, topBarState, zoom, stats
+}) => {
+    const totalWeight = crate ? computeCrateWeight(crate, allInventory, allCrates) : 0;
+    const utilization = crate ? Math.min(100, Math.round((totalWeight / 500) * 100)) : 0;
+    
+    // Content-based naming
+    const { label, subtitle, vendorList } = useMemo(() => crate ? getCrateDisplayName(crate, allCrates, allInventory, truckSeq) : { label: 'STUDIO HUB', subtitle: 'READY FOR LOGISTICS', vendorList: [] }, [crate, allCrates, allInventory, truckSeq]);
+    const primaryColor = vendorList.length > 0 ? (vendors as any)[vendorList[0] as keyof typeof vendors]?.color || 'var(--main-color)' : 'var(--main-color)';
+
+    return (
+        <div className={`fixed top-0 right-0 bottom-0 z-[100] animate-in slide-in-from-right-full fade-in duration-700 pointer-events-none transition-all duration-700 ${isExpanded ? 'w-[840px]' : 'w-[580px]'} max-w-[95vw]`}>
+            <div 
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full h-full flex flex-col pointer-events-auto relative shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden"
+            >
+                {/* Glassmorphic Background - Attached to side - Sharp edges */}
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-[80px] border-l border-white/10 pointer-events-none" />
+                
+                {/* ── GLOBAL STATS HEADER ── */}
+                <div className="px-8 py-6 flex items-center justify-between border-b border-white/5 relative bg-white/[0.03]">
+                    <div className="flex items-center gap-8">
+                         <div className="flex flex-col">
+                            <span className="text-[18px] font-black text-white leading-none tracking-tighter">{stats.units}</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-1">UNITS</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[18px] font-black leading-none tracking-tighter" style={{ color: stats.statusColor }}>{Math.round(stats.weight).toLocaleString()}</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-1">KG</span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[18px] font-black text-[var(--main-color)] leading-none tracking-tighter">{stats.fill}%</span>
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest mt-1">FILL</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                         <button onClick={onToggleInventory} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${topBarState === 'crates' ? 'bg-[var(--main-color)] text-black' : 'text-white/20 hover:text-white'}`}>
+                            {topBarState === 'crates' ? 'Dock' : 'Registry'}
+                        </button>
+                        <button onClick={onClear} className="w-10 h-10 flex items-center justify-center text-white/15 hover:text-rose-500 transition-all"><X size={20} /></button>
+                    </div>
+                </div>
+
+                {/* Selection Details (If any) */}
+                {crate ? (
+                    <div className="p-8 pb-4 relative animate-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-10">
+                                <CrateThumbnail3D w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || 100} color={primaryColor} size={110} />
+                                <div className="flex flex-col min-w-0">
+                                    <h3 className="text-4xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none mb-4 truncate">{label}</h3>
+                                    <div className="flex items-center gap-12 text-white/30">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Maximize2 size={10} className="opacity-30" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-30">DIMENSIONS</span>
+                                            </div>
+                                            <span className="text-[20px] font-black text-white tracking-tighter">{crate.width_cm}×{crate.length_cm} CM</span>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <Gauge size={10} className="opacity-30" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest opacity-30">NET WEIGHT</span>
+                                            </div>
+                                            <span className="text-[20px] font-black text-[var(--main-color)] tracking-tighter">{totalWeight} KG</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Crate Specific Actions */}
+                        <div className="flex flex-col gap-4 mt-8">
+                            <div className="flex items-center gap-3 p-1 bg-white/[0.03] rounded-2xl border border-white/5 w-fit">
+                                <button onClick={() => onRotate(crate.id)} className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-white/40 hover:text-[var(--main-color)] hover:bg-white/5 flex items-center gap-2"><RotateCcw size={14} /> Rotate</button>
+                                <button onClick={() => onStack(crate.id)} className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-white/40 hover:text-[var(--main-color)] hover:bg-white/5 flex items-center gap-2"><Layers size={14} /> Stack</button>
+                                <button onClick={() => onNest(crate.id)} className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-white/40 hover:text-[var(--main-color)] hover:bg-white/5 flex items-center gap-2"><Box size={14} /> Nest</button>
+                                <button onClick={() => onUnload(crate.id)} className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all text-rose-500/40 hover:text-rose-500 hover:bg-rose-500/10 flex items-center gap-2"><Trash2 size={14} /> Unload</button>
+                            </div>
+
+                            {viewMode === 'side' && (
+                                <div className="flex items-center gap-2 p-1 bg-white/[0.03] rounded-2xl border border-white/5 w-fit animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] ml-4 mr-2">Positioning</span>
+                                    <button onClick={() => onMove('down')} className="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all"><ArrowDown size={14} /></button>
+                                    <button onClick={() => onMove('up')} className="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all"><ArrowUp size={14} /></button>
+                                    <button onClick={() => onMove('rear')} className="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all"><ArrowLeft size={14} /></button>
+                                    <button onClick={() => onMove('front')} className="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all"><ArrowRight size={14} /></button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-12 flex flex-col items-center justify-center opacity-20">
+                        <LayoutGrid size={60} strokeWidth={0.5} className="mb-4" />
+                        <span className="text-[12px] font-black uppercase tracking-[0.5em]">No Selection</span>
+                    </div>
+                )}
+
+                {/* ── STUDIO TOOLS ── */}
+                <div className="px-8 py-4 relative border-y border-white/5 bg-white/[0.01] flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em]">STUDIO</span>
+                        <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/5">
+                            <button onClick={onZoomOut} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><ZoomOut size={14} /></button>
+                            <span className="text-[10px] font-black text-white/40 min-w-[35px] text-center">{Math.round(zoom * 100)}%</span>
+                            <button onClick={onZoomIn} className="w-8 h-8 flex items-center justify-center text-white/20 hover:text-white"><ZoomIn size={14} /></button>
+                        </div>
+                        <button onClick={onToggleView} className="px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-white/5 text-white/30 hover:text-white flex items-center gap-2">
+                            {viewMode === 'side' ? <Maximize size={14} /> : <AlignLeft size={14} />} {viewMode === 'side' ? 'Top View' : 'Side View'}
+                        </button>
+                    </div>
+                    <button onClick={onClearTrailer} className="px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-rose-500/10 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-2">
+                        <Trash2 size={14} /> Flush
+                    </button>
+                </div>
+
+                {/* ── LIST CONTENT ── */}
+                <div className="flex-1 overflow-y-auto p-8 pt-6 space-y-6 no-scrollbar">
+                    {crate && (
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
+                             <span className="text-[9px] font-black text-[var(--main-color)] uppercase tracking-[0.5em] mb-4 block">SELECTION MANIFEST</span>
+                             <div className="grid grid-cols-1 gap-2">
+                                {items.map((item, idx) => (
+                                    <CrateItemCard key={idx} item={item} qty={item.qty || 1} />
+                                ))}
+                             </div>
+                        </div>
+                    )}
+
+                    <div className="pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">{topBarState === 'crates' ? 'READY TO LOAD' : 'RECENT SHIPMENTS'}</span>
+                            <span className="text-[10px] font-black text-white/40">{topBarState === 'crates' ? dockCrates.length : recentShipments.length}</span>
+                        </div>
+
+                        {topBarState === 'crates' ? (
+                            <div className="grid grid-cols-1 gap-2">
+                                {dockCrates.length === 0 ? (
+                                    <div className="py-20 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-2xl opacity-10">
+                                        <CheckCircle2 size={40} strokeWidth={0.5} />
+                                    </div>
+                                ) : (
+                                    dockCrates.map(c => (
+                                        <div key={c.id} onClick={() => onLoadCrate(c.id)} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-[var(--main-color)]/30 cursor-pointer group transition-all">
+                                            <CrateThumbnail3D w={c.width_cm} l={c.length_cm} h={c.height_cm || 100} color="var(--main-color)" size={40} />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[14px] font-black text-white uppercase truncate">{c.id.split('-')[0]}</div>
+                                                <div className="text-[9px] font-black text-white/20 uppercase tracking-widest">{c.width_cm}x{c.length_cm} CM</div>
+                                            </div>
+                                            <button onClick={(e) => { e.stopPropagation(); onNest(c.id); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 text-white/10 hover:text-white transition-all opacity-0 group-hover:opacity-100"><Box size={14} /></button>
+                                            <ArrowRight size={16} className="text-white/10 group-hover:text-[var(--main-color)] group-hover:translate-x-1 transition-all" />
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        ) : (
+                             <div className="grid grid-cols-1 gap-2">
+                                {recentShipments.map(s => (
+                                    <div key={s.manifest_id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between group">
+                                        <div className="flex flex-col">
+                                            <div className="text-[13px] font-black text-white uppercase tracking-tight">{s.manifest_id}</div>
+                                            <div className="text-[9px] font-black text-white/20 uppercase tracking-widest mt-1">{new Date(s.created_at).toLocaleDateString()}</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => onRecallShipment(s)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase bg-white/5 hover:bg-[var(--main-color)] hover:text-black transition-all">Recall</button>
+                                            <button onClick={() => onDeleteShipment(s.manifest_id)} className="w-8 h-8 flex items-center justify-center text-white/10 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                             </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
 // ─── Isometric Wireframe Icon ────────────────────────────────────────────────────
-const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
+const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number }> = ({ w, l, h, color, size = 44 }) => {
     const maxDim = Math.max(w, l, h, 1);
     const W = w / maxDim; const L = l / maxDim; const H = h / maxDim;
     const S = 13; const ox = 24; const oy = 30;
@@ -120,89 +495,58 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
         oy + (x + y) * S * 0.5 - z * S
     ];
     const corners = [
-        iso(0,0,0), iso(W,0,0), iso(W,L,0), iso(0,L,0), // bottom
-        iso(0,0,H), iso(W,0,H), iso(W,L,H), iso(0,L,H), // top
+        iso(0, 0, 0), iso(W, 0, 0), iso(W, L, 0), iso(0, L, 0), // bottom
+        iso(0, 0, H), iso(W, 0, H), iso(W, L, H), iso(0, L, H), // top
     ];
-    const [a,b,c,d,e,f,g,hh] = corners;
-    const pts = (arr: [number,number][]) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-    const fillOpacity = solid ? 0.8 : 0.03;
-    const strokeOpacity = solid ? 0.3 : 1;
-    
+    const [a, b, c, d, e, f, g, hh] = corners;
+    const pts = (arr: [number, number][]) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
     return (
         <svg width={size} height={size} viewBox="0 0 48 48" style={{ overflow: 'visible' }}>
-            {/* bottom face */}
-            <polygon points={pts([a,b,c,d])} fill={solid ? color : "none"} fillOpacity={solid ? 0.15 : 0} stroke={color} strokeWidth={0.6} strokeOpacity={0.25} />
-            {/* left face */}
-            <polygon points={pts([a,d,hh,e])} fill={color} fillOpacity={fillOpacity * 0.6} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.55} />
-            {/* right face */}
-            <polygon points={pts([b,c,g,f])} fill={color} fillOpacity={fillOpacity * 0.8} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.45} />
-            {/* top face */}
-            <polygon points={pts([e,f,g,hh])} fill={color} fillOpacity={fillOpacity} stroke={color} strokeWidth={0.9} strokeOpacity={strokeOpacity} />
-            {/* vertical edges */}
-            {!solid && [{a,b: e},{a: b,b: f},{a: c,b: g},{a: d,b: hh}].map(({a: p1,b: p2},i) => (
-                <line key={i} x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} stroke={color} strokeWidth={0.6} strokeOpacity={0.4} />
-            ))}
+            <polygon points={pts([a, d, hh, e])} fill={color} fillOpacity={0.85} />
+            <polygon points={pts([b, c, g, f])} fill={color} fillOpacity={0.95} />
+            <polygon points={pts([e, f, g, hh])} fill={color} fillOpacity={1} stroke="#fff" strokeWidth={0.6} strokeOpacity={0.2} />
         </svg>
     );
 };
 
 // ─── Compact Data-Dense Card components ─────────────────────────────────────
-const CompactDockCard: React.FC<{ 
-    crate: any; allCrates: any[]; allInventory: any[]; 
-    onLoad: () => void; onNest?: () => void; isCompact: boolean
-}> = ({ crate, allCrates, allInventory, onLoad, onNest, isCompact }) => {
-    const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
-    const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd') : '#adb5bd';
+const CompactDockCard: React.FC<{
+    crate: any; allCrates: any[]; allInventory: any[];
+    onLoad: () => void; onNest?: () => void
+}> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
+    const { label, subtitle, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
+    const primaryColor = vendorList.length > 0 ? (vendors as any)[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd' : '#adb5bd';
     const w = computeCrateWeight(crate, allInventory, allCrates);
-    const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
-    
+
     return (
         <button
-            onClick={onLoad}
-            className={`flex items-center transition-all group shrink-0 text-left cursor-pointer active:scale-[0.95] ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}
-            style={{ '--main-color': primaryColor } as React.CSSProperties}
+            onClick={(e) => { e.stopPropagation(); onLoad(); }}
+            className="flex flex-col items-center gap-3 px-6 py-4 rounded-3xl transition-all group shrink-0 text-center cursor-pointer active:scale-95 hover:bg-white/[0.05] border border-white/5 hover:border-white/10 relative overflow-hidden"
         >
-            <div className={`flex items-center justify-center transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] ${isCompact ? 'w-6 h-6' : 'w-16 h-16'}`}>
-                <CrateWireframe 
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-20 h-20 flex items-center justify-center shrink-0 relative transition-transform duration-700 group-hover:scale-110">
+                <CrateThumbnail3D 
                     w={crate.width_cm} 
                     l={crate.length_cm} 
-                    h={crate.height_cm || 50} 
+                    h={crate.height_cm || (crate.type === 'pallet' ? 15 : 100)} 
                     color={primaryColor} 
-                    size={isCompact ? 40 : 64} 
-                    solid={true}
+                    size={90} 
                 />
             </div>
-            <div className="flex flex-col">
-                <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
-                    <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
-                    {!isCompact && (
-                        <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
-                    )}
+            <div className="flex flex-col items-center">
+                <div className="flex items-center gap-3 mb-1">
+                    <span className="text-[16px] font-black uppercase tracking-tighter text-white group-hover:text-[var(--main-color)] transition-colors leading-none">{label}</span>
+                    <span className="text-[11px] font-black text-[var(--main-color)] leading-none px-1.5 py-0.5 bg-[var(--main-color)]/10 rounded-lg">{Math.round(w)}KG</span>
                 </div>
-                {!isCompact && (
-                    <div className="flex items-center gap-4 leading-none">
-                        <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
-                        <div className="w-1 h-1 rounded-full bg-white/20" />
-                        <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
-                    </div>
-                )}
+                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em] truncate max-w-[160px]">{subtitle}</span>
             </div>
-            {onNest && crate.type === 'cardboard' && (
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onNest(); }}
-                    className="ml-4 p-2 rounded-lg text-emerald-400/20 hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100"
-                    title="Nest Unit"
-                >
-                    <CornerDownRight size={14} />
-                </button>
-            )}
         </button>
     );
 };
 
-const CompactItemCard: React.FC<{ 
-    item: any; 
-    onLoad: () => void 
+const CompactItemCard: React.FC<{
+    item: any;
+    onLoad: () => void
 }> = ({ item, onLoad }) => {
     const data = item.data || {};
     const norm = normalizeInventoryData(item);
@@ -211,7 +555,7 @@ const CompactItemCard: React.FC<{
     const vendorPrefix = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
     const primaryColor = vendors[vendorPrefix as keyof typeof vendors]?.color || '#adb5bd';
     const w = parseFloat(data.weightKg || data.weight_kg) || 0;
-    
+
     return (
         <button
             onClick={onLoad}
@@ -220,46 +564,22 @@ const CompactItemCard: React.FC<{
             <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/5 shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
                 <Package size={16} style={{ color: primaryColor }} strokeWidth={1.5} />
             </div>
-            <div className="flex flex-col min-w-[120px] max-w-[200px]">
-                <div className="flex items-center gap-1.5 leading-none mb-1">
-                    <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || 'Unit'}</span>
-                    <div className="flex items-center gap-1 px-1 py-0.5 rounded-sm bg-black/40 text-white/40 border border-white/5">
-                        <Hash size={7} />
-                        <span className="text-[7px] font-black">{tag}</span>
-                    </div>
+            <div className="flex flex-col min-w-[100px] max-w-[150px]">
+                <div className="flex items-center gap-1.5 leading-none mb-0.5">
+                    <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || data.itemId || 'Unit'}</span>
+                    <span className="text-[7px] font-black px-1 py-0.5 rounded-sm bg-black/40 text-white/20 border border-white/5">{tag}</span>
                 </div>
-                <div className="flex items-center gap-3 leading-none opacity-60">
-                    <div className="flex items-center gap-1 min-w-0">
-                        <span className="text-[9px] font-bold truncate text-white/40">{data.shortDescription || 'Artifact'}</span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                        <Gauge size={9} className="text-emerald-500/40" />
-                        <span className="text-[9px] font-black text-white/50">{w}KG</span>
-                    </div>
+                <div className="flex items-center gap-2 leading-none">
+                    <span className="text-[9px] font-bold text-white/20 truncate flex-1">{data.shortDescription || data.material || 'Spec Pending'}</span>
+                    <span className="text-[10px] font-black text-white/50">{w}KG</span>
                 </div>
-                {(data.width_cm || data.material) && (
-                    <div className="flex items-center gap-2 mt-1 opacity-40">
-                        {data.width_cm && (
-                            <div className="flex items-center gap-1">
-                                <Maximize2 size={8} />
-                                <span className="text-[7px] font-black">{data.width_cm}×{data.length_cm}</span>
-                            </div>
-                        )}
-                        {data.material && (
-                            <div className="flex items-center gap-1">
-                                <Layers size={8} />
-                                <span className="text-[7px] font-black uppercase truncate max-w-[40px]">{data.material}</span>
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </button>
     );
 };
 
-const DeployedTrailerCard: React.FC<{ 
-    shipment: any; 
+const DeployedTrailerCard: React.FC<{
+    shipment: any;
     onRecall: () => void;
     onDelete: () => void;
 }> = ({ shipment, onRecall, onDelete }) => {
@@ -269,36 +589,51 @@ const DeployedTrailerCard: React.FC<{
     }, [shipment]);
     const crateCount = payload?.crates?.length || 0;
     const weight = Math.round(payload?.truckStats?.totalWeight || 0);
-    
+
     return (
-        <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-all group shrink-0 text-left h-[52px]">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 shrink-0 bg-white/5 shadow-inner">
-                <Truck size={16} className="text-white/40" />
+        <div 
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-6 px-6 py-4 rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-3xl hover:bg-white/[0.08] transition-all group shrink-0 text-left h-20 overflow-hidden relative"
+        >
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--main-color)] opacity-5 to-transparent pointer-events-none" />
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-[var(--main-color)]/20 bg-[var(--main-color)]/10 shrink-0 shadow-lg shadow-[var(--main-color)]/5">
+                <Truck size={22} className="text-[var(--main-color)]" />
             </div>
-            <div className="flex flex-col min-w-[110px]">
-                <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                    <span className="text-[11px] font-black uppercase tracking-tighter text-white">{shipment.manifest_id}</span>
+            <div className="flex flex-col min-w-[160px]">
+                <div className="flex items-center gap-2 leading-none mb-2">
+                    <span className="text-[15px] font-black uppercase tracking-tighter text-white group-hover:text-[var(--main-color)] transition-colors truncate max-w-[140px]">{shipment.manifest_id}</span>
                 </div>
-                <div className="flex items-center gap-2 leading-none">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{ts}</span>
-                    <div className="w-1 h-1 rounded-full bg-white/10" />
-                    <span className="text-[9px] font-bold text-white/40 uppercase">{crateCount} Units</span>
-                    <span className="text-[9px] font-black text-emerald-400/60 uppercase">{weight}KG</span>
+                <div className="flex items-center gap-3 leading-none">
+                    <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">{ts}</span>
+                    <div className="w-1 h-1 rounded-full bg-white/20" />
+                    <span className="text-[10px] font-bold text-white/60 uppercase">{crateCount} Units</span>
+                    <span className="text-[11px] font-black text-[var(--main-color)] uppercase">{weight.toLocaleString()}KG</span>
                 </div>
             </div>
-            <div className="flex items-center gap-1.5 ml-2">
-                <button 
+            <div className="flex items-center gap-2 ml-4 relative z-10">
+                <button
                     onClick={onRecall}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white hover:text-black transition-all text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm active:scale-95"
+                    className="h-12 px-5 rounded-2xl bg-white text-black transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 shadow-2xl hover:scale-105"
                 >
-                    <History size={11} /> Recall
+                    <History size={14} strokeWidth={3} /> RECALL
                 </button>
-                <button 
+                <button
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const url = `${window.location.origin}${window.location.pathname}?manifestid=${shipment.manifest_id}`;
+                        window.open(url, '_blank', 'width=1400,height=900,menubar=no,toolbar=no,location=no,status=no');
+                    }}
+                    className="w-12 h-12 rounded-2xl bg-[var(--main-color)]/10 text-[var(--main-color)] hover:bg-[var(--main-color)] hover:text-black transition-all active:scale-95 cursor-pointer border border-[var(--main-color)]/20 flex items-center justify-center"
+                    title="Open 3D Viewer"
+                >
+                    <Share2 size={16} />
+                </button>
+                <button
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    className="p-2 rounded-lg bg-rose-500/10 text-rose-400/40 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-95"
+                    className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all active:scale-95 border border-rose-500/20 flex items-center justify-center"
                     title="Delete Record"
                 >
-                    <Trash2 size={13} />
+                    <Trash2 size={16} />
                 </button>
             </div>
         </div>
@@ -314,53 +649,21 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
     return (
         <button
             onClick={onLoad}
+            className="flex flex-col items-center gap-2 px-4 py-2 transition-all group shrink-0 text-center cursor-pointer active:scale-95 relative"
             title={`Load ${label} onto truck`}
-            className="flex flex-col gap-1.5 p-2.5 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-lg"
-            style={{
-                minWidth: 130, maxWidth: 150,
-                background: `${primaryColor}15`,
-                borderColor: `${primaryColor}40`,
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}80`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}15`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}40`; }}
         >
-            {/* Top row: wireframe + type badge */}
-            <div className="flex items-start justify-between w-full mb-0">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} />
-                <div className="flex flex-col items-end gap-0.5">
-                    <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
-                        {typeLabel}
-                    </span>
-                </div>
+            <div className="w-24 h-24 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-125">
+                <CrateThumbnail3D 
+                    w={crate.width_cm} 
+                    l={crate.length_cm} 
+                    h={crate.height_cm || (crate.type === 'pallet' ? 15 : 100)} 
+                    color={primaryColor} 
+                    size={110} 
+                />
             </div>
-            {/* Label */}
-            <div className="flex items-center gap-2 flex-wrap">
-                {vendorList.map(v => (
-                    <div key={v} className="w-2.5 h-2.5 rounded-full border border-black/20" style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }} />
-                ))}
-                <span className="text-[14px] font-black uppercase tracking-tighter leading-none truncate flex-1" style={{ color: primaryColor }}>
-                    {label}
-                </span>
-            </div>
-            {/* Dims & Vol */}
-            <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-black uppercase tracking-widest text-white/80">
-                    {crate.width_cm}×{crate.length_cm}×{crate.height_cm || '?'} CM
-                </span>
-                <span className="text-[9px] font-bold text-white/20 uppercase">
-                    Vol: {Math.round((crate.width_cm * crate.length_cm * (crate.height_cm||100))/1000)} Liters
-                </span>
-            </div>
-            {/* Bottom stats */}
-            <div className="flex items-center justify-between w-full pt-2 border-t border-white/10 mt-1">
-                <div className="flex flex-col">
-                    <span className="text-[11px] font-black text-white">{itemCount} SKU</span>
-                    <span className="text-[8px] text-white/40 uppercase font-bold">In Inventory</span>
-                </div>
-                <div className="flex flex-col items-end">
-                    <span className="text-[14px] font-black" style={{ color: primaryColor }}>{w} KG</span>
-                    <span className="text-[8px] text-white/40 uppercase font-bold">Estimated</span>
-                </div>
+            <div className="flex flex-col items-center drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
+                <span className="text-[13px] font-black uppercase tracking-tighter text-white transition-colors leading-none">{label}</span>
+                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mt-1">{w} KG</span>
             </div>
         </button>
     );
@@ -410,24 +713,42 @@ const TruckCrate: React.FC<{
     const textScale = Math.max(10, Math.min(22, pxX / 8));
 
     return (
-        <div className="absolute select-none" style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
+        <div className="absolute select-none" 
+            onClick={e => e.stopPropagation()}
+            style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
+            {isSelected && (
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 whitespace-nowrap">
+                    <button onClick={e => { e.stopPropagation(); onRotate(); }} className="text-white/50 hover:text-white transition-colors" title="Rotate">
+                        <RotateCcw size={16} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); onUnload(); }} className="text-rose-400/60 hover:text-rose-400 transition-colors" title="Unload">
+                        <Trash2 size={16} />
+                    </button>
+                    {onNest && crate.type === 'cardboard' && (
+                        <button onClick={e => { e.stopPropagation(); onNest(); }} className="px-3 py-1 rounded bg-[var(--main-color)] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-1 shadow-lg" title="Nest into Crate/Pallet">
+                            <Box size={12} /> NEST
+                        </button>
+                    )}
+                </div>
+            )}
             <div
                 onMouseDown={handleMouseDown}
-                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group"
+                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group transition-all"
                 style={{
                     backgroundColor: primaryColor,
-                    outline: isSelected ? `3px solid #fff` : `1px solid rgba(0,0,0,0.3)`,
-                    boxShadow: isSelected ? `0 0 0 1px rgba(255,255,255,0.3), 0 8px 30px rgba(0,0,0,0.5)` : `0 4px 12px rgba(0,0,0,0.4)`,
+                    outline: isSelected ? `3px solid var(--main-color)` : `1px solid rgba(255,255,255,0.2)`,
+                    boxShadow: isSelected ? `0 0 30px var(--main-color)` : 'none',
+                    borderRadius: '6px'
                 }}
             >
                 {/* Visual children indicator */}
                 {children.length > 0 && (
-                    <div className="absolute inset-1 border border-black/10 rounded flex flex-wrap gap-1 p-1 content-start pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                         {children.map(child => {
                             const { vendorList } = getCrateDisplayName(child, allCrates, allInventory);
                             const vStr = vendorList.join('') || 'BX';
                             return (
-                                <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/20 text-[6px] font-black text-white uppercase tracking-tighter border border-white/5">
+                                <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/60 text-[6px] font-black text-white uppercase tracking-tighter border border-white/10">
                                     {vStr}
                                 </div>
                             );
@@ -435,26 +756,19 @@ const TruckCrate: React.FC<{
                     </div>
                 )}
 
-                <Box size={iconSize} strokeWidth={0.6} color="rgba(0,0,0,0.4)" className="pointer-events-none" />
-                {pxX > 30 && (
-                    <div className="flex flex-col items-center pointer-events-none w-full">
-                        <span className="font-black uppercase text-center px-1 mt-0.5 truncate w-full text-black/90"
-                            style={{ fontSize: textScale * 1.5 }}>
+                <div className="relative z-10 flex flex-col items-center pointer-events-none w-full p-2 bg-black/40 backdrop-blur-md mt-auto">
+                    {pxX > 30 && (
+                        <span className="font-black uppercase text-center truncate w-full text-white leading-none mb-1 drop-shadow-md"
+                            style={{ fontSize: textScale * 0.9 }}>
                             {label}
                         </span>
-                        {vendorList.length > 1 && (
-                            <span className="font-black opacity-60 uppercase text-center px-1 -mt-0.5 truncate w-full text-black/80"
-                                style={{ fontSize: textScale * 0.9 }}>
-                                MIXED
-                            </span>
-                        )}
-                    </div>
-                )}
-                {pxX > 50 && pxY > 20 && (
-                    <span className="font-black pointer-events-none text-black/60" style={{ fontSize: Math.max(9, textScale) }}>
-                        {computeCrateWeight(crate, allInventory, allCrates)} KG
-                    </span>
-                )}
+                    )}
+                    {pxX > 50 && pxY > 20 && (
+                        <span className="font-black text-white/60" style={{ fontSize: Math.max(8, textScale * 0.6) }}>
+                            {computeCrateWeight(crate, allInventory, allCrates)}KG
+                        </span>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -464,7 +778,7 @@ const TruckCrate: React.FC<{
 const TRUCK_H_CM = 279;
 const SideView: React.FC<{
     truckCrates: any[];
-    positions: Record<string, {x:number;y:number;r:number;z?:number}>;
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>;
     truckNumbering: Record<string, number>;
     allCrates: any[]; allInventory: any[];
     zoom: number;
@@ -473,7 +787,13 @@ const SideView: React.FC<{
     onUpdateXZ: (id: string, x: number, z: number) => void;
     onStack: (id: string) => void;
     onUnload: (id: string) => void;
-}> = ({ truckCrates, positions, truckNumbering, allCrates, allInventory, zoom, selectedId, onSelect, onUpdateXZ, onStack, onUnload }) => {
+    pan: { x: number; y: number };
+    isDragging: boolean;
+    isSpacePressed: boolean;
+    onPointerDown: (e: React.PointerEvent) => void;
+    onPointerMove: (e: React.PointerEvent) => void;
+    onPointerUp: (e: React.PointerEvent) => void;
+}> = ({ truckCrates, positions, truckNumbering, allCrates, allInventory, zoom, selectedId, onSelect, onUpdateXZ, onStack, onUnload, pan, isDragging, isSpacePressed, onPointerDown, onPointerMove, onPointerUp }) => {
     const SVG_W = TRUCK_L_CM * BASE_SCALE;
     const SVG_H = TRUCK_H_CM * BASE_SCALE;
     const svgRef = useRef<SVGSVGElement>(null);
@@ -493,7 +813,7 @@ const SideView: React.FC<{
         const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#a1a1aa') : '#a1a1aa';
         const isSelected = c.id === selectedId;
-        
+
         // Find children for side-view rendering
         const childCrates = allCrates.filter(child => child.parent_id === c.id);
 
@@ -503,7 +823,7 @@ const SideView: React.FC<{
     // SVG mouse drag
     const dragRef = useRef<{ id: string; startX: number; startZ: number; mouseX: number; mouseY: number } | null>(null);
 
-    const getSVGPoint = (e: MouseEvent | React.MouseEvent): {x: number; y: number} => {
+    const getSVGPoint = (e: MouseEvent | React.MouseEvent): { x: number; y: number } => {
         const svg = svgRef.current;
         if (!svg) return { x: 0, y: 0 };
         const rect = svg.getBoundingClientRect();
@@ -535,130 +855,97 @@ const SideView: React.FC<{
 
     return (
         <div 
-            className="w-full h-full bg-black/20 backdrop-blur-2xl border-t border-white/5 shadow-inner relative"
+            className="w-full h-full relative overflow-hidden bg-black/10 backdrop-blur-3xl border-t border-white/5 shadow-inner"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
+            style={{ cursor: isDragging ? 'grabbing' : (isSpacePressed ? 'grab' : 'default'), touchAction: 'none' }}
         >
-            <div className="py-[40vh] px-[40vw]" style={{ minWidth: SVG_W * zoom + 800, minHeight: SVG_H * zoom + 800 }}>
-                {/* Header bar */}
-                <div className="flex items-center gap-6 mb-6 px-4">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        <span className="w-1 h-1 rounded-full bg-white/20" /> ◀ Rear
-                    </span>
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-[9px] font-black text-white/70 uppercase tracking-[0.6em] italic">
-                        Trailer Matrix — {TRUCK_L_CM}cm × {TRUCK_H_CM}cm H
-                    </span>
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
-                        Front ▶ <span className="w-1 h-1 rounded-full bg-white/20" />
-                    </span>
-                </div>
-                {/* Selected crate toolbar */}
-                {selectedId && positions[selectedId] && (() => {
-                    const sel = truckCrates.find(c => c.id === selectedId);
-                    const pos = positions[selectedId];
-                    return sel ? (
-                        <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
-                            <span className="text-[10px] font-black text-white/80 uppercase tracking-wide flex-1">
-                                {(() => {
-                                    const { label, subtitle } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
-                                    return `${label}${subtitle ? ` (${subtitle})` : ''}`;
-                                })()}
-                                <span className="text-white/30 ml-2">X:{Math.round(pos.x)}cm  Z:{Math.round(pos.z||0)}cm</span>
-                            </span>
-                            <button onClick={() => onStack(selectedId)}
-                                className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] cursor-pointer transition-all bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/5">
-                                <Layers size={13} /> Stack on Top
-                            </button>
-                            <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-xl border border-white/10">
-                                <button onClick={() => onUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z||0) - (sel.height_cm||100)))}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Down"><ArrowDown size={14} /></button>
-                                <button onClick={() => onUpdateXZ(selectedId, pos.x, (pos.z||0) + (sel.height_cm||100))}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Up"><ArrowUp size={14} /></button>
-                                <div className="w-px h-3 bg-white/10 mx-0.5" />
-                                <button onClick={() => onUpdateXZ(selectedId, Math.max(0, pos.x - 50), pos.z||0)}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Rear"><ArrowLeft size={14} /></button>
-                                <button onClick={() => onUpdateXZ(selectedId, pos.x + 50, pos.z||0)}
-                                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Move Front"><ChevronRight size={14} /></button>
-                            </div>
-                            <button onClick={() => onUnload(selectedId)}
-                                className="flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:scale-105 active:scale-95 shadow-lg shadow-rose-500/5">
-                                <Trash2 size={13} /> Remove
-                            </button>
+            <div 
+                className="absolute transition-all duration-75"
+                style={{ 
+                    left: pan.x, 
+                    top: pan.y,
+                    width: SVG_W * zoom,
+                    height: SVG_H * zoom,
+                    transform: `scale(1)`, // zoom is already in SVG_W/H calculation
+                    transition: isDragging ? 'none' : 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+            >
+                <div className="p-20">
+                    {/* Header bar */}
+                    <div className="flex items-center gap-10 mb-10 opacity-30">
+                        <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white">◀ Rear Door</span>
+                        <div className="flex-1 h-px bg-white/10" />
+                        <span className="text-[11px] font-black text-white/50 uppercase tracking-[0.8em] italic">TRAILER SIDE MATRIX</span>
+                        <div className="flex-1 h-px bg-white/10" />
+                        <span className="text-[12px] font-black uppercase tracking-[0.5em] text-white">Front Cab ▶</span>
+                    </div>
+
+                    {/* SideView Toolbar Removed - Consolidated to Hub Sidebar */}
+                    {selectedId && positions[selectedId] && (
+                        <div className="absolute top-10 left-10 flex flex-col gap-2 opacity-20 pointer-events-none">
+                             <span className="text-[10px] font-black text-white uppercase tracking-widest">
+                                {Math.round(positions[selectedId].x)}cm | {Math.round(positions[selectedId].z || 0)}cm
+                             </span>
                         </div>
-                    ) : null;
-                })()}
-                <div style={{ width: SVG_W * zoom, height: SVG_H * zoom, position: 'relative' }}>
-                    <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-                        style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible', cursor: 'default' }}>
-                        {/* Trailer shell */}
-                        <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={8} />
-                        {/* Floor */}
-                        <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.08)" />
-                        <line x1={0} y1={SVG_H - 8} x2={SVG_W} y2={SVG_H - 8} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
-                        {/* Height grid every 50cm */}
-                        {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
-                            <g key={y}>
-                                <line x1={0} y1={SVG_H - y * BASE_SCALE} x2={SVG_W} y2={SVG_H - y * BASE_SCALE}
-                                    stroke={y % 100 === 0 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'} strokeWidth={y % 100 === 0 ? 1 : 0.5} />
-                                <text x={6} y={SVG_H - y * BASE_SCALE - 3} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="monospace" fontWeight="bold">{y}cm</text>
-                            </g>
-                        ))}
-                        {/* Axle lines */}
-                        {[0.72, 0.82, 0.90].map(f => (
-                            <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
-                                stroke="rgba(255,255,255,0.12)" strokeWidth={1} strokeDasharray="5,4" />
-                        ))}
-                        {/* Crates — non-selected first, selected on top */}
-                        {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
-                            <g key={cr.id} style={{ cursor: 'grab' }} onMouseDown={e => handleCrateMouseDown(e, cr)}>
-                                {/* Selection Glow & Shadow */}
-                                {cr.isSelected && (
-                                    <>
-                                        <rect x={cr.px - 4} y={cr.py - 4} width={cr.pw + 8} height={cr.ph + 8} fill="white" opacity={0.15} filter="blur(12px)" rx={8} />
-                                        <rect x={cr.px + 4} y={cr.py + 4} width={cr.pw} height={cr.ph} fill="rgba(0,0,0,0.5)" rx={4} />
-                                    </>
-                                )}
-                                {/* Body — full solid color */}
-                                <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
-                                    fill={cr.col}
-                                    stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.4)'}
-                                    strokeWidth={cr.isSelected ? 2.5 : 1.5}
-                                    rx={4} opacity={cr.isSelected ? 1 : 0.92} />
-                                {/* Selection ring */}
-                                {cr.isSelected && <rect x={cr.px - 2} y={cr.py - 2} width={cr.pw + 4} height={cr.ph + 4}
-                                    fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={1} rx={4} strokeDasharray="4,3" />}
-                                {/* Label — dark text over solid fill for contrast */}
-                                {cr.pw > 18 && cr.ph > 16 && (
-                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 3}
-                                        textAnchor="middle" fontSize={Math.min(10, cr.pw / 4.2)} fill="rgba(0,0,0,0.85)"
-                                        fontFamily="monospace" fontWeight="900" opacity={0.95}>
-                                        {cr.label}
-                                        {cr.subtitle && (
-                                            <tspan x={cr.px + cr.pw / 2} dy={12} fontSize={Math.min(9, cr.pw / 5)} opacity={0.6} fontWeight="normal">
-                                                {cr.subtitle}
-                                            </tspan>
-                                        )}
-                                    </text>
-                                )}
-                                {cr.ph > 28 && (
-                                    <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 17}
-                                        textAnchor="middle" fontSize={8} fill="rgba(0,0,0,0.6)"
-                                        fontFamily="monospace" opacity={0.9}>
-                                        {cr.h}H {cr.zOff > 0 ? `+${Math.round(cr.zOff)}Z` : ''}
-                                        {cr.children.length > 0 ? ` [${cr.children.length} BX]` : ''}
-                                    </text>
-                                )}
-                                {/* Stack level indicator dot */}
-                                {cr.zOff > 0 && (
-                                    <circle cx={cr.px + 8} cy={cr.py + 8} r={5} fill={cr.col} opacity={0.9} />
-                                )}
-                            </g>
-                        ))}
-                        {/* Cab block */}
-                        <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" strokeWidth={1} rx={2} />
-                        <text x={SVG_W - 6} y={SVG_H / 2} textAnchor="middle" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace" fontWeight="black"
-                            transform={`rotate(-90, ${SVG_W - 6}, ${SVG_H / 2})`}>FRONT (CAB)</text>
-                    </svg>
+                    )}
+
+                    <div style={{ width: SVG_W * zoom, height: SVG_H * zoom, position: 'relative' }}>
+                        <svg ref={svgRef} width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+                            style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible', cursor: 'default' }}>
+                            {/* Trailer shell */}
+                            <rect x={0} y={0} width={SVG_W} height={SVG_H} fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.05)" strokeWidth={1} rx={8} />
+                            {/* Floor */}
+                            <rect x={0} y={SVG_H - 8} width={SVG_W} height={8} fill="rgba(255,255,255,0.05)" />
+                            <line x1={0} y1={SVG_H - 8} x2={SVG_W} y2={SVG_H - 8} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+                            
+                            {/* Height grid every 50cm */}
+                            {Array.from({ length: Math.floor(TRUCK_H_CM / 50) }, (_, i) => (i + 1) * 50).map(y => (
+                                <g key={y}>
+                                    <line x1={0} y1={SVG_H - y * BASE_SCALE} x2={SVG_W} y2={SVG_H - y * BASE_SCALE}
+                                        stroke={y % 100 === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)'} strokeWidth={y % 100 === 0 ? 1 : 0.5} />
+                                    <text x={6} y={SVG_H - y * BASE_SCALE - 3} fill="rgba(255,255,255,0.2)" fontSize={9} fontFamily="monospace" fontWeight="bold">{y}cm</text>
+                                </g>
+                            ))}
+                            
+                            {/* Axle lines */}
+                            {[0.72, 0.82, 0.90].map(f => (
+                                <line key={f} x1={f * SVG_W} y1={0} x2={f * SVG_W} y2={SVG_H}
+                                    stroke="rgba(255,255,255,0.08)" strokeWidth={1} strokeDasharray="8,8" />
+                            ))}
+
+                            {/* Crates — non-selected first, selected on top */}
+                            {[...crateItems.filter(cr => !cr.isSelected), ...crateItems.filter(cr => cr.isSelected)].map(cr => (
+                                <g key={cr.id} style={{ cursor: 'grab' }} 
+                                    onMouseDown={e => handleCrateMouseDown(e, cr)}
+                                    onClick={e => e.stopPropagation()}>
+                                    {/* Selection Glow */}
+                                    {cr.isSelected && (
+                                        <rect x={cr.px - 6} y={cr.py - 6} width={cr.pw + 12} height={cr.ph + 12} fill="white" opacity={0.1} filter="blur(16px)" rx={12} />
+                                    )}
+                                    {/* Body */}
+                                    <rect x={cr.px} y={cr.py} width={cr.pw} height={cr.ph}
+                                        fill={cr.col}
+                                        stroke={cr.isSelected ? 'white' : 'rgba(0,0,0,0.2)'}
+                                        strokeWidth={cr.isSelected ? 3 : 1}
+                                        rx={6} opacity={cr.isSelected ? 1 : 0.85} />
+                                    
+                                    {/* Label */}
+                                    {cr.pw > 20 && cr.ph > 20 && (
+                                        <text x={cr.px + cr.pw / 2} y={cr.py + cr.ph / 2 + 4}
+                                            textAnchor="middle" fontSize={Math.min(11, cr.pw / 4)} fill="rgba(0,0,0,0.8)"
+                                            fontFamily="monospace" fontWeight="900">
+                                            {cr.label}
+                                        </text>
+                                    )}
+                                </g>
+                            ))}
+                            {/* Cab block */}
+                            <rect x={SVG_W - 12} y={0} width={12} height={SVG_H} fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.05)" strokeWidth={1} rx={2} />
+                        </svg>
+                    </div>
                 </div>
             </div>
         </div>
@@ -715,15 +1002,15 @@ function generateTrailerThumbnail(
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
+
     // Trailer floor (Light gray background)
     ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(0, 0, W, H);
-    
+
     // Cab end marker
     ctx.fillStyle = 'rgba(0,0,0,0.06)';
     ctx.fillRect(0, 0, 6, H);
-    
+
     // Pre-calculate numbering for performance
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
@@ -732,13 +1019,13 @@ function generateTrailerThumbnail(
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate || crate.parent_id) continue; // Skip nested boxes
-        
+
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
-        
+
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-        
+
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0'; // ~80% opacity solid
         ctx.fillRect(pos.x * scale, pos.y * scale, lenX, lenY);
@@ -748,16 +1035,16 @@ function generateTrailerThumbnail(
         ctx.lineWidth = 2;
         ctx.strokeRect(pos.x * scale, pos.y * scale, lenX, lenY);
     }
-    
+
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
     ctx.fillText('ONYX · TRUCKLOAD TOP VIEW', 40, H - 40);
-    
+
     // Cab end marker (at front)
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(W - 10, 0, 10, H);
-    
+
     // Labels & Weights
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
@@ -765,10 +1052,10 @@ function generateTrailerThumbnail(
         const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const w = computeCrateWeight(crate, allInventory, allCrates);
         const col = '#000000'; // Dark text for contrast on solid fill
-        
+
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
-        
+
         ctx.fillStyle = col;
         ctx.textAlign = 'center';
         if (lenX > 60) {
@@ -778,7 +1065,7 @@ function generateTrailerThumbnail(
             ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, pos.y * scale + lenY / 2 + 32);
         }
     }
-    
+
     return canvas.toDataURL('image/jpeg', 0.85);
 }
 
@@ -796,11 +1083,11 @@ function generateSideViewThumbnail(
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
+
     // Trailer shell (Light gray background)
     ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(0, 0, W, H);
-    
+
     // Floor marker
     ctx.fillStyle = 'rgba(0,0,0,0.1)';
     ctx.fillRect(0, H - 4, W, 4);
@@ -813,14 +1100,14 @@ function generateSideViewThumbnail(
     for (const [id, pos] of Object.entries(positions)) {
         const crate = crateMap.get(id) as any;
         if (!crate || crate.parent_id) continue; // Skip nested boxes
-        
+
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const h = (crate.height_cm || 100) * scale;
         const zOff = (pos.z || 0) * scale;
-        
+
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
         const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-        
+
         // Solid Fill
         ctx.fillStyle = primaryColor + 'D0';
         ctx.fillRect(pos.x * scale, H - zOff - h, lenX, h);
@@ -830,7 +1117,7 @@ function generateSideViewThumbnail(
         ctx.lineWidth = 2;
         ctx.strokeRect(pos.x * scale, H - zOff - h, lenX, h);
     }
-    
+
     // Watermark
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
@@ -843,11 +1130,11 @@ function generateSideViewThumbnail(
         const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const w = computeCrateWeight(crate, allInventory, allCrates);
         const col = '#000000'; // Dark text for contrast
-        
+
         const lenX = (pos.r === 0 ? (crate.length_cm || 120) : (crate.width_cm || 80)) * scale;
         const h = (crate.height_cm || 100) * scale;
         const zOff = (pos.z || 0) * scale;
-        
+
         ctx.fillStyle = col;
         ctx.textAlign = 'center';
         if (lenX > 60) {
@@ -857,7 +1144,7 @@ function generateSideViewThumbnail(
             ctx.fillText(`${w} KG`, pos.x * scale + lenX / 2, H - zOff - h / 2 + 32);
         }
     }
-    
+
     return canvas.toDataURL('image/jpeg', 0.85);
 }
 
@@ -873,15 +1160,15 @@ function generateIsoViewThumbnail(
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
+
     ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(0, 0, W, H);
-    
+
     const scale = W / (TRUCK_L_CM + TRUCK_W_CM);
     const S = scale * 0.72; // Reduced scale to fit better
     const ox = W * 0.28;   // Moved left to accommodate long tail
     const oy = H * 0.18;   // Moved up to accommodate growth downwards
-    
+
     const iso = (x: number, y: number, z: number): [number, number] => [
         ox + (x - y) * S * 0.866,
         oy + (x + y) * S * 0.5 - z * S
@@ -891,7 +1178,7 @@ function generateIsoViewThumbnail(
     ctx.strokeStyle = 'rgba(0,0,0,0.1)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
+    const f1 = iso(0, 0, 0), f2 = iso(TRUCK_L_CM, 0, 0), f3 = iso(TRUCK_L_CM, TRUCK_W_CM, 0), f4 = iso(0, TRUCK_W_CM, 0);
     ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
     ctx.stroke();
 
@@ -910,10 +1197,10 @@ function generateIsoViewThumbnail(
         const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
         const dX = rotated ? w : l, dY = rotated ? l : w;
         const zOff = p.z || 0;
-        
+
         const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-        
+
         const pts = [
             iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
             iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
@@ -922,7 +1209,7 @@ function generateIsoViewThumbnail(
         // Draw faces as wireframe
         ctx.lineWidth = 3;
         ctx.strokeStyle = col;
-        
+
         // Front faces (visible)
         // Left
         ctx.fillStyle = `${col}11`;
@@ -932,14 +1219,14 @@ function generateIsoViewThumbnail(
         // Top
         ctx.fillStyle = `${col}15`;
         ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
-        
+
         // Vertical connecting edges
         ctx.stroke();
 
         // Labels in Iso View
         const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
         const wKg = computeCrateWeight(crate, allInventory, allCrates);
-        const pMid = iso(p.x + dX/2, p.y + dY/2, zOff + h/2);
+        const pMid = iso(p.x + dX / 2, p.y + dY / 2, zOff + h / 2);
         ctx.fillStyle = col;
         ctx.font = 'bold 18px monospace';
         ctx.textAlign = 'center';
@@ -947,7 +1234,7 @@ function generateIsoViewThumbnail(
         ctx.font = 'bold 12px monospace';
         ctx.fillText(`${wKg} KG`, pMid[0], pMid[1] + 18);
     }
-    
+
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = 'bold 36px monospace';
     ctx.textAlign = 'left';
@@ -969,29 +1256,29 @@ function generateMasterThumbnail(
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
+
     // ── Background ──
     ctx.fillStyle = '#0F111A'; // Deep midnight
     ctx.fillRect(0, 0, W, H);
-    
+
     // ── Layout Dividers ──
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
-    ctx.moveTo(W/2, H/2); ctx.lineTo(W/2, H);
+    ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2);
+    ctx.moveTo(W / 2, H / 2); ctx.lineTo(W / 2, H);
     ctx.stroke();
 
     const numbering = getTruckCrateNumbering(truckCrates, positions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
     // ── 1. ISOMETRIC VIEW (Top Half) ──
-    const drawIso = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+    const drawIso = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; w: number; h: number }) => {
         const scale = rect.w / (TRUCK_L_CM + TRUCK_W_CM) * 0.8;
         const S = scale * 0.85;
         const ox = rect.x + rect.w * 0.35;
         const oy = rect.y + rect.h * 0.25;
-        
+
         const iso = (x: number, y: number, z: number): [number, number] => [
             ox + (x - y) * S * 0.866,
             oy + (x + y) * S * 0.5 - z * S
@@ -1001,7 +1288,7 @@ function generateMasterThumbnail(
         ctx.strokeStyle = 'rgba(255,255,255,0.05)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
+        const f1 = iso(0, 0, 0), f2 = iso(TRUCK_L_CM, 0, 0), f3 = iso(TRUCK_L_CM, TRUCK_W_CM, 0), f4 = iso(0, TRUCK_W_CM, 0);
         ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
         ctx.stroke();
 
@@ -1016,7 +1303,7 @@ function generateMasterThumbnail(
             const zOff = p.z || 0;
             const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-            
+
             const pts = [
                 iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
                 iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
@@ -1025,7 +1312,7 @@ function generateMasterThumbnail(
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = col;
             ctx.fillStyle = `${col}15`; // Faint fill for wireframe look
-            
+
             // Top face
             ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
             // Left face
@@ -1033,7 +1320,7 @@ function generateMasterThumbnail(
             // Right face
             ctx.beginPath(); ctx.moveTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[5]); ctx.closePath(); ctx.fill(); ctx.stroke();
         }
-        
+
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
@@ -1041,7 +1328,7 @@ function generateMasterThumbnail(
     };
 
     // ── 2. TOP VIEW (Bottom Left) ──
-    const drawTop = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+    const drawTop = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; w: number; h: number }) => {
         const padding = 60;
         const availW = rect.w - padding * 2;
         const scale = availW / TRUCK_L_CM;
@@ -1062,14 +1349,14 @@ function generateMasterThumbnail(
             const lenY = (pos.r === 0 ? (crate.width_cm || 80) : (crate.length_cm || 120)) * scale;
             const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-            
+
             ctx.fillStyle = col;
             ctx.fillRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
             ctx.strokeRect(ox + pos.x * scale, oy + pos.y * scale, lenX, lenY);
         }
-        
+
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
@@ -1077,7 +1364,7 @@ function generateMasterThumbnail(
     };
 
     // ── 3. SIDE VIEW (Bottom Right) ──
-    const drawSide = (ctx: CanvasRenderingContext2D, rect: {x:number; y:number; w:number; h:number}) => {
+    const drawSide = (ctx: CanvasRenderingContext2D, rect: { x: number; y: number; w: number; h: number }) => {
         const padding = 60;
         const TRUCK_H_CM = 279;
         const availW = rect.w - padding * 2;
@@ -1100,7 +1387,7 @@ function generateMasterThumbnail(
             const zOff = (pos.z || 0) * scale;
             const { vendorList } = getCrateDisplayName(crate, allCrates, allInventory, numbering[crate.id]);
             const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
-            
+
             ctx.fillStyle = col;
             ctx.fillRect(ox + pos.x * scale, oy + (TRUCK_H_CM * scale) - zOff - h, lenX, h);
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
@@ -1114,19 +1401,19 @@ function generateMasterThumbnail(
         ctx.fillText('SIDE VIEW · STACKING PROFILE', rect.x + 40, rect.y + rect.h - 40);
     };
 
-    drawIso(ctx, {x:0, y:0, w:W, h:H/2});
-    drawTop(ctx, {x:0, y:H/2, w:W/2, h:H/2});
-    drawSide(ctx, {x:W/2, y:H/2, w:W/2, h:H/2});
+    drawIso(ctx, { x: 0, y: 0, w: W, h: H / 2 });
+    drawTop(ctx, { x: 0, y: H / 2, w: W / 2, h: H / 2 });
+    drawSide(ctx, { x: W / 2, y: H / 2, w: W / 2, h: H / 2 });
 
     // ── Master Branding ──
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '900 24px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`ONYX LOGISTICS · MASTER LOAD ARCHIVE · ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W/2, 50);
-    
+    ctx.fillText(`ONYX LOGISTICS · MASTER LOAD ARCHIVE · ${draftName?.toUpperCase() || 'UNTITLED LOAD'}`, W / 2, 50);
+
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} · v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W/2, 75);
+    ctx.fillText(`GENERATED: ${new Date().toLocaleString()} · v${TRUCKLOAD_VERSION} HYBRID ENGINE`, W / 2, 75);
 
     return canvas.toDataURL('image/jpeg', 0.90);
 }
@@ -1158,7 +1445,7 @@ const NestingTargetModal: React.FC<{
                 <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div>
                         <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Nesting Wizard</h3>
-                        <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1.5">Select container for box {boxId.slice(0,6)}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1.5">Select container for box {boxId.slice(0, 6)}</p>
                     </div>
                     <button onClick={onClose} className="w-12 h-12 rounded-full hover:bg-white/10 text-white/20 hover:text-white transition-all flex items-center justify-center group">
                         <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
@@ -1260,9 +1547,9 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
             if (eoiIndex !== -1) {
                 const jpegBytes = bytes.slice(0, eoiIndex + 2);
                 const jsonBytes = bytes.slice(eoiIndex + 2);
-                
+
                 jsonText = new TextDecoder().decode(jsonBytes).trim();
-                
+
                 const blob = new Blob([jpegBytes], { type: 'image/jpeg' });
                 thumbnailBase64 = await new Promise<string>((resolve) => {
                     const reader = new FileReader();
@@ -1274,7 +1561,7 @@ async function importDraftFile(file: File): Promise<TruckDraft | null> {
             // Pure JSON text fallback
             jsonText = new TextDecoder().decode(bytes);
         }
-        
+
         const data = JSON.parse(jsonText) as TruckloadFile;
         if (data.type !== 'onyx-truckload' || !data.positions) return null;
         return {
@@ -1324,7 +1611,7 @@ const ExportCard: React.FC<{
             </div>
             <div className="shrink-0">
                 {isDone && url ? (
-                    <button 
+                    <button
                         onClick={() => onDownload ? onDownload(url, filename || `${title.replace(/\s+/g, '_')}.${type.toLowerCase()}`) : window.open(url, '_blank')}
                         className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl"
                         style={{ backgroundColor: color, color: '#fff' }}
@@ -1332,7 +1619,7 @@ const ExportCard: React.FC<{
                         Download
                     </button>
                 ) : (
-                    <button 
+                    <button
                         onClick={onGenerate}
                         disabled={prog >= 0}
                         className="px-5 py-2.5 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
@@ -1357,7 +1644,7 @@ const TruckExportModal: React.FC<{
     floorPct: number;
     onClose: () => void;
 }> = ({ truckCrates, allCrates, allInventory, positions, truckNumbering, totalWeight, panelStats, floorPct, onClose }) => {
-    const [name, setName] = useState(`TRK ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric' }).toUpperCase()}`);
+    const [name, setName] = useState(`TRK ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}`);
     const bookRate = useAtomValue(exchangeRateAtom);
     const [progress, setProgress] = useState({ manifesto: -1, pdf: -1, packed: -1, allCrates: -1, allCratesImages: -1 });
     const [urls, setUrls] = useState({ manifesto: '', pdf: '', packed: '', allCrates: '', allCratesImages: '' });
@@ -1372,7 +1659,7 @@ const TruckExportModal: React.FC<{
         const nextBoxLabel = crate.type === 'cardboard' ? currentLabel : boxLabel;
 
         let results: any[] = [];
-        
+
         // 1. Direct items
         if (crate.inventory_ids) {
             crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
@@ -1384,13 +1671,13 @@ const TruckExportModal: React.FC<{
                 }
             });
         }
-        
+
         // 2. Nested units (recursive)
         const nested = allCrates.filter(c => c.parent_id === crate.id);
         nested.forEach(n => {
             results = [...results, ...getItemsFromCrate(n, nextFloorLabel, nextBoxLabel, visited)];
         });
-        
+
         return results;
     };
 
@@ -1455,8 +1742,6 @@ const TruckExportModal: React.FC<{
         setProgress(p => ({ ...p, pdf: 5 }));
         try {
             const items = buildConsolidatedItems();
-            const packingWeight = (fields.packingItems || []).reduce((s, i) => s + (i.weight || 0) * (i.count || 1), 0);
-            const packingUnits = (fields.packingItems || []).reduce((s, i) => s + (i.count || 0), 0);
             const crateItemsCount = items.reduce((s, i) => s + (i.qty || 1), 0);
 
             const manifestoItems: ManifestoItem[] = items.map((item, idx) => {
@@ -1474,7 +1759,7 @@ const TruckExportModal: React.FC<{
                     dims: [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : ''),
                     weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
                     costMxn: 0, costUsd: 0,
-                    imageUrls: [], 
+                    imageUrls: [],
                     tagColor: vendorCol, dbItemCount: data.quantity || 1,
                     packetIn: Array.from(item.crates).join(', ')
                 };
@@ -1483,14 +1768,14 @@ const TruckExportModal: React.FC<{
             const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
             const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
             const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
-            
+
             const floorCrates = truckCrates;
             const nestedBoxes = allCrates.filter(c => c.type === 'cardboard' && c.parent_id && floorCrates.some(fc => fc.id === c.parent_id));
-            
+
             const allTruckCratesMeta = [...floorCrates, ...nestedBoxes].map(c => {
                 const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                 const col = vendorList.length > 0 ? (vendors as any)[vendorList[0] as keyof typeof vendors]?.color || '#6b7280' : '#6b7280';
-                
+
                 let parentLabel = '';
                 if (c.parent_id) {
                     const parent = allCrates.find(p => p.id === c.parent_id);
@@ -1501,7 +1786,7 @@ const TruckExportModal: React.FC<{
                 }
 
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm || '?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100,
                     parentLabel
@@ -1514,13 +1799,12 @@ const TruckExportModal: React.FC<{
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight: totalWeight + packingWeight, 
-                    payloadPct: Math.round(((totalWeight + packingWeight) / 22000) * 100), 
+                    totalWeight: totalWeight,
+                    payloadPct: Math.round((totalWeight / 22000) * 100),
                     floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
-                    itemCount: crateItemsCount + packingUnits
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct,
+                    itemCount: crateItemsCount
                 },
-                packingItems: fields.packingItems,
                 excludeImages: true,
                 excludeHeaderQr: true,
                 excludeHeaderWireframe: true
@@ -1543,10 +1827,10 @@ const TruckExportModal: React.FC<{
     const generateAllManifestos = async (withImages: boolean) => {
         const key = withImages ? 'allCratesImages' : 'allCrates';
         setProgress(p => ({ ...p, [key]: 5 }));
-        
+
         // Filter to only ROOT containers (those not nested inside others) and exclude cardboard boxes from individual exports
         const rootCrates = truckCrates.filter(c => !c.parent_id && c.type !== 'cardboard');
-        
+
         const cratesData = [...rootCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0)).map(crate => {
             const { label, subtitle, vendorList } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
             const items = getItemsFromCrate(crate).map((item, idx) => {
@@ -1555,7 +1839,7 @@ const TruckExportModal: React.FC<{
                 const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                 const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                 const vP = Object.keys(vendors).find(k => tag.toUpperCase().startsWith(k)) || 'OTHER';
-                
+
                 let photos: string[] = [];
                 if (withImages) {
                     const rawPhotos = data.generatedPngUrl ? [data.generatedPngUrl] : (data.mediaUrls ? (Array.isArray(data.mediaUrls) ? data.mediaUrls : String(data.mediaUrls).split(',')) : []);
@@ -1576,7 +1860,7 @@ const TruckExportModal: React.FC<{
                 };
             });
             const meta = {
-                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm || '?'} cm`,
                 crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                 excludeImages: !withImages, crateColor: vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280',
                 excludeHeaderQr: false, excludeHeaderWireframe: false,
@@ -1589,12 +1873,12 @@ const TruckExportModal: React.FC<{
         const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
         const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
         const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
-        
+
         const allTruckCratesMeta = truckCrates.map(c => {
             const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
-            const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#6b7280') : '#6b7280';
+            const col = vendorList.length > 0 ? (vendors as any)[vendorList[0] as keyof typeof vendors]?.color || '#6b7280' : '#6b7280';
             return {
-                id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm || '?'} cm`,
                 weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                 l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
             };
@@ -1626,15 +1910,15 @@ const TruckExportModal: React.FC<{
     const generatePacked = async () => {
         setProgress(p => ({ ...p, packed: 5 }));
         const wb = new ExcelJS.Workbook();
-        
+
         // Filter to only ROOT containers
         const rootCrates = truckCrates.filter(c => !c.parent_id);
-        
+
         for (let i = 0; i < rootCrates.length; i++) {
             setProgress(p => ({ ...p, packed: 5 + Math.round((i / rootCrates.length) * 80) }));
             const crate = rootCrates[i];
             const { label } = getCrateDisplayName(crate, allCrates, allInventory);
-            const safeLabel = label.replace(/[\[\]\*\/\?\:\\]/g, '').substring(0, 31) || `Crate ${i+1}`;
+            const safeLabel = label.replace(/[\[\]\*\/\?\:\\]/g, '').substring(0, 31) || `Crate ${i + 1}`;
             let sheetName = safeLabel; let counter = 1;
             while (wb.worksheets.find(s => s.name === sheetName)) sheetName = `${safeLabel.substring(0, 28)}_${counter++}`;
             const ws = wb.addWorksheet(sheetName);
@@ -1651,11 +1935,11 @@ const TruckExportModal: React.FC<{
                 const tag = calculated.bookBarcode || norm.book_barcode || norm.itemId || inv.row;
                 const desc = [data.color || data.Color, data.material || data.Material, data.shape || data.Shape, data.shortDescription || data.short_description].filter(Boolean).join(' - ');
                 const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×') + (data.lengthCm ? ' cm' : '');
-                ws.addRow({ 
-                    tag, 
-                    qty: item.qty, 
-                    desc: desc || 'Artifact', 
-                    weight: data.weightKg || data.weight_kg || '', 
+                ws.addRow({
+                    tag,
+                    qty: item.qty,
+                    desc: desc || 'Artifact',
+                    weight: data.weightKg || data.weight_kg || '',
                     dims,
                     container: item.packetIn || '' // Show nested box label if applicable
                 });
@@ -1679,7 +1963,7 @@ const TruckExportModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-[450] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-2xl" />
             <div className="relative z-10 w-full max-w-2xl mx-4 rounded-[3.5rem] border border-white/10 p-12 flex flex-col gap-10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-white/[0.01] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-700"
                 onClick={e => e.stopPropagation()}
@@ -1703,7 +1987,7 @@ const TruckExportModal: React.FC<{
                     {/* Shipment Info */}
                     <div className="flex flex-col gap-3 max-w-sm">
                         <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-1">Manifest Identity</label>
-                        <input 
+                        <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -1714,28 +1998,28 @@ const TruckExportModal: React.FC<{
 
                     {/* Options List */}
                     <div className="flex flex-col gap-4">
-                        <ExportCard 
+                        <ExportCard
                             id="manifesto" title="Consolidated Manifesto" type="XLSX" color="#3b82f6" icon={FileSpreadsheet}
                             desc="Global inventory list with all items combined. Best for accounting."
                             prog={progress.manifesto} url={urls.manifesto} onGenerate={generateManifesto} onDownload={triggerDownload} filename={`${name}_Consolidated_Manifesto.xlsx`}
                         />
-                        <ExportCard 
+                        <ExportCard
                             id="pdf" title="Trailer Packing List" type="PDF" color="#ef4444" icon={FileText}
                             desc="Summary of trailer load with isometric and top views."
                             prog={progress.pdf} url={urls.pdf} onGenerate={generatePdf} onDownload={triggerDownload} filename={`${name}_Packing_List.pdf`}
                         />
-                        <ExportCard 
+                        <ExportCard
                             id="packed" title="Crate Spreadsheets" type="XLSX" color="#10b981" icon={FileSpreadsheet}
                             desc="One Excel sheet per crate. Detailed per-box breakdown."
                             prog={progress.packed} url={urls.packed} onGenerate={generatePacked} onDownload={triggerDownload} filename={`${name}_Crate_Spreadsheets.xlsx`}
                         />
                         <div className="h-px bg-white/5 my-2" />
-                        <ExportCard 
+                        <ExportCard
                             id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText}
                             desc="Combined PDF of all individual crate manifestos. (No photos)."
                             prog={progress.allCrates} url={urls.allCrates} onGenerate={() => generateAllManifestos(false)} onDownload={triggerDownload} filename={`${name}_All_Crates_Manifesto.pdf`}
                         />
-                        <ExportCard 
+                        <ExportCard
                             id="allCratesImages" title="Visual Manifesto" type="PDF" color="#f43f5e" icon={ImageIcon}
                             desc="High-fidelity visual verification with multi-row item photos."
                             prog={progress.allCratesImages} url={urls.allCratesImages} onGenerate={() => generateAllManifestos(true)} onDownload={triggerDownload} filename={`${name}_Visual_Manifesto.pdf`}
@@ -1811,7 +2095,7 @@ const InteractiveTruckViewer: React.FC<{
         const sun = new THREE.DirectionalLight(0xffffff, 0.4);
         sun.position.set(10, 20, 10);
         scene.add(sun);
-        
+
         const grid = new THREE.GridHelper(40, 40, 0xe2e8f0, 0xf1f5f9);
         grid.position.y = -0.06;
         scene.add(grid);
@@ -1834,20 +2118,20 @@ const InteractiveTruckViewer: React.FC<{
 
             const geo = new THREE.BoxGeometry(dl, dh, dw);
             const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#adb5bd';
-            const mat = new THREE.MeshPhongMaterial({ 
-                color: col, 
-                transparent: true, 
+            const mat = new THREE.MeshPhongMaterial({
+                color: col,
+                transparent: true,
                 opacity: 0.85,
                 shininess: 30
             });
             const mesh = new THREE.Mesh(geo, mat);
-            
+
             mesh.position.set(
-                (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2, 
-                (pos.z || 0)/100 + dh/2 + 0.01, 
+                (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2,
+                (pos.z || 0) / 100 + dh / 2 + 0.01,
                 (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2
             );
-            
+
             if (isRotated) mesh.rotation.y = Math.PI / 2;
             scene.add(mesh);
 
@@ -1974,7 +2258,7 @@ const ReadyTruckWizard: React.FC<{
             const topView = generateTrailerThumbnail(truckCrates, positions, allCrates, allInventory);
             const sideView = generateSideViewThumbnail(truckCrates, positions, allCrates, allInventory);
             const isoView = generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory);
-            
+
             const floorCrates = truckCrates;
             const nestedBoxes = allCrates.filter(c => c.type === 'cardboard' && c.parent_id && floorCrates.some(fc => fc.id === c.parent_id));
             const allTruckCratesMeta = [...floorCrates, ...nestedBoxes].map(c => {
@@ -1986,7 +2270,7 @@ const ReadyTruckWizard: React.FC<{
                     if (parent) parentLabel = getCrateDisplayName(parent, allCrates, allInventory, truckNumbering[parent.id]).label;
                 }
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm || '?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: col,
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100, parentLabel
                 };
@@ -1998,10 +2282,10 @@ const ReadyTruckWizard: React.FC<{
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView,
                 allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0), 
+                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0),
                     payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
-                    itemCount: (buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct,
+                    itemCount: (buildConsolidatedItems().reduce((s: number, i: any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.count || 0), 0)
                 },
                 excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
                 sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
@@ -2060,10 +2344,10 @@ const ReadyTruckWizard: React.FC<{
 
             // 3. Sectioned Items
             const rootCrates = [...truckCrates].sort((a, b) => (truckNumbering[a.id] || 0) - (truckNumbering[b.id] || 0));
-            
+
             rootCrates.forEach((crate, cIdx) => {
                 const { label } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[crate.id]);
-                
+
                 // Section Header Row
                 const sRow = ws.addRow([`UNIT ${truckNumbering[crate.id] || cIdx + 1}: ${label.toUpperCase()}`]);
                 ws.mergeCells(sRow.number, 1, sRow.number, 7);
@@ -2078,7 +2362,7 @@ const ReadyTruckWizard: React.FC<{
                     const tag = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                     const desc = [data.color, data.material, data.shape, data.shortDescription].filter(Boolean).join(' - ');
                     const dims = [data.lengthCm, data.widthCm, data.heightCm].filter(Boolean).join('×');
-                    
+
                     const row = ws.addRow({
                         crate: label,
                         tag: tag,
@@ -2150,7 +2434,7 @@ const ReadyTruckWizard: React.FC<{
                     };
                 });
                 const meta = {
-                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm||'?'} cm`,
+                    dynamicId: label, subtitle, crateId: crate.id, crateDims: `${crate.width_cm}×${crate.length_cm}×${crate.height_cm || '?'} cm`,
                     crateType: crate.type, fillPct: 100, exportedAt: new Date().toLocaleString(),
                     excludeImages: true, crateColor: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     excludeHeaderQr: false, excludeHeaderWireframe: false, exportBruteWeight: crate.brute_weight_kg
@@ -2164,7 +2448,7 @@ const ReadyTruckWizard: React.FC<{
             const allTruckCratesMeta = truckCrates.map(c => {
                 const { label, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                 return {
-                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm||'?'} cm`,
+                    id: c.id, label, type: c.type, dims: `${c.width_cm}×${c.length_cm}×${c.height_cm || '?'} cm`,
                     weight: computeCrateWeight(c, allInventory, allCrates), color: (vendors as any)[vendorList[0]]?.color || '#6b7280',
                     l: c.length_cm, w: c.width_cm, h: c.height_cm || 100
                 };
@@ -2174,10 +2458,10 @@ const ReadyTruckWizard: React.FC<{
                 crateType: 'Trailer Load', fillPct: 100, exportedAt: new Date().toLocaleString(), customTitle: 'TRAILER PACKING LIST',
                 topViewImg: topView, sideViewImg: sideView, isoViewImg: isoView, allTruckCrates: allTruckCratesMeta,
                 truckStats: {
-                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0), 
+                    totalWeight: totalWeight + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0),
                     payloadPct: panelStats.payloadPct, floorPct: floorPct, volPct: panelStats.volPct,
-                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct, 
-                    itemCount: (buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)
+                    status: panelStats.status, rPct: panelStats.rPct, mPct: panelStats.mPct, fPct: panelStats.fPct,
+                    itemCount: (buildConsolidatedItems().reduce((s: number, i: any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.count || 0), 0)
                 },
                 excludeImages: true, excludeHeaderQr: true, excludeHeaderWireframe: true,
                 sealNumber: fields.sealNumber, tractorNumber: fields.tractorNumber, truckPlates: fields.truckPlates,
@@ -2194,22 +2478,22 @@ const ReadyTruckWizard: React.FC<{
             setProgress(p => ({ ...p, html: 10 }));
             const dateStr = new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
             const manifestId = `ONYX MX - ${dateStr}`;
-            const extraWeight = (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0);
+            const extraWeight = (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0);
             const finalTotalWeight = totalWeight + extraWeight;
-            
+
             const shipmentPayload = {
                 crates: truckCrates.map(c => {
                     const pos = positions[c.id] || { x: 0, y: 0, r: 0 };
                     const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                     const crateColor = (vendors as any)[vendorList[0]]?.color || '#6b7280';
                     const items = getItemsFromCrate(c).map((item, idx) => {
-                        const inv = item.inv; 
+                        const inv = item.inv;
                         const data = inv.data || {};
                         const norm = normalizeInventoryData(inv);
                         const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                         const tagId = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                         const vP = Object.keys(vendors).find(k => tagId.toUpperCase().startsWith(k)) || 'OTHER';
-                        
+
                         return {
                             itemId: tagId,
                             vendorPrefix: vP,
@@ -2224,7 +2508,7 @@ const ReadyTruckWizard: React.FC<{
                             combinedAttr: `${data.color || ''} ${data.material ? '/ ' + data.material : ''}`.trim()
                         };
                     });
-                    
+
                     return {
                         id: c.id,
                         label,
@@ -2250,20 +2534,20 @@ const ReadyTruckWizard: React.FC<{
             };
             const htmlContent = generatePackingListHtml(manifestId, fields, shipmentPayload);
             const blob = new Blob([htmlContent], { type: 'text/html' });
-            if (blob) { 
-                setUrls(u => ({ ...u, html: URL.createObjectURL(blob) })); 
-                setProgress(p => ({ ...p, html: 100 })); 
+            if (blob) {
+                setUrls(u => ({ ...u, html: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, html: 100 }));
             }
-        } catch (err: any) { 
-            setProgress(p => ({ ...p, html: -1 })); 
-            toast.error('HTML Generation failed'); 
+        } catch (err: any) {
+            setProgress(p => ({ ...p, html: -1 }));
+            toast.error('HTML Generation failed');
         }
     };
 
     const triggerDownload = (url: string, filename: string) => { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
 
     return (
-        <div className="fixed inset-0 z-[450] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <div className="relative z-10 w-full max-w-4xl rounded-[2.5rem] border border-white/10 p-8 flex flex-col gap-6 shadow-2xl bg-[#0c0c12] max-h-[95vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center bg-white/[0.02] -mx-8 -mt-8 px-8 py-6 border-b border-white/10 rounded-t-[2.5rem]">
@@ -2289,18 +2573,18 @@ const ReadyTruckWizard: React.FC<{
                 </div>
 
                 {publicUrl && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-3xl p-6 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="bg-[var(--main-color)] opacity-10 border border-[var(--main-color)]/30 rounded-3xl p-6 flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black font-black">✓</div>
+                                <div className="w-8 h-8 rounded-full bg-[var(--main-color)] flex items-center justify-center text-black font-black">✓</div>
                                 <div>
                                     <h4 className="text-sm font-black text-white uppercase tracking-tight">Shipment Live in Registry</h4>
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">3D Digital Mirror Created</p>
+                                    <p className="text-[10px] text-[var(--main-color)] font-bold uppercase tracking-widest">3D Digital Mirror Created</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
-                                <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-emerald-500 text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">Launch 3D Viewer</button>
+                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
+                                <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-[var(--main-color)] text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">Launch 3D Viewer</button>
                             </div>
                         </div>
                         <div className="text-[10px] font-mono text-white/40 break-all bg-black/20 p-3 rounded-xl border border-white/5">{publicUrl}</div>
@@ -2328,7 +2612,7 @@ const ReadyTruckWizard: React.FC<{
                                 </div>
                             ))}
                         </div>
-                        
+
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between px-1">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-white/30">Packing Items (Cardboard Boxes)</label>
@@ -2340,22 +2624,22 @@ const ReadyTruckWizard: React.FC<{
                                 ) : fields.packingItems.map((pi: any, i: number) => (
                                     <div key={i} className="flex items-center gap-3 bg-white/[0.03] p-3 rounded-2xl border border-white/10 shadow-lg animate-in slide-in-from-left-4 duration-200">
                                         <input type="text" value={pi.name} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, name: e.target.value }; onFieldChange({ ...fields, packingItems: n }); }}
-                                            className="flex-1 bg-transparent text-base font-black text-white outline-none focus:text-emerald-400 placeholder:text-white/10 transition-colors" placeholder="BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)" />
+                                            className="flex-1 bg-transparent text-base font-black text-white outline-none focus:text-[var(--main-color)] placeholder:text-white/10 transition-colors" placeholder="BOX DESCRIPTION (E.G. TOOLS, WRAPPING...)" />
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Quantity</span>
-                                                <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                <input type="number" value={pi.count} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, count: parseInt(e.target.value) || 0 }; onFieldChange({ ...fields, packingItems: n }); }}
                                                     className="w-16 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[7px] font-black text-white/20 uppercase tracking-widest ml-1">Weight KG</span>
-                                                <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value)||0 }; onFieldChange({ ...fields, packingItems: n }); }}
+                                                <input type="number" value={pi.weight} onChange={e => { const n = [...fields.packingItems]; n[i] = { ...pi, weight: parseFloat(e.target.value) || 0 }; onFieldChange({ ...fields, packingItems: n }); }}
                                                     className="w-20 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-black text-white outline-none focus:border-white/30 transition-all" />
                                             </div>
                                         </div>
-                                        <button onClick={() => { const n = fields.packingItems.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, packingItems: n }); }}
+                                        <button onClick={() => { const n = fields.packingItems.filter((_: any, idx: number) => idx !== i); onFieldChange({ ...fields, packingItems: n }); }}
                                             className="p-2 text-white/10 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all mt-3"><Trash2 size={18} /></button>
                                     </div>
                                 ))}
@@ -2372,7 +2656,7 @@ const ReadyTruckWizard: React.FC<{
                                     <div key={i} className="flex gap-2">
                                         <input type="text" value={s} onChange={e => { const n = [...fields.senders]; n[i] = e.target.value; onFieldChange({ ...fields, senders: n }); }}
                                             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold text-white outline-none focus:border-white/30" placeholder="Sender Name" />
-                                        <button onClick={() => { const n = fields.senders.filter((_:any,idx:number)=>idx!==i); onFieldChange({ ...fields, senders: n.length?n:[''] }); }}
+                                        <button onClick={() => { const n = fields.senders.filter((_: any, idx: number) => idx !== i); onFieldChange({ ...fields, senders: n.length ? n : [''] }); }}
                                             className="p-2 text-white/20 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
                                     </div>
                                 ))}
@@ -2384,17 +2668,17 @@ const ReadyTruckWizard: React.FC<{
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
                                     <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Payload</span>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-black text-white">{(totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()}</span>
+                                        <span className="text-xl font-black text-white">{(totalWeight + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0)).toLocaleString()}</span>
                                         <span className="text-[10px] font-bold text-white/30 uppercase">KG</span>
                                     </div>
                                     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-1">
-                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, ((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%` }} />
+                                        <div className="h-full bg-[var(--main-color)] rounded-full" style={{ width: `${Math.min(100, ((totalWeight + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%` }} />
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
                                     <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Active Units</span>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-black text-white">{(buildConsolidatedItems().reduce((s:number, i:any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.count || 0), 0)}</span>
+                                        <span className="text-xl font-black text-white">{(buildConsolidatedItems().reduce((s: number, i: any) => s + (i.qty || 1), 0)) + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.count || 0), 0)}</span>
                                         <span className="text-[10px] font-bold text-white/30 uppercase">Units</span>
                                     </div>
                                     <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mt-1">Ready for In-Transit</div>
@@ -2402,7 +2686,7 @@ const ReadyTruckWizard: React.FC<{
                                 <div className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/10">
                                     <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Utilization</span>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-black text-white">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s:number, i:any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
+                                        <span className="text-xl font-black text-white">{Math.round(((totalWeight + (fields.packingItems || []).reduce((s: number, i: any) => s + (i.weight || 0) * (i.count || 1), 0)) / 22000) * 100)}%</span>
                                         <span className="text-[10px] font-bold text-white/30 uppercase">Volume</span>
                                     </div>
                                     <div className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest mt-1">High Density</div>
@@ -2424,7 +2708,7 @@ const ReadyTruckWizard: React.FC<{
                                         </div>
                                     </div>
                                     {publicUrl && (
-                                        <button 
+                                        <button
                                             onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }}
                                             className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
                                         >
@@ -2442,18 +2726,18 @@ const ReadyTruckWizard: React.FC<{
                             {/* Axle Distribution Visualization */}
                             <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 shadow-inner">
                                 <div className="flex items-center justify-between mb-4">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2"><Move className="w-3 h-3 text-emerald-500" /> Axle Load Distribution</span>
-                                    <span className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest">Balanced Load</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 flex items-center gap-2"><Move className="w-3 h-3 text-[var(--main-color)]" /> Axle Load Distribution</span>
+                                    <span className="text-[8px] font-black text-[var(--main-color)] opacity-60 uppercase tracking-widest">Balanced Load</span>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <div className="flex h-4 gap-1 rounded-lg overflow-hidden bg-white/5 p-0.5">
-                                        <div className="h-full bg-emerald-500/80 rounded-sm relative group cursor-help" style={{ flex: panelStats.rPct || 1 }}>
+                                        <div className="h-full bg-[var(--main-color)] opacity-80 rounded-sm relative group cursor-help" style={{ flex: panelStats.rPct || 1 }}>
                                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <div className="h-full bg-emerald-400/50 rounded-sm relative group cursor-help" style={{ flex: panelStats.mPct || 1 }}>
+                                        <div className="h-full bg-[var(--main-color)] opacity-50 rounded-sm relative group cursor-help" style={{ flex: panelStats.mPct || 1 }}>
                                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <div className="h-full bg-emerald-300/30 rounded-sm relative group cursor-help" style={{ flex: panelStats.fPct || 1 }}>
+                                        <div className="h-full bg-[var(--main-color)] opacity-30 rounded-sm relative group cursor-help" style={{ flex: panelStats.fPct || 1 }}>
                                             <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
                                     </div>
@@ -2468,7 +2752,7 @@ const ReadyTruckWizard: React.FC<{
 
                         <div className="mt-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                             <div className="flex items-center gap-3 mb-3">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                <div className="w-1.5 h-1.5 rounded-full bg-[var(--main-color)] shadow-[0_0_8px_rgba(0,0,0,0.5)]" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-white/60">System Ready for Finalization</span>
                             </div>
                             <p className="text-[11px] text-white/30 leading-relaxed uppercase font-bold tracking-tight">Updating <span className="text-white/60">{truckCrates.length}</span> units to "In Transit" status. Positions will be baked into record descriptors.</p>
@@ -2478,14 +2762,14 @@ const ReadyTruckWizard: React.FC<{
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-4">
                             <label className="text-[9px] font-black uppercase tracking-widest text-white/30 ml-1">Preview</label>
-                            <div 
+                            <div
                                 onClick={() => setShowLiveViewer(true)}
                                 className="relative group rounded-[2rem] border border-white/10 bg-white/5 overflow-hidden aspect-video shadow-2xl cursor-pointer hover:border-emerald-500/30 transition-all"
                             >
-                                <img 
-                                    src={generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory)} 
-                                    alt="Preview" 
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                                <img
+                                    src={generateIsoViewThumbnail(truckCrates, positions, allCrates, allInventory)}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
                                 <div className="absolute bottom-4 left-6 flex items-center justify-between right-6">
@@ -2498,18 +2782,18 @@ const ReadyTruckWizard: React.FC<{
                                             <span className="text-[8px] font-black text-emerald-400/80 uppercase tracking-widest">Active Mirror Sync</span>
                                         </div>
                                     </div>
-                                    
-                                    <button 
+
+                                    <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             // Handle case where we might want to view current draft in 3D
                                             // For now, if we have a recalled shipment, use that
-                                            /* if (recalledShipment?.manifest_id) {
+                                            if (recalledShipment?.manifest_id) {
                                                 setSentTruckId(recalledShipment.manifest_id);
                                                 setView('truck');
                                             } else {
                                                 toast.error("3D View requires a finalized or recalled shipment");
-                                            } */
+                                            }
                                         }}
                                         className="p-2.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all shadow-xl flex items-center gap-2 group/btn"
                                     >
@@ -2530,7 +2814,7 @@ const ReadyTruckWizard: React.FC<{
                                 <ExportCard id="allCrates" title="All Crates Manifesto" type="PDF" color="#f97316" icon={FileText} prog={progress.allCrates} url={urls.allCrates} onGenerate={generateAllManifestos} filename={`All_Crates_Manifesto_${exportTimestamp.current}.pdf`} />
                             </div>
                         </div>
-                    
+
                         <div className="flex-1" />
                         <div className="flex flex-col gap-3 pt-6 border-t border-white/5">
                             <div className="grid grid-cols-3 gap-3">
@@ -2562,9 +2846,9 @@ interface SaveDraftProps {
 }
 
 const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProps) => {
-    const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}`);
+    const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
     return (
-        <div className="fixed inset-0 z-[450] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-5"
                 style={{ backgroundColor: 'rgba(12,12,18,0.95)' }}
@@ -2637,14 +2921,14 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
         e.target.value = '';
     };
     return (
-        <div className="fixed inset-0 z-[450] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
-                style={{ backgroundColor: 'rgba(12,12,18,0.95)', maxHeight: '82vh' }}
+            <div className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden bg-[rgba(12,12,18,0.95)] backdrop-blur-xl"
+                style={{ maxHeight: '82vh' }}
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/8 bg-[rgba(12,12,18,0.95)]">
+                <div className="sticky top-0 z-[60] flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/20 backdrop-blur-md">
                     <div>
                         <h3 className="text-[14px] font-black uppercase tracking-tight text-white">Load Drafts</h3>
                         <p className="text-[10px] text-white/40">{drafts.length} saved · <span className="text-white/20">.truckload</span></p>
@@ -2694,8 +2978,8 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
                                             <p className="text-[12px] font-black text-white truncate">{draft.name}</p>
                                             <div className="flex items-center gap-3 mt-0.5">
                                                 <span className="text-[9px] text-white/30 font-black">{draft.crateCount} crates</span>
-                                                <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
-                                                {draft.thumbnail && <span className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest">📷 thumb</span>}
+                                                <span className="text-[9px] text-white/20">{new Date(draft.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                {draft.thumbnail && <span className="text-[8px] text-[var(--main-color)] opacity-60 font-black uppercase tracking-widest">📷 thumb</span>}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
@@ -2726,11 +3010,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const setView = useSetAtom(universalViewAtom);
     const [isSaving, setIsSaving] = useAtom(truckIsBusyAtom);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [positions, setPositions] = useState<Record<string, { x: number; y: number; r: number; z?: number }>>({});
     const [zoom, setZoom] = useState(1.0);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const [topBarState, setTopBarState] = useAtom(truckTopBarStateAtom);
-    const [recentShipments, setRecentShipments] = useState<any[]>([]);
-    const [loadingShipments, setLoadingShipments] = useState(false);
     const [viewMode, setViewMode] = useAtom(truckViewModeAtom);
     const [isCompact, setIsCompact] = useAtom(truckIsCompactAtom);
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
@@ -2740,11 +3026,6 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
-
-    // Panning state
-    const [isPanning, setIsPanning] = useState(false);
-    const lastMousePos = useRef({ x: 0, y: 0 });
-
     const [readyTruckFields, setReadyTruckFields] = useState({
         sealNumber: '',
         tractorNumber: '',
@@ -2754,7 +3035,55 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         senders: [''],
         packingItems: [] as Array<{ name: string; count: number; weight: number }>
     });
+    const [recentShipments, setRecentShipments] = useState<any[]>([]);
+    const [loadingShipments, setLoadingShipments] = useState(false);
     const bookRate = useAtomValue(exchangeRateAtom);
+
+    // Derived State
+    const isVerticalMap = !!selectedId && isExpanded && isPanelOpen;
+
+    // Refs for native listeners
+    const zoomRef = useRef(zoom);
+    const panRef = useRef(pan);
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const isPanningRef = useRef(false);
+    const isWheelingRef = useRef(false);
+    const isPinchingRef = useRef(false);
+    const wheelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const startPanRef = useRef({ x: 0, y: 0 });
+    const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+
+    // Sync Refs
+    useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+    useEffect(() => { panRef.current = pan; }, [pan]);
+
+    // Utilities
+    const constrainPan = useCallback((newPan: { x: number, y: number }, currentZoom: number) => {
+        if (!canvasRef.current) return newPan;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mapW = (isVerticalMap ? TRUCK_W_CM : TRUCK_L_CM) * currentZoom;
+        const mapH = (isVerticalMap ? TRUCK_L_CM : TRUCK_W_CM) * currentZoom;
+        const minVisible = 150;
+        return {
+            x: Math.max(minVisible - mapW, Math.min(rect.width - minVisible, newPan.x)),
+            y: Math.max(minVisible - mapH, Math.min(rect.height - minVisible, newPan.y))
+        };
+    }, [isVerticalMap]);
+
+    const handleResetView = useCallback(() => {
+        if (!canvasRef.current || viewMode === 'side') return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const targetZoom = 1.0;
+        const mapW = (isVerticalMap ? TRUCK_W_CM : TRUCK_L_CM) * targetZoom;
+        const mapH = (isVerticalMap ? TRUCK_L_CM : TRUCK_W_CM) * targetZoom;
+        const panelWidth = isPanelOpen ? (isExpanded ? 720 : 400) : 0;
+        
+        setPan({
+            x: (rect.width - panelWidth - mapW) / 2,
+            y: (rect.height - mapH) / 2
+        });
+        setZoom(targetZoom);
+    }, [viewMode, isVerticalMap, isPanelOpen, isExpanded]);
 
     const looseItems = useMemo(() => {
         return allInventory.filter(item => {
@@ -2791,10 +3120,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 // Correctly map saved shipment coordinates back to internal state
                 // x is length axis (cab to rear)
                 // y in payload is height, z in payload is depth (side to side)
-                newPos[c.id] = { 
-                    x: c.x, 
+                newPos[c.id] = {
+                    x: c.x,
                     y: c.z || 0, // Depth axis
-                    r: c.r || 0, 
+                    r: c.r || 0,
                     z: c.y || 0  // Height axis
                 };
             });
@@ -2851,13 +3180,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const allCrates = useMemo(() => {
         const live = docs.filter(d => ['crate', 'pallet', 'cardboard'].includes(d.type) && ['Packed', 'Partial', 'In Transit'].includes(d.status));
-        
+
         // If we have a recalled shipment, we might need to inject "virtual" crates 
         // for IDs that are in positions but NOT in the live docs (e.g. because status changed or record missing)
         if (recalledShipment) {
             const payload = typeof recalledShipment.payload === 'string' ? JSON.parse(recalledShipment.payload) : recalledShipment.payload;
             const recalledCrates = (payload?.crates || []).filter((rc: any) => !live.some(l => l.id === rc.id));
-            
+
             // Map virtual crates to the expected doc schema
             const virtual = recalledCrates.map((rc: any) => ({
                 id: rc.id,
@@ -2870,10 +3199,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 description: `RECALLED: ${rc.label || rc.id}`,
                 isVirtual: true
             }));
-            
+
             return [...live, ...virtual];
         }
-        
+
         return live;
     }, [docs, recalledShipment]);
     const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id), [allCrates, positions]);
@@ -2898,19 +3227,34 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         const nPallets = truckCrates.filter(c => c.type === 'pallet').length;
         const nBoxes = truckCrates.filter(c => c.type === 'cardboard').length;
         const th = TRUCK_L_CM / 3;
-        const rear  = truckCrates.filter(c => (positions[c.id]?.x || 0) < th).length;
-        const mid   = truckCrates.filter(c => { const x = positions[c.id]?.x || 0; return x >= th && x < 2*th; }).length;
+        const rear = truckCrates.filter(c => (positions[c.id]?.x || 0) < th).length;
+        const mid = truckCrates.filter(c => { const x = positions[c.id]?.x || 0; return x >= th && x < 2 * th; }).length;
         const total = truckCrates.length || 1;
         const rPct = Math.round(rear / total * 100);
         const mPct = Math.round(mid / total * 100);
         const fPct = 100 - rPct - mPct;
         const status = totalWeight > MAX_KG ? 'OVERLOAD' : payloadPct > 85 ? 'NEAR MAX' : payloadPct > 50 ? 'OPTIMAL' : truckCrates.length > 0 ? 'LIGHT' : 'EMPTY';
-        const statusColor = status === 'OVERLOAD' ? '#ef4444' : status === 'NEAR MAX' ? '#f97316' : status === 'OPTIMAL' ? '#10b981' : '#6b7280';
+        const statusColor = status === 'OVERLOAD' ? '#ef4444' : status === 'NEAR MAX' ? '#f97316' : status === 'OPTIMAL' ? 'var(--main-color)' : '#6b7280';
         return { MAX_KG, TRUCK_VOL_M3, usedVol, volPct, payloadPct, remaining, avgW, nCrates, nPallets, nBoxes, rPct, mPct, fPct, status, statusColor };
     }, [truckCrates, totalWeight, positions]);
 
+    const loadDistribution = useMemo(() => {
+        const bins = 12;
+        const binSize = TRUCK_L_CM / bins;
+        const binWeights = new Array(bins).fill(0);
+        truckCrates.forEach(c => {
+            const pos = positions[c.id];
+            if (!pos) return;
+            const binIdx = Math.floor(pos.x / binSize);
+            const w = computeCrateWeight(c, allInventory, allCrates);
+            if (binIdx >= 0 && binIdx < bins) binWeights[binIdx] += w;
+        });
+        const maxBinWeight = Math.max(...binWeights, 100);
+        return binWeights.map(w => w / maxBinWeight);
+    }, [truckCrates, positions, allInventory, allCrates]);
+
     // Smart auto-position: pack from FRONT (cab, right side x≈TRUCK_L_CM) toward rear, row-by-row
-    const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, {x:number;y:number;r:number}>, allCrates: any[]) => {
+    const computeAutoPosition = useCallback((crate: any, currentPositions: Record<string, { x: number; y: number; r: number }>, allCrates: any[]) => {
         const W = crate.width_cm;
         const D = crate.length_cm;
         const PAD = 5; // 5cm padding between crates
@@ -2945,13 +3289,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             if (!crate) return p;
             const pos = computeAutoPosition(crate, p, allCrates);
             const newPos = { ...p, [id]: { ...pos, z: 0 } };
-            
+
             // Auto-load children
             const children = allCrates.filter(c => c.parent_id === id);
             children.forEach(child => {
                 newPos[child.id] = { ...pos, z: 0 };
             });
-            
+
             return newPos;
         });
         setSelectedId(id);
@@ -2962,7 +3306,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         setPositions(p => {
             const n = { ...p };
             const idsToUnload = [id];
-            
+
             // Recursively find all children to unload
             const findChildren = (parentId: string) => {
                 allCrates.filter(c => c.parent_id === parentId).forEach(child => {
@@ -2971,7 +3315,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 });
             };
             findChildren(id);
-            
+
             idsToUnload.forEach(unId => delete n[unId]);
             return n;
         });
@@ -2985,7 +3329,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const dx = x - p[id].x;
             const dy = y - p[id].y;
             const n = { ...p, [id]: { ...p[id], x, y } };
-            
+
             // Move children too
             const moveChildren = (parentId: string) => {
                 allCrates.filter(c => c.parent_id === parentId).forEach(child => {
@@ -3007,11 +3351,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             const unitW = (p[id].r === 90 ? crate?.length_cm : crate?.width_cm) || 0;
             const nx = Math.max(0, Math.min(TRUCK_L_CM - unitW, x));
             const nz = Math.max(0, z);
-            
+
             const dx = nx - p[id].x;
             const dz = nz - (p[id].z || 0);
             const n = { ...p, [id]: { ...p[id], x: nx, z: nz } };
-            
+
             const moveChildren = (parentId: string) => {
                 allCrates.filter(c => c.parent_id === parentId).forEach(child => {
                     if (n[child.id]) {
@@ -3025,109 +3369,164 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         });
     }, [allCrates]);
 
-    const handleStack = useCallback((id: string) => {
-        setPositions(p => {
-            const current = p[id];
-            if (!current) return p;
-            const crate = allCrates.find(c => c.id === id);
-            if (!crate) return p;
-            
-            const r = current.r === 90;
-            const curW = r ? crate.length_cm : crate.width_cm;
-            const curL = r ? crate.width_cm : crate.length_cm;
-            
-            let maxZ = 0;
-            Object.entries(p).forEach(([oid, pos]) => {
-                if (oid === id) return;
-                const oc = allCrates.find(c => c.id === oid);
-                if (!oc) return;
-                const or = pos.r === 90;
-                const oW = or ? oc.length_cm : oc.width_cm;
-                const oL = or ? oc.width_cm : oc.length_cm;
-                
-                const overlap = !(current.x + curL <= pos.x || pos.x + oL <= current.x ||
-                                  current.y + curW <= pos.y || pos.y + oW <= current.y);
-                if (overlap) maxZ = Math.max(maxZ, (pos.z || 0) + (oc.height_cm || 100));
-            });
-            return { ...p, [id]: { ...current, z: maxZ } };
-        });
-    }, [allCrates]);
-
     const handleRotate = useCallback((id: string) => {
         setPositions(p => {
             if (!p[id]) return p;
             return { ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } };
         });
     }, []);
+    // Stack: place selected crate on top of the tallest crate overlapping its x position
+    const handleStack = (id: string) => {
+        const crate = allCrates.find(c => c.id === id);
+        if (!crate || !positions[id]) return;
+        const rotated = positions[id].r === 90;
+        const myW = rotated ? crate.length_cm : crate.width_cm;
+        const myX = positions[id].x;
+        // Find highest z+h of any crate overlapping the same x zone
+        let topZ = 0;
+        truckCrates.forEach(c => {
+            if (c.id === id) return;
+            const p = positions[c.id];
+            if (!p) return;
+            const cRot = p.r === 90;
+            const cW = cRot ? c.length_cm : c.width_cm;
+            const overlap = myX < p.x + cW + 5 && myX + myW + 5 > p.x;
+            if (overlap) {
+                const top = (p.z || 0) + (c.height_cm || 100);
+                if (top > topZ) topZ = top;
+            }
+        });
+        setPositions(p => ({ ...p, [id]: { ...p[id], z: topZ } }));
+        toast.success(`Stacked at ${topZ}cm above floor`, { icon: '📦' });
+    };
 
-    // ── Interaction Handlers ──
+    const [isSpacePressed, setIsSpacePressed] = useState(false);
 
-    const handleMouseDown = useCallback((e: React.MouseEvent) => {
-        if (e.button === 1) { // Middle click
+    const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
+        // Middle click OR Left click with Space OR Touch
+        if (e.button === 1 || (e.button === 0 && isSpacePressed) || e.pointerType === 'touch') {
+            isPanningRef.current = true;
+            startPanRef.current = { x: e.clientX - panRef.current.x, y: e.clientY - panRef.current.y };
+            const el = e.currentTarget as HTMLElement;
+            el.setPointerCapture(e.pointerId);
+            setIsDragging(true);
             e.preventDefault();
-            setIsPanning(true);
-            lastMousePos.current = { x: e.clientX, y: e.clientY };
         }
+    }, [isSpacePressed]);
+
+    const handleCanvasPointerMove = useCallback((e: React.PointerEvent) => {
+        if (isPanningRef.current) {
+            const nextPan = {
+                x: e.clientX - startPanRef.current.x,
+                y: e.clientY - startPanRef.current.y
+            };
+            setPan(constrainPan(nextPan, zoomRef.current));
+        }
+    }, [constrainPan]);
+
+    const handleCanvasPointerUp = useCallback((e: React.PointerEvent) => {
+        isPanningRef.current = false;
+        setIsDragging(false);
+        const el = e.currentTarget as HTMLElement;
+        el.releasePointerCapture(e.pointerId);
     }, []);
 
     useEffect(() => {
-        if (!isPanning) return;
-        const onMouseMove = (e: MouseEvent) => {
-            if (!canvasRef.current) return;
-            const dx = e.clientX - lastMousePos.current.x;
-            const dy = e.clientY - lastMousePos.current.y;
-            canvasRef.current.scrollLeft -= dx;
-            canvasRef.current.scrollTop -= dy;
-            lastMousePos.current = { x: e.clientX, y: e.clientY };
-        };
-        const onMouseUp = (e: MouseEvent) => {
-            if (e.button === 1) setIsPanning(false);
-        };
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-        return () => {
-            window.removeEventListener('mousemove', onMouseMove);
-            window.removeEventListener('mouseup', onMouseUp);
-        };
-    }, [isPanning]);
-
-    // Keyboard Shortcuts
-    useEffect(() => {
-        const onKeyDown = (e: KeyboardEvent) => {
-            // Global shortcuts
-            if (e.key === '+' || e.key === '=') { setZoom(z => Math.min(3, z + 0.1)); e.preventDefault(); }
-            if (e.key === '-' || e.key === '_') { setZoom(z => Math.max(0.15, z - 0.1)); e.preventDefault(); }
-            if (e.key === '0' && e.ctrlKey) { setZoom(1.0); e.preventDefault(); }
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setSelectedId(null);
+                setIsPanelOpen(false);
+            }
+            if (e.key === ' ') {
+                setIsSpacePressed(true);
+            }
+            // Arrow panning
+            const moveAmt = 50 / zoom;
+            if (e.key === 'ArrowLeft') setPan(p => ({ ...p, x: p.x + moveAmt }));
+            if (e.key === 'ArrowRight') setPan(p => ({ ...p, x: p.x - moveAmt }));
+            if (e.key === 'ArrowUp') setPan(p => ({ ...p, y: p.y + moveAmt }));
+            if (e.key === 'ArrowDown') setPan(p => ({ ...p, y: p.y - moveAmt }));
             
-            if (selectedId) {
-                if (e.key === 'r' || e.key === 'R') { handleRotate(selectedId); e.preventDefault(); }
-                if (e.key === 'Delete' || e.key === 'Backspace') { handleUnload(selectedId); e.preventDefault(); }
-                if (e.key === 'Escape') { setSelectedId(null); e.preventDefault(); }
-                
-                // Fine-tune position with arrow keys
-                const STEP = e.shiftKey ? 10 : 2;
-                if (e.key.startsWith('Arrow')) {
-                    const pos = positions[selectedId];
-                    if (pos) {
-                        if (e.key === 'ArrowLeft') handleUpdatePos(selectedId, Math.max(0, pos.x - STEP), pos.y);
-                        if (e.key === 'ArrowRight') handleUpdatePos(selectedId, Math.min(TRUCK_L_CM, pos.x + STEP), pos.y);
-                        if (e.key === 'ArrowUp') handleUpdatePos(selectedId, pos.x, Math.max(0, pos.y - STEP));
-                        if (e.key === 'ArrowDown') handleUpdatePos(selectedId, pos.x, Math.min(TRUCK_W_CM, pos.y + STEP));
-                        e.preventDefault();
-                    }
-                }
+            // Zoom keys
+            if (e.key === '+' || e.key === '=') setZoom(z => Math.min(5, z * 1.2));
+            if (e.key === '-' || e.key === '_') setZoom(z => Math.max(0.1, z / 1.2));
+            
+            // Zero key to reset
+            if (e.key === '0') handleResetView();
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === ' ') setIsSpacePressed(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [zoom, handleResetView]);
+
+    useEffect(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+
+        const onWheel = (e: WheelEvent) => {
+            e.preventDefault();
+            
+            // Mark wheeling state for smooth transition disabling
+            isWheelingRef.current = true;
+            if (wheelTimeoutRef.current) clearTimeout(wheelTimeoutRef.current);
+            wheelTimeoutRef.current = setTimeout(() => {
+                isWheelingRef.current = false;
+                // Force a re-render to re-enable transitions if needed
+                setPan(p => ({ ...p }));
+            }, 100);
+
+            const rect = el.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (e.ctrlKey) {
+                // Classic Zoom - slightly more sensitive
+                const zoomFactor = 1 - e.deltaY * 0.0025;
+                setZoom(z => Math.max(0.1, Math.min(5, z * zoomFactor)));
+            } else {
+                // Natural panning - balanced multiplier (reverting from high-velocity)
+                const speedMult = 2.0; 
+                const dx = e.deltaMode === 1 ? e.deltaX * 20 : (e.deltaMode === 2 ? e.deltaX * rect.width : e.deltaX);
+                const dy = e.deltaMode === 1 ? e.deltaY * 20 : (e.deltaMode === 2 ? e.deltaY * rect.height : e.deltaY);
+
+                setPan(p => constrainPan({
+                    x: p.x - dx * speedMult,
+                    y: p.y - dy * speedMult
+                }, zoomRef.current));
             }
         };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [selectedId, positions, handleRotate, handleUnload, handleUpdatePos]);
-    
+
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, [constrainPan]);
+
+
+    // Auto-center logic - only on major layout shifts
+    useEffect(() => {
+        if (!canvasRef.current || viewMode === 'side') return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mapW = (isVerticalMap ? TRUCK_W_CM : TRUCK_L_CM) * zoom;
+        const mapH = (isVerticalMap ? TRUCK_L_CM : TRUCK_W_CM) * zoom;
+        const panelWidth = isPanelOpen ? (isExpanded ? 720 : 400) : 0;
+        
+        setPan({
+            x: (rect.width - panelWidth - mapW) / 2,
+            y: (rect.height - mapH) / 2
+        });
+    }, [viewMode, isVerticalMap, isPanelOpen, isExpanded]);
+
     const handleNest = async (boxId: string, targetId: string) => {
         const box = allCrates.find(c => c.id === boxId);
         const target = allCrates.find(c => c.id === targetId);
         if (!box || !target) return;
 
-        const tid = toast.loading(`Nesting ${boxId.slice(0,6)} into ${targetId.slice(0,6)}...`);
+        const tid = toast.loading(`Nesting ${boxId.slice(0, 6)} into ${targetId.slice(0, 6)}...`);
         try {
             if (!isDummyMode) {
                 // Update box to point to target via parent_id
@@ -3166,14 +3565,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [positions]);
 
-    const handleLoadDraft = (draft: TruckDraft) => {
-        setPositions(draft.positions);
-        setReadyTruckFields(draft.shipmentData || {
-            sealNumber: '', tractorNumber: '', truckPlates: '', trailerNumber: '', trailerPlates: '', senders: [''], packingItems: []
+    const handleLoadItem = useCallback((item: any) => {
+        const id = String(item.row);
+        // Integrity check: ensure item isn't already crated
+        const data = item.data || {};
+        if (data.parent_id || data.crate_id) {
+            toast.error('Item is already packed in a crate');
+            return;
+        }
+        setPositions(p => {
+            const pos = { x: TRUCK_L_CM - 120, y: 10, r: 0, z: 0 }; // Default drop pos
+            return { ...p, [id]: pos };
         });
-        toast.success(`Draft "${draft.name}" loaded`);
-        setTopBarState('crates');
-    };
+        setSelectedId(id);
+        setRecalledShipment(null);
+    }, []);
 
     // ── Ready Truck — sync DB + PDF + XLSX ──
     const handleReadyTruck = async (f = readyTruckFields) => {
@@ -3201,7 +3607,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 for (const ship of activeShipments || []) {
                     const payload = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
                     const shipItems = payload?.crates?.flatMap((c: any) => c.items || []) || [];
-                    
+
                     for (const item of shipItems) {
                         if (currentItemIds.has(String(item.itemId))) {
                             conflicts.push(`${item.itemId} (in ${ship.manifest_id})`);
@@ -3224,10 +3630,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const newStatus = pos ? 'In Transit' : (c.status === 'In Transit' ? 'Packed' : c.status);
                     const cleanDesc = (c.description || '').replace(/POS:\d+,\d+,\d+/, '').trim();
                     const finalDesc = pos ? `${cleanDesc} POS:${Math.round(pos.x)},${Math.round(pos.y)},${pos.r}`.trim() : cleanDesc;
-                    const { error } = await supabase.from('logistics').update({ 
-                        status: newStatus, 
-                        description: finalDesc, 
-                        updated_at: new Date().toISOString() 
+                    const { error } = await supabase.from('logistics').update({
+                        status: newStatus,
+                        description: finalDesc,
+                        updated_at: new Date().toISOString()
                     }).eq('id', c.id);
                     if (error) throw error;
                     if (db) { const lDoc = await db.logistics.findOne({ selector: { id: c.id } }).exec(); if (lDoc) await lDoc.patch({ status: newStatus, description: finalDesc }); }
@@ -3235,7 +3641,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 onRefresh(); setCratesVersion(v => v + 1);
             }
 
-            const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+            const manifestId = `TRK-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
             const ts = new Date().toLocaleString();
 
             // Calculate stats locally to avoid stale state
@@ -3251,7 +3657,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const pos = positions[c.id];
                     const { label, subtitle, vendorList } = getCrateDisplayName(c, allCrates, allInventory, truckNumbering[c.id]);
                     const crateColor = (vendors as any)[vendorList[0]]?.color || '#6b7280';
-                    
+
                     return {
                         id: c.id,
                         label,
@@ -3272,7 +3678,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
                             const tagId = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
                             const vP = Object.keys(vendors).find(k => tagId.toUpperCase().startsWith(k)) || 'OTHER';
-                            
+
                             return {
                                 itemId: tagId,
                                 vendorPrefix: vP,
@@ -3330,10 +3736,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
             toast.success(`Shipment ${manifestId} synchronized`, { id: tid, icon: '🚚', duration: 10000 });
             // Wizard stays open to show the public link
-        } catch (err: any) { 
-            toast.error(err.message || 'Synchronization failed', { id: tid }); 
-        } finally { 
-            setIsSaving(false); 
+        } catch (err: any) {
+            toast.error(err.message || 'Synchronization failed', { id: tid });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -3378,7 +3784,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
     const handleDeleteShipment = async (manifest_id: string) => {
         if (!confirm('Are you sure you want to permanently delete this shipment record? This action cannot be undone.')) return;
-        
+
         const tid = toast.loading('Deleting shipment record...');
         try {
             const { error } = await supabase
@@ -3395,16 +3801,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     };
 
-    const canvasRef = useRef<HTMLDivElement>(null);
-    const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+    // Touch pinch handling for touchscreen
     useEffect(() => {
         const el = canvasRef.current;
         if (!el) return;
         const onTouchStart = (e: TouchEvent) => {
             if (e.touches.length === 2) {
+                isPinchingRef.current = true;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
-                pinchRef.current = { dist: Math.hypot(dx, dy), zoom };
+                pinchRef.current = { dist: Math.hypot(dx, dy), zoom: zoomRef.current };
             }
         };
         const onTouchMove = (e: TouchEvent) => {
@@ -3414,396 +3820,320 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const newDist = Math.hypot(dx, dy);
                 const scale = newDist / pinchRef.current.dist;
-                setZoom(Math.max(0.2, Math.min(3, pinchRef.current.zoom * scale)));
+                setZoom(Math.max(0.1, Math.min(5, pinchRef.current.zoom * scale)));
             }
         };
-        const onTouchEnd = () => { pinchRef.current = null; };
-        const onWheel = (e: WheelEvent) => {
-            if (e.ctrlKey) {
-                e.preventDefault();
-                setZoom(z => Math.max(0.1, Math.min(4, z - e.deltaY * 0.001 * z)));
-            }
+        const onTouchEnd = () => { 
+            isPinchingRef.current = false;
+            pinchRef.current = null; 
         };
         el.addEventListener('touchstart', onTouchStart, { passive: true });
         el.addEventListener('touchmove', onTouchMove, { passive: false });
         el.addEventListener('touchend', onTouchEnd);
-        el.addEventListener('wheel', onWheel, { passive: false });
         return () => {
             el.removeEventListener('touchstart', onTouchStart);
             el.removeEventListener('touchmove', onTouchMove);
             el.removeEventListener('touchend', onTouchEnd);
-            el.removeEventListener('wheel', onWheel);
         };
-    }, [zoom]);
+    }, []);
+
+
 
     return (
-        <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#09090b] select-none">
-            {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
-            <div className="absolute top-0 left-0 right-0 z-[40] p-6 mt-16 pointer-events-none">
-                <div 
-                    className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
-                    onWheel={e => e.stopPropagation()}
-                    onClick={e => e.stopPropagation()}
-                >
-                {/* Bar 0: Main Hub Header (Global Toggle) */}
-                <div className={`flex items-center justify-end px-6 transition-all duration-500 ${isCompact ? 'py-0' : 'py-1'}`}>
-                    <button 
-                        onClick={() => setIsCompact(!isCompact)}
-                        className={`transition-all duration-500 hover:scale-110 active:scale-95 ${isCompact ? 'p-1 text-white/40 hover:text-white' : 'p-2 text-white/20 hover:text-white hover:bg-white/5 rounded-full'}`}
-                        title={isCompact ? 'Standard View' : 'Compact View'}
-                    >
-                        <LayoutGrid size={isCompact ? 10 : 16} />
-                    </button>
+        <>
+            <div className="flex flex-col h-screen overflow-hidden text-white relative bg-[#050505]" style={{ overscrollBehavior: 'none' }} onClick={() => { setSelectedId(null); setIsPanelOpen(false); }}>
+                
+                {/* ── AMBIENT GLASS BACKGROUND ── */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--main-color)]/10 blur-[150px] animate-pulse" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[150px]" />
                 </div>
 
-                {/* Bar 1: Primary Selector (Crates or Deployed) */}
-                <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-3'}`}>
-                    <button 
-                        onClick={() => setTopBarState(topBarState === 'crates' ? 'trailers' : 'crates')}
-                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
-                        title={topBarState === 'crates' ? 'Switch to Deployed' : 'Switch to Crates'}
-                    >
-                        {topBarState === 'crates' ? (
-                            <Box size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
-                        ) : (
-                            <History size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
-                        )}
-                    </button>
+                {/* ── TOP ACTION BAR ── */}
+                <div className="h-24 shrink-0 border-b border-white/5 flex items-center justify-between px-8 bg-black/20 backdrop-blur-3xl z-[100] relative">
+                    <div className="flex items-center gap-8">
+                        <button 
+                            onClick={() => setUniversalView('logistics')}
+                            className="flex items-center gap-3 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white hover:bg-white/5 transition-all group"
+                        >
+                            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> BACK
+                        </button>
 
-                    <div className={`flex-1 overflow-x-auto custom-scrollbar flex items-center gap-6 no-scrollbar px-2 ${isCompact ? 'py-0' : 'py-2'}`}>
-                        {topBarState === 'crates' ? (
-                            <>
-                                {dockCrates.length === 0 ? (
-                                    <div className="flex items-center gap-3 px-6 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-white/20">
-                                        <CheckCircle2 size={16} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">Manifest Clean</span>
-                                    </div>
-                                ) : (
-                                    dockCrates.map(c => (
-                                        <CompactDockCard 
-                                            key={c.id} 
-                                            crate={c} 
-                                            allCrates={allCrates} 
-                                            allInventory={allInventory} 
-                                            onLoad={() => handleLoad(c.id)} 
-                                            onNest={() => setNestingBoxId(c.id)} 
-                                            isCompact={isCompact}
-                                        />
-                                    ))
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                {loadingShipments ? (
-                                    <div className="flex items-center gap-3 px-6 py-2">
-                                        <Loader2 size={16} className="animate-spin text-emerald-400" />
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Loading...</span>
-                                    </div>
-                                ) : recentShipments.length === 0 ? (
-                                    <div className="flex items-center gap-3 px-6 py-2 text-white/10">
-                                        <AlertCircle size={16} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Records</span>
-                                    </div>
-                                ) : (
-                                    recentShipments.map(s => (
-                                        <DeployedTrailerCard 
-                                            key={s.manifest_id} 
-                                            shipment={s} 
-                                            onRecall={() => handleRecall(s)} 
-                                            onDelete={() => handleDeleteShipment(s.manifest_id)}
-                                        />
-                                    ))
-                                )}
-                            </>
-                        )}
-                    </div>
-                    
-                </div>
+                        <div className="h-10 w-px bg-white/5" />
 
-                {/* Quick Actions Bar (Selected Item) */}
-                {selectedId && (
-                    <div className={`flex items-center gap-4 px-6 bg-white/[0.03] border-b border-white/5 animate-in slide-in-from-top duration-500 backdrop-blur-2xl ${isCompact ? 'py-1' : 'py-3'}`}>
-                        <div className={`flex items-center gap-3 shrink-0 pr-6 border-r border-white/10 ${isCompact ? 'gap-2' : 'gap-3'}`}>
-                            <div className={`rounded-xl flex items-center justify-center shadow-lg transition-all ${isCompact ? 'w-6 h-6' : 'w-8 h-8'}`} style={{ backgroundColor: 'var(--main-color)' }}>
-                                <Plus size={isCompact ? 12 : 14} className="text-black" />
+                        <div className="flex items-center gap-10">
+                            <div className="flex flex-col">
+                                <span className="text-[14px] font-black text-white tracking-tighter leading-none">{truckCrates.length}</span>
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">UNITS</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className={`font-black uppercase text-white leading-none ${isCompact ? 'text-[8px] tracking-[0.2em]' : 'text-[10px] tracking-[0.3em]'}`}>Modifier Hub</span>
-                                <span className={`font-bold text-white/30 uppercase tracking-widest mt-0.5 ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>
-                                    {(() => {
-                                        const sel = allCrates.find(c => c.id === selectedId) || allInventory.find(i => String(i.row) === selectedId);
-                                        if (!sel) return 'Unit Selected';
-                                        if ('type' in sel) {
-                                            const { label } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
-                                            return label;
-                                        }
-                                        return sel.data?.shape || 'Loose Artifact';
-                                    })()}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button 
-                                onClick={() => handleRotate(selectedId)}
-                                className={`flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                            >
-                                <RotateCcw size={isCompact ? 12 : 14} /> Transform
-                            </button>
-                            <button 
-                                onClick={() => handleUnload(selectedId)}
-                                className={`flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                            >
-                                <Trash2 size={isCompact ? 12 : 14} /> Eject
-                            </button>
-                            {(() => {
-                                const sel = allCrates.find(c => c.id === selectedId);
-                                return sel?.type === 'cardboard' ? (
-                                    <button 
-                                        onClick={() => setNestingBoxId(selectedId)}
-                                        className={`flex items-center gap-2 rounded-xl text-black hover:bg-white transition-all font-black uppercase tracking-widest shadow-lg ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                                        style={{ backgroundColor: 'var(--main-color)' }}
-                                    >
-                                        <Box size={isCompact ? 12 : 14} /> Nest Unit
-                                    </button>
-                                ) : null;
-                            })()}
-                        </div>
-                        <div className="flex-1" />
-                        <button onClick={() => setSelectedId(null)} className="p-2 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded-xl"><X size={isCompact ? 14 : 18} /></button>
-                    </div>
-                )}
-
-                {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
-                <div className={`px-10 transition-all duration-500 flex items-center justify-between backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
-                    <div className={`flex items-center justify-between w-full ${isCompact ? 'gap-12' : 'gap-4'}`}>
-                        {/* Section 1: Specs & Units */}
-                        <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-3' : 'gap-10'}`}>
-                            {!isCompact && <h2 className="font-black uppercase tracking-tighter text-white leading-none text-6xl">53&apos;</h2>}
-                            <div className="flex flex-col gap-1">
-                                {isCompact ? (
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">53FT</span>
-                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}×{TRUCK_W_CM}</span>
-                                        <div className="w-1 h-1 rounded-full bg-white/10" />
-                                        <span className="font-black tracking-tighter text-white text-[14px] leading-none">{truckCrates.length}</span>
-                                        <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">UNITS</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span className="font-mono font-black text-white/80 uppercase tracking-[0.4em] leading-none text-[12px]">{TRUCK_L_CM} × {TRUCK_W_CM}</span>
-                                        <div className="flex items-baseline gap-2 leading-none mt-1">
-                                            <span className="font-black tracking-tighter text-white text-4xl">{truckCrates.length}</span>
-                                            <span className="text-white/60 font-black uppercase tracking-widest text-[10px]">/ {allCrates.length} UNITS</span>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        
-                        {/* Section 2: Payload */}
-                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-3' : 'px-8 gap-6 max-w-[320px] flex-1'}`}>
-                            <Gauge size={isCompact ? 12 : 24} style={{ color: panelStats.statusColor }} className="opacity-60 shrink-0" />
-                            <div className={`flex ${isCompact ? 'items-center gap-2' : 'flex-col w-full gap-1.5'}`}>
-                                <div className="flex items-baseline gap-1.5 leading-none">
-                                    <span className={`font-black tracking-tighter transition-all duration-500 ${isCompact ? 'text-[15px]' : 'text-4xl'}`} style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
-                                    <span className={`text-white/40 font-black uppercase tracking-widest transition-all ${isCompact ? 'text-[7px]' : 'text-[10px]'}`}>KG</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[14px] font-black text-white tracking-tighter leading-none">{Math.round(totalWeight)}</span>
+                                    <span className="text-[10px] font-black text-white/20">KG</span>
                                 </div>
-                                {isCompact ? (
-                                    <span className="font-black text-white/60 uppercase tracking-tighter text-[9px]">{panelStats.payloadPct}%</span>
-                                ) : (
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 bg-white/20 rounded-full overflow-hidden h-1.5">
-                                            <div className="h-full transition-all duration-1000" style={{ width: `${panelStats.payloadPct}%`, backgroundColor: panelStats.statusColor }} />
-                                        </div>
-                                        <span className="font-black text-white/80 uppercase tracking-tighter text-[10px]">{panelStats.payloadPct}%</span>
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">WEIGHT</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[14px] font-black tracking-tighter leading-none" style={{ color: panelStats.statusColor }}>{floorPct}%</span>
+                                    <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full transition-all duration-1000" style={{ width: `${floorPct}%`, backgroundColor: panelStats.statusColor }} />
                                     </div>
-                                )}
+                                </div>
+                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mt-2">FILL</span>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Section 3: Space Metrics */}
-                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6' : 'px-8 gap-12'}`}>
-                            <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
-                                <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{floorPct}%</span>
-                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Floor</span>
-                            </div>
-                            <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
-                                <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{panelStats.volPct}%</span>
-                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Vol</span>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 p-1 bg-black/40 border border-white/5 rounded-2xl mr-4">
+                            <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all rounded-xl"><ZoomOut size={16} /></button>
+                            <div className="text-[10px] font-black text-white/40 w-12 text-center uppercase tracking-widest">{Math.round(zoom * 100)}%</div>
+                            <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="w-10 h-10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/5 transition-all rounded-xl"><ZoomIn size={16} /></button>
                         </div>
 
-                        {/* Section 4: Status */}
-                        <div className={`flex flex-col border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 min-w-[70px]' : 'px-8 min-w-[180px] gap-1'}`}>
-                            <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-3xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
-                            {!isCompact && <span className="font-black text-white/60 uppercase tracking-widest leading-none text-[9px] mt-1.5">{panelStats.remaining.toLocaleString()} KG FREE</span>}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-            {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
-            <div 
-                ref={canvasRef}
-                className="flex-1 overflow-auto custom-scrollbar relative pt-[160px]"
-                style={{ touchAction: 'none' }}
-                onMouseDown={handleMouseDown}
-                onClick={() => setSelectedId(null)}
-            >
-                <div className="relative min-h-full flex flex-col items-center">
-                {viewMode === 'side' ? (
-                    <div className="w-full h-[600px] mt-8">
-                        <SideView
-                            truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
-                            allCrates={allCrates} allInventory={allInventory}
-                            zoom={zoom}
-                            selectedId={selectedId}
-                            onSelect={setSelectedId}
-                            onUpdateXZ={handleUpdateXZ}
-                            onStack={handleStack}
-                            onUnload={handleUnload}
-                        />
-                    </div>
-                ) : (
-                <div className="py-[100vh] px-[100vw] flex flex-col items-center" style={{ minWidth: TRUCK_L_CM * zoom + 2000 }}>
-                    {/* Direction labels */}
-                    <div className="flex items-center gap-3 mb-6 w-full max-w-[1200px]">
-                        <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Rear Loading Zone</span>
-                        <div className="flex-1 h-px bg-white/10" />
-                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{TRUCK_L_CM}cm Payload Length</span>
-                        <div className="flex-1 h-px bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Cab Chassis</span>
-                        <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />
-                    </div>
-                    
-                    <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }} className="shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
-                        <div
-                            className="absolute top-0 left-0 border border-white/10 backdrop-blur-2xl bg-white/[0.03]"
-                            style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-                            onClick={e => e.stopPropagation()}
+                        <button 
+                            onClick={() => setViewMode(prev => prev === 'side' ? 'top' : 'side')}
+                            className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 text-white/40 hover:text-white hover:bg-white/5 transition-all flex items-center gap-3"
                         >
-                            <CmGrid />
-                            {[0.72, 0.82, 0.90].map(frac => (
-                                <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
-                                    <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/20">{Math.round(frac * TRUCK_L_CM)}cm</span>
-                                </div>
-                            ))}
-                            {truckCrates.filter(c => !!positions[c.id]).map(c => {
-                                const pos = positions[c.id];
-                                if (!pos) return null;
-                                return (
-                                    <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
-                                        pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
-                                        onSelect={() => setSelectedId(c.id)}
-                                        onRotate={() => handleRotate(c.id)}
-                                        onUnload={() => handleUnload(c.id)}
-                                        onNest={() => setNestingBoxId(c.id)} />
-                                );
-                            })}
-                        </div>
+                            {viewMode === 'side' ? <Maximize size={16} /> : <AlignLeft size={16} />} 
+                            {viewMode === 'side' ? 'Top View' : 'Side View'}
+                        </button>
+
+                        <button 
+                            onClick={() => setIsPanelOpen(true)}
+                            className="w-12 h-12 rounded-xl bg-white/5 border border-white/5 text-white/40 hover:text-[var(--main-color)] hover:border-[var(--main-color)]/30 transition-all flex items-center justify-center"
+                            title="Open Inventory Hub"
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
+
+                        <div className="w-px h-8 bg-white/5 mx-2" />
+
+                        <button 
+                            onClick={handleClearTrailer}
+                            className="px-6 h-12 rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-500/10 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center gap-3"
+                        >
+                            <Trash2 size={16} /> Flush
+                        </button>
                     </div>
                 </div>
+
+            {/* ── MAIN VIEWPORT (FULL SCREEN) ── */}
+            <div
+                ref={canvasRef}
+                className="absolute inset-0 overflow-hidden z-10"
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                onPointerLeave={handleCanvasPointerUp}
+                style={{ 
+                    backgroundColor: 'transparent', 
+                    touchAction: 'none', 
+                    overscrollBehavior: 'none',
+                    cursor: isDragging ? 'grabbing' : (isSpacePressed ? 'grab' : 'default')
+                }}
+            >
+    {/* ══ ACTIVE SELECTED INVENTORY PANEL ══ */}
+    {isPanelOpen && (
+        <CrateInventoryPanel
+            crate={allCrates.find(c => c.id === selectedId) || null}
+            items={selectedId ? getItemsFromCrate(allCrates.find(c => c.id === selectedId), allInventory) : []}
+            onClear={() => setIsPanelOpen(false)}
+            isExpanded={isExpanded}
+            allCrates={allCrates}
+            allInventory={allInventory}
+            truckSeq={selectedId ? truckNumbering[selectedId] : undefined}
+            dockCrates={dockCrates}
+            recentShipments={recentShipments}
+            onRotate={handleRotate}
+            onUnload={handleUnload}
+            onNest={setNestingBoxId}
+            onStack={handleStack}
+            onClearTrailer={handleClearTrailer}
+            onZoomIn={() => setZoom(z => Math.min(3, z + 0.15))}
+            onZoomOut={() => setZoom(z => Math.max(0.2, z - 0.15))}
+            onToggleView={() => setViewMode(prev => prev === 'side' ? 'top' : 'side')}
+            onToggleInventory={() => setTopBarState(prev => prev === 'crates' ? 'trailers' : 'crates')}
+            onLoadCrate={handleLoad}
+            onRecallShipment={handleRecall}
+            onDeleteShipment={handleDeleteShipment}
+            onMove={(dir) => {
+                if (!selectedId) return;
+                const pos = positions[selectedId];
+                if (!pos) return;
+                const sel = allCrates.find(c => c.id === selectedId);
+                if (!sel) return;
+                const h = sel.height_cm || 100;
+                const step = 50;
+                switch (dir) {
+                    case 'up': handleUpdateXZ(selectedId, pos.x, (pos.z || 0) + h); break;
+                    case 'down': handleUpdateXZ(selectedId, pos.x, Math.max(0, (pos.z || 0) - h)); break;
+                    case 'front': handleUpdateXZ(selectedId, pos.x + step, pos.z || 0); break;
+                    case 'rear': handleUpdateXZ(selectedId, Math.max(0, pos.x - step), pos.z || 0); break;
+                }
+            }}
+            viewMode={viewMode}
+            topBarState={topBarState}
+            zoom={zoom}
+            stats={{
+                units: truckCrates.length,
+                weight: totalWeight,
+                fill: floorPct,
+                statusColor: panelStats.statusColor
+            }}
+        />
+    )}
+
+    {/* Shared Pan/Zoom System for Workspace */}
+    <div 
+        className="w-full h-full relative"
+        style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            transition: (isPanningRef.current || isWheelingRef.current || isPinchingRef.current) ? 'none' : 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+    >
+        {viewMode === 'side' ? (
+            <SideView
+                truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
+                allCrates={allCrates} allInventory={allInventory}
+                zoom={1} // Neutralized - parent handles zoom
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onUpdateXZ={handleUpdateXZ}
+                onStack={handleStack}
+                onUnload={handleUnload}
+                pan={{ x: 0, y: 0 }} // Neutralized - parent handles pan
+                isDragging={isDragging}
+                isSpacePressed={isSpacePressed}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+            />
+        ) : (
+            <div className="w-full h-full relative">
+                {/* Direction labels (Absolute Overlays) */}
+                {!isVerticalMap && (
+                    <div className="absolute top-4 left-8 right-8 flex items-center justify-between pointer-events-none z-10 opacity-30">
+                        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white">Rear Door</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white">Cab Front</span>
+                    </div>
                 )}
+                
+                <div
+                    className="absolute top-0 left-0 border border-white/15"
+                    style={{ 
+                        width: TRUCK_L_CM, 
+                        height: TRUCK_W_CM, 
+                        transform: `${isVerticalMap ? 'rotate(90deg) translate(0, -100%)' : ''}`, 
+                        transformOrigin: 'top left', 
+                        backgroundColor: 'rgba(255,255,255,0.025)',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                    onMouseDown={e => e.stopPropagation()}
+                >
+                    <CmGrid />
+                    {/* Axle markers at 72%, 82%, 90% of truck length (vertical lines) */}
+                    {[0.72, 0.82, 0.90].map(frac => (
+                        <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/15 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
+                            <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
+                        </div>
+                    ))}
+                    {truckCrates.filter(c => !!positions[c.id]).map(c => {
+                        const pos = positions[c.id];
+                        if (!pos) return null;
+                        return (
+                            <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
+                                pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
+                                onSelect={() => setSelectedId(c.id)}
+                                onUpdatePos={(x, y) => handleUpdatePos(c.id, x, y)}
+                                onRotate={() => handleRotate(c.id)}
+                                onUnload={() => handleUnload(c.id)}
+                                onNest={() => setNestingBoxId(c.id)} />
+                        );
+                    })}
                 </div>
             </div>
+        )}
+    </div>
+        </div>
+    </div>
 
-            <style>{`
+
+    <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 99px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; border: 1px solid rgba(255,255,255,0.05); }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
                 .custom-scrollbar::-webkit-scrollbar-corner { background: transparent; }
             `}</style>
-
-            {showSaveDraft && (
-                <SaveDraftModal
-                    crateCount={truckCrates.length}
-                    onSave={handleSaveDraft}
-                    onExport={handleExportDraft}
-                    onClose={() => setShowSaveDraft(false)}
-                />
-            )}
-            {showOpenDraft && (
-                <OpenDraftModal
-                    onLoad={handleLoadDraft}
-                    onClose={() => setShowOpenDraft(false)}
-                />
-            )}
-            {showExportModal && (
-                <TruckExportModal
-                    truckCrates={truckCrates}
-                    allCrates={allCrates}
-                    allInventory={allInventory}
-                    positions={positions}
-                    truckNumbering={truckNumbering}
-                    totalWeight={totalWeight}
-                    panelStats={panelStats}
-                    floorPct={floorPct}
-                    onClose={() => setShowExportModal(false)}
-                />
-            )}
-            {showReadyWizard && (
-                <ReadyTruckWizard
-                    truckCrates={truckCrates}
-                    allCrates={allCrates}
-                    allInventory={allInventory}
-                    positions={positions}
-                    truckNumbering={truckNumbering}
-                    totalWeight={totalWeight}
-                    panelStats={panelStats}
-                    floorPct={floorPct}
-                    fields={readyTruckFields}
-                    onFieldChange={setReadyTruckFields}
-                    onConfirm={() => handleReadyTruck()}
-                    onSaveDraft={() => setShowSaveDraft(true)}
-                    onOpenDraft={() => setShowOpenDraft(true)}
-                    onClose={() => setShowReadyWizard(false)}
-                    isBusy={isSaving}
-                    publicUrl={publicUrl}
-                />
-            )}
-            {nestingBoxId && (
-                <NestingTargetModal
-                    boxId={nestingBoxId}
-                    allCrates={allCrates}
-                    onSelect={(targetId) => handleNest(nestingBoxId, targetId)}
-                    onClose={() => setNestingBoxId(null)}
-                />
-            )}
-
-            {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
-            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
-                <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                    <button
-                        onClick={() => setViewMode(v => v === 'top' ? 'side' : 'top')}
-                        title={viewMode === 'top' ? 'Perspective View' : 'Overhead View'}
-                        className={`p-3 rounded-xl transition-all duration-300 ${viewMode === 'side' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                        style={viewMode === 'side' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
-                    >
-                        {viewMode === 'top' ? <Layers size={22} /> : <Grid3x3 size={22} />}
-                    </button>
-                    
-                    <div className="w-px h-8 bg-white/10 mx-2" />
-                    
-                    <div className="flex items-center gap-1">
-                        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom Out"><ZoomOut size={22} /></button>
-                        <button onClick={() => setZoom(1.0)} className="px-4 text-[13px] font-black text-white hover:scale-110 transition-all tracking-tighter">{Math.round(zoom * 100)}%</button>
-                        <button onClick={() => setZoom(z => Math.min(4, z + 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom In"><ZoomIn size={22} /></button>
-                    </div>
-
-                    <div className="w-px h-8 bg-white/10 mx-2" />
-
-                    <button 
-                        onClick={handleClearTrailer}
-                        className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-                        title="Flush Payload"
-                    >
-                        <Trash2 size={22} />
-                    </button>
-                </div>
-            </div>
-        </div>
+{
+    showSaveDraft && (
+        <SaveDraftModal
+            crateCount={truckCrates.length}
+            onSave={handleSaveDraft}
+            onExport={handleExportDraft}
+            onClose={() => setShowSaveDraft(false)}
+        />
+    )
+}
+{
+    showOpenDraft && (
+        <OpenDraftModal
+            onLoad={handleLoadDraft}
+            onClose={() => setShowOpenDraft(false)}
+        />
+    )
+}
+{
+    showExportModal && (
+        <TruckExportModal
+            truckCrates={truckCrates}
+            allCrates={allCrates}
+            allInventory={allInventory}
+            positions={positions}
+            truckNumbering={truckNumbering}
+            totalWeight={totalWeight}
+            panelStats={panelStats}
+            floorPct={floorPct}
+            onClose={() => setShowExportModal(false)}
+        />
+    )
+}
+{
+    showReadyWizard && (
+        <ReadyTruckWizard
+            truckCrates={truckCrates}
+            allCrates={allCrates}
+            allInventory={allInventory}
+            positions={positions}
+            truckNumbering={truckNumbering}
+            totalWeight={totalWeight}
+            panelStats={panelStats}
+            floorPct={floorPct}
+            fields={readyTruckFields}
+            onFieldChange={setReadyTruckFields}
+            onConfirm={() => handleReadyTruck()}
+            onSaveDraft={() => setShowSaveDraft(true)}
+            onOpenDraft={() => setShowOpenDraft(true)}
+            onClose={() => setShowReadyWizard(false)}
+            isBusy={isSaving}
+            publicUrl={publicUrl}
+        />
+    )
+}
+{
+    nestingBoxId && (
+        <NestingTargetModal
+            boxId={nestingBoxId}
+            allCrates={allCrates}
+            onSelect={(targetId) => handleNest(nestingBoxId, targetId)}
+            onClose={() => setNestingBoxId(null)}
+        />
+    )
+}
+            {/* Studio Tools & Context are now integrated into CrateInventoryPanel */}
+        </>
     );
 };

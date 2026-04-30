@@ -10,7 +10,7 @@ import { SCRIPT_URL } from '../../lib/consts';
 import { WelcomePage } from '../auth/WelcomePage';
 import { TagView } from '../logistics/TagView';
 import { ViewerView } from '../viewer/ViewerView';
-import { SentTruckViewer } from '../logistics/SentTruckViewer';
+import SentTruckViewer from '../logistics/SentTruckViewer';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
 import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
@@ -214,7 +214,18 @@ export default function App() {
       {view === 'tag' && tagId ? (
          <TagView tagId={tagId} onBack={() => { setView('viewer'); setTagId(null); }} />
       ) : view === 'truck' && sentTruckId ? (
-         <SentTruckViewer />
+         <div className="fixed inset-0 z-[10000] bg-white flex flex-col">
+            <SentTruckViewer />
+            <button 
+              onClick={() => { setView('app'); setSentTruckId(null); }}
+              className="absolute top-8 right-8 p-4 rounded-full bg-black/5 hover:bg-black/10 transition-all text-black/40 hover:text-black z-[10001] group"
+              title="Close 3D Viewer"
+            >
+              <svg className="w-8 h-8 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+         </div>
       ) : view === 'viewer' ? (
          <ViewerView onOpenArtifact={(id) => { setTagId(id); setView('tag'); }} />
       ) : (
