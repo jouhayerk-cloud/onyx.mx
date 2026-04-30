@@ -3988,7 +3988,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
             <div 
                 ref={canvasRef}
-                className="flex-1 overflow-auto custom-scrollbar relative bg-[#050505]"
+                className="flex-1 overflow-auto custom-scrollbar relative bg-white/[0.02] backdrop-blur-3xl"
                 style={{ touchAction: 'none' }}
                 onMouseDown={handleMouseDown}
                 onClick={() => {
