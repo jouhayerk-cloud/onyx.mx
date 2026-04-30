@@ -2783,6 +2783,44 @@ const ReadyTruckWizard: React.FC<{
     );
 };
 
+const SharePopup: React.FC<{ url: string; onClose: () => void }> = ({ url, onClose }) => {
+    return (
+        <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl animate-in fade-in duration-700 overflow-hidden flex flex-col">
+            <div className="flex-1 w-full bg-black relative">
+                <iframe 
+                    src={url} 
+                    className="w-full h-full border-none" 
+                    title="Onyx 3D Visualizer"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                />
+                
+                {/* Floating Immersive Actions */}
+                <div className="absolute top-10 right-10 flex items-center gap-6 animate-in slide-in-from-top-10 duration-1000">
+                    <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(url);
+                            toast.success('Public URL copied to clipboard');
+                        }}
+                        className="px-10 py-5 rounded-[2rem] bg-white text-black font-black text-[12px] tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-4"
+                    >
+                        <Share2 size={22} /> COPY MANIFESTO LINK
+                    </button>
+                    <button onClick={onClose} className="w-16 h-16 rounded-full bg-black/40 border border-white/10 backdrop-blur-2xl flex items-center justify-center text-white/60 hover:text-white hover:bg-black/60 transition-all group shadow-2xl">
+                        <X size={36} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                    </button>
+                </div>
+                
+                {/* HUD Overlay for the iframe */}
+                <div className="absolute bottom-10 left-10 p-8 rounded-[2rem] border border-white/5 bg-black/40 backdrop-blur-2xl flex flex-col gap-2 pointer-events-none">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.5em]">Network Topology</span>
+                    <span className="text-[14px] font-black text-white/80 uppercase tracking-widest">{url.split('?')[0]}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Save Draft Modal
 interface SaveDraftProps {
     crateCount: number;
@@ -2972,6 +3010,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
+    const [showSharePopup, setShowSharePopup] = useState(false);
 
     // Panning state
     const [isPanning, setIsPanning] = useState(false);
@@ -3894,7 +3933,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
                         {/* Section 4: Status */}
                         <div className={`flex flex-col border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 min-w-[70px]' : 'px-5 flex-1 min-w-0 gap-1'}`}>
-                            <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-2xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                            <div className="flex items-center gap-3">
+                                <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-2xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                                {recalledShipment && (
+                                    <button 
+                                        onClick={() => setShowSharePopup(true)}
+                                        className="text-emerald-400 hover:text-emerald-300 hover:scale-125 active:scale-95 transition-all animate-in zoom-in duration-1000 p-2"
+                                        title="Share 3D Visualizer"
+                                    >
+                                        <Share2 size={26} strokeWidth={2.5} />
+                                    </button>
+                                )}
+                            </div>
                             {!isCompact && <span className="font-black text-white/80 uppercase tracking-widest leading-none text-[7px] mt-1">{panelStats.remaining.toLocaleString()} KG FREE</span>}
                         </div>
 
@@ -4142,6 +4192,13 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     allCrates={allCrates}
                     onSelect={(targetId) => handleNest(nestingBoxId, targetId)}
                     onClose={() => setNestingBoxId(null)}
+                />
+            )}
+
+            {showSharePopup && recalledShipment && (
+                <SharePopup 
+                    url={`${window.location.origin}${window.location.pathname}?truckid=${recalledShipment.manifest_id}`}
+                    onClose={() => setShowSharePopup(false)}
                 />
             )}
 
