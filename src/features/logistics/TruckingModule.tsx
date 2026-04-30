@@ -17,7 +17,7 @@ import {
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
     truckShowExportModalAtom, truckShowReadyWizardAtom,
     truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom,
-    sentTruckIdAtom, universalViewAtom
+    sentTruckIdAtom, universalViewAtom, truckShowPanelsAtom
 } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
@@ -535,7 +535,7 @@ const SideView: React.FC<{
 
     return (
         <div 
-            className="w-full h-full bg-black/20 backdrop-blur-2xl border-t border-white/5 shadow-inner relative"
+            className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative"
         >
             <div className="py-[40vh] px-[40vw]" style={{ minWidth: SVG_W * zoom + 800, minHeight: SVG_H * zoom + 800 }}>
                 {/* Header bar */}
@@ -2737,6 +2737,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
+    const showPanels = useAtomValue(truckShowPanelsAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
@@ -3437,24 +3438,16 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     }, [zoom]);
 
     return (
-        <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#09090b] select-none">
+        <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
             {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
+            {showPanels && (
             <div className="absolute top-0 left-0 right-0 z-[40] p-6 mt-16 pointer-events-none">
                 <div 
                     className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
                     onWheel={e => e.stopPropagation()}
                     onClick={e => e.stopPropagation()}
                 >
-                {/* Bar 0: Main Hub Header (Global Toggle) */}
-                <div className={`flex items-center justify-end px-6 transition-all duration-500 ${isCompact ? 'py-0' : 'py-1'}`}>
-                    <button 
-                        onClick={() => setIsCompact(!isCompact)}
-                        className={`transition-all duration-500 hover:scale-110 active:scale-95 ${isCompact ? 'p-1 text-white/40 hover:text-white' : 'p-2 text-white/20 hover:text-white hover:bg-white/5 rounded-full'}`}
-                        title={isCompact ? 'Standard View' : 'Compact View'}
-                    >
-                        <LayoutGrid size={isCompact ? 10 : 16} />
-                    </button>
-                </div>
+
 
                 {/* Bar 1: Primary Selector (Crates or Deployed) */}
                 <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-3'}`}>
@@ -3517,61 +3510,9 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             </>
                         )}
                     </div>
-                    
                 </div>
 
-                {/* Quick Actions Bar (Selected Item) */}
-                {selectedId && (
-                    <div className={`flex items-center gap-4 px-6 bg-white/[0.03] border-b border-white/5 animate-in slide-in-from-top duration-500 backdrop-blur-2xl ${isCompact ? 'py-1' : 'py-3'}`}>
-                        <div className={`flex items-center gap-3 shrink-0 pr-6 border-r border-white/10 ${isCompact ? 'gap-2' : 'gap-3'}`}>
-                            <div className={`rounded-xl flex items-center justify-center shadow-lg transition-all ${isCompact ? 'w-6 h-6' : 'w-8 h-8'}`} style={{ backgroundColor: 'var(--main-color)' }}>
-                                <Plus size={isCompact ? 12 : 14} className="text-black" />
-                            </div>
-                            <div className="flex flex-col">
-                                <span className={`font-black uppercase text-white leading-none ${isCompact ? 'text-[8px] tracking-[0.2em]' : 'text-[10px] tracking-[0.3em]'}`}>Modifier Hub</span>
-                                <span className={`font-bold text-white/30 uppercase tracking-widest mt-0.5 ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>
-                                    {(() => {
-                                        const sel = allCrates.find(c => c.id === selectedId) || allInventory.find(i => String(i.row) === selectedId);
-                                        if (!sel) return 'Unit Selected';
-                                        if ('type' in sel) {
-                                            const { label } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
-                                            return label;
-                                        }
-                                        return sel.data?.shape || 'Loose Artifact';
-                                    })()}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <button 
-                                onClick={() => handleRotate(selectedId)}
-                                className={`flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                            >
-                                <RotateCcw size={isCompact ? 12 : 14} /> Transform
-                            </button>
-                            <button 
-                                onClick={() => handleUnload(selectedId)}
-                                className={`flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                            >
-                                <Trash2 size={isCompact ? 12 : 14} /> Eject
-                            </button>
-                            {(() => {
-                                const sel = allCrates.find(c => c.id === selectedId);
-                                return sel?.type === 'cardboard' ? (
-                                    <button 
-                                        onClick={() => setNestingBoxId(selectedId)}
-                                        className={`flex items-center gap-2 rounded-xl text-black hover:bg-white transition-all font-black uppercase tracking-widest shadow-lg ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
-                                        style={{ backgroundColor: 'var(--main-color)' }}
-                                    >
-                                        <Box size={isCompact ? 12 : 14} /> Nest Unit
-                                    </button>
-                                ) : null;
-                            })()}
-                        </div>
-                        <div className="flex-1" />
-                        <button onClick={() => setSelectedId(null)} className="p-2 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded-xl"><X size={isCompact ? 14 : 18} /></button>
-                    </div>
-                )}
+
 
                 {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
                 <div className={`px-10 transition-all duration-500 flex items-center justify-between backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
@@ -3638,10 +3579,22 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-3xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
                             {!isCompact && <span className="font-black text-white/60 uppercase tracking-widest leading-none text-[9px] mt-1.5">{panelStats.remaining.toLocaleString()} KG FREE</span>}
                         </div>
+
+                        {/* Layout Toggle - Fixed Bottom Right of Hub */}
+                        <div className="flex items-center pl-6 border-l border-white/5 ml-auto">
+                            <button 
+                                onClick={() => setIsCompact(!isCompact)}
+                                className={`transition-all duration-500 hover:scale-110 active:scale-95 ${isCompact ? 'p-2 text-white/40 hover:text-white' : 'p-3 text-white/20 hover:text-white hover:bg-white/5 rounded-2xl'}`}
+                                title={isCompact ? 'Standard View' : 'Compact View'}
+                            >
+                                <LayoutGrid size={isCompact ? 16 : 24} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    )}
 
             {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
             <div 
@@ -3680,7 +3633,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     
                     <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }} className="shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
                         <div
-                            className="absolute top-0 left-0 border border-white/10 backdrop-blur-2xl bg-white/[0.03]"
+                            className="absolute top-0 left-0 border border-white/10 backdrop-blur-3xl bg-white/[0.04] shadow-inner rounded-sm"
                             style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
                             onClick={e => e.stopPropagation()}
                         >
@@ -3774,6 +3727,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             )}
 
             {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
+            {showPanels && (
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
@@ -3795,6 +3749,51 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
                     <div className="w-px h-8 bg-white/10 mx-2" />
 
+                    {selectedId && (
+                        <>
+                            <div className="flex items-center gap-1 bg-white/5 rounded-2xl px-2 py-1 border border-white/10 animate-in zoom-in duration-500 shadow-2xl backdrop-blur-3xl">
+                                <div className="flex flex-col items-center px-3 border-r border-white/10 mr-1 opacity-40">
+                                    <span className="text-[8px] font-black uppercase text-white tracking-[0.2em] leading-none">MOD</span>
+                                    <span className="text-[8px] font-black uppercase text-white tracking-[0.2em] leading-none mt-1">HUB</span>
+                                </div>
+                                <button 
+                                    onClick={() => handleRotate(selectedId)} 
+                                    className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" 
+                                    title="Transform (Rotate)"
+                                >
+                                    <RotateCcw size={22} />
+                                </button>
+                                <button 
+                                    onClick={() => handleUnload(selectedId)} 
+                                    className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all" 
+                                    title="Eject (Unload)"
+                                >
+                                    <Trash2 size={22} />
+                                </button>
+                                {(() => {
+                                    const sel = allCrates.find(c => c.id === selectedId);
+                                    return sel?.type === 'cardboard' ? (
+                                        <button 
+                                            onClick={() => setNestingBoxId(selectedId)} 
+                                            className="p-3 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all" 
+                                            title="Nest Unit"
+                                        >
+                                            <Box size={22} />
+                                        </button>
+                                    ) : null;
+                                })()}
+                                <button 
+                                    onClick={() => setSelectedId(null)} 
+                                    className="p-3 text-white/20 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1" 
+                                    title="Deselect"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="w-px h-8 bg-white/10 mx-2" />
+                        </>
+                    )}
+
                     <button 
                         onClick={handleClearTrailer}
                         className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
@@ -3804,6 +3803,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     </button>
                 </div>
             </div>
+            )}
         </div>
     );
 };

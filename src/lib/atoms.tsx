@@ -449,3 +449,4 @@ export const truckShowOpenDraftAtom = atom<boolean>(false);   // open Load Draft
 export const truckShowExportModalAtom = atom<boolean>(false); // open Exportation wizard
 export const truckShowReadyWizardAtom = atom<boolean>(false);   // open Ready Truck wizard
 export const truckTopBarStateAtom = atom<'crates' | 'trailers'>('crates'); // toggle between loading and history
+export const truckShowPanelsAtom = atom<boolean>(true); // SHOW or HIDE all controls panels

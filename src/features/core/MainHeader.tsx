@@ -77,11 +77,11 @@ import {
     truckReadyTriggerAtom,
     truckIsBusyAtom,
     truckViewModeAtom,
-    truckIsCompactAtom,
     truckShowSaveDraftAtom,
     truckShowOpenDraftAtom,
     truckShowExportModalAtom,
     truckShowReadyWizardAtom,
+    truckShowPanelsAtom,
     packingSelectedIdsAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
@@ -509,7 +509,7 @@ const LogisticsBar: React.FC = () => {
     const setTruckReady = useSetAtom(truckReadyTriggerAtom);
     const truckBusy = useAtomValue(truckIsBusyAtom);
     const [truckView, setTruckView] = useAtom(truckViewModeAtom);
-    const [truckCompact, setTruckCompact] = useAtom(truckIsCompactAtom);
+    const [showPanels, setShowPanels] = useAtom(truckShowPanelsAtom);
     const [showSaveDraft, setShowSaveDraft] = useAtom(truckShowSaveDraftAtom);
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
@@ -557,13 +557,13 @@ const LogisticsBar: React.FC = () => {
                     {subTab === 'shipping' && (
                         <>
                             <div className="w-px h-6 bg-white/5 mx-1" />
-                            {/* Compact toggle */}
+                            {/* Visibility toggle */}
                             <button
-                                onClick={() => setTruckCompact(c => !c)}
-                                title={truckCompact ? 'Expand panels' : 'Compact panels'}
+                                onClick={() => setShowPanels(s => !s)}
+                                title={showPanels ? 'Hide all panels' : 'Show all panels'}
                                 className="text-white/40 hover:text-white transition-colors cursor-pointer"
                             >
-                                {truckCompact ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
+                                {showPanels ? <PanelTopClose size={16} /> : <PanelTop size={16} />}
                             </button>
                             {/* Drafts */}
                             <button
