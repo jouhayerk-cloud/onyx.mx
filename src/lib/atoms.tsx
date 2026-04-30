@@ -366,11 +366,15 @@ export type InventoryArtifactConfig = {
   isOpen: boolean;
   itemIds: (string | number)[];
   title?: string;
+  viewMode?: 'modal' | 'sidebar';
+  displayMode?: 'list' | 'grid' | 'gallery';
 };
 export const inventoryArtifactConfigAtom = atom<InventoryArtifactConfig>({
   isOpen: false,
   itemIds: [],
   title: 'Inventory Artifact',
+  viewMode: 'modal',
+  displayMode: 'gallery'
 });
 
 // Payments Artifact Atom

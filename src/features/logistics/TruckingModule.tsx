@@ -5,7 +5,7 @@ import {
     ZoomIn, ZoomOut, Maximize2, Gauge, 
     CheckCircle2, AlertCircle, Clock, History,
     Package, Filter, Search, ArrowRight,
-    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List 
+    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Eye
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
@@ -17,7 +17,8 @@ import {
     truckShowSaveDraftAtom, truckShowOpenDraftAtom,
     truckShowExportModalAtom, truckShowReadyWizardAtom,
     truckTopBarStateAtom, exchangeRateAtom, isDummyModeAtom,
-    sentTruckIdAtom, universalViewAtom, truckShowPanelsAtom
+    sentTruckIdAtom, universalViewAtom, truckShowPanelsAtom,
+    inventoryArtifactConfigAtom
 } from '../../lib/atoms';
 import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
@@ -2970,6 +2971,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [showOpenDraft, setShowOpenDraft] = useAtom(truckShowOpenDraftAtom);
     const [showExportModal, setShowExportModal] = useAtom(truckShowExportModalAtom);
     const [showReadyWizard, setShowReadyWizard] = useAtom(truckShowReadyWizardAtom);
+    const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const showPanels = useAtomValue(truckShowPanelsAtom);
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
@@ -3118,6 +3120,28 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const dockBoxes = useMemo(() => dockCrates.filter(c => c.type === 'cardboard'), [dockCrates]);
     const totalWeight = useMemo(() => truckCrates.reduce((s, c) => s + computeCrateWeight(c, allInventory, allCrates), 0), [truckCrates, allInventory, allCrates]);
     const floorPct = useMemo(() => Math.min(100, Math.round(truckCrates.reduce((s, c) => s + c.width_cm * c.length_cm, 0) / (TRUCK_W_CM * TRUCK_L_CM) * 100)), [truckCrates]);
+    const inventoryArtifactConfig = useAtomValue(inventoryArtifactConfigAtom);
+
+    useEffect(() => {
+        if (selectedId && inventoryArtifactConfig.isOpen) {
+            const sel = allCrates.find(c => c.id === selectedId);
+            if (sel) {
+                const extractItemIds = (c: any): string[] => {
+                    const direct = c.inventory_ids ? c.inventory_ids.split(',').map((s: string) => s.split(':')[0]).filter(Boolean) : [];
+                    const nested = allCrates.filter(child => child.parent_id === c.id);
+                    let result = [...direct];
+                    nested.forEach(n => { result = [...result, ...extractItemIds(n)]; });
+                    return Array.from(new Set(result));
+                };
+                const itemIds = extractItemIds(sel);
+                setInventoryArtifactConfig(prev => ({
+                    ...prev,
+                    itemIds,
+                    title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`,
+                }));
+            }
+        }
+    }, [selectedId, inventoryArtifactConfig.isOpen, allCrates, allInventory, setInventoryArtifactConfig]);
 
     // ── Memoized panel stats — independent of zoom ──
     const panelStats = useMemo(() => {
@@ -3926,7 +3950,10 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 className="flex-1 overflow-auto custom-scrollbar relative pt-[160px]"
                 style={{ touchAction: 'none' }}
                 onMouseDown={handleMouseDown}
-                onClick={() => setSelectedId(null)}
+                onClick={() => {
+                    setSelectedId(null);
+                    setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
+                }}
             >
                 <div className="relative min-h-full flex flex-col items-center">
                 {viewMode === 'side' ? (
@@ -4086,10 +4113,28 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     {selectedId && (
                         <>
                             <div className="flex items-center gap-1 bg-white/5 rounded-2xl px-2 py-1 border border-white/10 animate-in zoom-in duration-500 shadow-2xl backdrop-blur-3xl">
-                                <div className="flex flex-col items-center px-3 border-r border-white/10 mr-1 opacity-40">
-                                    <span className="text-[8px] font-black uppercase text-white tracking-[0.2em] leading-none">MOD</span>
-                                    <span className="text-[8px] font-black uppercase text-white tracking-[0.2em] leading-none mt-1">HUB</span>
-                                </div>
+                                <button 
+                                    onClick={() => {
+                                        const sel = allCrates.find(c => c.id === selectedId);
+                                        if (sel) {
+                                            const itemIds = sel.inventory_ids 
+                                                ? sel.inventory_ids.split(',').filter(Boolean).map((e: string) => e.split(':')[0])
+                                                : (sel.inventoryItems || []).map((i: any) => i.row);
+
+                                            setInventoryArtifactConfig({
+                                                isOpen: true,
+                                                itemIds,
+                                                title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`,
+                                                viewMode: 'sidebar'
+                                            });
+                                        }
+                                    }} 
+                                    className="px-5 py-3 bg-white text-black rounded-xl font-black text-[11px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center gap-2"
+                                >
+                                    <Eye size={18} />
+                                    VIEW
+                                </button>
+                                <div className="w-px h-8 bg-white/10 mx-1" />
                                 <button 
                                     onClick={() => handleRotate(selectedId)} 
                                     className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" 

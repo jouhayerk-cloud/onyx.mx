@@ -17,7 +17,7 @@ import {
     getStatusClass 
 } from '../../lib/utils';
 import { vendors } from '../../lib/consts';
-import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video } from 'lucide-react';
+import { X, Package, LayoutList, LayoutGrid, Layout, Share2, DollarSign, Tag, Info, Maximize2, Video, ExternalLink, Minimize2, Eye } from 'lucide-react';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { 
     ChevronLeft, ChevronRight 
@@ -27,6 +27,8 @@ interface InventoryArtifactProps {
     ids: (string | number)[];
     onClose: () => void;
     initialView?: 'list' | 'grid' | 'gallery';
+    viewMode?: 'modal' | 'sidebar';
+    title?: string;
 }
 
 import { inventoryArtifactConfigAtom } from '../../lib/atoms';
@@ -40,6 +42,8 @@ export const InventoryArtifact = () => {
         <InventoryArtifactInner 
             ids={config.itemIds} 
             onClose={() => setConfig({ ...config, isOpen: false })} 
+            viewMode={config.viewMode}
+            title={config.title}
         />
     );
 };
@@ -104,13 +108,22 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, onClose, initialView }) => {
+export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, onClose, initialView, viewMode: propViewMode, title: propTitle }) => {
+    const [config, setConfig] = useAtom(inventoryArtifactConfigAtom);
+    const viewMode = propViewMode || config.viewMode || 'modal';
+    const isSidebar = viewMode === 'sidebar';
+    
     const items = useAtomValue(inventoryAtom);
     const financeDocs = useAtomValue(financeDataAtom);
     const logisticsDocs = useAtomValue(logisticsDataAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const showFinancials = useAtomValue(showFinancialsAtom);
-    const [viewMode, setViewMode] = useState<'list' | 'grid' | 'gallery'>(initialView || 'gallery');
+    const [displayMode, setDisplayMode] = useState<'list' | 'grid' | 'gallery'>(config.displayMode || initialView || 'gallery');
+
+    // Sync displayMode if config changes
+    useEffect(() => {
+        if (config.displayMode) setDisplayMode(config.displayMode);
+    }, [config.displayMode]);
     const [showViewer, setShowViewer] = useState(false);
     const [viewerIdx, setViewerIdx] = useState(0);
     const [viewerUrls, setViewerUrls] = useState<string[]>([]);
@@ -196,9 +209,13 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
     if (filteredItems.length === 0) return null;
 
+    const containerClasses = isSidebar 
+        ? "fixed top-0 right-0 h-full w-full sm:w-[560px] z-[9999] animate-in slide-in-from-right duration-700 flex flex-col"
+        : "fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300";
+
     return createPortal(
-        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />
+        <div className={containerClasses}>
+            {!isSidebar && <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />}
             
             {showViewer && (
                 <FullscreenImageViewer 
@@ -209,33 +226,58 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 />
             )}
 
-            <div className="relative w-full max-w-7xl h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl flex flex-col overflow-hidden">
+            <div className={`relative w-full h-full ${!isSidebar ? 'max-w-7xl h-[90vh] rounded-[40px] bg-[#0a0a0a]/95 border border-white/10 shadow-2xl' : 'bg-transparent backdrop-blur-3xl'} flex flex-col overflow-visible transition-all duration-500`}>
+                {isSidebar && (
+                    <>
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-l from-emerald-500/[0.05] to-transparent" />
+                        {/* Floating Close Button */}
+                        <button 
+                            onClick={onClose}
+                            className="absolute top-10 -left-20 w-16 h-16 rounded-full bg-black/40 backdrop-blur-2xl border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-emerald-500/40 hover:text-emerald-400 transition-all shadow-[0_0_40px_rgba(0,0,0,0.5)] active:scale-90 group"
+                        >
+                            <X size={32} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                        </button>
+                    </>
+                )}
                 
                 {/* Modern Header */}
-                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-white/2">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
-                            <Package size={24} className="text-white/40" />
+                <div className={`px-8 py-10 flex items-center justify-between shrink-0 ${isSidebar ? 'px-10 bg-transparent' : 'bg-white/2 border-b border-white/5'}`}>
+                    <div className="flex items-center gap-6">
+                        <div className={`w-14 h-14 rounded-[2rem] bg-white/5 flex items-center justify-center border border-white/10 ${isSidebar ? 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.15)]' : ''}`}>
+                            <Package size={isSidebar ? 28 : 24} className={isSidebar ? "text-emerald-400" : "text-white/40"} />
                         </div>
                         <div className="flex flex-col">
-                            <h2 className="text-xl font-black text-white tracking-tighter uppercase leading-none">Inventory Artifact</h2>
-                            <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] mt-1.5">{filteredItems.length} Items Indexed</p>
+                            <h2 className={`${isSidebar ? 'text-2xl tracking-tight' : 'text-xl'} font-black text-white uppercase leading-none`}>{propTitle || "Inventory Artifact"}</h2>
+                            <p className={`font-black uppercase tracking-[0.4em] mt-2 ${isSidebar ? 'text-[10px] text-emerald-500/60' : 'text-[9px] text-white/20'}`}>{filteredItems.length} Items Indexed</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* View Switcher */}
-                        <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5">
-                            <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutList size={16} /></button>
-                            <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutGrid size={16} /></button>
-                            <button onClick={() => setViewMode('gallery')} className={`p-2 rounded-lg transition-all ${viewMode === 'gallery' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><Layout size={16} /></button>
-                        </div>
-                        <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">&times;</button>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        {/* Detach / Attach Toggle */}
+                        <button 
+                            onClick={() => setConfig(prev => ({ ...prev, viewMode: isSidebar ? 'modal' : 'sidebar' }))}
+                            className={`p-3 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all border border-white/5 ${isSidebar ? 'bg-black/20 backdrop-blur-xl' : ''}`}
+                            title={isSidebar ? "Expand to Modal" : "Dock as Sidebar"}
+                        >
+                            {isSidebar ? <ExternalLink size={20} /> : <Minimize2 size={16} />}
+                        </button>
+
+                        {!isSidebar && (
+                            <>
+                                <div className="w-px h-6 bg-white/5 mx-1 hidden sm:block" />
+                                <div className="flex items-center gap-1 bg-black/40 rounded-xl p-1 border border-white/5 scale-90 sm:scale-100">
+                                    <button onClick={() => setDisplayMode('list')} className={`p-2 rounded-lg transition-all ${displayMode === 'list' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutList size={16} /></button>
+                                    <button onClick={() => setDisplayMode('grid')} className={`p-2 rounded-lg transition-all ${displayMode === 'grid' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><LayoutGrid size={16} /></button>
+                                    <button onClick={() => setDisplayMode('gallery')} className={`p-2 rounded-lg transition-all ${displayMode === 'gallery' ? 'bg-white/10 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}><Layout size={16} /></button>
+                                </div>
+                                <button onClick={onClose} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 transition-all border border-white/5">&times;</button>
+                            </>
+                        )}
                     </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar">
+                <div className={`flex-1 overflow-y-auto custom-scrollbar ${isSidebar ? 'px-10 py-4' : 'px-8 py-8'}`}>
                     
                     {(() => {
                         const getStatusLabel = (s: string) => {
@@ -247,9 +289,9 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             return s || 'New';
                         };
                         
-                        if (viewMode === 'list') {
+                        if (displayMode === 'list') {
                             return (
-                                <div className="flex flex-col gap-3">
+                                <div className={`flex flex-col ${isSidebar ? 'gap-6 p-4' : 'gap-3'}`}>
                                     {filteredItems.map((item: any) => {
                                         const norm = normalizeInventoryData(item.data);
                                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
@@ -263,18 +305,20 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
 
                                         return (
                                             <div key={item.row} onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(0); setShowViewer(true); }}
-                                                className="flex items-center px-6 py-4 rounded-3xl bg-white/2 border border-white/5 hover:border-white/10 transition-all group cursor-pointer">
-                                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 mr-6 shrink-0">
-                                                    <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-cover" />
+                                                className={`flex items-center group transition-all cursor-pointer ${isSidebar ? 'py-3 hover:translate-x-2' : 'px-6 py-4 rounded-3xl bg-white/2 border border-white/5 hover:border-white/10 hover:scale-[1.01]'}`}>
+                                                <div className={`relative shrink-0 overflow-hidden ${isSidebar ? 'w-14 h-14 rounded-2xl bg-black/40 mr-5' : 'w-12 h-12 rounded-xl bg-black/40 mr-6'}`}>
+                                                    <img src={getCleanImageUrl(mediaUrlsArr[0] || norm.generatedPngUrl)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                                    {isSidebar && <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <h3 className="text-sm font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                                    <div className="text-[9px] text-white/20 font-black uppercase tracking-widest mt-1">{norm.color} · {norm.material}</div>
+                                                    <h3 className={`font-black text-white uppercase truncate ${isSidebar ? 'text-[13px] tracking-tight' : 'text-sm'}`}>{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                                    <div className={`text-[9px] font-black uppercase tracking-[0.2em] mt-1 ${isSidebar ? 'text-emerald-400' : 'text-white/20'}`}>{norm.color} · {norm.material}</div>
                                                 </div>
-                                                <div className="px-3 py-1 rounded-lg text-black text-[10px] font-black uppercase tracking-tight mx-6" style={{ backgroundColor: vendorColor }}>{calculated.bookBardcode}</div>
-                                                <div className="text-right flex flex-col items-end min-w-[120px]">
-                                                    <span className="text-[10px] font-mono font-black text-white/80">${Math.ceil(norm.price || 0).toLocaleString()}</span>
-                                                    <span className="text-[8px] font-black uppercase tracking-widest mt-1" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</span>
+                                                <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${isSidebar ? 'text-white/40 border border-white/5 mx-4' : 'text-black mx-6'}`} style={!isSidebar ? { backgroundColor: vendorColor } : { color: vendorColor, borderColor: vendorColor + '40' }}>{calculated.bookBardcode}</div>
+                                                <div className={`text-right flex flex-col items-end ${isSidebar ? 'min-w-[60px]' : 'min-w-[120px]'}`}>
+                                                    <span className={`text-[8px] font-black uppercase tracking-widest ${isSidebar ? 'text-emerald-500' : ''}`} style={!isSidebar ? { color: accentColor } : {}}>{getStatusLabel(payStatus || '')}</span>
+                                                    {isSidebar && <span className="text-[7px] text-white/20 font-black uppercase tracking-widest mt-0.5">#{norm.itemId?.split('-').pop()}</span>}
+                                                    {!isSidebar && <span className="text-[10px] font-mono font-black text-white/80 mt-1">${Math.ceil(norm.price || 0).toLocaleString()}</span>}
                                                 </div>
                                             </div>
                                         );
@@ -283,7 +327,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             );
                         }
 
-                        if (viewMode === 'grid') {
+                        if (displayMode === 'grid') {
                             return (
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredItems.map((item: any) => {
@@ -312,7 +356,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                 <div className="p-5 flex flex-col gap-2">
                                                     <h3 className="text-[12px] font-black text-white uppercase truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
                                                     <div className="flex justify-between items-center mt-2">
-                                                        <span className="text-[11px] font-mono font-bold text-white/60">${Math.ceil(norm.price || 0).toLocaleString()}</span>
+                                                        {!isSidebar && <span className="text-[11px] font-mono font-bold text-white/60">${Math.ceil(norm.price || 0).toLocaleString()}</span>}
                                                         <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">x{norm.quantity || 1}</span>
                                                     </div>
                                                 </div>
@@ -323,9 +367,9 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                             );
                         }
 
-                        if (viewMode === 'gallery') {
+                        if (displayMode === 'gallery') {
                             return (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 auto-rows-max">
+                                <div className={`grid ${isSidebar ? 'grid-cols-2 gap-px bg-white/5' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8'} auto-rows-max`}>
                                     {filteredItems.map((item: any) => {
                                         const norm = normalizeInventoryData(item.data);
                                         const calculated = calculateCodesAndPrices(norm, exchangeRate, '326');
@@ -333,11 +377,60 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                         const vendorColor = (vendors as any)[vendorPrefix]?.color || '#ccc';
                                         const mediaUrlsArr = norm.mediaUrls ? String(norm.mediaUrls).split(',').map(u => u.trim()).filter(Boolean) : [];
                                         const displayUrlsArr = [mediaUrlsArr[0] || norm.generatedPngUrl, ...mediaUrlsArr.slice(1)].filter(Boolean).slice(0, 60);
+                                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
+                                        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
+                                        
+                                        if (isSidebar) {
+                                            return (
+                                                <div key={item.row} className="relative aspect-square bg-black/40 overflow-hidden group transition-all animate-in fade-in duration-700 border border-white/5">
+                                                    {/* Image Scrollable Container */}
+                                                    <div className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth">
+                                                        {displayUrlsArr.map((url, i) => (
+                                                            <div key={i} className="min-w-full h-full snap-center relative shrink-0">
+                                                                <img 
+                                                                    src={getCleanImageUrl(url)} 
+                                                                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                                                                    onClick={() => { setViewerUrls(displayUrlsArr); setViewerIdx(i); setShowViewer(true); }}
+                                                                />
+                                                                {isVideoFile(url) && <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none"><Video size={24} className="text-white/60" /></div>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    {/* Text and Tags Overlay - HUD Style */}
+                                                    <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none bg-gradient-to-t from-black/90 via-transparent to-black/20">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex flex-col gap-1.5">
+                                                                <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase tracking-[0.2em] inline-block" style={{ color: accentColor }}>{getStatusLabel(payStatus || '')}</div>
+                                                                <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase tracking-[0.2em] inline-block" style={{ color: vendorColor }}>{calculated.bookBardcode}</div>
+                                                            </div>
+                                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest bg-black/40 px-1.5 py-0.5">#{norm.itemId?.split('-').pop()}</span>
+                                                        </div>
+
+                                                        <div className="flex flex-col">
+                                                            <h3 className="text-xs font-black text-white uppercase tracking-tighter leading-tight mb-0.5 truncate">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em]">{norm.color}</span>
+                                                                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">x{norm.quantity || 1}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Tiny Image Indicators */}
+                                                    {displayUrlsArr.length > 1 && (
+                                                        <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 h-0.5">
+                                                            {displayUrlsArr.slice(0, 8).map((_, i) => (
+                                                                <div key={i} className={`flex-1 ${i === 0 ? 'bg-emerald-500' : 'bg-white/10'}`} />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+
                                         const mediaCount = displayUrlsArr.length;
                                         const isLarge = mediaCount >= 1 && mediaCount < 10;
                                         const isFull = mediaCount >= 10;
-                                        const payStatus = getStatusClass(norm, partialPayIds, fullPayIds);
-                                        const accentColor = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : '#38bdf8';
                                         
                                         return (
                                             <div key={item.row} className={`break-inside-avoid flex flex-col rounded-[40px] overflow-hidden bg-white/2 border border-white/5 hover:border-white/10 transition-all group shadow-xl ${isFull ? 'md:col-span-full' : isLarge ? 'md:col-span-2' : ''}`}>
@@ -440,7 +533,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                                                 <div className="p-8 flex flex-col gap-1 w-full">
                                                     <div className="flex items-center justify-between">
                                                         <h3 className="text-xl font-black text-white uppercase tracking-tighter leading-tight">{(norm.shape || 'OBJ') + ' ' + (norm.shortDescription || '')}</h3>
-                                                        <span className="text-lg font-mono font-black text-white/40">${Math.ceil(norm.price || 0).toLocaleString()}</span>
+                                                        {!isSidebar && <span className="text-lg font-mono font-black text-white/40">${Math.ceil(norm.price || 0).toLocaleString()}</span>}
                                                     </div>
                                                     <div className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] mt-2 mb-4">{norm.color} · {norm.material}</div>
                                                     <div className="flex items-center justify-between pt-6 border-t border-white/5 mt-4">
@@ -466,7 +559,7 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                     })()}
 
                     {/* Payments Traceability List */}
-                    {aggregateFinancials.uniquePayments.length > 0 && (
+                    {!isSidebar && aggregateFinancials.uniquePayments.length > 0 && (
                         <div className="mt-20 border-t border-white/5 pt-12 space-y-6">
                             <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] px-4">Traceability Audit</h4>
                             <div className="grid gap-3">
@@ -494,22 +587,36 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
                 </div>
 
                 {/* Footer Totals */}
-                <div className="px-10 py-8 bg-white/1 border-t border-white/5 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-16">
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Asset Inventory Value</span>
-                            <span className="text-2xl font-mono font-black text-white/90">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col border-l border-white/10 pl-16">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Net Paid To Date</span>
-                            <span className="text-2xl font-mono font-black text-emerald-400">${Math.ceil(aggregateFinancials.netPaid).toLocaleString()}</span>
-                        </div>
-                        <div className="flex flex-col border-l border-white/10 pl-16">
-                            <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Grand Sum</span>
-                            <span className="text-2xl font-mono font-black text-emerald-400/50">${Math.ceil(aggregateFinancials.total).toLocaleString()}</span>
-                        </div>
+                <div className={`px-10 py-12 bg-transparent flex items-center justify-between shrink-0 ${isSidebar ? 'px-10' : 'bg-white/1 border-t border-white/5'}`}>
+                    <div className={`flex items-center gap-16 ${isSidebar ? 'grid grid-cols-2 gap-8 w-full' : ''}`}>
+                        {!isSidebar && (
+                            <div className="flex flex-col border-l border-white/10 pl-16">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Asset Inventory Value</span>
+                                <span className="text-2xl font-mono font-black text-white/90">${Math.ceil(aggregateFinancials.listValue).toLocaleString()}</span>
+                            </div>
+                        )}
+                        {!isSidebar && (
+                            <>
+                                <div className="flex flex-col border-l border-white/10 pl-16">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Net Paid To Date</span>
+                                    <span className="text-2xl font-mono font-black text-emerald-400">${Math.ceil(aggregateFinancials.netPaid).toLocaleString()}</span>
+                                </div>
+                                <div className="flex flex-col border-l border-white/10 pl-16">
+                                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-1.5">Grand Sum</span>
+                                    <span className="text-2xl font-mono font-black text-emerald-400/50">${Math.ceil(aggregateFinancials.total).toLocaleString()}</span>
+                                </div>
+                            </>
+                        )}
+                        {isSidebar && (
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em] mb-1.5 opacity-40">Artifact Contents</span>
+                                <span className="text-xl font-black text-white/90 uppercase tracking-tighter">Inventory Ledger</span>
+                            </div>
+                        )}
                     </div>
-                    <button onClick={onClose} className="h-14 px-10 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-[0.3em] text-white hover:bg-white/10 transition-all">Dismiss Artifact</button>
+                    {!isSidebar && (
+                        <button onClick={onClose} className="h-14 px-10 rounded-2xl bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-[0.3em] text-white hover:bg-white/10 transition-all">Dismiss Artifact</button>
+                    )}
                 </div>
             </div>
         </div>,
