@@ -36,12 +36,10 @@ export function toTitleCase(str: string): string {
     .join(' ');
 }
 export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: any[], truckSeq?: number) {
-    const d = crate.updated_at ? new Date(crate.updated_at) : (crate.date ? new Date(crate.date) : new Date());
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const shortMonthYear = `${months[d.getMonth()]}${String(d.getFullYear()).slice(-2)}`;
-    
     const vSet = new Set<string>();
+    const contentSet = new Set<string>();
     
+    // 1. Collect vendors from explicit field
     if (crate.vendors) {
         crate.vendors.split(',').forEach((v: string) => {
             const trimmed = v.trim().toUpperCase();
@@ -49,13 +47,18 @@ export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: 
         });
     }
 
-    if (vSet.size === 0 && crate.inventory_ids) {
+    // 2. Collect from items
+    if (crate.inventory_ids) {
         crate.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
             const [id] = e.split(':');
             const inv = allInventory.find((i: any) => String(i.row) === id);
             if (inv?.data) { 
                 const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; 
                 if (p) vSet.add(p.toUpperCase()); 
+                
+                // Track content types for subtitling
+                const content = inv.data.shape || inv.data.shortDescription;
+                if (content) contentSet.add(content.toUpperCase());
             }
         });
     }
@@ -65,43 +68,36 @@ export function getCrateDisplayName(crate: any, allCrates: any[], allInventory: 
     }
 
     const vendorList = Array.from(vSet).sort();
-    const vendorsStr = vendorList.join('');
+    
+    // CONTENT BASED SUBTITLE LOGIC
+    // Combine unit type (CRATE/PALLET) with specific content types
+    const contentList = Array.from(contentSet).sort();
+    const unitType = (crate.type || 'UNIT').toUpperCase();
+    const contentSubtitle = contentList.length > 0 
+        ? `${unitType} / ${contentList.slice(0, 2).join(' | ')}` 
+        : unitType;
 
     const vendorCodes = vendorList.map(v => {
         if (v.length >= 2) return v.toUpperCase();
-        // If single letter key like 'R', take first 2 chars of name
         const full = (vendors as any)[v]?.name || v;
         return full.slice(0, 2).toUpperCase();
     }).join('&');
 
-    const primaryLabel = vendorCodes || (crate.type || 'UNIT').toUpperCase();
-    const subLabel = (crate.type || 'Unit').toUpperCase();
+    // PRIORITIZE DATABASE SAVED LABEL
+    const primaryLabel = crate.label || crate.name || vendorCodes || (crate.type || 'UNIT').toUpperCase();
+    const sequenceId = crate.id ? crate.id.substring(0, 4).toUpperCase() : '00';
 
     if (truckSeq != null) {
         return { 
-            label: `${primaryLabel}-${String(truckSeq).padStart(2, '0')}`, 
-            subtitle: subLabel, 
+            label: crate.label || `${primaryLabel}-${String(truckSeq).padStart(2, '0')}`, 
+            subtitle: contentSubtitle, 
             vendorList 
         };
     }
     
-    const matching = allCrates.filter(c => {
-        if (c.status === 'Empty' || !c.inventory_ids) return false;
-        const s = new Set<string>();
-        c.inventory_ids.split(',').filter(Boolean).forEach((e: string) => {
-            const [id] = e.split(':');
-            const inv = allInventory.find((i: any) => String(i.row) === id);
-            if (inv?.data) { const p = (inv.data.vendor_id || inv.data.itemId || '').split('-')[0]; if (p) s.add(p.toUpperCase()); }
-        });
-        return Array.from(s).sort().join('') === vendorsStr;
-    }).sort((a, b) => new Date(a.updated_at || a.date || 0).getTime() - new Date(b.updated_at || b.date || 0).getTime());
-    
-    const seq = matching.findIndex(c => c.id === crate.id);
-    const sequenceStr = String(seq >= 0 ? seq + 1 : 1).padStart(2, '0');
-    
     return {
-        label: `${primaryLabel}-${sequenceStr}`,
-        subtitle: subLabel,
+        label: crate.label || `${primaryLabel}-${sequenceId}`,
+        subtitle: contentSubtitle,
         vendorList
     };
 }
@@ -880,6 +876,11 @@ export const normalizeInventoryData = (data: any): any => {
     ...d,
     itemId: d.item_id ?? d.itemId,
     itemNumber: d.item_number ?? d.itemNumber,
+    shape: d.shape,
+    material: d.material,
+    description: d.description,
+    color: d.color,
+    workbook: d.workbook,
     price: d.price_mxn ?? d.acq_price_mxn ?? d.price,
     shortDescription: d.short_description ?? d.shortDescription,
     widthCm: d.width_cm ?? d.widthCm,

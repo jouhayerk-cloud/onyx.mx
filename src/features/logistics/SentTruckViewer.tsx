@@ -12,7 +12,7 @@ import {
     Download, Share2, ExternalLink
 } from 'lucide-react';
 
-export const SentTruckViewer: React.FC = () => {
+const SentTruckViewer: React.FC = () => {
     const sentTruckId = useAtomValue(sentTruckIdAtom);
     const [view, setView] = useAtom(universalViewAtom);
     
@@ -175,9 +175,9 @@ export const SentTruckViewer: React.FC = () => {
                 <div className="flex flex-col gap-12 mb-20">
                     <div className="flex justify-between items-start border-b border-black/5 pb-10">
                         <div className="flex items-center gap-6">
-                            <button onClick={() => setView('app')} className="p-3 hover:bg-black/5 rounded-xl transition-all text-black/20 hover:text-black">
-                                <ChevronLeft size={24} />
-                            </button>
+                            <div className="p-3 text-black/20">
+                                <Truck size={24} />
+                            </div>
                             <div>
                                 <h1 className="text-2xl font-black tracking-tight uppercase leading-none mb-1">ONYX LOGISTICS TRAILER MANIFEST</h1>
                                 <p className="text-[9px] font-black text-black/20 uppercase tracking-[0.3em]">Digital Mirror Protocol v2.8 · Issued {shipment?.timestamp}</p>
@@ -339,3 +339,4 @@ const StatusShield = ({ size }: { size: number }) => (
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>
     </svg>
 );
+export default SentTruckViewer;

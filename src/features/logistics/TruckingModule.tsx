@@ -111,7 +111,7 @@ const CmGrid: React.FC = () => {
 
 // ─── Dock Card ────────────────────────────────────────────────────────────────
 // ─── Isometric Wireframe Icon ────────────────────────────────────────────────────
-const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number }> = ({ w, l, h, color, size = 44 }) => {
+const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string; size?: number; solid?: boolean }> = ({ w, l, h, color, size = 44, solid = false }) => {
     const maxDim = Math.max(w, l, h, 1);
     const W = w / maxDim; const L = l / maxDim; const H = h / maxDim;
     const S = 13; const ox = 24; const oy = 30;
@@ -125,18 +125,21 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
     ];
     const [a,b,c,d,e,f,g,hh] = corners;
     const pts = (arr: [number,number][]) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const fillOpacity = solid ? 0.8 : 0.03;
+    const strokeOpacity = solid ? 0.3 : 1;
+    
     return (
         <svg width={size} height={size} viewBox="0 0 48 48" style={{ overflow: 'visible' }}>
             {/* bottom face */}
-            <polygon points={pts([a,b,c,d])} fill="none" stroke={color} strokeWidth={0.6} strokeOpacity={0.25} />
+            <polygon points={pts([a,b,c,d])} fill={solid ? color : "none"} fillOpacity={solid ? 0.15 : 0} stroke={color} strokeWidth={0.6} strokeOpacity={0.25} />
             {/* left face */}
-            <polygon points={pts([a,d,hh,e])} fill="rgba(255,255,255,0.02)" stroke={color} strokeWidth={0.7} strokeOpacity={0.55} />
+            <polygon points={pts([a,d,hh,e])} fill={color} fillOpacity={fillOpacity * 0.6} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.55} />
             {/* right face */}
-            <polygon points={pts([b,c,g,f])} fill="rgba(255,255,255,0.02)" stroke={color} strokeWidth={0.7} strokeOpacity={0.45} />
+            <polygon points={pts([b,c,g,f])} fill={color} fillOpacity={fillOpacity * 0.8} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.45} />
             {/* top face */}
-            <polygon points={pts([e,f,g,hh])} fill="rgba(255,255,255,0.03)" stroke={color} strokeWidth={0.9} strokeOpacity={1} />
+            <polygon points={pts([e,f,g,hh])} fill={color} fillOpacity={fillOpacity} stroke={color} strokeWidth={0.9} strokeOpacity={strokeOpacity} />
             {/* vertical edges */}
-            {[{a,b: e},{a: b,b: f},{a: c,b: g},{a: d,b: hh}].map(({a: p1,b: p2},i) => (
+            {!solid && [{a,b: e},{a: b,b: f},{a: c,b: g},{a: d,b: hh}].map(({a: p1,b: p2},i) => (
                 <line key={i} x1={p1[0]} y1={p1[1]} x2={p2[0]} y2={p2[1]} stroke={color} strokeWidth={0.6} strokeOpacity={0.4} />
             ))}
         </svg>
@@ -146,8 +149,8 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
 // ─── Compact Data-Dense Card components ─────────────────────────────────────
 const CompactDockCard: React.FC<{ 
     crate: any; allCrates: any[]; allInventory: any[]; 
-    onLoad: () => void; onNest?: () => void 
-}> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
+    onLoad: () => void; onNest?: () => void; isCompact: boolean
+}> = ({ crate, allCrates, allInventory, onLoad, onNest, isCompact }) => {
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#adb5bd') : '#adb5bd';
     const w = computeCrateWeight(crate, allInventory, allCrates);
@@ -156,28 +159,41 @@ const CompactDockCard: React.FC<{
     return (
         <button
             onClick={onLoad}
-            className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all group shrink-0 text-left cursor-pointer active:scale-[0.98] h-[52px]"
+            className={`flex items-center transition-all group shrink-0 text-left cursor-pointer active:scale-[0.95] ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}
+            style={{ '--main-color': primaryColor } as React.CSSProperties}
         >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 shrink-0 shadow-inner" style={{ backgroundColor: `${primaryColor}15` }}>
-                <Box size={16} style={{ color: primaryColor }} strokeWidth={2} />
+            <div className={`flex items-center justify-center transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] ${isCompact ? 'w-6 h-6' : 'w-16 h-16'}`}>
+                <CrateWireframe 
+                    w={crate.width_cm} 
+                    l={crate.length_cm} 
+                    h={crate.height_cm || 50} 
+                    color={primaryColor} 
+                    size={isCompact ? 40 : 64} 
+                    solid={true}
+                />
             </div>
-            <div className="flex flex-col min-w-[70px]">
-                <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                    <span className="text-[12px] font-black uppercase tracking-tighter" style={{ color: primaryColor }}>{label}</span>
-                    <span className="text-[7px] font-black px-1 py-0.5 rounded-sm bg-black/40 text-white/30 border border-white/5">{typeLabel}</span>
+            <div className="flex flex-col">
+                <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
+                    <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
+                    {!isCompact && (
+                        <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
+                    )}
                 </div>
-                <div className="flex items-center gap-2 leading-none">
-                    <span className="text-[9px] font-bold text-white/30">{crate.width_cm}×{crate.length_cm}</span>
-                    <span className="text-[10px] font-black text-white/60">{w}KG</span>
-                </div>
+                {!isCompact && (
+                    <div className="flex items-center gap-4 leading-none">
+                        <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
+                        <div className="w-1 h-1 rounded-full bg-white/20" />
+                        <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
+                    </div>
+                )}
             </div>
             {onNest && crate.type === 'cardboard' && (
                 <button 
                     onClick={(e) => { e.stopPropagation(); onNest(); }}
-                    className="ml-1 p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black transition-all opacity-0 group-hover:opacity-100"
-                    title="Nest into another crate"
+                    className="ml-4 p-2 rounded-lg text-emerald-400/20 hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100"
+                    title="Nest Unit"
                 >
-                    <CornerDownRight size={12} />
+                    <CornerDownRight size={14} />
                 </button>
             )}
         </button>
@@ -204,15 +220,39 @@ const CompactItemCard: React.FC<{
             <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/5 shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
                 <Package size={16} style={{ color: primaryColor }} strokeWidth={1.5} />
             </div>
-            <div className="flex flex-col min-w-[100px] max-w-[150px]">
-                <div className="flex items-center gap-1.5 leading-none mb-0.5">
+            <div className="flex flex-col min-w-[120px] max-w-[200px]">
+                <div className="flex items-center gap-1.5 leading-none mb-1">
                     <span className="text-[11px] font-black uppercase tracking-tighter truncate text-white/80">{data.shape || 'Unit'}</span>
-                    <span className="text-[7px] font-black px-1 py-0.5 rounded-sm bg-black/40 text-white/20 border border-white/5">{tag}</span>
+                    <div className="flex items-center gap-1 px-1 py-0.5 rounded-sm bg-black/40 text-white/40 border border-white/5">
+                        <Hash size={7} />
+                        <span className="text-[7px] font-black">{tag}</span>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 leading-none">
-                    <span className="text-[9px] font-bold text-white/20 truncate flex-1">{data.shortDescription || 'Artifact'}</span>
-                    <span className="text-[10px] font-black text-white/50">{w}KG</span>
+                <div className="flex items-center gap-3 leading-none opacity-60">
+                    <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-[9px] font-bold truncate text-white/40">{data.shortDescription || 'Artifact'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                        <Gauge size={9} className="text-emerald-500/40" />
+                        <span className="text-[9px] font-black text-white/50">{w}KG</span>
+                    </div>
                 </div>
+                {(data.width_cm || data.material) && (
+                    <div className="flex items-center gap-2 mt-1 opacity-40">
+                        {data.width_cm && (
+                            <div className="flex items-center gap-1">
+                                <Maximize2 size={8} />
+                                <span className="text-[7px] font-black">{data.width_cm}×{data.length_cm}</span>
+                            </div>
+                        )}
+                        {data.material && (
+                            <div className="flex items-center gap-1">
+                                <Layers size={8} />
+                                <span className="text-[7px] font-black uppercase truncate max-w-[40px]">{data.material}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </button>
     );
@@ -371,21 +411,6 @@ const TruckCrate: React.FC<{
 
     return (
         <div className="absolute select-none" style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
-            {isSelected && (
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50 whitespace-nowrap">
-                    <button onClick={e => { e.stopPropagation(); onRotate(); }} className="text-white/50 hover:text-white transition-colors" title="Rotate">
-                        <RotateCcw size={16} />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); onUnload(); }} className="text-rose-400/60 hover:text-rose-400 transition-colors" title="Unload">
-                        <Trash2 size={16} />
-                    </button>
-                    {onNest && crate.type === 'cardboard' && (
-                        <button onClick={e => { e.stopPropagation(); onNest(); }} className="px-3 py-1 rounded bg-emerald-500 text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-colors flex items-center gap-1 shadow-lg" title="Nest into Crate/Pallet">
-                            <Box size={12} /> NEST
-                        </button>
-                    )}
-                </div>
-            )}
             <div
                 onMouseDown={handleMouseDown}
                 className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group"
@@ -509,8 +534,10 @@ const SideView: React.FC<{
     };
 
     return (
-        <div className="flex-1 overflow-auto custom-scrollbar bg-black/20 backdrop-blur-2xl border-t border-white/5 shadow-inner">
-            <div className="p-6" style={{ minWidth: SVG_W * zoom + 48, minHeight: SVG_H * zoom + 120 }}>
+        <div 
+            className="w-full h-full bg-black/20 backdrop-blur-2xl border-t border-white/5 shadow-inner relative"
+        >
+            <div className="py-[40vh] px-[40vw]" style={{ minWidth: SVG_W * zoom + 800, minHeight: SVG_H * zoom + 800 }}>
                 {/* Header bar */}
                 <div className="flex items-center gap-6 mb-6 px-4">
                     <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-2">
@@ -1652,7 +1679,7 @@ const TruckExportModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[450] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-white/[0.05] backdrop-blur-2xl" />
             <div className="relative z-10 w-full max-w-2xl mx-4 rounded-[3.5rem] border border-white/10 p-12 flex flex-col gap-10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-white/[0.01] backdrop-blur-3xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-700"
                 onClick={e => e.stopPropagation()}
@@ -2236,7 +2263,7 @@ const ReadyTruckWizard: React.FC<{
     const triggerDownload = (url: string, filename: string) => { const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 z-[450] flex items-center justify-center p-4" onClick={onClose}>
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <div className="relative z-10 w-full max-w-4xl rounded-[2.5rem] border border-white/10 p-8 flex flex-col gap-6 shadow-2xl bg-[#0c0c12] max-h-[95vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center bg-white/[0.02] -mx-8 -mt-8 px-8 py-6 border-b border-white/10 rounded-t-[2.5rem]">
@@ -2272,7 +2299,7 @@ const ReadyTruckWizard: React.FC<{
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
+                                <button onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success('Registry Link Copied'); }} className="px-4 py-2 rounded-xl bg-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10">Copy Share Link</button>
                                 <button onClick={() => window.open(publicUrl, '_blank')} className="px-4 py-2 rounded-xl bg-emerald-500 text-[9px] font-black text-black uppercase tracking-widest hover:scale-105 transition-all">Launch 3D Viewer</button>
                             </div>
                         </div>
@@ -2477,12 +2504,12 @@ const ReadyTruckWizard: React.FC<{
                                             e.stopPropagation();
                                             // Handle case where we might want to view current draft in 3D
                                             // For now, if we have a recalled shipment, use that
-                                            if (recalledShipment?.manifest_id) {
+                                            /* if (recalledShipment?.manifest_id) {
                                                 setSentTruckId(recalledShipment.manifest_id);
                                                 setView('truck');
                                             } else {
                                                 toast.error("3D View requires a finalized or recalled shipment");
-                                            }
+                                            } */
                                         }}
                                         className="p-2.5 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all shadow-xl flex items-center gap-2 group/btn"
                                     >
@@ -2537,7 +2564,7 @@ interface SaveDraftProps {
 const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProps) => {
     const [name, setName] = React.useState(`Load ${new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}`);
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[450] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-sm mx-4 rounded-2xl border border-white/15 p-6 flex flex-col gap-5"
                 style={{ backgroundColor: 'rgba(12,12,18,0.95)' }}
@@ -2610,7 +2637,7 @@ const OpenDraftModal = ({ onLoad, onClose }: OpenDraftProps) => {
         e.target.value = '';
     };
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 z-[450] flex items-center justify-center" onClick={onClose}>
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-lg mx-4 rounded-2xl border border-white/15 flex flex-col overflow-hidden"
                 style={{ backgroundColor: 'rgba(12,12,18,0.95)', maxHeight: '82vh' }}
@@ -2713,6 +2740,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [nestingBoxId, setNestingBoxId] = useState<string | null>(null);
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
+
+    // Panning state
+    const [isPanning, setIsPanning] = useState(false);
+    const lastMousePos = useRef({ x: 0, y: 0 });
+
     const [readyTruckFields, setReadyTruckFields] = useState({
         sealNumber: '',
         tractorNumber: '',
@@ -2993,38 +3025,102 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         });
     }, [allCrates]);
 
+    const handleStack = useCallback((id: string) => {
+        setPositions(p => {
+            const current = p[id];
+            if (!current) return p;
+            const crate = allCrates.find(c => c.id === id);
+            if (!crate) return p;
+            
+            const r = current.r === 90;
+            const curW = r ? crate.length_cm : crate.width_cm;
+            const curL = r ? crate.width_cm : crate.length_cm;
+            
+            let maxZ = 0;
+            Object.entries(p).forEach(([oid, pos]) => {
+                if (oid === id) return;
+                const oc = allCrates.find(c => c.id === oid);
+                if (!oc) return;
+                const or = pos.r === 90;
+                const oW = or ? oc.length_cm : oc.width_cm;
+                const oL = or ? oc.width_cm : oc.length_cm;
+                
+                const overlap = !(current.x + curL <= pos.x || pos.x + oL <= current.x ||
+                                  current.y + curW <= pos.y || pos.y + oW <= current.y);
+                if (overlap) maxZ = Math.max(maxZ, (pos.z || 0) + (oc.height_cm || 100));
+            });
+            return { ...p, [id]: { ...current, z: maxZ } };
+        });
+    }, [allCrates]);
+
     const handleRotate = useCallback((id: string) => {
         setPositions(p => {
             if (!p[id]) return p;
             return { ...p, [id]: { ...p[id], r: p[id].r === 0 ? 90 : 0 } };
         });
     }, []);
-    // Stack: place selected crate on top of the tallest crate overlapping its x position
-    const handleStack = (id: string) => {
-        const crate = allCrates.find(c => c.id === id);
-        if (!crate || !positions[id]) return;
-        const rotated = positions[id].r === 90;
-        const myW = rotated ? crate.length_cm : crate.width_cm;
-        const myX = positions[id].x;
-        // Find highest z+h of any crate overlapping the same x zone
-        let topZ = 0;
-        truckCrates.forEach(c => {
-            if (c.id === id) return;
-            const p = positions[c.id];
-            if (!p) return;
-            const cRot = p.r === 90;
-            const cW = cRot ? c.length_cm : c.width_cm;
-            const overlap = myX < p.x + cW + 5 && myX + myW + 5 > p.x;
-            if (overlap) {
-                const top = (p.z || 0) + (c.height_cm || 100);
-                if (top > topZ) topZ = top;
-            }
-        });
-        setPositions(p => ({ ...p, [id]: { ...p[id], z: topZ } }));
-        toast.success(`Stacked at ${topZ}cm above floor`, { icon: '📦' });
-    };
 
-    const handleWheel = useCallback((e: React.WheelEvent) => { e.preventDefault(); setZoom(z => Math.max(0.2, Math.min(3, z - e.deltaY * 0.001))); }, []);
+    // ── Interaction Handlers ──
+
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if (e.button === 1) { // Middle click
+            e.preventDefault();
+            setIsPanning(true);
+            lastMousePos.current = { x: e.clientX, y: e.clientY };
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isPanning) return;
+        const onMouseMove = (e: MouseEvent) => {
+            if (!canvasRef.current) return;
+            const dx = e.clientX - lastMousePos.current.x;
+            const dy = e.clientY - lastMousePos.current.y;
+            canvasRef.current.scrollLeft -= dx;
+            canvasRef.current.scrollTop -= dy;
+            lastMousePos.current = { x: e.clientX, y: e.clientY };
+        };
+        const onMouseUp = (e: MouseEvent) => {
+            if (e.button === 1) setIsPanning(false);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        return () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+    }, [isPanning]);
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            // Global shortcuts
+            if (e.key === '+' || e.key === '=') { setZoom(z => Math.min(3, z + 0.1)); e.preventDefault(); }
+            if (e.key === '-' || e.key === '_') { setZoom(z => Math.max(0.15, z - 0.1)); e.preventDefault(); }
+            if (e.key === '0' && e.ctrlKey) { setZoom(1.0); e.preventDefault(); }
+            
+            if (selectedId) {
+                if (e.key === 'r' || e.key === 'R') { handleRotate(selectedId); e.preventDefault(); }
+                if (e.key === 'Delete' || e.key === 'Backspace') { handleUnload(selectedId); e.preventDefault(); }
+                if (e.key === 'Escape') { setSelectedId(null); e.preventDefault(); }
+                
+                // Fine-tune position with arrow keys
+                const STEP = e.shiftKey ? 10 : 2;
+                if (e.key.startsWith('Arrow')) {
+                    const pos = positions[selectedId];
+                    if (pos) {
+                        if (e.key === 'ArrowLeft') handleUpdatePos(selectedId, Math.max(0, pos.x - STEP), pos.y);
+                        if (e.key === 'ArrowRight') handleUpdatePos(selectedId, Math.min(TRUCK_L_CM, pos.x + STEP), pos.y);
+                        if (e.key === 'ArrowUp') handleUpdatePos(selectedId, pos.x, Math.max(0, pos.y - STEP));
+                        if (e.key === 'ArrowDown') handleUpdatePos(selectedId, pos.x, Math.min(TRUCK_W_CM, pos.y + STEP));
+                        e.preventDefault();
+                    }
+                }
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [selectedId, positions, handleRotate, handleUnload, handleUpdatePos]);
     
     const handleNest = async (boxId: string, targetId: string) => {
         const box = allCrates.find(c => c.id === boxId);
@@ -3070,21 +3166,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         }
     }, [positions]);
 
-    const handleLoadItem = useCallback((item: any) => {
-        const id = String(item.row);
-        // Integrity check: ensure item isn't already crated
-        const data = item.data || {};
-        if (data.parent_id || data.crate_id) {
-            toast.error('Item is already packed in a crate');
-            return;
-        }
-        setPositions(p => {
-            const pos = { x: TRUCK_L_CM - 120, y: 10, r: 0, z: 0 }; // Default drop pos
-            return { ...p, [id]: pos };
+    const handleLoadDraft = (draft: TruckDraft) => {
+        setPositions(draft.positions);
+        setReadyTruckFields(draft.shipmentData || {
+            sealNumber: '', tractorNumber: '', truckPlates: '', trailerNumber: '', trailerPlates: '', senders: [''], packingItems: []
         });
-        setSelectedId(id);
-        setRecalledShipment(null);
-    }, []);
+        toast.success(`Draft "${draft.name}" loaded`);
+        setTopBarState('crates');
+    };
 
     // ── Ready Truck — sync DB + PDF + XLSX ──
     const handleReadyTruck = async (f = readyTruckFields) => {
@@ -3329,48 +3418,65 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             }
         };
         const onTouchEnd = () => { pinchRef.current = null; };
+        const onWheel = (e: WheelEvent) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                setZoom(z => Math.max(0.1, Math.min(4, z - e.deltaY * 0.001 * z)));
+            }
+        };
         el.addEventListener('touchstart', onTouchStart, { passive: true });
         el.addEventListener('touchmove', onTouchMove, { passive: false });
         el.addEventListener('touchend', onTouchEnd);
+        el.addEventListener('wheel', onWheel, { passive: false });
         return () => {
             el.removeEventListener('touchstart', onTouchStart);
             el.removeEventListener('touchmove', onTouchMove);
             el.removeEventListener('touchend', onTouchEnd);
+            el.removeEventListener('wheel', onWheel);
         };
     }, [zoom]);
 
     return (
-        <div className="flex flex-col text-white relative" onClick={() => setSelectedId(null)}>
+        <div className="absolute inset-0 flex flex-col overflow-hidden bg-[#09090b] select-none">
+            {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
+            <div className="absolute top-0 left-0 right-0 z-[40] p-6 mt-16 pointer-events-none">
+                <div 
+                    className={`pointer-events-auto flex flex-col backdrop-blur-3xl bg-black/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-500 hover:bg-black/10 ${isCompact ? 'rounded-2xl' : 'rounded-[2rem]'}`}
+                    onWheel={e => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
+                >
+                {/* Bar 0: Main Hub Header (Global Toggle) */}
+                <div className={`flex items-center justify-end px-6 transition-all duration-500 ${isCompact ? 'py-0' : 'py-1'}`}>
+                    <button 
+                        onClick={() => setIsCompact(!isCompact)}
+                        className={`transition-all duration-500 hover:scale-110 active:scale-95 ${isCompact ? 'p-1 text-white/40 hover:text-white' : 'p-2 text-white/20 hover:text-white hover:bg-white/5 rounded-full'}`}
+                        title={isCompact ? 'Standard View' : 'Compact View'}
+                    >
+                        <LayoutGrid size={isCompact ? 10 : 16} />
+                    </button>
+                </div>
 
-            {/* ── HYBRID SMART SELECTION BARS ── */}
-            <div 
-                className="sticky top-20 sm:top-24 z-[60] flex flex-col border-b border-white/10 backdrop-blur-3xl bg-black/40"
-                onWheel={e => { e.stopPropagation(); }}
-            >
                 {/* Bar 1: Primary Selector (Crates or Deployed) */}
-                <div className="flex items-center gap-4 px-4 py-2.5 border-b border-white/5">
-                    <div className="flex items-center p-1 bg-white/5 rounded-xl border border-white/10 shrink-0 shadow-inner">
-                        <button 
-                            onClick={() => setTopBarState('crates')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${topBarState === 'crates' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                        >
-                            <Box size={13} /> Crates
-                        </button>
-                        <button 
-                            onClick={() => setTopBarState('trailers')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${topBarState === 'trailers' ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                        >
-                            <History size={13} /> Deployed
-                        </button>
-                    </div>
+                <div className={`flex items-center gap-4 px-6 border-b border-white/5 transition-all duration-500 ${isCompact ? 'py-0.5' : 'py-3'}`}>
+                    <button 
+                        onClick={() => setTopBarState(topBarState === 'crates' ? 'trailers' : 'crates')}
+                        className={`transition-all hover:scale-110 active:scale-95 group/mode-toggle ${isCompact ? 'p-1 text-white' : 'p-4 text-white/30 hover:text-white'}`}
+                        title={topBarState === 'crates' ? 'Switch to Deployed' : 'Switch to Crates'}
+                    >
+                        {topBarState === 'crates' ? (
+                            <Box size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
+                        ) : (
+                            <History size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
+                        )}
+                    </button>
 
-                    <div className="flex-1 overflow-x-auto custom-scrollbar flex items-center gap-3 py-0.5 no-scrollbar">
+                    <div className={`flex-1 overflow-x-auto custom-scrollbar flex items-center gap-6 no-scrollbar px-2 ${isCompact ? 'py-0' : 'py-2'}`}>
                         {topBarState === 'crates' ? (
                             <>
                                 {dockCrates.length === 0 ? (
-                                    <div className="flex items-center gap-3 px-4 text-white/10">
-                                        <CheckCircle2 size={14} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">All Primary Units Manifested</span>
+                                    <div className="flex items-center gap-3 px-6 py-2 rounded-xl bg-white/5 border border-dashed border-white/10 text-white/20">
+                                        <CheckCircle2 size={16} strokeWidth={1} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.4em]">Manifest Clean</span>
                                     </div>
                                 ) : (
                                     dockCrates.map(c => (
@@ -3381,6 +3487,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             allInventory={allInventory} 
                                             onLoad={() => handleLoad(c.id)} 
                                             onNest={() => setNestingBoxId(c.id)} 
+                                            isCompact={isCompact}
                                         />
                                     ))
                                 )}
@@ -3388,14 +3495,14 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         ) : (
                             <>
                                 {loadingShipments ? (
-                                    <div className="flex items-center gap-3 px-4">
-                                        <Loader2 size={14} className="animate-spin text-emerald-500/40" />
-                                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Synchronizing Registry...</span>
+                                    <div className="flex items-center gap-3 px-6 py-2">
+                                        <Loader2 size={16} className="animate-spin text-emerald-400" />
+                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Loading...</span>
                                     </div>
                                 ) : recentShipments.length === 0 ? (
-                                    <div className="flex items-center gap-3 px-4 text-white/10">
-                                        <AlertCircle size={14} strokeWidth={1} />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Recent Records</span>
+                                    <div className="flex items-center gap-3 px-6 py-2 text-white/10">
+                                        <AlertCircle size={16} strokeWidth={1} />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">No Records</span>
                                     </div>
                                 ) : (
                                     recentShipments.map(s => (
@@ -3411,225 +3518,142 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         )}
                     </div>
                     
-                    <div className="w-px h-8 bg-white/5 mx-2 shrink-0" />
-                    
-                    <div className="flex items-center gap-2 shrink-0">
-                        <button 
-                            onClick={() => setIsCompact(!isCompact)}
-                            className={`p-2.5 rounded-xl border transition-all ${isCompact ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                            title="Toggle Compact Mode"
-                        >
-                            <Grid3x3 size={15} />
-                        </button>
-                    </div>
                 </div>
 
-                {/* Bar 2: Items Selector (Loose inventory) */}
-                <div className="flex items-center gap-4 px-4 py-2 bg-white/[0.02] overflow-x-auto no-scrollbar border-t border-white/[0.02]">
-                    <div className="flex items-center gap-2 shrink-0 pr-4 border-r border-white/5 mr-1 group">
-                        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                            <Package size={11} className="text-white/30" />
+                {/* Quick Actions Bar (Selected Item) */}
+                {selectedId && (
+                    <div className={`flex items-center gap-4 px-6 bg-white/[0.03] border-b border-white/5 animate-in slide-in-from-top duration-500 backdrop-blur-2xl ${isCompact ? 'py-1' : 'py-3'}`}>
+                        <div className={`flex items-center gap-3 shrink-0 pr-6 border-r border-white/10 ${isCompact ? 'gap-2' : 'gap-3'}`}>
+                            <div className={`rounded-xl flex items-center justify-center shadow-lg transition-all ${isCompact ? 'w-6 h-6' : 'w-8 h-8'}`} style={{ backgroundColor: 'var(--main-color)' }}>
+                                <Plus size={isCompact ? 12 : 14} className="text-black" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className={`font-black uppercase text-white leading-none ${isCompact ? 'text-[8px] tracking-[0.2em]' : 'text-[10px] tracking-[0.3em]'}`}>Modifier Hub</span>
+                                <span className={`font-bold text-white/30 uppercase tracking-widest mt-0.5 ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>
+                                    {(() => {
+                                        const sel = allCrates.find(c => c.id === selectedId) || allInventory.find(i => String(i.row) === selectedId);
+                                        if (!sel) return 'Unit Selected';
+                                        if ('type' in sel) {
+                                            const { label } = getCrateDisplayName(sel, allCrates, allInventory, truckNumbering[sel.id]);
+                                            return label;
+                                        }
+                                        return sel.data?.shape || 'Loose Artifact';
+                                    })()}
+                                </span>
+                            </div>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Loose Items</span>
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => handleRotate(selectedId)}
+                                className={`flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white hover:text-black transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
+                            >
+                                <RotateCcw size={isCompact ? 12 : 14} /> Transform
+                            </button>
+                            <button 
+                                onClick={() => handleUnload(selectedId)}
+                                className={`flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all font-black uppercase tracking-widest shadow-xl backdrop-blur-md ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
+                            >
+                                <Trash2 size={isCompact ? 12 : 14} /> Eject
+                            </button>
+                            {(() => {
+                                const sel = allCrates.find(c => c.id === selectedId);
+                                return sel?.type === 'cardboard' ? (
+                                    <button 
+                                        onClick={() => setNestingBoxId(selectedId)}
+                                        className={`flex items-center gap-2 rounded-xl text-black hover:bg-white transition-all font-black uppercase tracking-widest shadow-lg ${isCompact ? 'px-3 py-1 text-[8px]' : 'px-4 py-2 text-[10px]'}`}
+                                        style={{ backgroundColor: 'var(--main-color)' }}
+                                    >
+                                        <Box size={isCompact ? 12 : 14} /> Nest Unit
+                                    </button>
+                                ) : null;
+                            })()}
+                        </div>
+                        <div className="flex-1" />
+                        <button onClick={() => setSelectedId(null)} className="p-2 text-white/20 hover:text-white transition-colors hover:bg-white/5 rounded-xl"><X size={isCompact ? 14 : 18} /></button>
                     </div>
-                    <div className="flex items-center gap-3">
-                        {looseItems.length === 0 ? (
-                            <span className="text-[9px] font-black uppercase text-white/5 italic ml-2">All inventory items are currently crated or loaded</span>
-                        ) : (
-                            looseItems.map(item => (
-                                <CompactItemCard key={String(item.row)} item={item} onLoad={() => handleLoadItem(item)} />
-                            ))
-                        )}
+                )}
+
+                {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
+                <div className={`px-10 transition-all duration-500 flex items-center justify-between backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
+                    <div className={`flex items-center justify-between w-full ${isCompact ? 'gap-12' : 'gap-4'}`}>
+                        {/* Section 1: Specs & Units */}
+                        <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-3' : 'gap-10'}`}>
+                            {!isCompact && <h2 className="font-black uppercase tracking-tighter text-white leading-none text-6xl">53&apos;</h2>}
+                            <div className="flex flex-col gap-1">
+                                {isCompact ? (
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">53FT</span>
+                                        <span className="font-mono font-black text-white/60 uppercase tracking-widest text-[9px]">{TRUCK_L_CM}×{TRUCK_W_CM}</span>
+                                        <div className="w-1 h-1 rounded-full bg-white/10" />
+                                        <span className="font-black tracking-tighter text-white text-[14px] leading-none">{truckCrates.length}</span>
+                                        <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">UNITS</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="font-mono font-black text-white/80 uppercase tracking-[0.4em] leading-none text-[12px]">{TRUCK_L_CM} × {TRUCK_W_CM}</span>
+                                        <div className="flex items-baseline gap-2 leading-none mt-1">
+                                            <span className="font-black tracking-tighter text-white text-4xl">{truckCrates.length}</span>
+                                            <span className="text-white/60 font-black uppercase tracking-widest text-[10px]">/ {allCrates.length} UNITS</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Section 2: Payload */}
+                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-3' : 'px-8 gap-6 max-w-[320px] flex-1'}`}>
+                            <Gauge size={isCompact ? 12 : 24} style={{ color: panelStats.statusColor }} className="opacity-60 shrink-0" />
+                            <div className={`flex ${isCompact ? 'items-center gap-2' : 'flex-col w-full gap-1.5'}`}>
+                                <div className="flex items-baseline gap-1.5 leading-none">
+                                    <span className={`font-black tracking-tighter transition-all duration-500 ${isCompact ? 'text-[15px]' : 'text-4xl'}`} style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
+                                    <span className={`text-white/40 font-black uppercase tracking-widest transition-all ${isCompact ? 'text-[7px]' : 'text-[10px]'}`}>KG</span>
+                                </div>
+                                {isCompact ? (
+                                    <span className="font-black text-white/60 uppercase tracking-tighter text-[9px]">{panelStats.payloadPct}%</span>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 bg-white/20 rounded-full overflow-hidden h-1.5">
+                                            <div className="h-full transition-all duration-1000" style={{ width: `${panelStats.payloadPct}%`, backgroundColor: panelStats.statusColor }} />
+                                        </div>
+                                        <span className="font-black text-white/80 uppercase tracking-tighter text-[10px]">{panelStats.payloadPct}%</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Section 3: Space Metrics */}
+                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6' : 'px-8 gap-12'}`}>
+                            <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
+                                <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{floorPct}%</span>
+                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Floor</span>
+                            </div>
+                            <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
+                                <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{panelStats.volPct}%</span>
+                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Vol</span>
+                            </div>
+                        </div>
+
+                        {/* Section 4: Status */}
+                        <div className={`flex flex-col border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 min-w-[70px]' : 'px-8 min-w-[180px] gap-1'}`}>
+                            <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-3xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                            {!isCompact && <span className="font-black text-white/60 uppercase tracking-widest leading-none text-[9px] mt-1.5">{panelStats.remaining.toLocaleString()} KG FREE</span>}
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            {/* ── CANVAS AREA (info panel + trailer viewer) ── */}
-            <div className="flex-1 flex flex-col min-h-0 min-w-0 relative z-0" onClick={e => e.stopPropagation()}>
-
-                {/* ══ FIXED HEADER PANEL ══ */}
-                <div
-                    className="shrink-0 px-6 pt-3 pb-3 flex flex-col gap-3 border-b border-white/6"
-                    style={{ backgroundColor: 'transparent' }}
-                    onWheel={e => { e.preventDefault(); e.stopPropagation(); }}
-                >
-                    {/* Row 1: title + view toggle + zoom controls */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-baseline gap-3">
-                            <h2 className="text-xl font-black uppercase tracking-tighter text-white">53&apos; Trailer</h2>
-                            <span className="text-[9px] font-black text-white/40">{Math.round(zoom * 100)}%</span>
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            {/* Top / Side single-icon toggle */}
-                            <button
-                                onClick={() => setViewMode(v => v === 'top' ? 'side' : 'top')}
-                                title={viewMode === 'top' ? 'Switch to Side View' : 'Switch to Top View'}
-                                className="text-white/40 hover:text-white transition-colors cursor-pointer"
-                            >
-                                {viewMode === 'top' ? <Layers size={16} /> : <Grid3x3 size={16} />}
-                            </button>
-                            {/* Clear Trailer */}
-                            <button
-                                onClick={handleClearTrailer}
-                                title="Clear All Units from Trailer"
-                                className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400/40 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-
-                            {recalledShipment && (
-                                <button
-                                    onClick={() => {
-                                        setSentTruckId(recalledShipment.manifest_id);
-                                        setView('truck');
-                                    }}
-                                    title="Open 3D Interactive Viewer"
-                                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400/40 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer"
-                                >
-                                    <Share2 size={16} />
-                                </button>
-                            )}
-                            {/* Zoom controls */}
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <button onClick={() => setZoom(z => Math.max(0.2, z - 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom out"><ZoomOut size={15} /></button>
-                                <button onClick={() => setZoom(1.0)} className="text-white/30 hover:text-white transition-colors cursor-pointer text-[8px] font-black w-8 text-center" title="Reset">{Math.round(zoom*100)}%</button>
-                                <button onClick={() => setZoom(z => Math.min(3, z + 0.15))} className="text-white/50 hover:text-white transition-colors cursor-pointer" title="Zoom in"><ZoomIn size={15} /></button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Row 2: stats — compact = single row chips, expanded = full metrics */}
-                    {isCompact ? (
-                        /* ── COMPACT stats row ── */
-                        <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <span className="text-[9px] text-white/40 font-black uppercase">Units</span>
-                                <span className="text-[13px] font-black text-emerald-400">{truckCrates.length}</span>
-                                <span className="text-[9px] text-white/30">/ {allCrates.length}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <span className="text-[9px] text-white/40 font-black uppercase">KG</span>
-                                <span className="text-[13px] font-black" style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
-                                <span className="text-[9px] text-white/30">{panelStats.payloadPct}%</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <span className="text-[9px] text-white/40 font-black uppercase">Floor</span>
-                                <span className="text-[13px] font-black text-white/80">{floorPct}%</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <span className="text-[9px] text-white/40 font-black uppercase">Vol</span>
-                                <span className="text-[13px] font-black text-white/80">{panelStats.volPct}%</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.04)', borderColor: `${panelStats.statusColor}40` }}>
-                                <span className="text-[11px] font-black uppercase" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
-                            </div>
-                            {/* Mini dist bar */}
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0 min-w-[120px]" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                                <span className="text-[9px] text-white/40 font-black uppercase">Dist</span>
-                                <div className="flex h-1.5 gap-0.5 rounded overflow-hidden flex-1">
-                                    <div className="h-full bg-emerald-500/80 rounded-l" style={{ flex: panelStats.rPct || 1 }} />
-                                    <div className="h-full bg-emerald-400/50" style={{ flex: panelStats.mPct || 1 }} />
-                                    <div className="h-full bg-emerald-300/30 rounded-r" style={{ flex: panelStats.fPct || 1 }} />
-                                </div>
-                                <span className="text-[8px] text-white/30 shrink-0">{panelStats.rPct}/{panelStats.mPct}/{panelStats.fPct}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        /* ── EXPANDED stats row (Optimized for density) ── */
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                            {/* Units Chip */}
-                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
-                                <Truck size={24} className="text-emerald-400 opacity-60" />
-                                <div className="flex flex-col">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-black tracking-tighter text-white">{truckCrates.length}</span>
-                                        <span className="text-[9px] text-white/30 font-bold">/ {allCrates.length}</span>
-                                    </div>
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-white/20 -mt-1">Active Units</span>
-                                </div>
-                            </div>
-
-                            {/* Payload Chip */}
-                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
-                                <Gauge size={24} style={{ color: 'var(--main-color)' }} className="opacity-60" />
-                                <div className="flex flex-col">
-                                    <div className="flex items-baseline gap-1.5">
-                                        <span className="text-xl font-black tracking-tighter" style={{ color: 'var(--main-color)' }}>{Math.round(totalWeight).toLocaleString()}</span>
-                                        <span className="text-[9px] text-white/30 font-bold">KG</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 -mt-0.5">
-                                        <span className="text-[8px] font-black text-white/40 uppercase">{(totalWeight / 1000).toFixed(1)}T</span>
-                                        <div className="h-1 bg-white/10 rounded-full overflow-hidden w-8">
-                                            <div className="h-full bg-emerald-500" style={{ width: `${panelStats.payloadPct}%` }} />
-                                        </div>
-                                        <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{panelStats.payloadPct}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Space Chip (Floor + Volume) */}
-                            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0">
-                                <Maximize2 size={22} className="text-blue-400 opacity-60" />
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-base font-black text-white leading-none">{floorPct}</span>
-                                                <span className="text-[8px] text-white/30 font-bold">%</span>
-                                            </div>
-                                            <span className="text-[7px] font-black uppercase text-white/20">Floor</span>
-                                        </div>
-                                        <div className="w-px h-6 bg-white/10" />
-                                        <div className="flex flex-col">
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-base font-black text-white leading-none">{panelStats.volPct}</span>
-                                                <span className="text-[8px] text-white/30 font-bold">%</span>
-                                            </div>
-                                            <span className="text-[7px] font-black uppercase text-white/20">Vol ({panelStats.usedVol.toFixed(1)}m³)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Load Balance (Dist) */}
-                            <div className="flex items-center gap-4 px-4 py-2.5 rounded-2xl border border-white/10 bg-white/[0.04] shrink-0 min-w-[200px]">
-                                <div className="flex flex-col flex-1 gap-1.5">
-                                    <div className="flex h-2 gap-0.5 rounded-full overflow-hidden bg-white/5">
-                                        <div className="h-full bg-emerald-500/80" style={{ flex: panelStats.rPct || 1 }} />
-                                        <div className="h-full bg-emerald-400/50" style={{ flex: panelStats.mPct || 1 }} />
-                                        <div className="h-full bg-emerald-300/30" style={{ flex: panelStats.fPct || 1 }} />
-                                    </div>
-                                    <div className="flex justify-between items-center text-[7px] font-black uppercase tracking-widest text-white/30">
-                                        <span>R {panelStats.rPct}%</span>
-                                        <span>M {panelStats.mPct}%</span>
-                                        <span>F {panelStats.fPct}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Status Pill */}
-                            <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl border shrink-0" style={{ backgroundColor: `${panelStats.statusColor}15`, borderColor: `${panelStats.statusColor}30` }}>
-                                <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: panelStats.statusColor }} />
-                                <div className="flex flex-col">
-                                    <span className="text-[12px] font-black uppercase tracking-tighter" style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
-                                    <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">{panelStats.remaining.toLocaleString()} KG REMAINING</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-
-
-                {/* Canvas / Side View */}
-                <div
-                    ref={canvasRef}
-                    className="flex-1 overflow-auto custom-scrollbar"
-                    style={{ backgroundColor: 'transparent', touchAction: 'pan-x pan-y' }}
-                    onWheel={handleWheel}
-                >
-                    {viewMode === 'side' ? (
+            {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
+            <div 
+                ref={canvasRef}
+                className="flex-1 overflow-auto custom-scrollbar relative pt-[160px]"
+                style={{ touchAction: 'none' }}
+                onMouseDown={handleMouseDown}
+                onClick={() => setSelectedId(null)}
+            >
+                <div className="relative min-h-full flex flex-col items-center">
+                {viewMode === 'side' ? (
+                    <div className="w-full h-[600px] mt-8">
                         <SideView
                             truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
                             allCrates={allCrates} allInventory={allInventory}
@@ -3640,51 +3664,50 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             onStack={handleStack}
                             onUnload={handleUnload}
                         />
-                    ) : (
-                    <div className="p-8" style={{ minWidth: TRUCK_L_CM * zoom + 64, minHeight: TRUCK_W_CM * zoom + 64 }}>
-                        {/* Direction labels */}
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/40">Rear Door</span>
-                            <div className="flex-1 h-px bg-white/8" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20">{TRUCK_L_CM}cm × {TRUCK_W_CM}cm</span>
-                            <div className="flex-1 h-px bg-white/8" />
-                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/40">Cab Front</span>
-                            <div className="w-2 h-2 rounded-full bg-white/40 shrink-0" />
-                        </div>
-                        <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }}>
-                            <div
-                                className="absolute top-0 left-0 border border-white/15"
-                                style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left', backgroundColor: 'rgba(255,255,255,0.025)' }}
-                                onClick={e => e.stopPropagation()}
-                            >
-                                <CmGrid />
-                                {/* Axle markers at 72%, 82%, 90% of truck length (vertical lines) */}
-                                {[0.72, 0.82, 0.90].map(frac => (
-                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/15 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
-                                        <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/30">{Math.round(frac * TRUCK_L_CM)}cm</span>
-                                    </div>
-                                ))}
-                                {truckCrates.filter(c => !!positions[c.id]).map(c => {
-                                    const pos = positions[c.id];
-                                    if (!pos) return null;
-                                    return (
-                                        <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
-                                            pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
-                                            onSelect={() => setSelectedId(c.id)}
-                                            onUpdatePos={(x, y) => handleUpdatePos(c.id, x, y)}
-                                            onRotate={() => handleRotate(c.id)}
-                                            onUnload={() => handleUnload(c.id)}
-                                            onNest={() => setNestingBoxId(c.id)} />
-                                    );
-                                })}
-                            </div>
+                    </div>
+                ) : (
+                <div className="py-[100vh] px-[100vw] flex flex-col items-center" style={{ minWidth: TRUCK_L_CM * zoom + 2000 }}>
+                    {/* Direction labels */}
+                    <div className="flex items-center gap-3 mb-6 w-full max-w-[1200px]">
+                        <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Rear Loading Zone</span>
+                        <div className="flex-1 h-px bg-white/10" />
+                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{TRUCK_L_CM}cm Payload Length</span>
+                        <div className="flex-1 h-px bg-white/10" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Cab Chassis</span>
+                        <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />
+                    </div>
+                    
+                    <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }} className="shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
+                        <div
+                            className="absolute top-0 left-0 border border-white/10 backdrop-blur-2xl bg-white/[0.03]"
+                            style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <CmGrid />
+                            {[0.72, 0.82, 0.90].map(frac => (
+                                <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
+                                    <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/20">{Math.round(frac * TRUCK_L_CM)}cm</span>
+                                </div>
+                            ))}
+                            {truckCrates.filter(c => !!positions[c.id]).map(c => {
+                                const pos = positions[c.id];
+                                if (!pos) return null;
+                                return (
+                                    <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
+                                        pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
+                                        onSelect={() => setSelectedId(c.id)}
+                                        onRotate={() => handleRotate(c.id)}
+                                        onUnload={() => handleUnload(c.id)}
+                                        onNest={() => setNestingBoxId(c.id)} />
+                                );
+                            })}
                         </div>
                     </div>
-                    )}
+                </div>
+                )}
                 </div>
             </div>
-
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -3693,6 +3716,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
                 .custom-scrollbar::-webkit-scrollbar-corner { background: transparent; }
             `}</style>
+
             {showSaveDraft && (
                 <SaveDraftModal
                     crateCount={truckCrates.length}
@@ -3748,6 +3772,38 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     onClose={() => setNestingBoxId(null)}
                 />
             )}
+
+            {/* ── FIXED BOTTOM CONTROL BAR (Glassmorphic) ── */}
+            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
+                <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+                    <button
+                        onClick={() => setViewMode(v => v === 'top' ? 'side' : 'top')}
+                        title={viewMode === 'top' ? 'Perspective View' : 'Overhead View'}
+                        className={`p-3 rounded-xl transition-all duration-300 ${viewMode === 'side' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                        style={viewMode === 'side' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
+                    >
+                        {viewMode === 'top' ? <Layers size={22} /> : <Grid3x3 size={22} />}
+                    </button>
+                    
+                    <div className="w-px h-8 bg-white/10 mx-2" />
+                    
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setZoom(z => Math.max(0.1, z - 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom Out"><ZoomOut size={22} /></button>
+                        <button onClick={() => setZoom(1.0)} className="px-4 text-[13px] font-black text-white hover:scale-110 transition-all tracking-tighter">{Math.round(zoom * 100)}%</button>
+                        <button onClick={() => setZoom(z => Math.min(4, z + 0.1))} className="p-3 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all" title="Zoom In"><ZoomIn size={22} /></button>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/10 mx-2" />
+
+                    <button 
+                        onClick={handleClearTrailer}
+                        className="p-3 text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                        title="Flush Payload"
+                    >
+                        <Trash2 size={22} />
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

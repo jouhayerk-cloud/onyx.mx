@@ -285,7 +285,12 @@ export function UploadEntryForm() {
                 pay_req: itemData.payReq || null,
                 media_urls: uploadedUrls.join(','),
                 timestamp: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                book_barcode: calculated.bookBarcode,
+                book_aq_code: calculated.bookAqCode,
+                box_land_code: calculated.bookLandCode,
+                book_landed: isNaN(Number(calculated.bookLanded)) ? null : Number(calculated.bookLanded),
+                book_retail: isNaN(Number(calculated.bookRetail)) ? null : Number(calculated.bookRetail)
             };
 
             setSavingProgress(90);
