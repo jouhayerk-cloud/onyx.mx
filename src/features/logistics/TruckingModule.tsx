@@ -520,44 +520,40 @@ const TruckCrate: React.FC<{
                 className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group"
                 style={{
                     backgroundColor: primaryColor,
-                    outline: isSelected ? `3px solid #fff` : `1px solid rgba(0,0,0,0.3)`,
-                    boxShadow: isSelected ? `0 0 0 1px rgba(255,255,255,0.3), 0 8px 30px rgba(0,0,0,0.5)` : `0 4px 12px rgba(0,0,0,0.4)`,
+                    boxShadow: isSelected 
+                        ? `0 20px 60px -10px rgba(0,0,0,0.8), inset 0 0 40px rgba(255,255,255,0.4)` 
+                        : `0 8px 24px -4px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.1)`,
                 }}
             >
                 {/* Visual children indicator */}
                 {children.length > 0 && (
-                    <div className="absolute inset-1 border border-black/10 rounded flex flex-wrap gap-1 p-1 content-start pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
-                        {children.map(child => {
-                            const { vendorList } = getCrateDisplayName(child, allCrates, allInventory);
-                            const vStr = vendorList.join('') || 'BX';
-                            return (
-                                <div key={child.id} className="px-1.5 py-0.5 rounded-sm bg-black/20 text-[6px] font-black text-white uppercase tracking-tighter border border-white/5">
-                                    {vStr}
-                                </div>
-                            );
-                        })}
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1 p-1 pointer-events-none">
+                        {children.slice(0, 3).map(child => (
+                            <div key={child.id} className="w-2 h-2 rounded-full bg-white/40 shadow-sm" />
+                        ))}
                     </div>
                 )}
 
-                <Box size={iconSize} strokeWidth={0.6} color="rgba(0,0,0,0.4)" className="pointer-events-none" />
-                {pxX > 30 && (
-                    <div className="flex flex-col items-center pointer-events-none w-full">
-                        <span className="font-black uppercase text-center px-1 mt-0.5 truncate w-full text-black/90"
-                            style={{ fontSize: textScale * 1.5 }}>
-                            {label}
-                        </span>
-                        {vendorList.length > 1 && (
-                            <span className="font-black opacity-60 uppercase text-center px-1 -mt-0.5 truncate w-full text-black/80"
-                                style={{ fontSize: textScale * 0.9 }}>
-                                MIXED
-                            </span>
-                        )}
-                    </div>
-                )}
-                {pxX > 50 && pxY > 20 && (
-                    <span className="font-black pointer-events-none text-black/60" style={{ fontSize: Math.max(9, textScale) }}>
-                        {computeCrateWeight(crate, allInventory, allCrates)} KG
+                <Box size={iconSize} strokeWidth={1} color="rgba(0,0,0,0.3)" className="pointer-events-none" />
+                
+                <div className="flex flex-col items-center pointer-events-none w-full px-2 mt-1">
+                    <span className="font-black uppercase text-center leading-[0.9] text-black/80 tracking-tighter"
+                        style={{ fontSize: textScale * 1.4 }}>
+                        {label}
                     </span>
+                    {pxX > 50 && pxY > 30 && (
+                        <div className="mt-1 flex items-center gap-1.5">
+                            <div className="w-1 h-1 rounded-full bg-black/20" />
+                            <span className="font-black text-black/50 uppercase tracking-widest" style={{ fontSize: Math.max(8, textScale * 0.5) }}>
+                                {computeCrateWeight(crate, allInventory, allCrates)} KG
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Selection Overlay */}
+                {isSelected && (
+                    <div className="absolute inset-0 bg-white/10 animate-pulse pointer-events-none" />
                 )}
             </div>
         </div>
@@ -3695,16 +3691,61 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         };
     }, [zoom]);
 
+    // Sync inventory sidebar with selected crate
     useEffect(() => {
-        if (canvasRef.current) {
-            const el = canvasRef.current;
-            const timer = setTimeout(() => {
-                el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-                el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
-            }, 100);
-            return () => clearTimeout(timer);
+        if (selectedId && inventoryArtifactConfig.isOpen) {
+            const sel = allCrates.find(c => c.id === selectedId);
+            if (sel) {
+                const itemIds = sel.inventory_ids 
+                    ? sel.inventory_ids.split(',').filter(Boolean).map((e: string) => e.split(':')[0])
+                    : (sel.inventoryItems || []).map((i: any) => i.row);
+
+                setInventoryArtifactConfig(prev => ({
+                    ...prev,
+                    itemIds,
+                    title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`
+                }));
+            }
         }
-    }, []);
+    }, [selectedId]);
+
+    useEffect(() => {
+        const el = canvasRef.current;
+        if (!el) return;
+
+        const centerCanvas = () => {
+            const trailer = document.getElementById('trailer-main-map');
+            if (trailer && el) {
+                // Calculate absolute center scroll positions
+                const centerX = trailer.offsetLeft + (trailer.offsetWidth / 2) - (el.clientWidth / 2);
+                const centerY = trailer.offsetTop + (trailer.offsetHeight / 2) - (el.clientHeight / 2);
+                
+                el.scrollTo({
+                    left: centerX,
+                    top: centerY,
+                    behavior: 'smooth'
+                });
+            } else if (el) {
+                const scrollX = (el.scrollWidth - el.clientWidth) / 2;
+                const scrollY = (el.scrollHeight - el.clientHeight) / 2;
+                el.scrollLeft = scrollX;
+                el.scrollTop = scrollY;
+            }
+        };
+
+        // Center on mount and after render cycles
+        const timers = [
+            setTimeout(centerCanvas, 100),
+            setTimeout(centerCanvas, 500),
+            setTimeout(centerCanvas, 1000)
+        ];
+        
+        window.addEventListener('resize', centerCanvas);
+        return () => {
+            timers.forEach(t => clearTimeout(t));
+            window.removeEventListener('resize', centerCanvas);
+        };
+    }, [zoom, viewMode]);
 
     return (
         <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
@@ -3947,7 +3988,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             {/* ── FULL-SCREEN WORKSPACE (Scrolls Behind Hub) ── */}
             <div 
                 ref={canvasRef}
-                className="flex-1 overflow-auto custom-scrollbar relative pt-[160px]"
+                className="flex-1 overflow-auto custom-scrollbar relative bg-[#050505]"
                 style={{ touchAction: 'none' }}
                 onMouseDown={handleMouseDown}
                 onClick={() => {
@@ -3955,7 +3996,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
                 }}
             >
-                <div className="relative min-h-full flex flex-col items-center">
+                <div className="relative">
                 {viewMode === 'side' ? (
                     <div className="w-full h-[600px] mt-8">
                         <SideView
@@ -3980,42 +4021,59 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         />
                     </div>
                 ) : (
-                <div className="py-[80vh] px-[150vw] flex flex-col items-center" style={{ minWidth: TRUCK_L_CM * zoom + 4000 }}>
-                    {/* Direction labels */}
-                    <div className="flex items-center gap-3 mb-6 w-full max-w-[1200px]">
-                        <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Rear Loading Zone</span>
-                        <div className="flex-1 h-px bg-white/10" />
-                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{TRUCK_L_CM}cm Payload Length</span>
-                        <div className="flex-1 h-px bg-white/10" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Cab Chassis</span>
-                        <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />
-                    </div>
-                    
-                    <div style={{ width: TRUCK_L_CM * zoom, height: TRUCK_W_CM * zoom, position: 'relative' }} className="shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
-                        <div
-                            className="absolute top-0 left-0 border border-white/10 backdrop-blur-3xl bg-white/[0.04] shadow-inner rounded-sm"
-                            style={{ width: TRUCK_L_CM, height: TRUCK_W_CM, transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <CmGrid />
-                            {[0.72, 0.82, 0.90].map(frac => (
-                                <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM }}>
-                                    <span className="absolute bottom-1 left-1 text-[7px] font-mono text-white/20">{Math.round(frac * TRUCK_L_CM)}cm</span>
+                <div className="p-[3000px]" style={{ width: 'fit-content', height: 'fit-content' }}>
+                    <div 
+                        id="trailer-main-map"
+                        className="flex flex-col items-center pt-[300px] pb-[100px] px-[200px] animate-in fade-in zoom-in duration-1000" 
+                        style={{ width: TRUCK_L_CM * BASE_SCALE * zoom + 1000 }}
+                    >
+                        {/* Direction labels */}
+                        <div className="flex items-center gap-10 mb-12 w-full max-w-[1600px]">
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
                                 </div>
-                            ))}
-                            {truckCrates.filter(c => !!positions[c.id]).map(c => {
-                                const pos = positions[c.id];
-                                if (!pos) return null;
-                                return (
-                                    <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
-                                        pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
-                                        onSelect={() => setSelectedId(c.id)}
-                                        onRotate={() => handleRotate(c.id)}
-                                        onUnload={() => handleUnload(c.id)}
-                                        onNest={() => setNestingBoxId(c.id)} />
-                                );
-                            })}
+                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
+                            </div>
+                            
+                            <div className="flex-1" />
+
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-8 h-8 flex items-center justify-center bg-white/5">
+                                    <div className="w-3 h-3 rounded-full bg-white/40" />
+                                </div>
+                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">Bulkhead</span>
+                            </div>
+                        </div>
+                        
+                        <div style={{ width: TRUCK_L_CM * BASE_SCALE * zoom, height: TRUCK_W_CM * BASE_SCALE * zoom, position: 'relative' }} className="shadow-[0_120px_250px_-80px_rgba(0,0,0,0.8)] bg-transparent">
+                            <div
+                                className="absolute inset-0 overflow-hidden"
+                                style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: TRUCK_L_CM * BASE_SCALE, height: TRUCK_W_CM * BASE_SCALE }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <CmGrid />
+                                {[0.2, 0.4, 0.6, 0.8].map(frac => (
+                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM * BASE_SCALE }}>
+                                        <div className="absolute bottom-6 left-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
+                                            {Math.round(frac * TRUCK_L_CM)} CM
+                                        </div>
+                                    </div>
+                                ))}
+                                {truckCrates.filter(c => !!positions[c.id]).map(c => {
+                                    const pos = positions[c.id];
+                                    if (!pos) return null;
+                                    return (
+                                        <TruckCrate key={c.id} crate={c} allCrates={allCrates} allInventory={allInventory}
+                                            pos={pos} truckSeq={truckNumbering[c.id]} isSelected={selectedId === c.id} zoom={zoom}
+                                            onSelect={() => setSelectedId(c.id)}
+                                            onUpdatePos={(x, y) => handleUpdatePos(c.id, x, y)}
+                                            onRotate={() => handleRotate(c.id)}
+                                            onUnload={() => handleUnload(c.id)}
+                                            onNest={() => setNestingBoxId(c.id)} />
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
