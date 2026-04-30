@@ -125,17 +125,17 @@ const CrateWireframe: React.FC<{ w: number; l: number; h: number; color: string;
     ];
     const [a,b,c,d,e,f,g,hh] = corners;
     const pts = (arr: [number,number][]) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-    const fillOpacity = solid ? 0.8 : 0.03;
+    const fillOpacity = solid ? 1.0 : 0.03;
     const strokeOpacity = solid ? 0.3 : 1;
     
     return (
         <svg width={size} height={size} viewBox="0 0 48 48" style={{ overflow: 'visible' }}>
             {/* bottom face */}
             <polygon points={pts([a,b,c,d])} fill={solid ? color : "none"} fillOpacity={solid ? 0.15 : 0} stroke={color} strokeWidth={0.6} strokeOpacity={0.25} />
-            {/* left face */}
-            <polygon points={pts([a,d,hh,e])} fill={color} fillOpacity={fillOpacity * 0.6} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.55} />
-            {/* right face */}
-            <polygon points={pts([b,c,g,f])} fill={color} fillOpacity={fillOpacity * 0.8} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.45} />
+            {/* front-left face */}
+            <polygon points={pts([a,d,hh,e])} fill={color} fillOpacity={fillOpacity * 0.75} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.55} />
+            {/* front-right face */}
+            <polygon points={pts([a,b,f,e])} fill={color} fillOpacity={fillOpacity * 0.9} stroke={color} strokeWidth={0.7} strokeOpacity={strokeOpacity * 0.45} />
             {/* top face */}
             <polygon points={pts([e,f,g,hh])} fill={color} fillOpacity={fillOpacity} stroke={color} strokeWidth={0.9} strokeOpacity={strokeOpacity} />
             {/* vertical edges */}
@@ -217,8 +217,15 @@ const CompactItemCard: React.FC<{
             onClick={onLoad}
             className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] transition-all group shrink-0 text-left cursor-pointer active:scale-[0.98] h-[52px]"
         >
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/5 shrink-0" style={{ backgroundColor: `${primaryColor}10` }}>
-                <Package size={16} style={{ color: primaryColor }} strokeWidth={1.5} />
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <CrateWireframe 
+                    w={parseFloat(data.widthCm || data.width_cm) || 40} 
+                    l={parseFloat(data.lengthCm || data.length_cm) || 40} 
+                    h={parseFloat(data.heightCm || data.height_cm) || 40} 
+                    color={primaryColor} 
+                    size={40} 
+                    solid={true}
+                />
             </div>
             <div className="flex flex-col min-w-[120px] max-w-[200px]">
                 <div className="flex items-center gap-1.5 leading-none mb-1">
@@ -258,47 +265,143 @@ const CompactItemCard: React.FC<{
     );
 };
 
+// ─── Mini Iso View for Deployed Trailers (SVG based) ──────────────────────────
+const MiniIsoView: React.FC<{
+    truckCrates: any[];
+    positions: Record<string, any>;
+    allCrates: any[];
+    allInventory: any[];
+    truckNumbering?: Record<string, number>;
+}> = ({ truckCrates, positions, allCrates, allInventory, truckNumbering = {} }) => {
+    const W = 300;
+    const H = 150;
+    const S = W / (TRUCK_L_CM + TRUCK_W_CM) * 0.95;
+    const ox = W * 0.5;
+    const oy = H * 0.35;
+
+    const iso = (x: number, y: number, z: number): [number, number] => [
+        ox + (x - y) * S * 0.866,
+        oy + (x + y) * S * 0.5 - z * S
+    ];
+
+    const effectivePositions = { ...positions };
+    if (Object.keys(effectivePositions).length === 0) {
+        truckCrates.forEach(c => {
+            if (c.id) {
+                effectivePositions[c.id] = {
+                    x: c.x ?? 0,
+                    y: c.z !== undefined ? c.z : (c.y ?? 0),
+                    r: c.r ?? 0,
+                    z: c.y !== undefined && c.z !== undefined ? c.y : 0
+                };
+            }
+        });
+    }
+
+    const sortedIds = Object.keys(effectivePositions).sort((a, b) => 
+        (effectivePositions[a].x + effectivePositions[a].y) - (effectivePositions[b].x + effectivePositions[b].y)
+    );
+
+    const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
+
+    return (
+        <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+            {sortedIds.map(id => {
+                const crate = crateMap.get(id);
+                if (!crate || crate.parent_id) return null;
+                const p = effectivePositions[id];
+                const rotated = p.r === 90;
+                const w = crate.width_cm || crate.w || 120;
+                const l = crate.length_cm || crate.l || 80;
+                const h = crate.height_cm || crate.h || 100;
+                const dX = rotated ? w : l, dY = rotated ? l : w;
+                const zOff = p.z || 0;
+
+                const col = crate.color || (vendors[getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[id]).vendorList[0] as keyof typeof vendors]?.color || '#F97316');
+
+                const pts = [
+                    iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
+                    iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+                ];
+                const ptStr = (indices: number[]) => indices.map(i => `${pts[i][0].toFixed(1)},${pts[i][1].toFixed(1)}`).join(' ');
+
+                return (
+                    <g key={id}>
+                        {/* Front-left */}
+                        <polygon points={ptStr([0,3,7,4])} fill={col} fillOpacity={0.75} stroke={col} strokeWidth={0.2} strokeOpacity={0.3} />
+                        {/* Front-right */}
+                        <polygon points={ptStr([0,1,5,4])} fill={col} fillOpacity={0.9} stroke={col} strokeWidth={0.2} strokeOpacity={0.3} />
+                        {/* Top */}
+                        <polygon points={ptStr([4,5,6,7])} fill={col} fillOpacity={1.0} stroke={col} strokeWidth={0.3} strokeOpacity={0.4} />
+                    </g>
+                );
+            })}
+        </svg>
+    );
+};
+
 const DeployedTrailerCard: React.FC<{ 
     shipment: any; 
     onRecall: () => void;
     onDelete: () => void;
-}> = ({ shipment, onRecall, onDelete }) => {
-    const ts = new Date(shipment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    allCrates: any[];
+    allInventory: any[];
+}> = ({ shipment, onRecall, onDelete, allCrates, allInventory }) => {
+    const date = new Date(shipment.timestamp);
+    const dateStr = date.toISOString().split('T')[0];
+    const trkDate = `TRK-${dateStr}`;
+
     const payload = useMemo(() => {
         try { return typeof shipment.payload === 'string' ? JSON.parse(shipment.payload) : shipment.payload; } catch (e) { return null; }
     }, [shipment]);
-    const crateCount = payload?.crates?.length || 0;
     const weight = Math.round(payload?.truckStats?.totalWeight || 0);
+    const truckCrates = payload?.crates || [];
+    const truckPositions = payload?.positions || {};
+    const truckNumbering = payload?.numbering || {};
+    
     
     return (
-        <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-all group shrink-0 text-left h-[52px]">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center border border-white/10 shrink-0 bg-white/5 shadow-inner">
-                <Truck size={16} className="text-white/40" />
+        <div className="flex items-center gap-6 group shrink-0 transition-all select-none">
+            {/* Larger SVG Crate Map Indicator */}
+            <div className="relative w-36 h-28 flex items-center justify-center transition-all duration-700 group-hover:scale-110 cursor-pointer active:scale-95" onClick={onRecall}>
+                <div className="absolute inset-0 bg-white/5 rounded-full scale-0 group-hover:scale-150 transition-all duration-1000 blur-[40px] opacity-20" />
+                {truckCrates.length > 0 ? (
+                    <MiniIsoView 
+                        truckCrates={truckCrates} 
+                        positions={truckPositions} 
+                        allCrates={allCrates} 
+                        allInventory={allInventory} 
+                        truckNumbering={truckNumbering}
+                    />
+                ) : (
+                    <CrateWireframe 
+                        w={530} l={240} h={270} 
+                        color="#F97316" 
+                        size={84} 
+                        solid={true}
+                    />
+                )}
             </div>
-            <div className="flex flex-col min-w-[110px]">
-                <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                    <span className="text-[11px] font-black uppercase tracking-tighter text-white">{shipment.manifest_id}</span>
-                </div>
-                <div className="flex items-center gap-2 leading-none">
-                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">{ts}</span>
-                    <div className="w-1 h-1 rounded-full bg-white/10" />
-                    <span className="text-[9px] font-bold text-white/40 uppercase">{crateCount} Units</span>
-                    <span className="text-[9px] font-black text-emerald-400/60 uppercase">{weight}KG</span>
-                </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <span className="text-[16px] font-black text-white/90 tracking-tighter uppercase leading-none">{trkDate}</span>
+                <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.4em]">{weight}KG LOADED</span>
             </div>
-            <div className="flex items-center gap-1.5 ml-2">
+
+            <div className="flex items-center gap-4">
                 <button 
                     onClick={onRecall}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 hover:bg-white hover:text-black transition-all text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm active:scale-95"
+                    className="w-16 h-16 rounded-full text-white/10 hover:text-white hover:scale-125 transition-all duration-500 flex items-center justify-center group/btn active:scale-90"
+                    title="Recall Load"
                 >
-                    <History size={11} /> Recall
+                    <ArrowUp size={32} strokeWidth={2.5} className="transition-transform group-hover/btn:-translate-y-1" />
                 </button>
                 <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    className="p-2 rounded-lg bg-rose-500/10 text-rose-400/40 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-95"
+                    className="p-3 text-rose-500/5 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
                     title="Delete Record"
                 >
-                    <Trash2 size={13} />
+                    <Trash2 size={16} />
                 </button>
             </div>
         </div>
@@ -326,7 +429,7 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
         >
             {/* Top row: wireframe + type badge */}
             <div className="flex items-start justify-between w-full mb-0">
-                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} />
+                <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} solid={true} />
                 <div className="flex flex-col items-end gap-0.5">
                     <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
@@ -455,6 +558,105 @@ const TruckCrate: React.FC<{
                         {computeCrateWeight(crate, allInventory, allCrates)} KG
                     </span>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ─── Isometric View (interactive 3-D perspective view) ─────────────────────────
+const IsoView: React.FC<{
+    truckCrates: any[];
+    positions: Record<string, { x: number; y: number; r: number; z?: number }>;
+    truckNumbering: Record<string, number>;
+    allCrates: any[]; allInventory: any[];
+    zoom: number;
+    selectedId: string | null;
+    onSelect: (id: string) => void;
+}> = ({ truckCrates, positions, truckNumbering, allCrates, allInventory, zoom, selectedId, onSelect }) => {
+    const S = 1.2 * BASE_SCALE;
+    const ox = 400;
+    const oy = 250;
+    const W = TRUCK_L_CM * S;
+    const H = (TRUCK_W_CM + TRUCK_H_CM) * S * 1.5;
+
+    const iso = (x: number, y: number, z: number): [number, number] => [
+        ox + (x - y) * S * 0.866,
+        oy + (x + y) * S * 0.5 - z * S
+    ];
+
+    const sortedIds = useMemo(() => {
+        return Object.keys(positions).sort((a, b) => {
+            const pa = positions[a];
+            const pb = positions[b];
+            return (pa.x + pa.y) - (pb.x + pb.y);
+        });
+    }, [positions]);
+
+    return (
+        <div className="w-full h-full backdrop-blur-3xl bg-white/[0.02] border-t border-white/10 shadow-inner relative">
+            <div className="py-[100vh] pl-[300vw] pr-[100vw]" style={{ minWidth: W * zoom + 12000, minHeight: H * zoom + 4000 }}>
+                <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} 
+                    style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', overflow: 'visible' }}
+                    onClick={() => onSelect('')}
+                >
+                    <path 
+                        d={`M ${iso(0,0,0).join(',')} L ${iso(TRUCK_L_CM,0,0).join(',')} L ${iso(TRUCK_L_CM,TRUCK_W_CM,0).join(',')} L ${iso(0,TRUCK_W_CM,0).join(',')} Z`} 
+                        fill="rgba(255,255,255,0.03)" 
+                        stroke="rgba(255,255,255,0.15)" 
+                        strokeWidth={1} 
+                    />
+                    
+                    {sortedIds.map(id => {
+                        const crate = allCrates.find(c => c.id === id);
+                        if (!crate || crate.parent_id) return null;
+                        const p = positions[id];
+                        const rotated = p.r === 90;
+                        const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+                        const dX = rotated ? w : l, dY = rotated ? l : w;
+                        const zOff = p.z || 0;
+                        const isSelected = id === selectedId;
+                        const { vendorList, label } = getCrateDisplayName(crate, allCrates, allInventory, truckNumbering[id]);
+                        const col = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
+
+                        const pts = [
+                            iso(p.x, p.y, zOff), iso(p.x + dX, p.y, zOff), iso(p.x + dX, p.y + dY, zOff), iso(p.x, p.y + dY, zOff),
+                            iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
+                        ];
+
+                        const ptsStr = (indices: number[]) => indices.map(i => pts[i].join(',')).join(' ');
+
+                        return (
+                            <g key={id} onClick={(e) => { e.stopPropagation(); onSelect(id); }} className="cursor-pointer group">
+                                {/* Front-left face */}
+                                <polygon points={ptsStr([0,3,7,4])} fill={col} fillOpacity={0.75} stroke={col} strokeWidth={isSelected ? 1.5 : 0.5} strokeOpacity={0.3} />
+                                {/* Front-right face */}
+                                <polygon points={ptsStr([0,1,5,4])} fill={col} fillOpacity={0.9} stroke={col} strokeWidth={isSelected ? 1.5 : 0.5} strokeOpacity={0.3} />
+                                {/* Top face */}
+                                <polygon 
+                                    points={ptsStr([4,5,6,7])} 
+                                    fill={col} 
+                                    fillOpacity={isSelected ? 1.0 : 0.95} 
+                                    stroke={isSelected ? '#fff' : col} 
+                                    strokeWidth={isSelected ? 2.5 : 1} 
+                                    className="transition-all duration-300"
+                                />
+                                
+                                {/* Inner glow for selection */}
+                                {isSelected && (
+                                    <polygon points={ptsStr([4,5,6,7])} fill="white" fillOpacity={0.1} filter="blur(12px)" />
+                                )}
+
+                                {/* Label - Floating above */}
+                                <text x={pts[4][0] + (pts[6][0] - pts[4][0])/2} y={pts[4][1] + (pts[6][1] - pts[4][1])/2} 
+                                    textAnchor="middle" fill={isSelected ? "white" : "rgba(0,0,0,0.7)"} 
+                                    fontSize={Math.min(14, dX/3)} fontWeight="900" 
+                                    style={{ pointerEvents: 'none', filter: isSelected ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' : 'none' }}>
+                                    {label}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </svg>
             </div>
         </div>
     );
@@ -865,22 +1067,21 @@ function generateIsoViewThumbnail(
     truckCrates: any[],
     positions: Record<string, { x: number; y: number; r: number; z?: number }>,
     allCrates: any[],
-    allInventory: any[]
+    allInventory: any[],
+    isMini: boolean = false
 ): string {
-    const W = 2400;
-    const H = 1200;
+    const W = isMini ? 600 : 2400;
+    const H = isMini ? 600 : 1200;
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
-    ctx.fillStyle = '#F3F4F6';
-    ctx.fillRect(0, 0, W, H);
-    
+    ctx.clearRect(0, 0, W, H);
+
     const scale = W / (TRUCK_L_CM + TRUCK_W_CM);
-    const S = scale * 0.72; // Reduced scale to fit better
-    const ox = W * 0.28;   // Moved left to accommodate long tail
-    const oy = H * 0.18;   // Moved up to accommodate growth downwards
+    const S = scale * (isMini ? 1.05 : 0.72); 
+    const ox = isMini ? W * 0.5 : W * 0.28;
+    const oy = isMini ? H * 0.35 : H * 0.18;
     
     const iso = (x: number, y: number, z: number): [number, number] => [
         ox + (x - y) * S * 0.866,
@@ -888,26 +1089,45 @@ function generateIsoViewThumbnail(
     ];
 
     // Draw trailer floor
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
-    ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
-    ctx.stroke();
+    if (!isMini) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
+        ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
+        ctx.stroke();
+    }
+
+    // Reconstruct positions if missing (e.g. from historical shipment payloads)
+    const effectivePositions = { ...positions };
+    if (Object.keys(effectivePositions).length === 0) {
+        truckCrates.forEach(c => {
+            if (c.id) {
+                effectivePositions[c.id] = {
+                    x: c.x ?? 0,
+                    y: c.z !== undefined ? c.z : (c.y ?? 0), // Handle depth
+                    r: c.r ?? 0,
+                    z: c.y !== undefined && c.z !== undefined ? c.y : 0 // Handle height
+                };
+            }
+        });
+    }
 
     // Sort crates for correct depth rendering (X+Y)
-    const sortedIds = Object.keys(positions).sort((a, b) => (positions[a].x + positions[a].y) - (positions[b].x + positions[b].y));
+    const sortedIds = Object.keys(effectivePositions).sort((a, b) => (effectivePositions[a].x + effectivePositions[a].y) - (effectivePositions[b].x + effectivePositions[b].y));
 
     // Pre-calculate numbering for performance
-    const numbering = getTruckCrateNumbering(truckCrates, positions);
+    const numbering = getTruckCrateNumbering(truckCrates, effectivePositions);
     const crateMap = new Map(truckCrates.map((c: any) => [c.id, c]));
 
     for (const id of sortedIds) {
         const crate = crateMap.get(id);
-        if (!crate || crate.parent_id) continue; // Skip nested boxes in ISO too
-        const p = positions[id];
+        if (!crate || crate.parent_id) continue; 
+        const p = effectivePositions[id];
         const rotated = p.r === 90;
-        const w = crate.width_cm, l = crate.length_cm, h = crate.height_cm || 100;
+        const w = crate.width_cm || crate.w || 120;
+        const l = crate.length_cm || crate.l || 80;
+        const h = crate.height_cm || crate.h || 100;
         const dX = rotated ? w : l, dY = rotated ? l : w;
         const zOff = p.z || 0;
         
@@ -919,41 +1139,51 @@ function generateIsoViewThumbnail(
             iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
         ];
 
-        // Draw faces as wireframe
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = col;
+        // Draw faces as solid 3D boxes
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
         
-        // Front faces (visible)
-        // Left
-        ctx.fillStyle = `${col}11`;
+        // 1. Back/Bottom faces (optional, usually skipped for solid)
+        
+        // 1. Front-left face (shaded)
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.75;
         ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[3]); ctx.lineTo(...pts[7]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
-        // Right
-        ctx.beginPath(); ctx.moveTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[5]); ctx.closePath(); ctx.fill(); ctx.stroke();
-        // Top
-        ctx.fillStyle = `${col}15`;
+        
+        // 2. Front-right face (darker shaded)
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
+        
+        // 3. Top face (brightest)
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 1.0;
         ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
         
-        // Vertical connecting edges
-        ctx.stroke();
+        ctx.globalAlpha = 1.0;
 
         // Labels in Iso View
-        const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
-        const wKg = computeCrateWeight(crate, allInventory, allCrates);
-        const pMid = iso(p.x + dX/2, p.y + dY/2, zOff + h/2);
-        ctx.fillStyle = col;
-        ctx.font = 'bold 18px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, pMid[0], pMid[1]);
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText(`${wKg} KG`, pMid[0], pMid[1] + 18);
+        if (!isMini) {
+            const { label } = getCrateDisplayName(crate, allCrates, allInventory, numbering[id]);
+            const wKg = computeCrateWeight(crate, allInventory, allCrates);
+            const pMid = iso(p.x + dX/2, p.y + dY/2, zOff + h);
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.font = 'black 22px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, pMid[0], pMid[1] - 10);
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText(`${wKg}KG`, pMid[0], pMid[1] + 12);
+        }
     }
     
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.font = 'bold 36px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('ONYX · TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
+    if (!isMini) {
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.font = 'bold 36px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('ONYX · TRUCKLOAD ISOMETRIC VIEW', 40, H - 40);
+    }
 
-    return canvas.toDataURL('image/jpeg', 0.85);
+    return canvas.toDataURL('image/png', 0.85);
 }
 
 function generateMasterThumbnail(
@@ -997,13 +1227,7 @@ function generateMasterThumbnail(
             oy + (x + y) * S * 0.5 - z * S
         ];
 
-        // Floor
-        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        const f1 = iso(0,0,0), f2 = iso(TRUCK_L_CM,0,0), f3 = iso(TRUCK_L_CM,TRUCK_W_CM,0), f4 = iso(0,TRUCK_W_CM,0);
-        ctx.moveTo(...f1); ctx.lineTo(...f2); ctx.lineTo(...f3); ctx.lineTo(...f4); ctx.closePath();
-        ctx.stroke();
+        // Floor - removed for containerless design
 
         const sortedIds = Object.keys(positions).sort((a, b) => (positions[a].x + positions[a].y) - (positions[b].x + positions[b].y));
         for (const id of sortedIds) {
@@ -1022,22 +1246,31 @@ function generateMasterThumbnail(
                 iso(p.x, p.y, zOff + h), iso(p.x + dX, p.y, zOff + h), iso(p.x + dX, p.y + dY, zOff + h), iso(p.x, p.y + dY, zOff + h)
             ];
 
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = col;
-            ctx.fillStyle = `${col}15`; // Faint fill for wireframe look
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
             
-            // Top face
-            ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
-            // Left face
+            // 1. Front-left face (shaded)
+            ctx.fillStyle = col;
+            ctx.globalAlpha = 0.75;
             ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[3]); ctx.lineTo(...pts[7]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
-            // Right face
-            ctx.beginPath(); ctx.moveTo(...pts[1]); ctx.lineTo(...pts[2]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[5]); ctx.closePath(); ctx.fill(); ctx.stroke();
+            
+            // 2. Front-right face (darker shaded)
+            ctx.fillStyle = col;
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath(); ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[4]); ctx.closePath(); ctx.fill(); ctx.stroke();
+            
+            // 3. Top face (brightest)
+            ctx.fillStyle = col;
+            ctx.globalAlpha = 1.0;
+            ctx.beginPath(); ctx.moveTo(...pts[4]); ctx.lineTo(...pts[5]); ctx.lineTo(...pts[6]); ctx.lineTo(...pts[7]); ctx.closePath(); ctx.fill(); ctx.stroke();
+            
+            ctx.globalAlpha = 1.0;
         }
         
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('ISOMETRIC LOAD VIEW · WIREFRAME MATRIX', rect.x + 40, rect.y + rect.h - 40);
+        ctx.fillText('ISOMETRIC LOAD VIEW · SOLID MATRIX', rect.x + 40, rect.y + rect.h - 40);
     };
 
     // ── 2. TOP VIEW (Bottom Left) ──
@@ -3355,6 +3588,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             name,
             savedAt: Date.now(),
             crateCount: truckCrates.length,
+            crates: truckCrates, // Include crates for 3D icon rendering
             positions,
             numbering: truckNumbering,
             thumbnail: generateMasterThumbnail(truckCrates, positions, allCrates, allInventory, name),
@@ -3437,6 +3671,17 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         };
     }, [zoom]);
 
+    useEffect(() => {
+        if (canvasRef.current) {
+            const el = canvasRef.current;
+            const timer = setTimeout(() => {
+                el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+                el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
     return (
         <div className="absolute inset-0 flex flex-col overflow-hidden bg-transparent select-none">
             {/* ── FLOATING STUDIO HUB (Persistent Glassmorphic Panel) ── */}
@@ -3459,7 +3704,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         {topBarState === 'crates' ? (
                             <Box size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
                         ) : (
-                            <History size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
+                            <Truck size={isCompact ? 14 : 32} strokeWidth={1.25} style={{ color: 'var(--main-color)' }} />
                         )}
                     </button>
 
@@ -3504,6 +3749,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             shipment={s} 
                                             onRecall={() => handleRecall(s)} 
                                             onDelete={() => handleDeleteShipment(s.manifest_id)}
+                                            allCrates={allCrates}
+                                            allInventory={allInventory}
                                         />
                                     ))
                                 )}
@@ -3515,12 +3762,21 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
 
 
                 {/* ══ CONSOLIDATED HIGH-DENSITY DETAILS PANEL ══ */}
-                <div className={`px-10 transition-all duration-500 flex items-center justify-between backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
-                    <div className={`flex items-center justify-between w-full ${isCompact ? 'gap-12' : 'gap-4'}`}>
-                        {/* Section 1: Specs & Units */}
-                        <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-3' : 'gap-10'}`}>
-                            {!isCompact && <h2 className="font-black uppercase tracking-tighter text-white leading-none text-6xl">53&apos;</h2>}
-                            <div className="flex flex-col gap-1">
+                <div className={`px-4 transition-all duration-500 flex items-center backdrop-blur-3xl bg-black/5 ${isCompact ? 'py-1' : 'py-5'}`}>
+                    <div className={`flex items-center w-full ${isCompact ? 'gap-8 justify-between' : 'gap-1 justify-start'}`}>
+                        <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-2' : 'gap-4 flex-1 min-w-0'}`}>
+                            {!isCompact && (
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <h2 className="font-black uppercase tracking-tighter text-white leading-none text-4xl">53&apos;</h2>
+                                    <div className="grid grid-cols-2 gap-x-1 gap-y-0.5 leading-none opacity-20">
+                                        <span className="text-[5px] font-black tracking-widest uppercase">1615</span>
+                                        <span className="text-[5px] font-black tracking-widest uppercase">×</span>
+                                        <span className="text-[5px] font-black tracking-widest uppercase">244</span>
+                                        <span className="text-[5px] font-black tracking-widest uppercase">CM</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex flex-col gap-1 min-w-0">
                                 {isCompact ? (
                                     <div className="flex items-center gap-3">
                                         <span className="font-black text-white/40 text-[9px] uppercase tracking-widest">53FT</span>
@@ -3530,55 +3786,123 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                         <span className="text-white/30 font-black uppercase tracking-widest text-[7px] leading-none">UNITS</span>
                                     </div>
                                 ) : (
-                                    <>
-                                        <span className="font-mono font-black text-white/80 uppercase tracking-[0.4em] leading-none text-[12px]">{TRUCK_L_CM} × {TRUCK_W_CM}</span>
-                                        <div className="flex items-baseline gap-2 leading-none mt-1">
-                                            <span className="font-black tracking-tighter text-white text-4xl">{truckCrates.length}</span>
-                                            <span className="text-white/60 font-black uppercase tracking-widest text-[10px]">/ {allCrates.length} UNITS</span>
-                                        </div>
-                                    </>
+                                    <div className="flex items-baseline gap-1.5 leading-none">
+                                        <span className="font-black tracking-tighter text-white text-3xl">{truckCrates.length}</span>
+                                        <span className="text-white/80 font-black uppercase tracking-widest text-[8px]">/ {allCrates.length} UNITS</span>
+                                    </div>
                                 )}
                             </div>
                         </div>
                         
                         {/* Section 2: Payload */}
-                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-3' : 'px-8 gap-6 max-w-[320px] flex-1'}`}>
-                            <Gauge size={isCompact ? 12 : 24} style={{ color: panelStats.statusColor }} className="opacity-60 shrink-0" />
-                            <div className={`flex ${isCompact ? 'items-center gap-2' : 'flex-col w-full gap-1.5'}`}>
+                        <div className={`flex items-center border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 gap-2' : 'px-5 gap-4 flex-1 min-w-0'}`}>
+                            <Gauge size={isCompact ? 12 : 18} style={{ color: panelStats.statusColor }} className="shrink-0" />
+                            <div className={`flex ${isCompact ? 'items-center gap-2' : 'flex-col w-full gap-1 min-w-0'}`}>
                                 <div className="flex items-baseline gap-1.5 leading-none">
-                                    <span className={`font-black tracking-tighter transition-all duration-500 ${isCompact ? 'text-[15px]' : 'text-4xl'}`} style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
-                                    <span className={`text-white/40 font-black uppercase tracking-widest transition-all ${isCompact ? 'text-[7px]' : 'text-[10px]'}`}>KG</span>
+                                    <span className={`font-black tracking-tighter transition-all duration-500 ${isCompact ? 'text-[15px]' : 'text-3xl'}`} style={{ color: panelStats.statusColor }}>{Math.round(totalWeight).toLocaleString()}</span>
+                                    <span className={`text-white/60 font-black uppercase tracking-widest transition-all ${isCompact ? 'text-[7px]' : 'text-[8px]'}`}>KG</span>
                                 </div>
                                 {isCompact ? (
                                     <span className="font-black text-white/60 uppercase tracking-tighter text-[9px]">{panelStats.payloadPct}%</span>
                                 ) : (
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex-1 bg-white/20 rounded-full overflow-hidden h-1.5">
+                                    <div className="flex items-center gap-2 w-full">
+                                        <div className="flex-1 bg-white/20 rounded-full overflow-hidden h-1">
                                             <div className="h-full transition-all duration-1000" style={{ width: `${panelStats.payloadPct}%`, backgroundColor: panelStats.statusColor }} />
                                         </div>
-                                        <span className="font-black text-white/80 uppercase tracking-tighter text-[10px]">{panelStats.payloadPct}%</span>
+                                        <span className="font-black text-white/80 uppercase tracking-tighter text-[8px]">{panelStats.payloadPct}%</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Section 3: Space Metrics */}
-                        <div className={`flex items-center border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6' : 'px-8 gap-12'}`}>
+                        <div className={`flex items-center border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 gap-4' : 'px-5 gap-6 flex-1 justify-center'}`}>
                             <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
                                 <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{floorPct}%</span>
-                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Floor</span>
+                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>Floor</span>
                             </div>
                             <div className={`${isCompact ? 'flex items-center gap-2' : 'flex flex-col gap-1'} text-center`}>
                                 <span className={`font-black text-white leading-none tracking-tighter transition-all ${isCompact ? 'text-[14px]' : 'text-3xl'}`}>{panelStats.volPct}%</span>
-                                <span className={`font-black uppercase text-white/40 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[9px]'}`}>Vol</span>
+                                <span className={`font-black uppercase text-white/60 tracking-[0.2em] transition-all ${isCompact ? 'text-[6px]' : 'text-[8px]'}`}>Vol</span>
                             </div>
                         </div>
 
                         {/* Section 4: Status */}
-                        <div className={`flex flex-col border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 min-w-[70px]' : 'px-8 min-w-[180px] gap-1'}`}>
-                            <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-3xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
-                            {!isCompact && <span className="font-black text-white/60 uppercase tracking-widest leading-none text-[9px] mt-1.5">{panelStats.remaining.toLocaleString()} KG FREE</span>}
+                        <div className={`flex flex-col border-l border-white/10 transition-all duration-500 ${isCompact ? 'px-4 min-w-[70px]' : 'px-5 flex-1 min-w-0 gap-1'}`}>
+                            <span className={`font-black uppercase tracking-tighter leading-none transition-all ${isCompact ? 'text-[13px]' : 'text-2xl'}`} style={{ color: panelStats.statusColor }}>{panelStats.status}</span>
+                            {!isCompact && <span className="font-black text-white/80 uppercase tracking-widest leading-none text-[7px] mt-1">{panelStats.remaining.toLocaleString()} KG FREE</span>}
                         </div>
+
+                        {/* Section 5: Recalled Truck Metadata (Ultra-High-Density Onyx Grid) */}
+                        {recalledShipment && (
+                            <div className={`flex border-l border-white/5 transition-all duration-500 ${isCompact ? 'px-6 gap-6 flex-1' : 'px-8 gap-8 flex-[3] min-w-0'}`}>
+                                <div className={`grid w-full gap-x-8 ${isCompact ? 'grid-cols-2' : 'grid-cols-5'}`}>
+                                    {/* Col 1: Tractor Context */}
+                                    <div className="flex flex-col justify-center min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <Shield size={10} className="text-emerald-400 opacity-60" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Tractor</span>
+                                        </div>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.tractorNumber || '—'}</span>
+                                        {!isCompact && (
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.truckPlates || 'NO PLATES'}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Col 2: Trailer Context */}
+                                    <div className="flex flex-col justify-center min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <Truck size={10} className="text-white/40" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Trailer</span>
+                                        </div>
+                                        <span className="text-[14px] font-black text-white uppercase tracking-tighter leading-none">{readyTruckFields.trailerNumber || '—'}</span>
+                                        {!isCompact && (
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.trailerPlates || 'NO PLATES'}</span>
+                                        )}
+                                    </div>
+
+                                    {/* Col 3: Security & Identity */}
+                                    <div className="flex flex-col justify-center min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <IdCard size={10} className="text-cyan-400" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Security</span>
+                                        </div>
+                                        <span className="text-[14px] font-black text-cyan-400 uppercase tracking-tighter leading-none">{readyTruckFields.sealNumber || 'OPEN'}</span>
+                                        {!isCompact && (
+                                            <span className="text-[9px] font-black text-white/40 uppercase tracking-widest truncate mt-1">LOCK VERIFIED</span>
+                                        )}
+                                    </div>
+
+                                    {/* Col 4: Logistics Payload */}
+                                    {!isCompact && (
+                                        <div className="flex flex-col justify-center min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <History size={10} className="text-emerald-500" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Logistics</span>
+                                            </div>
+                                            <span className="text-[13px] font-black text-emerald-400 uppercase tracking-tighter leading-none">{readyTruckFields.packingItems.length || 0} UNITS</span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">{readyTruckFields.senders[0] || 'ONYX CORE'}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Col 5: Deployment Timeline */}
+                                    {!isCompact && (
+                                        <div className="flex flex-col justify-center min-w-0">
+                                            <div className="flex items-center gap-1.5 mb-1">
+                                                <History size={10} className="text-white/40" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/40 whitespace-nowrap">Deployed</span>
+                                            </div>
+                                            <span className="text-[12px] font-black text-white/80 uppercase tracking-tighter leading-none">
+                                                {new Date(recalledShipment.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()}
+                                            </span>
+                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-widest truncate mt-1">
+                                                {new Date(recalledShipment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Layout Toggle - Fixed Bottom Right of Hub */}
                         <div className="flex items-center pl-6 border-l border-white/5 ml-auto">
@@ -3618,8 +3942,18 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             onUnload={handleUnload}
                         />
                     </div>
+                ) : viewMode === 'iso' ? (
+                    <div className="w-full h-full mt-8">
+                        <IsoView
+                            truckCrates={truckCrates} positions={positions} truckNumbering={truckNumbering}
+                            allCrates={allCrates} allInventory={allInventory}
+                            zoom={zoom}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                        />
+                    </div>
                 ) : (
-                <div className="py-[100vh] px-[100vw] flex flex-col items-center" style={{ minWidth: TRUCK_L_CM * zoom + 2000 }}>
+                <div className="py-[80vh] px-[150vw] flex flex-col items-center" style={{ minWidth: TRUCK_L_CM * zoom + 4000 }}>
                     {/* Direction labels */}
                     <div className="flex items-center gap-3 mb-6 w-full max-w-[1200px]">
                         <div className="w-2 h-2 rounded-full border border-white/30 shrink-0" />
@@ -3731,12 +4065,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
-                        onClick={() => setViewMode(v => v === 'top' ? 'side' : 'top')}
-                        title={viewMode === 'top' ? 'Perspective View' : 'Overhead View'}
-                        className={`p-3 rounded-xl transition-all duration-300 ${viewMode === 'side' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
-                        style={viewMode === 'side' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
+                        onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : 'top')}
+                        title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Isometric View' : 'Overhead View'}
+                        className={`p-3 rounded-xl transition-all duration-300 ${viewMode !== 'top' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                        style={viewMode !== 'top' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
                     >
-                        {viewMode === 'top' ? <Layers size={22} /> : <Grid3x3 size={22} />}
+                        {viewMode === 'top' ? <Layers size={22} /> : viewMode === 'side' ? <Maximize2 size={22} /> : <Grid3x3 size={22} />}
                     </button>
                     
                     <div className="w-px h-8 bg-white/10 mx-2" />
