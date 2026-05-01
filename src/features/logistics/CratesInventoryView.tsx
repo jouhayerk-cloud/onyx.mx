@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtom, useAtomValue } from 'jotai/react';
-import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck } from 'lucide-react';
+import { Box, Plus, Search, Package, ArrowRight, X, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, LayoutGrid, ImageOff, Download, Trash2, RotateCcw, Truck, Pencil, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { useDatabase } from '../../lib/hooks';
@@ -219,13 +219,14 @@ const StatusBadge = ({ status }: { status: CrateRecord['status'] }) => {
 };
 
 // --- Crate Card ---
-const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, isDeployedView = false, isPackedView = false }: { 
+const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, onEdit, isDeployedView = false, isPackedView = false }: { 
     crate: CrateRecord; 
     allCrates: CrateRecord[]; 
     allInventory: any[]; 
     onPack: (c: CrateRecord) => void; 
     onDelete: (c: CrateRecord) => void; 
     onNest: (c: CrateRecord) => void;
+    onEdit: (c: CrateRecord) => void;
     isDeployedView?: boolean; 
     isPackedView?: boolean 
 }) => {
@@ -429,42 +430,62 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                 <div className="flex-1 min-w-0 flex flex-col xl:flex-row items-stretch xl:items-center gap-6 xl:gap-12">
                     {/* Crate ID — barcode for packed crates, text for empty */}
                     <div className="min-w-0 xl:min-w-[160px] flex flex-row xl:flex-col items-center xl:items-start justify-between xl:justify-start gap-2">
-                        {crate.status !== 'Empty' ? (
-                            <div className="mb-0 xl:mb-3 flex items-center shrink-0">
-                                <div className="flex items-center">
-                                    {(() => {
-                                        const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, allCrates, allInventory);
-                                        return (
-                                            <>
-                                                {date && (
-                                                    <div className="bg-white/10 px-2 py-1">
-                                                        <span className="text-[16px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
-                                                    </div>
-                                                )}
-                                                {vList.map((v, idx) => (
-                                                    <div 
-                                                        key={v} 
-                                                        className="px-2 py-1"
-                                                        style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}
-                                                    >
-                                                        <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
-                                                    </div>
-                                                ))}
-                                                {sequence && (
-                                                    <div className="px-3 py-1 bg-white/5">
-                                                        <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
+                        <div className="flex items-center gap-6">
+                            {crate.status !== 'Empty' ? (
+                                <div className="mb-0 xl:mb-0 flex items-center shrink-0">
+                                    <div className="flex items-center">
+                                        {(() => {
+                                            const { date, vendors: vList, sequence } = getDynamicCrateIdComponents(crate, allCrates, allInventory);
+                                            return (
+                                                <>
+                                                    {date && (
+                                                        <div className="bg-white/10 px-2 py-1">
+                                                            <span className="text-[16px] font-black text-white tracking-[0.1em] leading-none block">{date}</span>
+                                                        </div>
+                                                    )}
+                                                    {vList.map((v, idx) => (
+                                                        <div 
+                                                            key={v} 
+                                                            className="px-2 py-1"
+                                                            style={{ backgroundColor: vendors[v as keyof typeof vendors]?.color || '#555' }}
+                                                        >
+                                                            <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-black">{v}</span>
+                                                        </div>
+                                                    ))}
+                                                    {sequence && (
+                                                        <div className="px-3 py-1 bg-white/5">
+                                                            <span className="text-[16px] font-black tracking-[0.1em] leading-none block text-white/90">{sequence}</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <p className="text-[11px] font-mono font-black tracking-[0.3em] text-white/40 uppercase">
-                                {crate.id?.slice(0, 8).toUpperCase()}
-                            </p>
-                        )}
+                            ) : (
+                                <p className="text-[11px] font-mono font-black tracking-[0.3em] text-white/40 uppercase">
+                                    {crate.id?.slice(0, 8).toUpperCase()}
+                                </p>
+                            )}
+
+                            <button
+                                onClick={() => onPack(crate)}
+                                className={`p-2 transition-all duration-300 cursor-pointer hover:scale-125 ${
+                                    isDeployedView
+                                        ? 'text-blue-400 hover:text-blue-300'
+                                        : isPackedView
+                                        ? 'text-amber-400 hover:text-amber-300'
+                                        : 'text-white/40 hover:text-white'
+                                }`}
+                                title={isDeployedView ? 'Return to Packing' : isPackedView ? 'Re-open & Pack More' : 'Pack Items'}
+                            >
+                                {isDeployedView || isPackedView ? (
+                                    <RotateCcw size={22} />
+                                ) : (
+                                    <ArrowRight size={22} />
+                                )}
+                            </button>
+                        </div>
                         <div className="flex flex-col items-end xl:items-start text-right xl:text-left">
                             <h3 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">
                                 {crate.width_cm}<span className="text-white/40 mx-0.5">×</span>{crate.length_cm}<span className="text-white/40 mx-0.5">×</span>{crate.height_cm}
@@ -570,10 +591,10 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setIsExportProgressOpen(true)}
-                                className={`flex items-center justify-center w-12 h-12 bg-white/5 border border-white/8 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-white/20 hover:text-emerald-500 rounded-2xl transition-all duration-300 cursor-pointer ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`p-3 text-white/20 hover:text-emerald-500 transition-all duration-300 cursor-pointer hover:scale-125 ${isExporting ? 'opacity-50 pointer-events-none' : ''}`}
                                 title="Export Manifesto"
                             >
-                                <Download size={18} />
+                                <Download size={22} />
                             </button>
                             
                             <ExportWizard 
@@ -592,37 +613,28 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, i
                     {isPackedView && (crate.type === 'cardboard' || (crate.width_cm == 38 && crate.length_cm == 41 && crate.height_cm == 38)) && !crate.parent_id && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onNest(crate); }}
-                            className="flex items-center justify-center w-12 h-12 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 hover:border-blue-500/60 text-blue-400 rounded-2xl transition-all duration-300 cursor-pointer"
+                            className="p-3 text-white/20 hover:text-blue-400 transition-all duration-300 cursor-pointer hover:scale-125"
                             title="Nest this Box"
                         >
-                            <Plus size={18} />
+                            <Plus size={22} />
                         </button>
                     )}
 
+
                     <button
-                        onClick={() => onPack(crate)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all duration-300 cursor-pointer border ${
-                            isDeployedView
-                                ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/60'
-                                : isPackedView
-                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/60'
-                                : 'bg-white/5 border-white/8 hover:bg-(--main-color)/10 hover:border-(--main-color)/40 text-white/50 hover:text-(--main-color)'
-                        }`}
+                        onClick={(e) => { e.stopPropagation(); onEdit(crate); }}
+                        className="p-3 text-white/20 hover:text-white transition-all duration-300 cursor-pointer hover:scale-125"
+                        title="Edit Crate Details"
                     >
-                        {isDeployedView ? (
-                            <><RotateCcw size={14} />Return to Packing</>
-                        ) : isPackedView ? (
-                            <><RotateCcw size={14} />Re-open &amp; Pack More</>
-                        ) : (
-                            <>Pack Items <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" /></>
-                        )}
+                        <Pencil size={22} />
                     </button>
+
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(crate); }}
-                        className="flex items-center justify-center w-12 h-12 bg-white/5 border border-white/8 hover:bg-rose-500/10 hover:border-rose-500/40 text-white/20 hover:text-rose-500 rounded-2xl transition-all duration-300 cursor-pointer"
+                        className="p-3 text-white/20 hover:text-rose-500 transition-all duration-300 cursor-pointer hover:scale-125"
                         title="Delete Crate"
                     >
-                        <Trash2 size={18} />
+                        <Trash2 size={22} />
                     </button>
                 </div>
             </div>
@@ -835,6 +847,174 @@ const CrateCreationModal = ({ isOpen, onClose, onRefresh }: { isOpen: boolean; o
     );
 };
 
+// ─── Crate Edit Panel ──────────────────────────────────────────────────────────
+
+const CrateEditPanel: React.FC<{
+    crate: CrateRecord;
+    allCrates: CrateRecord[];
+    allInventory: any[];
+    onClose: () => void;
+    onSave: (id: string, updates: any) => void;
+}> = ({ crate, allCrates, allInventory, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        description: crate.description || '',
+        width_cm: crate.width_cm || 0,
+        length_cm: crate.length_cm || 0,
+        height_cm: crate.height_cm || 0,
+        weight_kg: crate.weight_kg || 0,
+        brute_weight_kg: crate.brute_weight_kg || 0,
+        cost_mxn: crate.cost_mxn || 0,
+        status: crate.status || 'Packed',
+        vendors: (crate as any).vendors || ''
+    });
+
+    const [sourceType, setSourceType] = useState(() => {
+        const v = (crate as any).vendors;
+        if (v === 'SIMONA') return 'SIMONA';
+        if (v === 'JUAN') return 'JUAN';
+        return 'VENDOR';
+    });
+
+    const handleSave = () => {
+        const updates = { ...formData };
+        if (sourceType === 'SIMONA') updates.vendors = 'SIMONA';
+        else if (sourceType === 'JUAN') updates.vendors = 'JUAN';
+        onSave(crate.id, updates);
+    };
+
+    const lbl = "text-[10px] font-black uppercase tracking-[0.2em] text-white/30 block mb-2 px-1";
+    const inp = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-all";
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 lg:p-12">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+            
+            <div className="relative w-full max-w-2xl bg-[#0a0a0a]/90 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-[0_50px_100px_-20px_rgba(0,0,0,1)] overflow-hidden animate-in zoom-in fade-in duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between px-10 py-8 border-b border-white/5">
+                    <div className="flex flex-col">
+                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/20 mb-1">Configuration Matrix</span>
+                        <h2 className="text-2xl font-black text-white tracking-tighter uppercase">Edit Crate Details</h2>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="text-white/20 hover:text-white transition-all hover:scale-125 p-2"
+                        title="Close Panel"
+                    >
+                        <X size={28} strokeWidth={1} />
+                    </button>
+                </div>
+
+                <div className="p-10 custom-scrollbar overflow-y-auto max-h-[70vh]">
+                    <div className="grid grid-cols-2 gap-8">
+                        {/* Label & Price */}
+                        <div className="col-span-2 grid grid-cols-2 gap-6">
+                            <div>
+                                <label className={lbl}>Description / Label</label>
+                                <input type="text" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className={inp} placeholder="e.g. CUSTOM-01" />
+                            </div>
+                            <div>
+                                <label className={lbl}>Unit Price (MXN)</label>
+                                <input type="number" value={formData.cost_mxn} onChange={e => setFormData({ ...formData, cost_mxn: Number(e.target.value) })} className={inp} placeholder="0.00" />
+                            </div>
+                        </div>
+
+                        {/* Dimensions */}
+                        <div className="col-span-2">
+                            <label className={lbl}>Physical Dimensions (CM)</label>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="relative">
+                                    <input type="number" value={formData.width_cm} onChange={e => setFormData({ ...formData, width_cm: Number(e.target.value) })} className={inp + " text-center"} />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">W</span>
+                                </div>
+                                <div className="relative">
+                                    <input type="number" value={formData.length_cm} onChange={e => setFormData({ ...formData, length_cm: Number(e.target.value) })} className={inp + " text-center"} />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">L</span>
+                                </div>
+                                <div className="relative">
+                                    <input type="number" value={formData.height_cm} onChange={e => setFormData({ ...formData, height_cm: Number(e.target.value) })} className={inp + " text-center"} />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/10 uppercase">H</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Weight & Status */}
+                        <div className="col-span-2 grid grid-cols-2 gap-6">
+                            <div>
+                                <label className={lbl}>Brute Weight (KG)</label>
+                                <input type="number" value={formData.brute_weight_kg} onChange={e => setFormData({ ...formData, brute_weight_kg: Number(e.target.value) })} className={inp} />
+                            </div>
+                            <div>
+                                <label className={lbl}>Status</label>
+                                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className={inp}>
+                                    <option value="Empty">Empty</option>
+                                    <option value="Partial">Partial</option>
+                                    <option value="Packed">Packed</option>
+                                    <option value="In Transit">In Transit</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Source Selection */}
+                        <div className="col-span-2 border-t border-white/5 pt-8 mt-2">
+                            <label className={lbl}>Source Provider</label>
+                            <div className="flex gap-3 mb-6">
+                                {['SIMONA', 'JUAN', 'VENDOR'].map(s => (
+                                    <button 
+                                        key={s}
+                                        type="button"
+                                        onClick={() => setSourceType(s)}
+                                        className={`flex-1 py-3 rounded-xl font-black text-[10px] tracking-[0.2em] transition-all border ${sourceType === s ? 'bg-white text-black border-white shadow-xl scale-105' : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10'}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {sourceType === 'VENDOR' && (
+                                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                                    {Object.keys(vendors).filter(k => !['R', 'M', 'W', 'C'].includes(k)).map(id => {
+                                        const v = vendors[id as keyof typeof vendors];
+                                        const isSelected = formData.vendors === id;
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={id}
+                                                onClick={() => setFormData({ ...formData, vendors: id })}
+                                                className={`aspect-square rounded-xl flex items-center justify-center text-xs font-black transition-all ${isSelected ? 'ring-2 ring-white scale-110 shadow-2xl z-10' : 'opacity-40 hover:opacity-100 grayscale hover:grayscale-0'}`}
+                                                style={{ backgroundColor: v.color, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                                            >
+                                                {id}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="px-10 py-8 bg-white/[0.02] border-t border-white/5 flex items-center justify-end gap-4">
+                    <button 
+                        onClick={onClose}
+                        className="px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleSave}
+                        className="px-10 py-4 bg-white text-black rounded-2xl font-black text-[11px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-3"
+                    >
+                        <Save size={18} />
+                        Update Record
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const CratesInventoryView: React.FC = () => {
     const db = useDatabase();
     const [, setCratesVersion] = useAtom(cratesVersionAtom);
@@ -842,6 +1022,7 @@ export const CratesInventoryView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'empty' | 'packed' | 'boxes' | 'deployed'>('empty');
     const [searchQuery, setSearchQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingCrate, setEditingCrate] = useState<CrateRecord | null>(null);
     const [crates, setCrates] = useState<CrateRecord[]>([]);
     const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
     const [isSavingNest, setIsSavingNest] = useState(false);
@@ -1033,6 +1214,40 @@ export const CratesInventoryView: React.FC = () => {
         setSubTab('packing');
     };
 
+    const handleSaveCrate = async (id: string, updates: any) => {
+        const tid = toast.loading('Syncing with logistics matrix...');
+        try {
+            if (isDummyMode) {
+                await new Promise(r => setTimeout(r, 600));
+                toast.success('Record updated (Demo Mode)', { id: tid });
+                setEditingCrate(null);
+                handleRefresh();
+                return;
+            }
+
+            const { error } = await supabase
+                .from('logistics')
+                .update({
+                    ...updates,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            if (db) {
+                const lDoc = await db.logistics.findOne({ selector: { id } }).exec();
+                if (lDoc) await lDoc.patch(updates);
+            }
+
+            toast.success('Crate details updated successfully', { id: tid });
+            setEditingCrate(null);
+            handleRefresh();
+        } catch (err: any) {
+            toast.error(err.message || 'Update failed', { id: tid });
+        }
+    };
+
     // For Packed crates — reset to Partial so the packing module can load them, then navigate
     const handleReopenForPacking = async (crate: CrateRecord) => {
         const tid = toast.loading('Re-opening crate for packing...');
@@ -1156,6 +1371,7 @@ export const CratesInventoryView: React.FC = () => {
                                                     onPack={handleReopenForPacking}
                                                     onDelete={handleDeleteCrate}
                                                     onNest={(c) => setNestingUnit(c)}
+                                                    onEdit={(c) => setEditingCrate(c)}
                                                     isPackedView={true}
                                                 />
                                             ))}
@@ -1177,6 +1393,7 @@ export const CratesInventoryView: React.FC = () => {
                                         }
                                         onDelete={handleDeleteCrate}
                                         onNest={(c) => setNestingUnit(c)}
+                                        onEdit={(c) => setEditingCrate(c)}
                                         isDeployedView={activeTab === 'deployed'}
                                     />
                                 ))}
@@ -1228,8 +1445,8 @@ export const CratesInventoryView: React.FC = () => {
                                 <h3 className="text-2xl font-black uppercase tracking-[0.5em] text-(--main-color) italic">Nesting Protocol</h3>
                                 <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] font-mono">Assign {nestingUnit.id.slice(0, 8).toUpperCase()} to logical container</p>
                             </div>
-                            <button onClick={() => setNestingUnit(null)} className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-(--main-color) hover:text-black text-white transition-all border border-white/10 rounded-full cursor-pointer group">
-                                <X size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+                            <button onClick={() => setNestingUnit(null)} className="p-3 text-white/20 hover:text-white transition-all hover:scale-125 cursor-pointer">
+                                <X size={28} strokeWidth={1} />
                             </button>
                         </div>
                         
@@ -1299,6 +1516,16 @@ export const CratesInventoryView: React.FC = () => {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onRefresh={handleRefresh}
+                />
+            )}
+            
+            {editingCrate && (
+                <CrateEditPanel 
+                    crate={editingCrate}
+                    allCrates={crates}
+                    allInventory={allInventory}
+                    onClose={() => setEditingCrate(null)}
+                    onSave={handleSaveCrate}
                 />
             )}
 

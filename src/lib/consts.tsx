@@ -34,6 +34,9 @@ export const vendors = {
   CP: { name: 'CANTERA PUEBLA', color: '#A01E5D' },
   GM: { name: 'GEMA MARTIN', color: '#E6194B' },
   MM: { name: 'MARGARITA MEZA', color: '#911EB4' },
+  ON: { name: 'ONYX', color: '#4B5563' },
+  SIMONA: { name: 'SIMONA', color: '#E6194B' },
+  JUAN: { name: 'JUAN', color: '#3C89D0' },
   
   // Single-letter codes (Internal/Archive)
   R: { name: 'RAMSES', color: '#737104' },

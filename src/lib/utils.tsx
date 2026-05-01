@@ -905,8 +905,13 @@ export const normalizeInventoryData = (data: any): any => {
     is_hidden: d.is_hidden ?? false,
     hidden_reason: d.hidden_reason ?? d.hiddenReason ?? '',
     dispersal_status: d.dispersal_status,
-    book_barcode: data.book_barcode || data.bookBarcode,
-    book_aq_code: data.book_aq_code || data.bookAqCode
+    book_barcode: d.book_barcode || d.bookBarcode || d.tag_id || d.item_id || d.itemId || d.item_number || '',
+    book_aq_code: d.book_aq_code || d.bookAqCode || d.aq_code || '-',
+    price: d.price_mxn || d.acquisition_price_mxn || d.acq_price_mxn || d.price_unit || d.price || d.cost_mxn || d.cost || 0,
+    width_cm: d.width_cm || d.widthCm || d.width || d.w,
+    height_cm: d.height_cm || d.heightCm || d.height || d.h,
+    length_cm: d.length_cm || d.lengthCm || d.length || d.l,
+    weight_kg: d.weight_kg || d.weightKg || d.weight || d.wt,
   };
 };
 
