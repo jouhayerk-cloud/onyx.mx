@@ -6,7 +6,7 @@ import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
 import { CratesInventoryView } from './CratesInventoryView';
-import { CratePackingManager } from './CratePackingManager';
+import { WarehouseView } from './WarehouseView';
 import { TruckingModule } from './TruckingModule';
 
 export const LogisticsView: React.FC = () => {
@@ -30,12 +30,10 @@ export const LogisticsView: React.FC = () => {
         <div className="flex flex-col">
             {/* ── Content ── */}
             <div className="flex-1">
-                {activeTab === 'packing' ? (
-                    <CratePackingManager />
-                ) : activeTab === 'shipping' ? (
+                {activeTab === 'shipping' || activeTab === 'deployed' ? (
                     <TruckingModule docs={docs} onRefresh={refresh} />
                 ) : (
-                    <CratesInventoryView />
+                    <WarehouseView />
                 )}
             </div>
         </div>
