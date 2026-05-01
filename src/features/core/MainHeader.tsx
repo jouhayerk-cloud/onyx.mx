@@ -1458,9 +1458,11 @@ export function MainHeader() {
                         { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
                         { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
                         { header: 'QTY', key: 'quantity', width: 8 },
+                        { header: 'QTY TRK', key: 'qty_trk', width: 10 },
                         { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
                         { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
                         { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'T SHIPPED MXN', key: 'total_shipped_mxn', width: 18, style: { numFmt: '#,##0' } },
                         { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
                         { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
                         { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
@@ -1507,6 +1509,7 @@ export function MainHeader() {
                                 ) || 0;
                                 
                                 const qty = parseInt(String(atomData.quantity || pItem.qty || pItem.quantity || '1'), 10) || 1;
+                                const qtyTrk = parseInt(String(pItem.qty || pItem.quantity || '1'), 10) || 1;
 
                                 const onyxRound = (n: number) => {
                                     const floor = Math.floor(n);
@@ -1590,9 +1593,11 @@ export function MainHeader() {
                                     weight_metric: formatWeightMetricOnly(atomData.weight_kg || atomData.weightKg || pItem.weightKg || pItem.weight_kg),
                                     weight_imperial: formatWeightImperialOnly(atomData.weight_kg || atomData.weightKg || pItem.weightKg || pItem.weight_kg),
                                     quantity: qty,
+                                    qty_trk: qtyTrk,
                                     cost_mxn: costMxn,
                                     acq_usd: costUsd,
                                     total_mxn: totalMxn,
+                                    total_shipped_mxn: Math.round(costMxn * qtyTrk),
                                     landed_mxn: landedMxn,
                                     ld_usd: landedUsd,
                                     retail_usd: retailUsd,
