@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onyx.mx — Page Not Found</title>
+  <link rel="icon" href="/favicon.svg?v=1.75.1" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0f;
+      color: rgba(255,255,255,0.9);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 0%,  rgba(107,206,187,0.09) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(0,174,239,0.06)   0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .logo {
+      width: 96px;
+      height: 96px;
+      animation: float 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 28px rgba(107,206,187,0.3));
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0);   }
+      50%       { transform: translateY(-9px); }
+    }
+
+    .code {
+      font-size: clamp(5rem, 15vw, 9rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      background: linear-gradient(135deg, #6BCEBB 0%, #00AEEF 60%, rgba(107,206,187,0.4) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .message {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 1.5rem;
+      padding: 1.75rem 2.5rem;
+      text-align: center;
+      max-width: 420px;
+      backdrop-filter: blur(20px);
+    }
+    .card p { color: rgba(255,255,255,0.38); font-size: 0.8125rem; line-height: 1.7; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      padding: 0.75rem 2rem;
+      background: rgba(107,206,187,0.12);
+      border: 1px solid rgba(107,206,187,0.3);
+      border-radius: 0.75rem;
+      color: #6BCEBB;
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: rgba(107,206,187,0.22);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(107,206,187,0.15);
+    }
+
+    .wordmark {
+      margin-top: 1rem;
+      font-size: 0.6rem;
+      font-weight: 900;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.13);
+    }
+
+    .redirect-badge {
+      display: none;
+      margin-top: 1rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(107,206,187,0.7);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
+  </style>
+</head>
+<body>
+
+  <!--
+    Full OnyxLogo SVG — exact paths from OnyxLogo.tsx.
+    CSS vars replaced with hardcoded obsidian-theme values:
+      - var(--main-color)      → #6BCEBB
+      - var(--secondary-color) → #00AEEF
+      - var(--text-color)      → #ffffff
+      - currentColor           → #6BCEBB
+  -->
+  <svg class="logo"
+    viewBox="0 0 2513 2928"
+    xmlns="http://www.w3.org/2000/svg"
+    style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2">
+
+    <path d="M2512.48,774.267l0,1189.92c0,66.364 -40.709,97.088 -90.85,68.568l-1040.29,-591.699c-50.142,-28.52 -90.851,-105.553 -90.851,-171.916l-0,-1189.92c-0,-66.363 40.709,-97.087 90.851,-68.568l1040.29,591.699c50.141,28.52 90.85,105.553 90.85,171.916Z"
+      fill="#6BCEBB" fill-opacity="0.2"/>
+
+    <path d="M1351.61,1573.19l1108.94,612.947c61.847,34.184 69.553,85.23 17.199,113.918l-1109.95,608.22c-52.355,28.688 -145.071,24.226 -206.918,-9.959l-1108.94,-612.947c-61.847,-34.185 -69.553,-85.23 -17.199,-113.919l1109.95,-608.219c52.355,-28.689 145.072,-24.226 206.918,9.959Z"
+      fill="#00AEEF" fill-opacity="0.3"/>
+
+    <path id="Select" d="M333.508,2173.53l900.137,486.336l907.486,-496.323l-900.138,-486.336l-907.485,496.323Z"
+      fill="#ffffff" fill-opacity="0.4"/>
+
+    <path d="M0,767.537l0,1196.23c0,66.716 40.925,97.603 91.332,68.932l1014.25,-576.886c50.408,-28.671 91.332,-106.113 91.332,-172.828l0,-1196.23c0,-66.715 -40.924,-97.602 -91.332,-68.931l-1014.25,576.886c-50.407,28.671 -91.332,106.112 -91.332,172.827Z"
+      fill="#6BCEBB" fill-opacity="0.5"/>
+
+    <path d="M1224.31,1451.52l-0,903.041l-797.051,-435.924l0,-903.041l797.051,435.924Z"
+      fill="#6BCEBB" fill-opacity="0.6"/>
+
+    <path d="M1224.31,1442.91l-0,925.882l823.072,-450.156l-0,-925.881l-823.072,450.155Z"
+      fill="#ffffff" fill-opacity="0.75"/>
+
+    <path d="M427.258,1014.63l797.051,430.639l823.072,-450.156l-797.051,-430.639l-823.072,450.156Z"
+      fill="#ffffff" fill-opacity="0.9"/>
+
+    <!-- ONYX lettering — full path from OnyxLogo.tsx line 26 -->
+    <path d="M636.767,1773.66c-57.047,-30.952 -103.537,-74.744 -139.47,-131.377c-35.932,-56.632 -53.899,-114.768 -53.899,-174.409c0,-62.975 18.244,-104.011 54.733,-123.11c36.488,-19.099 84.83,-12.318 145.026,20.342c56.863,30.852 102.844,74.414 137.943,130.687c35.099,56.272 52.648,114.877 52.648,175.815c0,62.604 -18.198,103.203 -54.593,121.796c-36.396,18.593 -83.858,12.012 -142.388,-19.744Zm3.89,-332.674c-31.487,-17.084 -56.492,-18.843 -75.014,-5.277c-18.522,13.567 -27.783,39.798 -27.783,78.694c0,39.451 9.261,75.686 27.783,108.702c18.522,33.017 42.786,57.665 72.791,73.945c30.932,16.783 55.474,18.939 73.625,6.468c18.152,-12.471 27.227,-38.524 27.227,-78.161c0,-41.304 -8.798,-78.213 -26.393,-110.727c-17.596,-32.514 -41.675,-57.062 -72.236,-73.644Zm568.112,636.077l-90.573,-49.142l-164.197,-339.411c-9.631,-19.858 -16.299,-34.497 -20.003,-43.915l-1.112,-0.603c1.482,14.88 2.223,36.768 2.223,65.662l-0,218.929l-84.738,-45.976l0,-398.407l96.685,52.458l158.084,328.316c7.224,14.848 13.892,29.301 20.004,43.36l1.111,0.603c-1.481,-10.065 -2.222,-28.711 -2.222,-55.939l-0,-220.318l84.738,45.976l-0,398.407Zm410.286,-581.591l-129.747,327.538l0,141.693l-89.738,48.985l-0,-140.025l-126.413,-189.377l102.519,-55.962l64.179,113.606c1.111,2.171 4.167,11.338 9.168,27.501l1.112,-0.607c2.407,-14.65 5.278,-26.682 8.612,-36.096l65.29,-185.389l95.018,-51.867Zm390.261,185.376l-106.409,58.085l-68.624,-92.287c-2.593,-3.4 -5.278,-10.825 -8.057,-22.274l-1.111,0.607c-1.297,6.82 -4.353,17.749 -9.168,32.788l-68.902,166.246l-106.964,58.388l126.968,-268.511l-116.133,-135.811l109.187,-59.601l56.955,88.376c4.445,7.02 8.427,16.052 11.947,27.097l1.111,-0.607c2.223,-8.993 6.39,-22.844 12.502,-41.553l63.345,-152.934l100.019,-54.597l-119.467,262.75l122.801,133.838Z"
+      fill="#ffffff"/>
+  </svg>
+
+  <div style="text-align:center">
+    <div class="code">404</div>
+    <div class="message">Page not found</div>
+  </div>
+
+  <div class="card">
+    <p id="msg">This page doesn't exist on Onyx.mx. You may have followed an outdated link or the address was mistyped.</p>
+    <div class="redirect-badge" id="badge">⟳ Activating account — redirecting…</div>
+    <a class="btn" id="cta" href="/onyx.mx/">↗ Open Onyx.mx</a>
+    <div class="wordmark">Onyx.mx · Enterprise Platform</div>
+  </div>
+
+  <script>
+    // Forward Supabase auth callbacks to the app with params intact
+    (function () {
+      var APP = '/onyx.mx/';
+      var h = window.location.hash;
+      var s = window.location.search;
+      var isAuth =
+        h.includes('type=signup')  || h.includes('type=recovery') ||
+        h.includes('access_token') ||
+        s.includes('type=signup')  || s.includes('type=recovery') ||
+        s.includes('token=');
+      if (isAuth) {
+        document.getElementById('msg').textContent =
+          'Account activation detected. You will be redirected to Onyx.mx in a moment.';
+        document.getElementById('badge').style.display = 'block';
+        document.getElementById('cta').style.display   = 'none';
+        setTimeout(function () { window.location.replace(APP + s + h); }, 900);
+      }
+    })();
+  </script>
+
+</body>
+</html>
