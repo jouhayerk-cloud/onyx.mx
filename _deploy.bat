@@ -1,7 +1,7 @@
 @echo off
 echo [1/3] Committing source changes...
 git add -A
-git commit -m "v1.81.29 - Integrate 3D Share and Fix Syntax Error"
+git commit -m "UI: NFC Core Wizard Redesign and Visual Enhancements"
 git push origin main
 
 
