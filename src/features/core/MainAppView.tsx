@@ -60,6 +60,10 @@ import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
 import { ThreeDAppView } from '../threed/ThreeDView';
 import { PaymentsFilterBar } from '../finance/PaymentsFilterBar';
+import { UniversalToolsBar } from './UniversalToolsBar';
+import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
+import { PackingWizard } from '../logistics/PackingWizard';
+import { PaymentWizard } from '../finance/PaymentWizard';
 
 
 declare const __APP_VERSION__: string;
@@ -85,7 +89,22 @@ const NavItemWithSubmenu: React.FC<NavItemWithSubmenuProps> = ({ viewId, label, 
     const isOpen = activeSubMenu === viewId;
     const isParentActive = activeView === viewId;
 
-    const IconMap: Record<string, React.FC<any>> = { truck: Truck, package: Package, 'map-pin': MapPin };
+    const IconMap: Record<string, React.FC<any>> = { 
+        truck: Truck, 
+        package: Package, 
+        'map-pin': MapPin, 
+        shield: Shield, 
+        'badge-dollar-sign': BadgeDollarSign, 
+        layers: Layers,
+        box: Box,
+        cuboid: Cuboid,
+        zap: Zap,
+        pipette: Pipette,
+        'rotate-3d': Rotate3d,
+        'bar-chart-3': BarChart3,
+        'layout-dashboard': LayoutDashboard,
+        'credit-card': CreditCard
+    };
     const NavIcon = IconMap[icon] || Truck;
 
     const handleToggle = () => {
@@ -313,70 +332,33 @@ export function MainAppView() {
                         </div>
                     </div>
                     <ul className="sidebar-list">
+                        {/* ── ADMIN ── */}
                         {user?.role === 'Developer' && (
-                            <li className={`sidebar-list-item ${activeView === 'control' ? 'active' : ''}`} onClick={() => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Shield size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Control Center</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Control Center</span>
-                            </li>
+                            <NavItemWithSubmenu 
+                                viewId="admin"
+                                label="Admin"
+                                icon="shield"
+                                subItems={[
+                                    { id: 'control', label: 'Control Center', icon: 'shield', action: () => { setActiveView('control'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'control' }
+                                ]}
+                            />
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <li className={`sidebar-list-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <BarChart3 size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Dashboard</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Dashboard</span>
-                            </li>
-                        )}
+
+                        {/* ── FINANCES ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
-                            <li className={`sidebar-list-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <BadgeDollarSign size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Overview</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Overview</span>
-                            </li>
+                            <NavItemWithSubmenu 
+                                viewId="finances"
+                                label="Finances"
+                                icon="badge-dollar-sign"
+                                subItems={[
+                                    ...(user?.role !== 'ClientAccounting' ? [{ id: 'dashboard', label: 'Dashboard', icon: 'bar-chart-3', action: () => { setActiveView('dashboard'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'dashboard' }] : []),
+                                    { id: 'overview', label: 'Overview', icon: 'layout-dashboard', action: () => { setActiveView('overview'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'overview' },
+                                    { id: 'finance', label: 'Payments', icon: 'credit-card', action: () => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'finance' }
+                                ]}
+                            />
                         )}
+                        {/* ── INVENTORY ── */}
                         {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
-                            <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Shell size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Viewer</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Viewer</span>
-                            </li>
-                        )}
-                        {user?.role === 'Developer' && (
-                            <li className={`sidebar-list-item ${activeView === 'threed' ? 'active' : ''}`} onClick={() => { setActiveView('threed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Rotate3d size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">3D and AR</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">3D and AR</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                            <li className={`sidebar-list-item ${activeView === 'store' ? 'active' : ''}`} onClick={() => { setActiveView('store'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Store size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Store</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Store</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'Vendor') && (
-                            <li className={`sidebar-list-item ${activeView === 'upload' ? 'active' : ''}`} onClick={() => { setActiveView('upload'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <Upload size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Add Entry</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Add Entry</span>
-                            </li>
-                        )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
                             <li className={`sidebar-list-item ${activeView === 'inventory' ? 'active' : ''}`} onClick={() => { setActiveView('inventory'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
                                 <div className="sidebar-list-item-main">
                                     <Album size={20} strokeWidth={1.75} />
@@ -385,52 +367,55 @@ export function MainAppView() {
                                 <span className="sidebar-compact-tooltip">Inventory</span>
                             </li>
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
-                            <li className={`sidebar-list-item ${activeView === 'finance' ? 'active' : ''}`} onClick={() => { setActiveView('finance'); setFinanceSubTab('payments'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                <div className="sidebar-list-item-main">
-                                    <CreditCard size={20} strokeWidth={1.75} />
-                                    <span className="sidebar-list-item-text">Payments</span>
-                                </div>
-                                <span className="sidebar-compact-tooltip">Payments</span>
-                            </li>
+
+                        {/* ── WAREHOUSE ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
+                            <NavItemWithSubmenu 
+                                viewId="warehouse"
+                                label="Warehouse"
+                                icon="package"
+                                subItems={[
+                                    { id: 'warehouse_empty', label: 'Empty Crates', icon: 'box', action: () => { setActiveView('logistics'); setLogisticsSubTab('empty'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'empty' },
+                                    { id: 'warehouse_packed', label: 'Packed Crates', icon: 'cuboid', action: () => { setActiveView('logistics'); setLogisticsSubTab('packed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && (logisticsSubTab === 'packed' || logisticsSubTab === 'packing') }
+                                ]}
+                            />
                         )}
-                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientAccounting') && (
-                            <>
-                                <li className={`sidebar-list-item ${activeView === 'packing' ? 'active' : ''}`} onClick={() => { 
-                                    if (user?.role === 'Developer' || user?.role === 'Admin') {
-                                        setActiveView('packing'); 
-                                    }
-                                    if (window.innerWidth <= 768) setSidebarState('hidden'); 
-                                }}>
-                                    {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                                        <>
-                                            <div className="sidebar-list-item-main">
-                                                <Barcode size={20} strokeWidth={1.75} />
-                                                <span className="sidebar-list-item-text">Labels</span>
-                                            </div>
-                                            <span className="sidebar-compact-tooltip">Labels</span>
-                                        </>
-                                    )}
-                                </li>
-                                {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
-                                    <li className={`sidebar-list-item ${activeView === 'logistics' ? 'active' : ''}`} onClick={() => { setActiveView('logistics'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                        <div className="sidebar-list-item-main">
-                                            <Cuboid size={20} strokeWidth={1.75} />
-                                            <span className="sidebar-list-item-text">Crates</span>
-                                        </div>
-                                        <span className="sidebar-compact-tooltip">Crates</span>
-                                    </li>
-                                )}
-                                {(user?.role === 'Developer' || user?.role === 'Admin') && (
-                                    <li className={`sidebar-list-item ${activeView === 'process' ? 'active' : ''}`} onClick={() => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
-                                        <div className="sidebar-list-item-main">
-                                            <Pipette size={20} strokeWidth={1.75} />
-                                            <span className="sidebar-list-item-text">Process</span>
-                                        </div>
-                                        <span className="sidebar-compact-tooltip">Process</span>
-                                    </li>
-                                )}
-                            </>
+
+                        {/* ── TRUCKING ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss') && (
+                            <NavItemWithSubmenu 
+                                viewId="trucking"
+                                label="Trucking"
+                                icon="truck"
+                                subItems={[
+                                    { id: 'trucking_plan', label: 'Plan Truck', icon: 'map-pin', action: () => { setActiveView('logistics'); setLogisticsSubTab('shipping'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'shipping' },
+                                    { id: 'trucking_deployed', label: 'Deployed', icon: 'zap', action: () => { setActiveView('logistics'); setLogisticsSubTab('deployed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'logistics' && logisticsSubTab === 'deployed' }
+                                ]}
+                            />
+                        )}
+
+                        {/* ── LABS ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin') && (
+                            <NavItemWithSubmenu 
+                                viewId="labs"
+                                label="Labs"
+                                icon="layers"
+                                subItems={[
+                                    { id: 'process', label: 'Process', icon: 'pipette', action: () => { setActiveView('process'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'process' },
+                                    { id: 'threed', label: '3D and AR', icon: 'rotate-3d', action: () => { setActiveView('threed'); if (window.innerWidth <= 768) setSidebarState('hidden'); }, isActive: activeView === 'threed' }
+                                ]}
+                            />
+                        )}
+                        
+                        {/* ── LEGACY VIEWER (Internal) ── */}
+                        {(user?.role === 'Developer' || user?.role === 'Admin' || user?.role === 'ClientBoss' || user?.role === 'ClientViewer' || user?.role === 'Vendor') && (
+                            <li className={`sidebar-list-item ${activeView === 'viewer' ? 'active' : ''}`} onClick={() => { setActiveView('viewer'); if (window.innerWidth <= 768) setSidebarState('hidden'); }}>
+                                <div className="sidebar-list-item-main">
+                                    <Shell size={20} strokeWidth={1.75} />
+                                    <span className="sidebar-list-item-text">Viewer</span>
+                                </div>
+                                <span className="sidebar-compact-tooltip">Viewer</span>
+                            </li>
                         )}
                     </ul>
 
@@ -456,15 +441,21 @@ export function MainAppView() {
                 </div>
                 <div className="app-content flex-1 min-h-0 overflow-y-auto scroll-smooth p-0 m-0 relative">
                     <MainHeader />
+                    <UniversalToolsBar />
                     {activeView === 'finance' && <PaymentsFilterBar />}
                     <main className="flex-1 flex flex-col min-h-0 p-0 m-0">
                         {pageContent}
                     </main>
+
+                    <BatchActionsModal />
+                    <UploadWizard />
+                    <LabelWizard />
+                    <NFCWizard />
+                    <PackingWizard />
+                    <PaymentWizard />
                 </div>
             </div>
 
-            <BatchActionsModal />
-            <UploadWizard />
             <StudioSettingsPortal />
             <InventoryArtifact />
             <PaymentsArtifact />

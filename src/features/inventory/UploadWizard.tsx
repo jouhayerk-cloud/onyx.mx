@@ -1,14 +1,35 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useAtom, useAtomValue } from 'jotai/react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react';
 import toast from 'react-hot-toast';
-import { userAtom, isUploadWizardOpenAtom, inventoryAtom, exchangeRateAtom, isDummyModeAtom, sidebarStateAtom, uploadItemDataAtom } from '../../lib/atoms';
+import { 
+    userAtom, 
+    isUploadWizardOpenAtom, 
+    inventoryAtom, 
+    exchangeRateAtom, 
+    isDummyModeAtom, 
+    sidebarStateAtom, 
+    uploadItemDataAtom,
+    workbookVersionAtom
+} from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { useDatabase } from '../../lib/hooks';
 import { supabase } from '../../lib/supabase';
-import { getTextColorForBg, handleFileUpload, formatCurrency, readFileAsDataURL, isVideoFile } from '../../lib/utils';
-import { X, ArrowRight, Video, Plus, Database, Store, Hash, Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, ChevronRight, CloudUpload, Check } from 'lucide-react';
-import { UploadedFile } from '../../lib/Types';
+import { 
+    getTextColorForBg, 
+    handleFileUpload, 
+    formatCurrency, 
+    readFileAsDataURL, 
+    calculateCodesAndPrices,
+    normalizeInventoryData
+} from '../../lib/utils';
+import { 
+    X, ArrowRight, Video, Plus, Database, Store, Hash, 
+    Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, 
+    ChevronRight, CloudUpload, Check, Box, Info, Sparkles,
+    FileSpreadsheet, Zap, Scan, LayoutGrid, FileText, Camera,
+    BookOpen, AlertTriangle
+} from 'lucide-react';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
 type MediaType = 'Product' | 'Lot';
@@ -37,6 +58,7 @@ interface WizardState {
     price: string;
     notes: string;
     existingCount: number;
+    existingNumbers: string[];
     payReq?: string;
 }
 
@@ -58,19 +80,105 @@ const INITIAL_STATE: WizardState = {
     price: '',
     notes: '',
     existingCount: 0,
+    existingNumbers: [],
     payReq: '',
+};
+
+// ── SOLID HIGH CONTRAST SMART INPUT WITH DYNAMIC TAG SLIDESHOW ──
+const SmartInput = ({ label, field, value, type = 'text', icon: Icon, fieldSuggestions, warning, className = "", onSet }: any) => {
+    const [isFocused, setIsFocused] = useState(false);
+    const [suggestionIndex, setSuggestionIndex] = useState(0);
+    const query = (value || '').toLowerCase();
+    
+    const filtered = useMemo(() => {
+        if (!fieldSuggestions) return [];
+        return fieldSuggestions
+            .filter((tag: string) => tag.toLowerCase().includes(query))
+            .slice(0, 24); 
+    }, [fieldSuggestions, query]);
+    
+    useEffect(() => {
+        if (!fieldSuggestions || fieldSuggestions.length === 0 || value || isFocused) return;
+        const interval = setInterval(() => {
+            setSuggestionIndex(prev => (prev + 1) % fieldSuggestions.length);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [fieldSuggestions, value, isFocused]);
+
+    const activeGhostTag = fieldSuggestions && fieldSuggestions.length > 0 ? fieldSuggestions[suggestionIndex] : "NONE";
+
+    return (
+        <div className={`group relative flex flex-col transition-all duration-700 py-2 border-b ${warning ? 'border-red-500' : 'border-white/20 hover:border-white'} ${className}`}>
+            <div className="flex justify-between items-start mb-1">
+                <div className="flex items-center gap-3">
+                    {Icon && <Icon size={12} className={warning ? 'text-red-500' : (value || isFocused ? 'text-(--main-color)' : 'text-white')} strokeWidth={3} />}
+                    <span className={`text-[9px] font-black uppercase tracking-[0.4em] ${warning ? 'text-red-500' : (value || isFocused ? 'text-(--main-color)' : 'text-white')}`}>{label}</span>
+                </div>
+                {warning ? (
+                    <AlertTriangle size={14} className="text-red-500 animate-pulse" strokeWidth={3} />
+                ) : value && (
+                    <CheckCircle2 size={14} className="text-(--main-color) animate-in zoom-in duration-700" strokeWidth={3} />
+                )}
+            </div>
+            
+            <div className="relative">
+                {!value && !isFocused && (
+                    <span className="absolute inset-0 text-4xl md:text-5xl font-black uppercase tracking-tighter text-white/25 select-none pointer-events-none animate-in fade-in duration-1000 slide-in-from-left-2 whitespace-nowrap overflow-hidden text-ellipsis italic">
+                        {activeGhostTag}
+                    </span>
+                )}
+                
+                <input 
+                    type={type}
+                    value={value}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                    onChange={e => onSet(field, e.target.value)}
+                    placeholder={!activeGhostTag && !isFocused ? "NONE" : ""}
+                    className={`
+                        bg-transparent border-none outline-none w-full text-4xl md:text-5xl font-black uppercase tracking-tighter transition-all duration-700
+                        ${warning ? 'text-red-500' : (value || isFocused ? 'text-white' : 'text-white placeholder:text-white')}
+                    `}
+                />
+            </div>
+
+            {isFocused && (
+                <div className="flex flex-wrap gap-2 mt-4 animate-in fade-in slide-in-from-top-4 duration-700 bg-white/10 p-6 rounded-3xl backdrop-blur-3xl border border-white/30 shadow-[0_0_50px_rgba(255,255,255,0.05)] z-30">
+                    {filtered.length > 0 ? (
+                        filtered.map((tag: string) => (
+                            <button key={tag} onClick={() => onSet(field, tag)}
+                                className={`
+                                    text-[10px] font-black tracking-[0.2em] uppercase transition-all px-4 py-2 rounded-xl border-2
+                                    ${value === tag 
+                                        ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]' 
+                                        : 'bg-white/20 text-white border-white/40 hover:border-white hover:bg-white hover:text-black hover:scale-105 active:scale-95'
+                                    }
+                                `}>
+                                {tag}
+                            </button>
+                        ))
+                    ) : (
+                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest italic">No matches available</span>
+                    )}
+                </div>
+            )}
+            
+            {warning && (
+                <span className="text-[8px] font-black text-red-500 uppercase tracking-[0.2em] mt-2 animate-in slide-in-from-left-4 duration-700">
+                    Warning: ID Conflict Detected
+                </span>
+            )}
+        </div>
+    );
 };
 
 export const UploadWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isUploadWizardOpenAtom);
-    const sidebarState = useAtomValue(sidebarStateAtom);
+    const [itemData, setItemData] = useAtom(uploadItemDataAtom);
     const user = useAtomValue(userAtom);
-    const itemData = useAtomValue(uploadItemDataAtom);
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const db = useDatabase();
     
-    // ... rest of the component setup ...
-    const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
     const [savingProgress, setSavingProgress] = useState(0);
     const isDummyMode = useAtomValue(isDummyModeAtom);
@@ -78,33 +186,20 @@ export const UploadWizard: React.FC = () => {
     const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const isOpenRef = useRef(isOpen);
-
-    const isAdmin = user?.role === 'Admin' || user?.role === 'Developer';
-
-    // Sidebar integration for the free-floating look
-    const leftOffset = useMemo(() => {
-        if (!isOpen) return '0';
-        if (window.innerWidth <= 768) return '0'; // Mobile always full
-        if (sidebarState === 'expanded') return '280px';
-        if (sidebarState === 'compact') return '80px';
-        return '0';
-    }, [sidebarState, isOpen]);
 
     useEffect(() => {
-        if (isOpen && !isOpenRef.current) {
+        if (isOpen) {
             const isV825 = itemData.workbook === 'v825';
-            setStep(isAdmin ? (isV825 ? 2 : 1) : 3);
-            setState({
-                ...INITIAL_STATE,
+            setState(prev => ({
+                ...prev,
                 status: isV825 ? 'Acquisition' : 'Available',
                 payReq: isV825 ? 'paid' : '',
-                vendorId: user?.role === 'Vendor' ? (user.name || '') : '',
-            });
+                vendorId: user?.role === 'Vendor' ? (user.name || '') : prev.vendorId,
+            }));
         }
-        isOpenRef.current = isOpen;
-    }, [isOpen, isAdmin, user, itemData.workbook]);
+    }, [isOpen, itemData.workbook, user]);
 
+    // Reverting to individual field suggestions
     useEffect(() => {
         if (!db || !isOpen) return;
         const fetchTags = async () => {
@@ -113,7 +208,7 @@ export const UploadWizard: React.FC = () => {
                 const u = (cols: string[]) => Array.from(new Set(items.map((i: any) => {
                     for (const c of cols) if (i[c]) return String(i[c]);
                     return null;
-                }).filter(Boolean))).sort().slice(0, 15);
+                }).filter(Boolean))).sort().slice(0, 24);
 
                 setSuggestions({
                     shape: u(['shape']),
@@ -124,7 +219,8 @@ export const UploadWizard: React.FC = () => {
                     widthCm: u(['width_cm', 'widthCm']),
                     heightCm: u(['height_cm', 'heightCm']),
                     lengthCm: u(['length_cm', 'lengthCm']),
-                    price: u(['price_mxn', 'priceMxn', 'price'])
+                    price: u(['price_mxn', 'priceMxn', 'price']),
+                    quantity: u(['quantity'])
                 } as any);
             } catch (e) { console.error(e); }
         };
@@ -134,86 +230,85 @@ export const UploadWizard: React.FC = () => {
     useEffect(() => {
         if (!db || !state.vendorId || !isOpen) return;
         const fetchNextNum = async () => {
-            const selector: any = { item_id: { $regex: `^${state.vendorId}-` } };
-            // Optional: filter by workbook if relevant
+            const selector: any = { 
+                item_id: { $regex: `^${state.vendorId}-` },
+                workbook: itemData.workbook || 'v326'
+            };
             const items = await db.inventory.find({ selector }).exec();
             let maxNum = 0;
             let existingCount = 0;
+            let existingNumbers: string[] = [];
+            
             items.forEach((i: any) => {
-                const num = parseInt(i.item_number);
-                if (!isNaN(num) && num > maxNum) maxNum = num;
+                const numStr = String(i.item_number || i.itemNumber || '');
+                if (numStr) {
+                    existingNumbers.push(numStr);
+                    const num = parseInt(numStr);
+                    if (!isNaN(num) && num > maxNum) maxNum = num;
+                }
                 existingCount += parseInt(i.quantity) || 1;
             });
-            setState(prev => ({ ...prev, itemNumber: String(maxNum + 1), existingCount }));
+            
+            setState(prev => ({ ...prev, itemNumber: String(maxNum + 1), existingCount, existingNumbers }));
         };
         fetchNextNum();
-    }, [db, state.vendorId, isOpen]);
+    }, [db, state.vendorId, itemData.workbook, isOpen]);
 
     const set = (k: keyof WizardState, v: any) => setState(prev => ({ ...prev, [k]: v }));
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        
         const newMedia: WizardMedia[] = [];
         for (const file of files) {
             const type = file.type.startsWith('video/') ? 'video' : 'image';
             const preview = await readFileAsDataURL(file, type);
             newMedia.push({ file, preview, type });
         }
-        setState(prev => ({ 
-            ...prev, 
-            mediaList: [...prev.mediaList, ...newMedia] 
-        }));
+        setState(prev => ({ ...prev, mediaList: [...prev.mediaList, ...newMedia] }));
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const removeMedia = (idx: number) => {
-        setState(prev => ({
-            ...prev,
-            mediaList: prev.mediaList.filter((_, i) => i !== idx)
-        }));
+        setState(prev => ({ ...prev, mediaList: prev.mediaList.filter((_, i) => i !== idx) }));
     };
 
     const doSave = async (): Promise<boolean> => {
-        if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Item Number'); return false; }
+        if (!state.vendorId || !state.itemNumber) { toast.error('Missing Vendor or Index'); return false; }
+        if (state.existingNumbers.includes(state.itemNumber)) {
+            const proceed = window.confirm(`WARNING: Index ${state.itemNumber} already exists for Vendor ${state.vendorId}. Continue?`);
+            if (!proceed) return false;
+        }
+        
         setSaving(true);
         setSavingProgress(10);
-        const tid = toast.loading('Syncing Artifact...');
-        
+        const tid = toast.loading('Syncing Registry...');
         try {
             if (isDummyMode) {
                 for (let i = 20; i <= 100; i += 20) {
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 200));
                     setSavingProgress(i);
                 }
-                toast.success('✓ Item saved! (Demo Mode)', { id: tid, icon: '🧪' });
+                toast.success('Artifact Synced (Demo)', { id: tid });
                 return true;
             }
-
             let uploadedUrls: string[] = [];
             if (state.mediaList.length > 0) {
                 for (let i = 0; i < state.mediaList.length; i++) {
                     const m = state.mediaList[i];
                     if (m.file) {
                         const res = await handleFileUpload(m.file, user);
-                        if (res) {
-                            const taggedUrl = `${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`;
-                            uploadedUrls.push(taggedUrl);
-                        }
+                        if (res) uploadedUrls.push(`${res.thumbnailUrl}${state.mediaType ? `&tag=${state.mediaType}` : ''}`);
                     }
                     setSavingProgress(Math.round(10 + ((i + 1) / state.mediaList.length) * 70));
                 }
-            } else {
-                setSavingProgress(80);
             }
-
-            const finalItemId = `${state.vendorId}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+            const finalItemId = `${state.vendorId}-${state.itemNumber.padStart(3, '0')}`;
             const payload: any = {
                 id: crypto.randomUUID(),
                 item_id: finalItemId,
                 vendor_id: state.vendorId,
-                item_number: state.itemNumber,
+                item_number: parseInt(state.itemNumber),
                 status: state.status,
                 quantity: parseInt(state.quantity) || 1,
                 shape: state.shape,
@@ -233,405 +328,212 @@ export const UploadWizard: React.FC = () => {
                 updated_at: new Date().toISOString(),
                 workbook: itemData.workbook || 'v326',
             };
-
-            // Sync shadow fields
-            payload.widthCm = payload.width_cm;
-            payload.heightCm = payload.height_cm;
-            payload.lengthCm = payload.length_cm;
-            payload.weightKg = payload.weight_kg;
-            payload.itemId = payload.item_id;
-            payload.itemNumber = payload.item_number;
-            payload.priceMxn = payload.price_mxn;
-            payload.shortDescription = payload.short_description;
-
-            setSavingProgress(90);
+            setSavingProgress(95);
             await supabase.from('inventory').insert(payload);
             if (db) await db.inventory.insert(payload);
             setSavingProgress(100);
-            toast.success('Artifact Synced', { id: tid });
+            toast.success('Registry Updated', { id: tid });
             return true;
         } catch (err: any) {
-            console.error('Wizard save error:', err);
             toast.error(err.message || 'Upload Failed', { id: tid });
             return false;
         } finally {
-            setTimeout(() => {
-                setSaving(false);
-                setSavingProgress(0);
-            }, 800);
+            setTimeout(() => { setSaving(false); setSavingProgress(0); }, 500);
         }
     };
 
-    const handleSaveExit = async () => {
-        const ok = await doSave();
-        if (ok) setIsOpen(false);
-    };
-
-    const handleSaveNext = async () => {
-        const currentVendorId = state.vendorId;
-        const currentStatus = state.status;
-        const currentItemNumber = parseInt(state.itemNumber || '1');
-        const ok = await doSave();
-        if (!ok) return;
-        // Reset to fresh item, same vendor, bumped number, back to Step 3
-        setState({
-            ...INITIAL_STATE,
-            status: currentStatus,
-            vendorId: currentVendorId,
-            itemNumber: String(currentItemNumber + 1),
-            existingCount: state.existingCount + (parseInt(state.quantity) || 1),
-        });
-        setStep(3);
-    };
+    const isDuplicate = state.existingNumbers.includes(state.itemNumber);
 
     if (!isOpen) return null;
 
-    const renderProgress = () => (
-        <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5].map(s => (
-                <div key={s} className={`h-1 rounded-full transition-all duration-700 ${step >= s ? 'w-8 bg-(--main-color)' : 'w-3 bg-white/5'}`} />
-            ))}
-        </div>
-    );
-
-    const renderBackButton = (prevStep: number) => (
-        <button onClick={() => setStep(prevStep)} className="text-[14px] md:text-[18px] font-black text-white/5 hover:text-(--main-color) uppercase tracking-[0.5em] mb-8 flex items-center gap-4 group transition-all duration-500">
-            <span className="group-hover:-translate-x-2 transition-transform duration-500">←</span> BACK
-        </button>
-    );
-
-    const renderTagSelector = (field: keyof WizardState, fieldSuggestions: string[]) => {
-        const query = (state[field] as string || '').toLowerCase();
-        const filtered = fieldSuggestions.filter(tag => tag.toLowerCase().includes(query)).slice(0, 15);
-        if (filtered.length === 0) return null;
-        return (
-            <div className="flex flex-wrap gap-3 mt-6 animate-in fade-in duration-300">
-                {filtered.map(tag => (
-                    <button key={tag} onClick={() => set(field, tag)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-[0.2em] transition-all border ${state[field] === tag ? 'bg-(--main-color) text-black border-(--main-color) shadow-[0_5px_20px_rgba(var(--main-color-rgb),0.3)]' : 'bg-white/3 text-(--text-color-secondary) hover:text-(--text-color) border-white/5 hover:border-white/20'}`}>
-                        {tag.toUpperCase()}
-                    </button>
-                ))}
-            </div>
-        );
-    };
-
     return (
-        <div className="fixed inset-0 z-50 flex flex-col pointer-events-none overflow-hidden" style={{ left: leftOffset }}>
-            <div className="absolute inset-0 bg-[#050505]/40 backdrop-blur-[60px] pointer-events-auto" onClick={() => setIsOpen(false)} />
+        <div className="absolute inset-0 z-[6000] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-1000 overflow-hidden">
+            <div className="absolute inset-0 bg-black/10 backdrop-blur-[200px]" onClick={() => setIsOpen(false)} />
             
-            <div className="relative flex-1 flex flex-col pointer-events-auto overflow-hidden animate-in fade-in slide-in-from-bottom-10 duration-700 ease-out app-content" onClick={e => e.stopPropagation()}>
-
-                {/* Immensive Header */}
-                <div className="px-8 md:px-16 pt-10 pb-6 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-12">
-                        {renderProgress()}
-                        {!isAdmin && (
-                            <div className="flex items-center gap-3 bg-white/3 px-5 py-2 rounded-full border border-white/5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]" />
-                                <span className="text-[10px] font-black text-(--text-color-secondary) uppercase tracking-[0.3em]">IMMERSIVE UPLOAD MODE</span>
-                            </div>
-                        )}
-                    </div>
-                    <button onClick={() => setIsOpen(false)} className="w-16 h-16 rounded-full bg-white/3 border border-white/5 flex items-center justify-center text-(--text-color-secondary) hover:text-(--text-color) hover:bg-white/10 transition-all group shrink-0">
-                        <X size={24} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-500" />
-                    </button>
-                </div>
-
-                <div className="px-8 pb-8 flex flex-col flex-1 overflow-y-auto custom-scrollbar">
-
-                    {/* Step 1: Entry Status */}
-                    {step === 1 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700 flex flex-col justify-center min-h-[40vh]">
-                            <div className="flex flex-1 flex-col justify-center bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
-                                <div className="flex items-center gap-4 mb-4 opacity-50">
-                                    <Database size={24} className="text-(--main-color)" />
-                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">CLASSIFY ARTIFACT</h2>
+            <div className="relative w-full h-full md:w-[98vw] md:h-[98vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-1000 bg-black/10 border-none rounded-none md:rounded-[60px] shadow-2xl backdrop-blur-3xl">
+                
+                <div className="flex items-center justify-between px-10 py-10 md:px-24 md:py-16 shrink-0 z-20">
+                    <div className="flex items-center gap-10">
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-12 mb-2">
+                                <div className="flex items-center gap-4">
+                                    <Plus size={18} className="text-(--main-color)" strokeWidth={4} />
+                                    <h1 className="text-xl md:text-2xl font-black uppercase tracking-[0.4em] text-white leading-none">Add Entry</h1>
                                 </div>
-
-                                <div className="flex flex-col gap-6">
-                                    {(['Available', 'Production', 'Acquisition'] as EntryStatus[]).map(status => (
-                                        <button key={status} onClick={() => { set('status', status); setStep(2); }}
-                                            className="flex items-center gap-6 group text-left">
-                                            <span className="text-[24px] md:text-[40px] font-black text-(--text-color) group-hover:text-(--main-color) transition-all duration-500 uppercase leading-none tracking-tighter">
-                                                {status}
-                                            </span>
-                                            <div className="h-px flex-1 bg-white/5 group-hover:bg-(--main-color)/20 transition-all" />
-                                            <span className="text-[9px] font-black text-white/20 group-hover:text-white/40 uppercase tracking-[0.4em] transition-all">
-                                                {status === 'Available' ? 'Inventory' : status === 'Production' ? 'Mfg' : 'Bulk'}
-                                            </span>
+                                
+                                <div className="flex gap-10">
+                                    {['v326', 'v825'].map(v => (
+                                        <button key={v} onClick={() => setItemData(prev => ({ ...prev, workbook: v as any }))}
+                                            className={`text-3xl md:text-4xl font-black uppercase tracking-[0.2em] transition-all hover:scale-110 ${itemData.workbook === v ? 'text-(--main-color)' : 'text-white opacity-20 hover:opacity-60'}`}>
+                                            {v}
                                         </button>
                                     ))}
                                 </div>
                             </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.8em] text-white">Onyx Intelligence Engine</span>
                         </div>
-                    )}
-
-                    {/* Step 2: Vendor */}
-                    {step === 2 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
-                                <div className="flex items-center gap-4 mb-4 opacity-50">
-                                    <Store size={24} className="text-(--main-color)" />
-                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">VENDORS</h2>
-                                </div>
-                                {renderBackButton(1)}
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 py-4">
-                                    {Object.entries(vendors)
-                                        .filter(([id]) => !['R', 'M', 'W', 'C'].includes(id))
-                                        .map(([id, cfg]) => (
-                                            <button key={id} onClick={() => { set('vendorId', id); setStep(3); }}
-                                                className="group flex flex-col items-start gap-2 transition-all">
-                                                <div className="w-full aspect-square rounded-[20px] flex items-center justify-center font-black text-2xl shadow-xl transition-all duration-500 group-hover:scale-105 group-hover:-translate-y-1 group-active:scale-95"
-                                                    style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
-                                                    {id}
-                                                </div>
-                                                <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] group-hover:text-white group-hover:tracking-[0.5em] transition-all duration-500">{cfg.name || id}</span>
-                                            </button>
-                                        ))}
-                                </div>
-                            </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-16">
+                        <div className="hidden md:flex flex-col text-right">
+                            <span className="text-[9px] font-black text-white uppercase tracking-[0.5em] mb-1">Preview Artifact:</span>
+                            <span className={`text-3xl font-black tracking-tighter uppercase tabular-nums ${isDuplicate ? 'text-red-500' : 'text-white'}`}>
+                                {state.vendorId || '???'}-{state.itemNumber.padStart(3, '0')}
+                            </span>
                         </div>
-                    )}
+                        <button onClick={() => setIsOpen(false)} className="p-4 rounded-full text-white hover:scale-110 transition-all hover:rotate-90 duration-500">
+                            <X size={40} strokeWidth={2} />
+                        </button>
+                    </div>
+                </div>
 
-                    {/* Step 3: Quantity & Media */}
-                    {step === 3 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
-                                <div className="flex items-center gap-4 mb-4 opacity-50">
-                                    <Hash size={24} className="text-(--main-color)" />
-                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">UNITS</h2>
-                                </div>
-                                {isAdmin && renderBackButton(2)}
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 py-4">
-                                    <div className="flex flex-col gap-8">
-                                        <div className="flex flex-col gap-3">
-                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">Artifact ID</label>
-                                            <span className="text-3xl md:text-5xl font-black text-white tracking-tighter leading-none">{state.vendorId}-{state.itemNumber}</span>
-                                        </div>
-
-                                        <div className="flex flex-col gap-3">
-                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">Units to Add</label>
-                                            <input 
-                                                autoFocus
-                                                type="text" 
-                                                value={state.quantity} 
-                                                placeholder="00"
-                                                onChange={e => set('quantity', e.target.value.replace(/[^0-9]/g, ''))}
-                                                className="bg-transparent border-none text-[60px] md:text-[80px] font-black text-(--main-color) outline-none placeholder:opacity-5 leading-none tracking-tighter w-full" 
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-6">
-                                        <div className="flex justify-between items-center border-b border-white/5 pb-4 mb-4">
-                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">Evidence Type</label>
-                                            <div className="flex gap-6">
-                                                {(['Product', 'Lot'] as MediaType[]).map(t => (
-                                                    <button key={t} onClick={() => set('mediaType', t)}
-                                                        className={`text-[11px] font-black tracking-[0.3em] transition-all uppercase ${state.mediaType === t ? 'text-(--main-color)' : 'text-white/20 hover:text-white/50'}`}>
-                                                        {t}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="relative cursor-pointer group/attach" onClick={() => fileInputRef.current?.click()}>
-                                            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                <div className="aspect-square rounded-[24px] border-2 border-dashed border-(--main-color)/20 flex flex-col items-center justify-center gap-4 hover:border-(--main-color)/60 hover:bg-(--main-color)/5 transition-all bg-(--main-color)/2 relative overflow-hidden group-active/attach:scale-95 duration-500">
-                                                    <div className="absolute inset-0 bg-radial from-(--main-color)/5 to-transparent opacity-0 group-hover/attach:opacity-100 transition-opacity" />
-                                                    <div className="w-12 h-12 rounded-full bg-(--main-color)/10 flex items-center justify-center animate-pulse">
-                                                        <Upload size={24} className="text-(--main-color)" />
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">Attach Capture</span>
-                                                </div>
-
-                                                {state.mediaList.map((m, i) => (
-                                                    <div key={i} className="aspect-square rounded-[24px] overflow-hidden relative group/thumb shadow-xl bg-black border border-white/10">
-                                                        {m.type === 'video' ? (
-                                                            <div className="w-full h-full flex items-center justify-center overflow-hidden"><Video size={24} className="text-white/20" /></div>
-                                                        ) : (
-                                                            <img src={m.preview || ''} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                                        )}
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); removeMedia(i); }} 
-                                                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/80 text-white opacity-0 group-hover/thumb:opacity-100 transition-all flex items-center justify-center text-lg shadow-lg backdrop-blur-md">
-                                                            &times;
-                                                        </button>
-                                                        {i === 0 && (
-                                                            <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[8px] font-black text-white/60 uppercase tracking-widest border border-white/10">Primary</div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="mt-8">
-                                            <button onClick={() => setStep(4)} className="w-full md:w-auto h-16 md:h-auto px-10 rounded-[20px] md:rounded-none bg-(--main-color)/5 md:bg-transparent text-[32px] md:text-[50px] font-black text-white/20 hover:text-(--main-color) transition-all uppercase tracking-tighter leading-none flex items-center justify-center md:justify-start gap-4 group">
-                                                PROCEED <ArrowRight size={32} className="group-hover:translate-x-3 transition-transform duration-500" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 4: Attributes */}
-                    {step === 4 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
-                                <div className="flex items-center gap-4 mb-4 opacity-50">
-                                    <Dna size={24} className="text-(--main-color)" />
-                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">CORE DNA</h2>
-                                </div>
-                                {renderBackButton(3)}
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10 py-4">
-                                    {[
-                                        { label: 'Artifact Shape', key: 'shape', sugg: suggestions.shape },
-                                        { label: 'Artifact Material', key: 'material', sugg: suggestions.material },
-                                        { label: 'Artifact Color', key: 'color', sugg: suggestions.color },
-                                        { label: 'Artifact Type', key: 'type', sugg: suggestions.type },
-                                    ].map(field => (
-                                        <div key={field.key} className="flex flex-col gap-3">
-                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">{field.label}</label>
-                                            <input 
-                                                value={(state as any)[field.key]} 
-                                                onChange={e => set(field.key as any, e.target.value)}
-                                                placeholder="UNSPECIFIED"
-                                                className="bg-transparent border-none text-2xl md:text-5xl font-black text-white outline-none placeholder:opacity-5 uppercase tracking-tighter w-full leading-none" 
-                                            />
-                                            {renderTagSelector(field.key as any, field.sugg || [])}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="mt-8 pt-8 border-t border-white/5">
-                                    <button onClick={() => setStep(5)} className="text-[32px] md:text-[50px] font-black text-white/10 hover:text-(--main-color) transition-all uppercase tracking-tighter leading-none flex items-center gap-4 group">
-                                        METRICS <ArrowRight size={32} className="group-hover:translate-x-3 transition-transform duration-500" />
+                <div className="flex-1 overflow-y-auto no-scrollbar px-10 md:px-24 pb-48 animate-in slide-in-from-bottom-12 duration-1000">
+                    <div className="max-w-[1600px] mx-auto space-y-8 md:space-y-12">
+                        
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black text-white uppercase tracking-[0.5em]">Status Selector</label>
+                            <div className="grid grid-cols-3 gap-4">
+                                {[
+                                    { id: 'Available', icon: LayoutGrid },
+                                    { id: 'Production', icon: Zap },
+                                    { id: 'Acquisition', icon: Database }
+                                ].map(s => (
+                                    <button key={s.id} onClick={() => set('status', s.id as any)}
+                                        className={`py-4 px-8 rounded-xl transition-all duration-700 flex items-center justify-center gap-4 ${state.status === s.id ? 'bg-white text-black shadow-2xl scale-105' : 'bg-black/20 border border-white/20 text-white hover:bg-white hover:text-black backdrop-blur-xl'}`}>
+                                        <s.icon size={18} strokeWidth={3} className={state.status === s.id ? 'text-black' : 'text-(--main-color)'} />
+                                        <span className="text-[11px] font-black uppercase tracking-[0.4em]">{s.id}</span>
                                     </button>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    )}
 
-                    {/* Step 5: Dimensions & Save */}
-                    {step === 5 && (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                            <div className="flex flex-1 flex-col bg-(--glass-bg) border border-(--border-color) backdrop-blur-xl rounded-[32px] p-10 md:p-14 shadow-2xl overflow-y-auto custom-scrollbar">
-                                <div className="flex items-center gap-4 mb-4 opacity-50">
-                                    <Ruler size={24} className="text-(--main-color)" />
-                                    <h2 className="text-[20px] md:text-[28px] font-black text-(--text-color) leading-none tracking-tighter uppercase">METRICS</h2>
-                                </div>
-                                {renderBackButton(4)}
-
-                                <div className="flex flex-col gap-12 py-4">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                                        {[
-                                            { l: 'MASS (KG)', k: 'weightKg', s: suggestions.weightKg },
-                                            { l: 'WIDTH (CM)', k: 'widthCm', s: suggestions.widthCm },
-                                            { l: 'HEIGHT (CM)', k: 'heightCm', s: suggestions.heightCm },
-                                            { l: 'DEPTH (CM)', k: 'lengthCm', s: suggestions.lengthCm },
-                                        ].map(f => (
-                                            <div key={f.k} className="flex flex-col gap-3">
-                                                <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em] block">{f.l}</label>
-                                                <input 
-                                                    type="number" 
-                                                    value={(state as any)[f.k]} 
-                                                    onChange={e => set(f.k as any, e.target.value)}
-                                                    placeholder="0.0"
-                                                    className="bg-transparent border-none text-2xl md:text-5xl font-black text-white outline-none placeholder:opacity-5 w-full leading-none" 
-                                                />
-                                                {renderTagSelector(f.k as any, f.s || [])}
-                                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-10 gap-2 md:gap-4 items-start">
+                            <div className="md:col-span-9 space-y-4">
+                                <label className="text-[10px] font-black text-white uppercase tracking-[0.5em]">Vendors</label>
+                                <div className="grid grid-rows-2 grid-flow-col gap-3 overflow-x-auto no-scrollbar pb-4 h-40">
+                                    {Object.entries(vendors)
+                                        .filter(([id]) => !['R', 'M', 'W', 'C', 'ON', 'SIMONA', 'JUAN'].includes(id))
+                                        .map(([id, cfg]) => (
+                                            <button key={id} onClick={() => set('vendorId', id)}
+                                                className={`h-16 px-8 rounded-xl flex items-center justify-center text-xl font-black transition-all shrink-0 border-4 ${state.vendorId === id ? 'scale-110 shadow-2xl border-white' : 'border-transparent grayscale opacity-100 hover:grayscale-0'}`}
+                                                style={{ backgroundColor: cfg.color, color: getTextColorForBg(cfg.color) }}>
+                                                {id}
+                                            </button>
                                         ))}
-                                    </div>
+                                </div>
+                            </div>
+                            <div className="md:col-span-1 self-end">
+                                <SmartInput label="Index" field="itemNumber" value={state.itemNumber} icon={Hash} type="number" warning={isDuplicate} className="border-b-0" onSet={set} />
+                            </div>
+                        </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-16 py-8 border-y border-white/5">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex justify-between items-baseline">
-                                                <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">VALUATION (MXN)</label>
-                                                {state.price && exchangeRate && (
-                                                    <span className="text-[11px] font-black text-(--main-color) uppercase tracking-[0.2em] animate-pulse">
-                                                        ≈ {formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')} USD
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <input 
-                                                type="number" 
-                                                value={state.price} 
-                                                onChange={e => set('price', e.target.value)}
-                                                placeholder="0,000.00"
-                                                className="bg-transparent border-none text-[40px] md:text-[70px] font-black text-white outline-none placeholder:opacity-5 w-full tracking-tighter leading-none" 
-                                            />
-                                            {renderTagSelector('price', suggestions.price || [])}
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black text-white uppercase tracking-[0.5em]">Evidence Hub</label>
+                            <div className="flex flex-col gap-4">
+                                <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 rounded-3xl border-2 border-dashed border-white hover:border-(--main-color) hover:bg-(--main-color) flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group shadow-2xl">
+                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFile} accept="image/*,video/*" multiple />
+                                    <Upload size={32} strokeWidth={4} className="text-white group-hover:text-black transition-all duration-700" />
+                                    <span className="text-[10px] font-black text-white group-hover:text-black uppercase tracking-[0.8em]">Attach Evidence</span>
+                                </div>
+                                <div className="flex flex-wrap gap-4">
+                                    {state.mediaList.map((m, i) => (
+                                        <div key={i} className="w-24 h-24 rounded-2xl overflow-hidden relative group/media border border-white/20 bg-black shadow-2xl">
+                                            {m.type === 'video' ? (
+                                                <div className="w-full h-full flex items-center justify-center"><Video size={20} className="text-white" /></div>
+                                            ) : (
+                                                <img src={m.preview || ''} className="w-full h-full object-cover opacity-100 transition-all duration-700" />
+                                            )}
+                                            <button onClick={(e) => { e.stopPropagation(); removeMedia(i); }} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-all scale-75 group-hover/media:scale-100 shadow-2xl">
+                                                <X size={12} strokeWidth={4} />
+                                            </button>
                                         </div>
-
-                                        <div className="flex flex-col gap-4">
-                                            <label className="text-[10px] text-white/20 font-black uppercase tracking-[0.4em]">ARTIFACT REGISTRY NOTES</label>
-                                            <textarea 
-                                                value={state.notes} 
-                                                onChange={e => set('notes', e.target.value)}
-                                                placeholder="ADDITIONAL TECHNICAL SPECIFICATIONS OR LOGISTICS DATA..."
-                                                className="bg-transparent border-none text-lg md:text-xl font-bold text-white/40 outline-none placeholder:opacity-5 uppercase w-full resize-none h-24 scrollbar-hide" 
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col md:flex-row gap-12 pt-4 items-baseline">
-                                        <button onClick={handleSaveNext} disabled={saving}
-                                            className="text-[32px] md:text-[55px] font-black text-(--main-color) hover:text-white transition-all uppercase tracking-tighter leading-none disabled:opacity-30">
-                                            {saving ? 'SYNCING...' : 'SYNC ARTIFACT'}
-                                        </button>
-                                        <button onClick={handleSaveExit} disabled={saving}
-                                            className="text-[14px] md:text-[18px] font-black text-white/10 hover:text-red-500 transition-all uppercase tracking-[0.5em] disabled:opacity-30">
-                                            {saving ? '...' : 'SAVE & EXIT'}
-                                        </button>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                </div>
-                {/* Save Progress Overlay - Aligned with Edit Form */}
-                {saving && (
-                    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-300">
-                        <div className="w-[320px] p-10 rounded-[40px] bg-white/3 border border-white/10 flex flex-col items-center gap-8 shadow-2xl relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-linear-to-b from-(--main-color)/5 to-transparent opacity-50" />
-                            
-                            <div className="relative">
-                                <div className="w-20 h-20 rounded-3xl bg-(--main-color)/10 flex items-center justify-center border border-(--main-color)/20 animate-pulse">
-                                    <CloudUpload size={40} className="text-(--main-color)" />
-                                </div>
-                                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center border-4 border-[#0a0a0a] transition-all duration-500" style={{ transform: savingProgress === 100 ? 'scale(1)' : 'scale(0)' }}>
-                                    <Check size={14} className="text-white font-bold" />
-                                </div>
+                        {/* 4. SHAPE & TYPE (REVERTED TO INDIVIDUAL) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+                            <SmartInput label="Shape" field="shape" value={state.shape} icon={Box} fieldSuggestions={suggestions.shape} onSet={set} />
+                            <SmartInput label="Type" field="type" value={state.type} icon={Database} fieldSuggestions={suggestions.type} onSet={set} />
+                        </div>
+
+                        {/* 5. COLOR & MATERIAL (REVERTED TO INDIVIDUAL) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+                            <SmartInput label="Color" field="color" value={state.color} icon={Info} fieldSuggestions={suggestions.color} onSet={set} />
+                            <SmartInput label="Material" field="material" value={state.material} icon={Sparkles} fieldSuggestions={suggestions.material} onSet={set} />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+                            <SmartInput label="Quantity" field="quantity" value={state.quantity} icon={Hash} type="number" onSet={set} fieldSuggestions={suggestions.quantity} />
+                            <div className="space-y-4">
+                                <SmartInput label="ACQ MXN" field="price" value={state.price} icon={Hash} type="number" fieldSuggestions={suggestions.price} onSet={set} />
+                                {state.price && exchangeRate && (
+                                    <div className="flex justify-between items-baseline animate-in slide-in-from-right-8 duration-700">
+                                        <span className="text-[9px] font-black text-white uppercase tracking-[0.4em]">USD Protocol</span>
+                                        <span className="text-3xl font-black text-(--main-color) tracking-tighter tabular-nums">{formatCurrency(parseFloat(state.price) / exchangeRate, 'USD')}</span>
+                                    </div>
+                                )}
                             </div>
+                        </div>
 
-                            <div className="w-full space-y-4 relative">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Synchronization</span>
-                                    <span className="text-sm font-mono font-black text-(--main-color)">{savingProgress}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                                    <div 
-                                        className="h-full bg-linear-to-r from-(--main-color)/50 to-(--main-color) transition-all duration-500 ease-out"
-                                        style={{ width: `${savingProgress}%` }}
-                                    />
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                            <SmartInput label="Width (CM)" field="widthCm" value={state.widthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.widthCm} onSet={set} />
+                            <SmartInput label="Height (CM)" field="heightCm" value={state.heightCm} icon={Ruler} type="number" fieldSuggestions={suggestions.heightCm} onSet={set} />
+                            <SmartInput label="Depth (CM)" field="lengthCm" value={state.lengthCm} icon={Ruler} type="number" fieldSuggestions={suggestions.lengthCm} onSet={set} />
+                            <SmartInput label="Mass (KG)" field="weightKg" value={state.weightKg} icon={Dna} type="number" fieldSuggestions={suggestions.weightKg} onSet={set} />
+                        </div>
 
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
-                                {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
-                            </p>
+                        <div className="py-2 border-b border-white/20 hover:border-white transition-all duration-700">
+                            <label className="text-[9px] font-black text-white uppercase tracking-[0.4em] block mb-1">Notes</label>
+                            <input 
+                                type="text"
+                                value={state.notes} 
+                                onChange={e => set('notes', e.target.value)}
+                                placeholder="TECHNICAL SPECIFICATIONS..."
+                                className="bg-transparent border-none text-xl font-black text-white outline-none placeholder:text-white uppercase w-full transition-all tracking-widest" 
+                            />
                         </div>
                     </div>
-                )}
+                </div>
+
+                <div className="px-10 py-10 md:px-24 md:py-12 mt-auto bg-black/10 flex flex-col md:flex-row items-center justify-end gap-12 shrink-0 border-t border-white/10 backdrop-blur-3xl">
+                    <div className="flex gap-10 w-full md:w-auto">
+                        <button onClick={() => setIsOpen(false)} className="px-10 py-4 text-white hover:underline text-[11px] font-black uppercase tracking-[0.5em] transition-all">
+                            Discard
+                        </button>
+                        <button onClick={doSave} disabled={saving} className="flex-1 md:flex-none px-16 py-5 bg-(--main-color) text-black rounded-xl text-[13px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-4">
+                            {saving ? 'Syncing...' : 'Sync Registry'}
+                            {!saving && <ArrowRight size={22} strokeWidth={5} />}
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            {saving && (
+                <div className="absolute inset-0 z-[7000] flex items-center justify-center bg-black/95 backdrop-blur-3xl animate-in fade-in duration-700">
+                    <div className="w-[600px] p-24 flex flex-col items-center gap-16 relative">
+                        <div className="w-24 h-24 rounded-2xl bg-(--main-color) flex items-center justify-center text-black shadow-[0_0_100px_rgba(var(--main-color-rgb),0.5)]">
+                            <CloudUpload size={48} strokeWidth={4} className="animate-bounce" />
+                        </div>
+                        <div className="w-full space-y-10">
+                            <div className="flex justify-between items-end">
+                                <span className="text-[14px] font-black text-white uppercase tracking-[0.6em]">Master Sync</span>
+                                <span className="text-7xl font-black text-(--main-color) tracking-tighter tabular-nums">{savingProgress}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-white rounded-full overflow-hidden">
+                                <div className="h-full bg-(--main-color) transition-all duration-1000 ease-out shadow-[0_0_40px_rgba(var(--main-color-rgb),0.6)]" style={{ width: `${savingProgress}%` }} />
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-black text-white uppercase tracking-[1.5em] animate-pulse">Syncing Protocols...</p>
+                    </div>
+                </div>
+            )}
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}} />
         </div>
     );
 };
