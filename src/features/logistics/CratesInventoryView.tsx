@@ -1230,10 +1230,14 @@ export const CratesInventoryView: React.FC = () => {
                 return;
             }
 
+            // brute_weight_kg does NOT exist in the Supabase logistics table.
+            // Strip it from the Supabase payload; save it only to RxDB.
+            const { brute_weight_kg, ...supabaseUpdates } = updates;
+
             const { error } = await supabase
                 .from('logistics')
                 .update({
-                    ...updates,
+                    ...supabaseUpdates,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id);
@@ -1242,7 +1246,7 @@ export const CratesInventoryView: React.FC = () => {
 
             if (db) {
                 const lDoc = await db.logistics.findOne({ selector: { id } }).exec();
-                if (lDoc) await lDoc.patch(updates);
+                if (lDoc) await lDoc.patch({ ...updates, updated_at: new Date().toISOString() });
             }
 
             toast.success('Crate details updated successfully', { id: tid });
