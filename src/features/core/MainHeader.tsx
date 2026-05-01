@@ -1460,77 +1460,32 @@ export function MainHeader() {
                             try {
                                 rowIndex++;
 
-                                // TRACE: Log for first 3 items to diagnose data resolution
-                                if (rowIndex <= 3) {
-                                    console.log(`[TRK-TRACE] Item #${rowIndex}:`, {
-                                        pItemRow: pItem.row,
-                                        pItemId: pItem.itemId,
-                                        pItemPrice: pItem.price,
-                                        pItemWidth: pItem.width_cm,
-                                        rowMapSize: rowMap.size,
-                                        rowMapHasRow: rowMap.has(String(pItem.row)),
-                                        invMapSize: invMap.size,
-                                        inventoryAtomSize: (inventory || []).length,
-                                    });
-                                }
-
                                 // PRIMARY LOOKUP: Direct row map from inventory atom
                                 // This is the SAME data source that vendor sheets use successfully
-                                let atomItem = rowMap.get(String(pItem.row));
+                                let atomItem: any = rowMap.get(String(pItem.row));
                                 if (!atomItem) atomItem = rowMap.get(String(pItem.itemId || '').toUpperCase());
                                 if (!atomItem) {
                                     // Fallback to invMap (Supabase registry)
-                                    const matchKeys = [pItem.row, pItem.itemId, pItem.item_id, pItem.tag_id];
-                                    for (const k of matchKeys) {
+                                    for (const k of [pItem.row, pItem.itemId, pItem.item_id, pItem.tag_id]) {
                                         if (!k) continue;
                                         const found = invMap.get(normalizeKey(k)) || invMap.get(stripKey(k));
                                         if (found) { atomItem = found; break; }
                                     }
                                 }
 
-                                // Use atom data as primary (same as vendor sheets), payload as fallback
+                                // === REPLICATE VENDOR SHEET APPROACH EXACTLY ===
+                                // Vendor sheets use `item.data` directly. We do the same.
                                 const atomData = atomItem?.data || {};
-                                const itemData = { ...pItem, ...atomData };
                                 
-                                // Ensure price uses the best available source
-                                const priceChain = [
-                                    atomData.price, atomData.price_mxn, atomData.acquisition_price_mxn,
-                                    pItem.price, pItem.acquisition_price_mxn, pItem.price_mxn
-                                ];
-                                const resolvedPrice = priceChain.find(p => {
-                                    const v = parseFloat(String(p || '0'));
-                                    return v > 0;
-                                });
-                                if (resolvedPrice) {
-                                    const pVal = parseFloat(String(resolvedPrice));
-                                    itemData.price = pVal;
-                                    itemData.price_mxn = pVal;
-                                    itemData.acquisition_price_mxn = pVal;
-                                }
+                                // Price: EXACTLY like vendor sheets (line 1690)
+                                // parseFloat(itemData.price || itemData.acquisition_price_mxn || '0')
+                                const costMxn = parseFloat(
+                                    atomData.price || atomData.acquisition_price_mxn || atomData.price_mxn || 
+                                    pItem.price || pItem.acquisition_price_mxn || '0'
+                                ) || 0;
+                                
+                                const qty = parseInt(String(atomData.quantity || pItem.qty || pItem.quantity || '1'), 10) || 1;
 
-                                // Normalize for utility calls
-                                const norm = normalizeInventoryData(itemData);
-                                
-                                // Price calculation logic using normalized data
-                                const costMxn = parseFloat(String(norm.price || '0')) || 0;
-
-                                // TRACE: Log resolved data for first 3 items
-                                if (rowIndex <= 3) {
-                                    console.log(`[TRK-RESOLVED] Item #${rowIndex}:`, {
-                                        atomFound: !!atomItem,
-                                        atomDataPrice: atomItem?.data?.price,
-                                        atomDataPriceMxn: atomItem?.data?.price_mxn,
-                                        atomDataWidth: atomItem?.data?.width_cm,
-                                        resolvedPrice: resolvedPrice,
-                                        normPrice: norm.price,
-                                        costMxn,
-                                        normWidthCm: norm.width_cm,
-                                        normHeightCm: norm.height_cm,
-                                        normLengthCm: norm.length_cm,
-                                    });
-                                }
-                                const qty = parseFloat(String(itemData.quantity || pItem.qty || '1')) || 1;
-                                
                                 const onyxRound = (n: number) => {
                                     const floor = Math.floor(n);
                                     return (n - floor >= 0.4) ? floor + 1 : floor;
@@ -1542,12 +1497,35 @@ export function MainHeader() {
                                 const landedMxn = Math.round(costMxn * 1.4);
                                 const retailUsd = onyxRound(landedUsd * 12);
 
-                                const finalName = itemData.shortDescription || itemData.description || itemData.name || itemData.desc || 'Unit';
-                                const finalMaterial = itemData.material || '';
-                                const finalColor = itemData.color || '';
+                                // Normalize: same as vendor sheets (line 1703)
+                                // Feed it the atom data + explicit price override
+                                const normInput = { ...atomData, price: costMxn, price_mxn: costMxn };
+                                const norm = normalizeInventoryData(normInput);
 
-                                // Calculated codes — pass explicit price to prevent silent dash returns
+                                // Dimensions: use atom data directly (same fields vendor sheets use)
+                                const wCm = atomData.width_cm || atomData.widthCm || atomData.width || pItem.width_cm || 0;
+                                const hCm = atomData.height_cm || atomData.heightCm || atomData.height || pItem.height_cm || 0;
+                                const lCm = atomData.length_cm || atomData.lengthCm || atomData.length || pItem.length_cm || 0;
+
+                                const finalName = atomData.shortDescription || atomData.short_description || atomData.description || pItem.name || pItem.desc || 'Unit';
+                                const finalMaterial = atomData.material || pItem.material || '';
+                                const finalColor = atomData.color || pItem.color || '';
+
+                                // Codes: same as vendor sheets (line 1704)
                                 const calculated = calculateCodesAndPrices({ ...norm, price: costMxn, price_mxn: costMxn }, bookRate || 1, '326');
+
+                                // TRACE: Log for first 3 items
+                                if (rowIndex <= 3) {
+                                    console.log(`[TRK-TRACE] Item #${rowIndex}:`, {
+                                        pItemRow: pItem.row, pItemId: pItem.itemId,
+                                        atomFound: !!atomItem, atomRow: atomItem?.row,
+                                        atomDataKeys: Object.keys(atomData).slice(0, 15),
+                                        atomPrice: atomData.price, atomPriceMxn: atomData.price_mxn, atomAcqPrice: atomData.acquisition_price_mxn,
+                                        costMxn, costUsd, landedUsd, retailUsd,
+                                        wCm, hCm, lCm,
+                                        aqCode: calculated.bookAqCode, ldCode: calculated.bookLandCode, barcode: calculated.bookBarcode,
+                                    });
+                                }
                                 
                                 // Payment Status — use atom row ID that matches the payment sets
                                 const statusLookupItem = { ...norm, id: String(atomItem?.row || pItem.row || norm.id || norm.itemId || '') };
@@ -1583,12 +1561,12 @@ export function MainHeader() {
                                     ].find(id => id && id !== '-' && id !== 'UNDEFINED' && id !== 'NULL') || '',
                                     aq_code: (calculated.bookAqCode && calculated.bookAqCode !== '-') ? calculated.bookAqCode : (norm.book_aq_code || '-'),
                                     ld_code: (calculated.bookLandCode && calculated.bookLandCode !== '-') ? calculated.bookLandCode : '-',
-                                    description: `${itemData.shape || itemData.type || ''} ${finalName}`.trim(),
+                                    description: `${atomData.shape || pItem.type || ''} ${finalName}`.trim(),
                                     color_material: `${finalColor} ${finalMaterial}`.trim(),
-                                    sizes_metric: formatDimensionsMetricOnly(norm.width_cm, norm.height_cm, norm.length_cm),
-                                    sizes_imperial: formatDimensionsImperialOnly(norm.width_cm, norm.height_cm, norm.length_cm),
-                                    weight_metric: formatWeightMetricOnly(norm.weight_kg),
-                                    weight_imperial: formatWeightImperialOnly(norm.weight_kg),
+                                    sizes_metric: formatDimensionsMetricOnly(wCm, hCm, lCm),
+                                    sizes_imperial: formatDimensionsImperialOnly(wCm, hCm, lCm),
+                                    weight_metric: formatWeightMetricOnly(atomData.weight_kg || atomData.weightKg || pItem.weightKg || pItem.weight_kg),
+                                    weight_imperial: formatWeightImperialOnly(atomData.weight_kg || atomData.weightKg || pItem.weightKg || pItem.weight_kg),
                                     quantity: qty,
                                     cost_mxn: costMxn,
                                     acq_usd: costUsd,
@@ -1603,9 +1581,9 @@ export function MainHeader() {
 
                                 const tagIdStr = String([
                                     calculated.bookBarcode,
-                                    itemData.book_barcode,
-                                    itemData.itemId,
-                                    itemData.tag_id,
+                                    atomData.book_barcode,
+                                    atomData.itemId || atomData.item_id,
+                                    atomData.tag_id,
                                     pItem.itemId
                                 ].find(id => id && id !== '-' && id !== 'UNDEFINED' && id !== 'NULL') || '');
 
