@@ -41,7 +41,7 @@ export const HeroBackground = () => {
     }
 
     const meshStyle = {
-        background: `
+        backgroundImage: `
             radial-gradient(at ${positions[0]}, var(--c1) 0px, transparent 60%),
             radial-gradient(at ${positions[1]}, var(--c2) 0px, transparent 60%),
             radial-gradient(at ${positions[2]}, var(--c3) 0px, transparent 60%),
