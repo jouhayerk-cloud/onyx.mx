@@ -97,6 +97,7 @@ import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 
 import toast from 'react-hot-toast';
 import userIcons from '../../components/userIcons';
+import { supabase } from '../../lib/supabase';
 import {
     ArrowUpDown, ArrowUp, ArrowDown, Share2, Copy, ExternalLink, Layout, ShoppingBag,
     CreditCard, Truck, Upload, Shield, Search, RefreshCw, LogOut, LayoutGrid, 
@@ -851,6 +852,75 @@ export function MainHeader() {
             const internetRate = liveExchangeRateValue || exchangeRate;
             const bookRate = exchangeRate || 20;
 
+            // 1. DATA PREPARATION (Fetch shipments and full registry early for filtering)
+            let crateToTruck = new Map<string, string>();
+            let shipments: any[] = [];
+            let allInventory: any[] = [];
+            let allProduction: any[] = [];
+
+            try {
+                // Helper to fetch all records using pagination
+                const fetchAll = async (table: string) => {
+                    let all: any[] = [];
+                    let page = 0;
+                    const pageSize = 1000;
+                    while (true) {
+                        const { data, error } = await supabase.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+                        if (error || !data || data.length === 0) break;
+                        all = [...all, ...data];
+                        if (data.length < pageSize) break;
+                        page++;
+                    }
+                    return all;
+                };
+
+                const [invResData, prodResData, shipRes] = await Promise.all([
+                    fetchAll('inventory'),
+                    fetchAll('production'),
+                    supabase.from('shipments').select('*').order('timestamp', { ascending: true })
+                ]);
+
+                allInventory = invResData || [];
+                allProduction = prodResData || [];
+
+                if (shipRes.error) console.warn('[Export] Shipments fetch error:', shipRes.error);
+                else if (shipRes.data) shipments = shipRes.data;
+                
+                // Build current active crate map for status validation
+                const activeCrates = new Map<string, any>();
+                (logisticsDocs || []).forEach(d => activeCrates.set(String(d.id), d));
+
+                shipments.forEach(s => {
+                    try {
+                        const p = typeof s.payload === 'string' ? JSON.parse(s.payload) : s.payload;
+                        const date = new Date(s.timestamp || s.updated_at || Date.now());
+                        const dateStr = !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : 'N/A';
+                        const trkName = s.manifest_id || `TRK-${dateStr}`;
+
+                        if (p && p.crates) {
+                            p.crates.forEach((c: any) => {
+                                const cid = String(c.id);
+                                if (!cid) return;
+
+                                // VALIDATION: Only map if the crate is actually on a truck OR not in the warehouse anymore
+                                // If it exists in active docs but its status is NOT deployed/shipped, ignore this old shipment mapping
+                                const activeCrate = activeCrates.get(cid);
+                                if (activeCrate) {
+                                    const aStatus = (activeCrate.status || '').toLowerCase();
+                                    if (aStatus !== 'deployed' && aStatus !== 'shipped' && aStatus !== 'in transit') {
+                                        return; // This crate was cleared and is now being reused (e.g. for Production)
+                                    }
+                                }
+                                
+                                crateToTruck.set(cid, trkName);
+                            });
+                        }
+                    } catch (e) { console.warn('[Export] Payload parse error:', e); }
+                });
+            } catch (err) {
+                console.error('[Export] Critical pre-fetch failure:', err);
+            }
+
             const exportItems = inventory.filter(item => {
                 const status = (item.data.status || '').toLowerCase().trim();
                 return !EXCLUDED_STATUSES.has(status);
@@ -1055,48 +1125,485 @@ export function MainHeader() {
             });
 
             // 3. CRATES & PALLETS DATABASE SHEET
+            const getCrateBarcodes = (crateId: string, visited = new Set<string>()): string[] => {
+                if (visited.size > 50 || visited.has(crateId)) return []; // Safety depth limit
+                visited.add(crateId);
+                
+                const crate = (logisticsDocs || []).find(d => d.id === crateId);
+                if (!crate) return [];
+                
+                let barcodes: string[] = [];
+                if (crate.inventory_ids) {
+                    const entries = crate.inventory_ids.split(',').filter(Boolean);
+                    entries.forEach((entry: string) => {
+                        const [id] = entry.split(':');
+                        const inv = (inventory || []).find(i => String(i.row) === id);
+                        if (inv) {
+                            try {
+                                const norm = normalizeInventoryData(inv.data);
+                                const calc = calculateCodesAndPrices(norm, liveExchangeRateValue || exchangeRate || 18, '326');
+                                const tag = calc.bookBarcode || norm.book_barcode || norm.itemId || String(inv.row);
+                                if (tag) barcodes.push(tag);
+                            } catch (e) { console.warn('Item barcode calculation failed:', e); }
+                        }
+                    });
+                }
+                
+                const children = (logisticsDocs || []).filter(d => d.parent_id === crateId);
+                children.forEach(child => {
+                    barcodes = [...barcodes, ...getCrateBarcodes(child.id, visited)];
+                });
+                return barcodes;
+            };
+
             const cratesSheet = workbook.addWorksheet('Crates & Pallets');
             cratesSheet.columns = [
-                { header: 'ID', key: 'id', width: 20 },
-                { header: 'TYPE', key: 'type', width: 12 },
-                { header: 'STATUS', key: 'status', width: 12 },
-                { header: 'DIMENSIONS (WxLxH)', key: 'dims', width: 25 },
+                { header: 'ID', key: 'id', width: 22 },
+                { header: 'TYPE', key: 'type', width: 14 },
+                { header: 'DIMENSIONS (WxLxH)', key: 'dims', width: 28 },
                 { header: 'WEIGHT (KG)', key: 'weight', width: 15, style: { numFmt: '#,##0.00' } },
-                { header: 'CONTENTS SUMMARY', key: 'contents', width: 45 },
-                { header: 'NOTES / DESC', key: 'description', width: 40 },
-                { header: 'QTY', key: 'quantity', width: 8 },
-                { header: 'COST (MXN)', key: 'cost_mxn', width: 15, style: { numFmt: '#,##0' } },
-                { header: 'CREATED AT', key: 'date', width: 15 }
+                { header: 'SUPPLIER', key: 'supplier', width: 18 },
+                { header: 'PRICE (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
+                { header: 'CONTENTS SUMMARY', key: 'contents', width: 60 },
+                { header: 'TRK', key: 'trk', width: 18 },
+                { header: 'STATUS', key: 'status', width: 15 }
             ];
 
             cratesSheet.getRow(1).eachCell(cell => {
                 cell.font = EXCEL_STYLES.fonts.header;
                 cell.fill = EXCEL_STYLES.fills.header;
-                cell.alignment = { horizontal: 'center' };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
             });
 
-            const exportCrates = logisticsDocs.filter(d => 
-                ['crate', 'pallet'].includes((d.type || '').toLowerCase())
+            const exportCrates = (logisticsDocs || []).filter(d => 
+                ['crate', 'pallet', 'cardboard'].includes((d.type || '').toLowerCase())
             );
 
-            exportCrates.forEach((c, idx) => {
-                const row = cratesSheet.addRow({
-                    id: String(c.id || '').toUpperCase(),
-                    type: (c.type || 'Crate').toUpperCase(),
-                    status: (c.status || 'Empty').toUpperCase(),
-                    dims: `${c.width_cm || 0} x ${c.length_cm || 0} x ${c.height_cm || 0} CM`,
-                    weight: parseFloat(String(c.weight_kg || '0')) || 0,
-                    contents: c.contents_summary || '',
-                    description: c.description || '',
-                    quantity: parseInt(String(c.quantity || '1')) || 1,
-                    cost_mxn: parseFloat(String(c.cost_mxn || '0')) || 0,
-                    date: c.date ? new Date(c.date).toLocaleDateString() : ''
+            const groups = [
+                { label: 'EMPTY INVENTORY', status: ['Empty'] },
+                { label: 'PACKED INVENTORY', status: ['Packed', 'Partial'] },
+                { label: 'DEPLOYED / IN TRANSIT', status: ['Deployed', 'In Transit'] }
+            ];
+
+            groups.forEach(group => {
+                const groupItems = exportCrates.filter(c => group.status.includes(c.status || 'Empty'));
+                if (groupItems.length === 0) return;
+
+                // Add group header row
+                const headerRow = cratesSheet.addRow({ id: group.label });
+                cratesSheet.mergeCells(headerRow.number, 1, headerRow.number, cratesSheet.columns.length);
+                headerRow.eachCell(cell => {
+                    cell.font = { ...EXCEL_STYLES.fonts.header, size: 11, italic: true };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; // Light gray divider
+                    cell.alignment = { horizontal: 'left', indent: 1 };
                 });
 
-                if (idx % 2 === 0) row.eachCell(cell => { if (!cell.fill?.type) cell.fill = EXCEL_STYLES.fills.zebra; });
+                groupItems.forEach((c, idx) => {
+                    const allBarcodes = getCrateBarcodes(c.id);
+                    const barcodeSummary = allBarcodes.length > 0 ? `[${allBarcodes.join(', ')}]` : '';
+                    const contents = (c.contents_summary || '') + (barcodeSummary ? (c.contents_summary ? ' | ' : '') + barcodeSummary : '');
+
+                    const row = cratesSheet.addRow({
+                        id: String(c.id || '').toUpperCase(),
+                        type: (c.type || 'Crate').toUpperCase(),
+                        dims: `${c.width_cm || 0} x ${c.length_cm || 0} x ${c.height_cm || 0} CM`,
+                        weight: parseFloat(String(c.weight_kg || '0')) || 0,
+                        supplier: (c.vendors || 'INTERNAL').toUpperCase(),
+                        cost_mxn: parseFloat(String(c.cost_mxn || '0')) || 0,
+                        contents,
+                        trk: crateToTruck.get(c.id) || '',
+                        status: (c.status || 'Empty').toUpperCase()
+                    });
+
+                    if (idx % 2 === 0) row.eachCell(cell => { if (!cell.fill?.type) cell.fill = EXCEL_STYLES.fills.zebra; });
+                    row.eachCell(cell => {
+                        cell.alignment = { vertical: 'middle', wrapText: true };
+                    });
+                });
             });
 
-            // 4. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
+            // 4. DEPLOYED TRUCK CONSOLIDATED SHEETS
+            const monthsShort = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            
+            // Enhanced Inventory Map (Super-Index)
+            const invMap = new Map<string, any>();
+            const normalizeKey = (k: any) => String(k || '').trim().toUpperCase();
+            const stripKey = (k: any) => String(k || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+            
+            const indexItem = (item: any) => {
+                if (!item || !item.data) return;
+                const d = item.data;
+                const rawKeys = [
+                    item.row,
+                    d.id,
+                    d.itemId,
+                    d.item_id,
+                    d.tag_id,
+                    d.book_barcode,
+                    d.bookBarcode,
+                    d.item_number,
+                    d.itemNumber,
+                    d.description,
+                    d.short_description,
+                    d.shortDescription,
+                    `${d.shape || d.type || ''} ${d.shortDescription || d.description || ''}`
+                ];
+                
+                const finalKeys = new Set<string>();
+                rawKeys.forEach(k => {
+                    if (k) {
+                        const nk = normalizeKey(k);
+                        const sk = stripKey(k);
+                        if (nk && nk !== 'UNDEFINED' && nk !== 'NULL') finalKeys.add(nk);
+                        if (sk && sk !== 'UNDEFINED' && sk !== 'NULL') finalKeys.add(sk);
+                    }
+                });
+
+                finalKeys.forEach(k => { 
+                    const existing = invMap.get(k);
+                    if (existing) {
+                        existing.data = { ...existing.data, ...item.data };
+                    } else {
+                        invMap.set(k, { ...item }); 
+                    }
+                });
+            };
+
+            // 1. Index from local atom (low priority fallback)
+            (inventory || []).forEach(indexItem);
+            (allProduction || []).forEach(indexItem);
+
+            // 2. Index from Supabase Inventory (Acquisitions) - High Priority
+            allInventory.forEach(dbItem => {
+                const itemObj = { 
+                    row: dbItem.id, 
+                    data: {
+                        ...dbItem,
+                        id: dbItem.id,
+                        itemId: dbItem.item_id || dbItem.item_number,
+                        price: dbItem.price_mxn || dbItem.acquisition_price_mxn || dbItem.price,
+                        acquisition_price_mxn: dbItem.acquisition_price_mxn || dbItem.price_mxn || dbItem.price,
+                        weightKg: dbItem.weight_kg,
+                        widthCm: dbItem.width_cm,
+                        heightCm: dbItem.height_cm,
+                        lengthCm: dbItem.length_cm,
+                        bookBarcode: dbItem.book_barcode,
+                        bookAqCode: dbItem.book_aq_code,
+                        bookLanded: dbItem.book_landed,
+                        bookRetail: dbItem.book_retail,
+                        payDate: dbItem.pay_date
+                    } 
+                };
+                indexItem(itemObj);
+            });
+
+            // 3. Index from Supabase Production (Work in Progress) - High Priority
+            (allProduction || []).forEach(pItem => {
+                const itemObj = {
+                    row: pItem.id,
+                    data: {
+                        ...pItem,
+                        id: pItem.id,
+                        itemId: pItem.tag_id,
+                        item_id: pItem.tag_id,
+                        tag_id: pItem.tag_id,
+                        price: pItem.price_unit,
+                        acquisition_price_mxn: pItem.price_unit,
+                        description: pItem.description,
+                        quantity: pItem.quantity,
+                        status: pItem.status
+                    }
+                };
+                indexItem(itemObj);
+            });
+
+            // 4. DEEP RECOVERY for missing shipment items
+            const allShipmentItems: any[] = [];
+            (shipments || []).forEach(s => {
+                try {
+                    const p = typeof s.payload === 'string' ? JSON.parse(s.payload) : s.payload;
+                    if (p && p.crates) {
+                        p.crates.forEach((c: any) => {
+                            if (c.items) allShipmentItems.push(...c.items);
+                        });
+                    }
+                } catch (e) {}
+            });
+
+            const missingIds = new Set<string>();
+            allShipmentItems.forEach(item => {
+                const ik = normalizeKey(item.itemId || item.item_id || item.tag_id || item.row);
+                if (ik && ik !== 'UNDEFINED' && !invMap.has(ik) && !invMap.has(stripKey(ik))) {
+                    missingIds.add(ik);
+                }
+            });
+
+            if (missingIds.size > 0) {
+                const idList = Array.from(missingIds);
+                console.log(`[Export] Deep Recovery: Fetching ${idList.length} missing items...`);
+                
+                // Chunk into groups of 100 to avoid URL length limits
+                const chunkSize = 100;
+                for (let i = 0; i < idList.length; i += chunkSize) {
+                    const chunk = idList.slice(i, i + chunkSize);
+                    // Quote values for PostgREST syntax: "ID1","ID2"
+                    const quotedList = chunk.map(id => `"${id}"`).join(',');
+                    
+                    try {
+                        const [invBatch, prodBatch] = await Promise.all([
+                            supabase.from('inventory').select('*').or(`item_id.in.(${quotedList}),book_barcode.in.(${quotedList}),tag_id.in.(${quotedList}),id.in.(${quotedList})`),
+                            supabase.from('production').select('*').in('tag_id', chunk)
+                        ]);
+
+                        if (invBatch.data) {
+                            invBatch.data.forEach(dbItem => {
+                                indexItem({ row: dbItem.id, data: { ...dbItem, itemId: dbItem.item_id || dbItem.item_number } });
+                            });
+                        }
+                        if (prodBatch.data) {
+                            prodBatch.data.forEach(pItem => {
+                                indexItem({ row: pItem.id, data: { ...pItem, itemId: pItem.tag_id, item_id: pItem.tag_id } });
+                            });
+                        }
+                    } catch (e) { console.error('Deep recovery batch failed:', e); }
+                }
+            }
+
+            for (const ship of (shipments || [])) {
+                try {
+                    // Only include finalized shipments with a manifest ID
+                    if (!ship.manifest_id) continue;
+                    
+                    const p = typeof ship.payload === 'string' ? JSON.parse(ship.payload) : ship.payload;
+                    if (!p || !p.crates || p.crates.length === 0) continue;
+
+                    const date = new Date(ship.timestamp || ship.updated_at || Date.now());
+                    const fallbackName = `TRK-${monthsShort[date.getMonth()]}${date.getDate()}`;
+                    const sheetName = ship.manifest_id || fallbackName;
+                    
+                    let finalSheetName = sheetName;
+                    let counter = 1;
+                    while (workbook.getWorksheet(finalSheetName)) {
+                        finalSheetName = `${sheetName}_${counter++}`;
+                    }
+
+                    const tSheet = workbook.addWorksheet(finalSheetName, { properties: { tabColor: { argb: 'FF10B981' } } });
+                    tSheet.columns = [
+                        { header: 'PAY DATE', key: 'pay_date', width: 12 },
+                        { header: 'BOOK BARCODE', key: 'tag_id', width: 22 },
+                        { header: 'AQ CODE', key: 'aq_code', width: 12 },
+                        { header: 'LD CODE', key: 'ld_code', width: 12 },
+                        { header: 'DESCRIPTION', key: 'description', width: 45 },
+                        { header: 'COLOR + MATERIAL', key: 'color_material', width: 35 },
+                        { header: 'SIZES (CM)', key: 'sizes_metric', width: 20 },
+                        { header: 'SIZES (IN)', key: 'sizes_imperial', width: 20 },
+                        { header: 'WEIGHT (KG)', key: 'weight_metric', width: 15 },
+                        { header: 'WEIGHT (LB)', key: 'weight_imperial', width: 15 },
+                        { header: 'QTY', key: 'quantity', width: 8 },
+                        { header: 'ACQ COST $ (MXN)', key: 'cost_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'ACQ $ (USD)', key: 'acq_usd', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'TOTAL MXN', key: 'total_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'LANDED $ (MXN)', key: 'landed_mxn', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'LD $ (USD)', key: 'ld_usd', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'RETAIL $ (USD)', key: 'retail_usd', width: 18, style: { numFmt: '#,##0' } },
+                        { header: 'PAY STATUS', key: 'pay_status', width: 18 }
+                    ];
+
+                    tSheet.getRow(1).eachCell(cell => {
+                        cell.font = { ...EXCEL_STYLES.fonts.header, color: { argb: 'FFFFFFFF' } };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF064E3B' } };
+                        cell.alignment = { horizontal: 'center' };
+                    });
+
+                    let rowIndex = 0;
+                    p.crates.forEach((c: any) => {
+                        // Skip crates that are marked as draft or empty in this payload
+                        if (c.status === 'Draft' || !c.items || c.items.length === 0) return;
+
+                        (c.items || []).forEach((pItem: any) => {
+                            try {
+                                // MULTI-LAYERED MATCHING logic (Prevents data loss for historical items)
+                                const matchKeys = new Set<string>();
+                                [
+                                    pItem.row, 
+                                    pItem.itemId, 
+                                    pItem.item_id, 
+                                    pItem.tag_id, 
+                                    pItem.itemNumber, 
+                                    pItem.item_number,
+                                    pItem.description,
+                                    pItem.shortDescription,
+                                    pItem.short_description
+                                ].forEach(k => {
+                                    if (k) {
+                                        const nk = normalizeKey(k);
+                                        const sk = stripKey(k);
+                                        if (nk && nk !== 'UNDEFINED' && nk !== 'NULL') matchKeys.add(nk);
+                                        if (sk && sk !== 'UNDEFINED' && sk !== 'NULL') matchKeys.add(sk);
+                                    }
+                                });
+
+                                let invDoc = null;
+                                for (const key of matchKeys) {
+                                    invDoc = invMap.get(key);
+                                    if (invDoc) break;
+                                }
+
+                                rowIndex++;
+
+                                // Use inventory doc if available, otherwise fallback to payload data
+                                // IMPORTANT: Merge payload data (pItem) into itemData for full recovery
+                                // Merge logic: Prioritize Registry (invDoc) over Payload (pItem)
+                                // This prevents historical payloads with 0/null prices from overwriting valid DB data
+                                const itemData = { ...pItem };
+                                const baseData = invDoc?.data || {};
+                                
+                                // Selective merge: only overwrite with valid, non-empty database data
+                                Object.entries(baseData).forEach(([k, v]) => {
+                                    if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0') {
+                                        (itemData as any)[k] = v;
+                                    }
+                                });
+                                
+                                // Final fallback check for price and weight
+                                if (!itemData.price || itemData.price === '0') itemData.price = pItem.price || baseData.price || baseData.price_mxn;
+                                if (!itemData.weightKg) itemData.weightKg = pItem.weightKg || baseData.weight_kg;
+                                
+                                // Normalize for utility calls
+                                const norm = normalizeInventoryData(itemData);
+                                
+                                // Price calculation logic using normalized data
+                                const costMxn = parseFloat(String(norm.price || '0')) || 0;
+                                const qty = parseFloat(String(itemData.quantity || pItem.qty || '1')) || 1;
+                                
+                                const onyxRound = (n: number) => {
+                                    const floor = Math.floor(n);
+                                    return (n - floor >= 0.4) ? floor + 1 : floor;
+                                };
+
+                                const costUsd = onyxRound(costMxn / (bookRate || 1));
+                                const totalMxn = Math.round(costMxn * qty);
+                                const landedUsd = onyxRound((costMxn / (bookRate || 1)) * 1.4);
+                                const landedMxn = Math.round(costMxn * 1.4);
+                                const retailUsd = onyxRound(landedUsd * 12);
+
+                                const finalName = itemData.shortDescription || itemData.description || itemData.name || itemData.desc || 'Unit';
+                                const finalMaterial = itemData.material || '';
+                                const finalColor = itemData.color || '';
+
+                                // Calculated codes (Barcodes, Acquisition codes, etc.)
+                                const calculated = calculateCodesAndPrices(norm, bookRate || 1, '326');
+                                
+                                // Payment Status
+                                const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
+                                
+                                const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
+                                                    payStatusClass === 'YELLOW' ? 'REQUESTED' : 
+                                                    payStatusClass === 'RED' ? 'REQUESTED' : 
+                                                    payStatusClass === 'PURPLE' ? 'PARTIAL' : 'NEW';
+
+                                const payStatusColor = payStatusClass === 'GREEN' ? 'FF22C55E' : 
+                                                     payStatusClass === 'YELLOW' ? 'FFFACC15' : 
+                                                     payStatusClass === 'RED' ? 'FFFACC15' : 
+                                                     payStatusClass === 'PURPLE' ? 'FFA855F7' : 'FF38BDF8';
+
+                                let formattedPayDate = 'N/A';
+                                try {
+                                    const pId = itemData.id || itemData.row || pItem.itemId;
+                                    const pDateVal = paymentDateMap.get(String(pId)) || itemData.pay_date || itemData.payDate;
+                                    if (pDateVal && pDateVal !== 'N/A' && pDateVal !== '') {
+                                        const d = new Date(pDateVal);
+                                        if (!isNaN(d.getTime())) formattedPayDate = d.toISOString().split('T')[0];
+                                    }
+                                } catch (e) {}
+
+                                const row = tSheet.addRow({
+                                    pay_date: formattedPayDate,
+                                    tag_id: [
+                                        calculated.bookBarcode,
+                                        norm.book_barcode,
+                                        pItem.itemId
+                                    ].find(id => id && id !== '-' && id !== 'UNDEFINED' && id !== 'NULL') || '',
+                                    aq_code: (calculated.bookAqCode && calculated.bookAqCode !== '-') ? calculated.bookAqCode : (norm.book_aq_code || '-'),
+                                    ld_code: (calculated.bookLandCode && calculated.bookLandCode !== '-') ? calculated.bookLandCode : '-',
+                                    description: `${itemData.shape || itemData.type || ''} ${finalName}`.trim(),
+                                    color_material: `${finalColor} ${finalMaterial}`.trim(),
+                                    sizes_metric: formatDimensionsMetricOnly(norm.width_cm, norm.height_cm, norm.length_cm),
+                                    sizes_imperial: formatDimensionsImperialOnly(norm.width_cm, norm.height_cm, norm.length_cm),
+                                    weight_metric: formatWeightMetricOnly(norm.weight_kg),
+                                    weight_imperial: formatWeightImperialOnly(norm.weight_kg),
+                                    quantity: qty,
+                                    cost_mxn: costMxn,
+                                    acq_usd: costUsd,
+                                    total_mxn: totalMxn,
+                                    landed_mxn: landedMxn,
+                                    ld_usd: landedUsd,
+                                    retail_usd: retailUsd,
+                                    pay_status: payStatusText
+                                });
+
+                                if (rowIndex % 2 === 0) row.eachCell(cell => { cell.fill = EXCEL_STYLES.fills.zebra; });
+
+                                const tagIdStr = String([
+                                    calculated.bookBarcode,
+                                    itemData.book_barcode,
+                                    itemData.itemId,
+                                    itemData.tag_id,
+                                    pItem.itemId
+                                ].find(id => id && id !== '-' && id !== 'UNDEFINED' && id !== 'NULL') || '');
+
+                                const vColor = getVendorColor(tagIdStr);
+                                const contrast = getContrastColor(vColor);
+
+                                const tagCell = row.getCell('tag_id');
+                                const vendorCode = tagIdStr.split('-')[0] || tagIdStr.substring(0, 2);
+                                const tagColor = getVendorColor(vendorCode);
+                                const rowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tagColor } };
+                                const rowFont = { color: { argb: getContrastColor(tagColor) }, bold: true };
+                                
+                                row.getCell('tag_id').fill = rowFill;
+                                row.getCell('tag_id').font = rowFont;
+                                row.getCell('tag_id').alignment = { horizontal: 'center' };
+
+                                // Payment Status Styling
+                                row.getCell('pay_status').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: payStatusColor } };
+                                row.getCell('pay_status').font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                                row.getCell('pay_status').alignment = { horizontal: 'center' };
+
+                            } catch (e) { console.error('Row generation error:', e); }
+                        });
+                    });
+
+                    // FINAL DIAGNOSTIC LOG (Hidden/System Sheet)
+                    const logSheet = workbook.addWorksheet('System Log');
+                    logSheet.columns = [
+                        { header: 'COMPONENT', key: 'component', width: 20 },
+                        { header: 'STATUS', key: 'status', width: 15 },
+                        { header: 'COUNT', key: 'count', width: 15 },
+                        { header: 'MESSAGE', key: 'message', width: 50 }
+                    ];
+                    logSheet.addRow({ component: 'Registry (Inventory)', status: allInventory.length > 0 ? 'OK' : 'EMPTY', count: allInventory.length });
+                    logSheet.addRow({ component: 'Registry (Production)', status: allProduction.length > 0 ? 'OK' : 'EMPTY', count: allProduction.length });
+                    logSheet.addRow({ component: 'Super-Index (invMap)', status: invMap.size > 0 ? 'OK' : 'EMPTY', count: invMap.size });
+                    logSheet.addRow({ component: 'Exchange Rate', status: bookRate > 0 ? 'OK' : 'MISSING', count: bookRate });
+
+                    // Auto-style log header
+                    logSheet.getRow(1).eachCell(cell => {
+                        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+                    });
+
+                    tSheet.getRow(1).eachCell(cell => {
+                        cell.font = EXCEL_STYLES.fonts.header;
+                        cell.fill = EXCEL_STYLES.fills.header;
+                        cell.alignment = { horizontal: 'center' };
+                    });   } catch (err) {
+                    console.error('[Export] TRK sheet failure:', err);
+                }
+            }
+
+
+            // 5. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
             Object.entries(vendorGroups).forEach(([vid, items]) => {
                 // Determine sheet name (full vendor name if possible)
                 const vMeta = (vendors as any)[vid];
@@ -1209,9 +1716,13 @@ export function MainHeader() {
                     });
 
                     // Tag ID highlighting (Vendor Color)
+                    const tagIdVal = calculated.bookBarcode || itemData.book_barcode || itemData.itemId || itemData.item_id || itemData.tag_id || item.label || '';
+                    const vColorRow = getVendorColor(tagIdVal);
+                    const contrastColorRow = getContrastColor(vColorRow);
+                    
                     const tagCell = row.getCell('tag_id');
-                    tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vendorColor } };
-                    tagCell.font = { bold: true, color: { argb: contrastColor } };
+                    tagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: vColorRow } };
+                    tagCell.font = { bold: true, color: { argb: contrastColorRow } };
 
                     // Pay Status highlighting
                     const payCell = row.getCell('pay_status');

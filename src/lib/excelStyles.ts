@@ -33,12 +33,18 @@ export const getCategoryColor = (cat: string): string => {
     return 'FF94A3B8';
 };
 
-export const getVendorColor = (vendorId: string): string => {
-    const v = vendors[vendorId as keyof typeof vendors];
-    if (v?.color) {
-        // Convert #RRGGBB to ARGB (FFRRGGBB)
-        return 'FF' + v.color.replace('#', '').toUpperCase();
+export const getVendorColor = (tagId: string): string => {
+    const id = (tagId || '').toUpperCase();
+    
+    // Check longest prefixes first
+    const prefixes = Object.keys(vendors).sort((a, b) => b.length - a.length);
+    for (const p of prefixes) {
+        if (id.startsWith(p)) {
+            const v = (vendors as any)[p];
+            if (v?.color) return 'FF' + v.color.replace('#', '').toUpperCase();
+        }
     }
+    
     return 'FF1F2937'; // Default header color
 };
 

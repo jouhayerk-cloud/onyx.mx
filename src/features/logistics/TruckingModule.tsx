@@ -5,7 +5,7 @@ import {
     ZoomIn, ZoomOut, Maximize2, Gauge, 
     CheckCircle2, AlertCircle, Clock, History,
     Package, Filter, Search, ArrowRight,
-    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Eye
+    CornerDownRight, MoreHorizontal, LayoutGrid, Info, ChevronRight, Loader2, PanelTop, PanelTopClose, FolderOpen, Save, X, Download, Upload, ArrowUp, ArrowDown, ArrowLeft, FileText, FileSpreadsheet, Image as ImageIcon, Plus, Shield, IdCard, ClipboardCheck, Hash, Move, Globe, Share2, List, Eye, Pencil
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { generatePackingListHtml } from './generatePackingListHtml';
@@ -191,46 +191,51 @@ const CompactDockCard: React.FC<{
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     
     return (
-        <button
-            onClick={onLoad}
-            className={`flex items-center transition-all group shrink-0 text-left cursor-pointer active:scale-[0.95] ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}
-            style={{ '--main-color': primaryColor } as React.CSSProperties}
-        >
-            <div className={`flex items-center justify-center transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] ${isCompact ? 'w-6 h-6' : 'w-16 h-16'}`}>
-                <CrateWireframe 
-                    w={crate.width_cm} 
-                    l={crate.length_cm} 
-                    h={crate.height_cm || 50} 
-                    color={primaryColor} 
-                    size={isCompact ? 40 : 64} 
-                    solid={true}
-                />
-            </div>
-            <div className="flex flex-col">
-                <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
-                    <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
+        <div className={`flex items-center transition-all group shrink-0 text-left ${isCompact ? 'gap-2 px-3 py-0.5 min-w-[120px]' : 'gap-6 px-4 py-3 min-w-[200px]'}`}>
+            <button
+                onClick={onLoad}
+                className="flex items-center gap-3 transition-all active:scale-[0.95]"
+                style={{ '--main-color': primaryColor } as React.CSSProperties}
+            >
+                <div className={`flex items-center justify-center transition-transform duration-500 group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] ${isCompact ? 'w-6 h-6' : 'w-16 h-16'}`}>
+                    <CrateWireframe 
+                        w={crate.width_cm} 
+                        l={crate.length_cm} 
+                        h={crate.height_cm || 50} 
+                        color={primaryColor} 
+                        size={isCompact ? 40 : 64} 
+                        solid={true}
+                    />
+                </div>
+                <div className="flex flex-col">
+                    <div className={`flex items-center transition-all duration-500 ${isCompact ? 'gap-1 mb-0' : 'gap-3 mb-1.5'}`}>
+                        <span className={`font-black uppercase tracking-tighter text-white transition-all ${isCompact ? 'text-[10px]' : 'text-[16px]'}`}>{label}</span>
+                        {!isCompact && (
+                            <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
+                        )}
+                    </div>
                     {!isCompact && (
-                        <span className="font-black px-1.5 py-0.5 rounded-full border border-white/10 transition-all uppercase tracking-[0.2em] text-[8px]" style={{ backgroundColor: `${primaryColor}20`, color: primaryColor }}>{typeLabel}</span>
+                        <div className="flex items-center gap-4 leading-none">
+                            <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
+                            <div className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
+                        </div>
                     )}
                 </div>
-                {!isCompact && (
-                    <div className="flex items-center gap-4 leading-none">
-                        <span className="font-black text-white/80 uppercase tracking-widest text-[12px]">{crate.width_cm}×{crate.length_cm}</span>
-                        <div className="w-1 h-1 rounded-full bg-white/20" />
-                        <span className="font-black tracking-tighter text-[13px]" style={{ color: 'var(--main-color)' }}>{w}KG</span>
-                    </div>
+            </button>
+
+            <div className="flex items-center gap-3 ml-auto">
+                {onNest && crate.type === 'cardboard' && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onNest(); }}
+                        className="text-emerald-400/40 hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100 hover:scale-125"
+                        title="Nest Unit"
+                    >
+                        <CornerDownRight size={14} />
+                    </button>
                 )}
             </div>
-            {onNest && crate.type === 'cardboard' && (
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onNest(); }}
-                    className="ml-4 p-2 rounded-lg text-emerald-400/20 hover:text-emerald-400 transition-all opacity-0 group-hover:opacity-100"
-                    title="Nest Unit"
-                >
-                    <CornerDownRight size={14} />
-                </button>
-            )}
-        </button>
+        </div>
     );
 };
 
@@ -442,29 +447,30 @@ const DeployedTrailerCard: React.FC<{
     );
 };
 
-const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; onLoad: () => void; onNest?: () => void }> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
+const DockCard: React.FC<{ 
+    crate: any; allCrates: any[]; allInventory: any[]; 
+    onLoad: () => void; onNest?: () => void 
+}> = ({ crate, allCrates, allInventory, onLoad, onNest }) => {
     const { label, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory), [crate, allCrates, allInventory]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#e5e7eb') : '#e5e7eb';
     const itemCount = (crate.inventory_ids || '').split(',').filter(Boolean).length;
     const w = computeCrateWeight(crate, allInventory, allCrates);
     const typeLabel = crate.type === 'pallet' ? 'PLT' : crate.type === 'cardboard' ? 'BOX' : 'CRT';
     return (
-        <button
-            onClick={onLoad}
-            title={`Load ${label} onto truck`}
-            className="flex flex-col gap-1.5 p-2.5 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer active:scale-[0.97] shadow-lg"
+        <div 
+            className="flex flex-col gap-1.5 p-2.5 rounded-xl transition-all group shrink-0 text-left border-2 cursor-pointer shadow-lg relative"
             style={{
                 minWidth: 130, maxWidth: 150,
                 background: `${primaryColor}15`,
                 borderColor: `${primaryColor}40`,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}28`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}80`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}15`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${primaryColor}40`; }}
         >
-            {/* Top row: wireframe + type badge */}
-            <div className="flex items-start justify-between w-full mb-0">
+            <button onClick={onLoad} className="absolute inset-0 z-0" />
+            
+            {/* Top row: wireframe + type badge + Edit */}
+            <div className="flex items-start justify-between w-full mb-0 relative z-10 pointer-events-none">
                 <CrateWireframe w={crate.width_cm} l={crate.length_cm} h={crate.height_cm || crate.width_cm} color={primaryColor} size={60} solid={true} />
-                <div className="flex flex-col items-end gap-0.5">
+                <div className="flex flex-col items-end gap-2">
                     <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/40 text-white border border-white/10">
                         {typeLabel}
                     </span>
@@ -499,7 +505,7 @@ const DockCard: React.FC<{ crate: any; allCrates: any[]; allInventory: any[]; on
                     <span className="text-[8px] text-white/40 uppercase font-bold">Estimated</span>
                 </div>
             </div>
-        </button>
+        </div>
     );
 };
 
@@ -3229,6 +3235,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
     const [showSharePopup, setShowSharePopup] = useState(false);
 
+
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
     // Panning state
     const [isPanning, setIsPanning] = useState(false);
@@ -3794,10 +3801,15 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             const data = inv.data || {};
                             const norm = normalizeInventoryData(inv);
                             const calculated = calculateCodesAndPrices(norm, bookRate, '326');
-                            const tagId = calculated.bookBarcode || data.book_barcode || data.itemId || String(inv.row);
+                            const rawBarcode = (calculated.bookBarcode && calculated.bookBarcode !== '-') ? calculated.bookBarcode : (data.book_barcode && data.book_barcode !== '-' ? data.book_barcode : null);
+                            const tagId = rawBarcode || data.itemId || data.item_id || String(inv.row);
                             const vP = Object.keys(vendors).find(k => tagId.toUpperCase().startsWith(k)) || 'OTHER';
                             
+                            const costMxn = parseFloat(data.price || data.acquisition_price_mxn || '0') || 0;
+                            const weightKg = parseFloat(data.weightKg || data.weight_kg) || 0;
+
                             return {
+                                row: String(inv.row),
                                 itemId: tagId,
                                 vendorPrefix: vP,
                                 tagColor: (vendors as any)[vP]?.color || '#6b7280',
@@ -3805,9 +3817,20 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                 type: data.shape || 'Unit',
                                 desc: data.shortDescription || '',
                                 qty: item.qty,
-                                weightKg: parseFloat(data.weightKg || data.weight_kg) || 0,
+                                price: costMxn,
+                                acquisition_price_mxn: costMxn,
+                                width_cm: data.width_cm || data.widthCm || 0,
+                                height_cm: data.height_cm || data.heightCm || 0,
+                                length_cm: data.length_cm || data.lengthCm || 0,
+                                weightKg,
+                                weight_kg: weightKg,
                                 material: data.material || '',
                                 color: data.color || '',
+                                book_barcode: rawBarcode,
+                                book_aq_code: calculated.bookAqCode,
+                                book_landed: calculated.bookLanded,
+                                book_retail: calculated.bookRetail,
+                                pay_date: data.pay_date || data.payDate || '',
                                 combinedAttr: `${data.color || ''} ${data.material ? '/ ' + data.material : ''}`.trim()
                             };
                         })
