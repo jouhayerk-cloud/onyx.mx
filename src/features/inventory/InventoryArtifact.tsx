@@ -216,6 +216,14 @@ export const InventoryArtifactInner: React.FC<InventoryArtifactProps> = ({ ids, 
     return createPortal(
         <div className={containerClasses}>
             {!isSidebar && <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={onClose} />}
+            {!isSidebar && (
+                <button 
+                    onClick={onClose}
+                    className="absolute top-10 right-10 w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all z-[10000] shadow-2xl backdrop-blur-xl group"
+                >
+                    <X size={40} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                </button>
+            )}
             
             {showViewer && (
                 <FullscreenImageViewer 

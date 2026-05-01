@@ -89,25 +89,54 @@ function computeCrateWeight(crate: any, allInventory: any[], allCrates: any[], v
 }
 
 // ─── CM Grid (LANDSCAPE: X=truck length 1615cm, Y=truck width 244cm) ──────────
-const CmGrid: React.FC = () => {
+const CmGrid: React.FC<{ isVertical?: boolean }> = ({ isVertical }) => {
     const minor = 50; const major = 100;
     const xLines: number[] = []; const yLines: number[] = [];
     for (let x = 0; x <= TRUCK_L_CM; x += minor) xLines.push(x);
     for (let y = 0; y <= TRUCK_W_CM; y += minor) yLines.push(y);
+
+    const L = TRUCK_L_CM * BASE_SCALE;
+    const W = TRUCK_W_CM * BASE_SCALE;
+
     return (
-        <svg className="absolute inset-0 pointer-events-none" width={TRUCK_L_CM * BASE_SCALE} height={TRUCK_W_CM * BASE_SCALE} style={{ overflow: 'visible' }}>
-            {xLines.map(x => (
-                <line key={`x${x}`} x1={x * BASE_SCALE} y1={0} x2={x * BASE_SCALE} y2={TRUCK_W_CM * BASE_SCALE}
-                    stroke={x % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} strokeWidth={x % major === 0 ? 1 : 0.5} />
-            ))}
-            {yLines.map(y => (
-                <line key={`y${y}`} x1={0} y1={y * BASE_SCALE} x2={TRUCK_L_CM * BASE_SCALE} y2={y * BASE_SCALE}
-                    stroke={y % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} strokeWidth={y % major === 0 ? 1 : 0.5} />
-            ))}
-            {xLines.filter(x => x % major === 0 && x > 0).map(x => (
+        <svg 
+            className="absolute inset-0 pointer-events-none" 
+            width={isVertical ? W : L} 
+            height={isVertical ? L : W} 
+            style={{ overflow: 'visible' }}
+        >
+            {xLines.map(x => {
+                const xPos = isVertical ? (TRUCK_L_CM - x) * BASE_SCALE : x * BASE_SCALE;
+                return (
+                    <line 
+                        key={`x${x}`} 
+                        x1={isVertical ? 0 : xPos} 
+                        y1={isVertical ? xPos : 0} 
+                        x2={isVertical ? W : xPos} 
+                        y2={isVertical ? xPos : W}
+                        stroke={x % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} 
+                        strokeWidth={x % major === 0 ? 1 : 0.5} 
+                    />
+                );
+            })}
+            {yLines.map(y => {
+                const yPos = y * BASE_SCALE;
+                return (
+                    <line 
+                        key={`y${y}`} 
+                        x1={isVertical ? yPos : 0} 
+                        y1={isVertical ? 0 : yPos} 
+                        x2={isVertical ? yPos : L} 
+                        y2={isVertical ? 0 : yPos}
+                        stroke={y % major === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)'} 
+                        strokeWidth={y % major === 0 ? 1 : 0.5} 
+                    />
+                );
+            })}
+            {!isVertical && xLines.filter(x => x % major === 0 && x > 0).map(x => (
                 <text key={`xl${x}`} x={x * BASE_SCALE + 3} y={12} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{x}cm</text>
             ))}
-            {yLines.filter(y => y % major === 0 && y > 0).map(y => (
+            {!isVertical && yLines.filter(y => y % major === 0 && y > 0).map(y => (
                 <text key={`yl${y}`} x={3} y={y * BASE_SCALE - 3} fill="rgba(255,255,255,0.25)" fontSize={9} fontFamily="monospace">{y}</text>
             ))}
         </svg>
@@ -488,7 +517,8 @@ const TruckCrate: React.FC<{
     isSelected: boolean; zoom: number;
     onSelect: () => void; onUpdatePos: (x: number, y: number) => void;
     onRotate: () => void; onUnload: () => void; onNest?: () => void;
-}> = ({ crate, allCrates, allInventory, pos, truckSeq, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload, onNest }) => {
+    isVertical?: boolean;
+}> = ({ crate, allCrates, allInventory, pos, truckSeq, isSelected, zoom, onSelect, onUpdatePos, onRotate, onUnload, onNest, isVertical }) => {
     const { label, subtitle, vendorList } = useMemo(() => getCrateDisplayName(crate, allCrates, allInventory, truckSeq), [crate, allCrates, allInventory, truckSeq]);
     const primaryColor = vendorList.length > 0 ? (vendors[vendorList[0] as keyof typeof vendors]?.color || '#F97316') : '#F97316';
     const isDraggingRef = useRef(false);
@@ -506,22 +536,79 @@ const TruckCrate: React.FC<{
         const sx = e.clientX, sy = e.clientY, ox = pos.x, oy = pos.y;
         const onMove = (me: MouseEvent) => {
             if (!isDraggingRef.current) return;
-            const nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox + (me.clientX - sx) / (zoom * BASE_SCALE)));
-            const ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + (me.clientY - sy) / (zoom * BASE_SCALE)));
+            const deltaX = (me.clientX - sx) / (zoom * BASE_SCALE);
+            const deltaY = (me.clientY - sy) / (zoom * BASE_SCALE);
+            
+            let nx, ny;
+            if (isVertical) {
+                // In vertical mode: screen X movement affects truck Y, screen Y affects truck X (inverted)
+                // Visual X = Truck Y, Visual Y = Truck L - Truck X - DimX
+                ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + deltaX));
+                nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox - deltaY));
+            } else {
+                nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox + deltaX));
+                ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + deltaY));
+            }
             onUpdatePos(nx, ny);
         };
         const onUp = () => { isDraggingRef.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
         window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
-    }, [pos.x, pos.y, dimX, dimY, zoom, onSelect, onUpdatePos]);
+    }, [pos.x, pos.y, dimX, dimY, zoom, onSelect, onUpdatePos, isVertical]);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        e.stopPropagation(); onSelect();
+        isDraggingRef.current = true;
+        const touch = e.touches[0];
+        const sx = touch.clientX, sy = touch.clientY, ox = pos.x, oy = pos.y;
+        
+        const onTouchMove = (te: TouchEvent) => {
+            if (!isDraggingRef.current || te.touches.length !== 1) return;
+            const t = te.touches[0];
+            const deltaX = (t.clientX - sx) / (zoom * BASE_SCALE);
+            const deltaY = (t.clientY - sy) / (zoom * BASE_SCALE);
+
+            let nx, ny;
+            if (isVertical) {
+                ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + deltaX));
+                nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox - deltaY));
+            } else {
+                nx = Math.max(0, Math.min(TRUCK_L_CM - dimX, ox + deltaX));
+                ny = Math.max(0, Math.min(TRUCK_W_CM - dimY, oy + deltaY));
+            }
+            onUpdatePos(nx, ny);
+        };
+        
+        const onTouchEnd = () => { 
+            isDraggingRef.current = false; 
+            window.removeEventListener('touchmove', onTouchMove); 
+            window.removeEventListener('touchend', onTouchEnd); 
+        };
+        
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onTouchEnd);
+    }, [pos.x, pos.y, dimX, dimY, zoom, onSelect, onUpdatePos, isVertical]);
 
     const iconSize = Math.min(pxX, pxY) * 0.38;
     const textScale = Math.max(10, Math.min(22, pxX / 8));
 
+    const visualX = isVertical ? pos.y * BASE_SCALE : pos.x * BASE_SCALE;
+    const visualY = isVertical ? (TRUCK_L_CM - pos.x - dimX) * BASE_SCALE : pos.y * BASE_SCALE;
+    const visualW = isVertical ? pxY : pxX;
+    const visualH = isVertical ? pxX : pxY;
+
     return (
-        <div className="absolute select-none" style={{ left: pos.x * BASE_SCALE, top: pos.y * BASE_SCALE, width: pxX, height: pxY, zIndex: isSelected ? 50 : 10 }}>
+        <div className="absolute select-none" style={{ 
+            left: visualX, 
+            top: visualY, 
+            width: visualW, 
+            height: visualH, 
+            zIndex: isSelected ? 50 : 10
+        }}>
             <div
                 onMouseDown={handleMouseDown}
-                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group"
+                onTouchStart={handleTouchStart}
+                className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col items-center justify-center overflow-hidden relative group touch-none"
                 style={{
                     backgroundColor: primaryColor,
                     boxShadow: isSelected 
@@ -3142,6 +3229,7 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
     const [recalledShipment, setRecalledShipment] = useState<any | null>(null);
     const [showSharePopup, setShowSharePopup] = useState(false);
 
+    const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
     // Panning state
     const [isPanning, setIsPanning] = useState(false);
     const lastMousePos = useRef({ x: 0, y: 0 });
@@ -3235,6 +3323,19 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         nested.forEach(n => { results = [...results, ...getItemsFromCrate(n, nextFloorLabel, nextBoxLabel, visited)]; });
         return results;
     };
+
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (mobile) {
+                setIsCompact(true);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.removeEventListener('resize', handleResize);
+    }, [setIsCompact]);
 
     useEffect(() => {
         // Guard: Do not overwrite positions if we are in a "Recall" state
@@ -4219,45 +4320,74 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                         </div>
                     </div>
                 ) : (
-                <div className="p-[3000px]" style={{ width: 'fit-content', height: 'fit-content' }}>
+                <div className="min-w-full min-h-full flex flex-col items-center justify-center p-[1500px] lg:p-[2500px]">
                     <div 
                         id="trailer-main-map"
-                        className="flex flex-col items-center pt-[300px] pb-[100px] px-[200px] animate-in fade-in zoom-in duration-1000" 
-                        style={{ width: TRUCK_L_CM * BASE_SCALE * zoom + 1000 }}
+                        className="flex flex-col items-center animate-in fade-in zoom-in duration-1000" 
+                        style={{ 
+                            width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE * zoom + 100,
+                            height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE * zoom + 100
+                        }}
                     >
-                        {/* Direction labels */}
-                        <div className="flex items-center gap-10 mb-12 w-full max-w-[1600px]">
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
-                                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
+                        {/* Direction labels - Adaptive Layout */}
+                        {!isMobile ? (
+                            <div className="flex items-center gap-10 mb-12 w-full max-w-[1600px]">
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
+                                        <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
                                 </div>
-                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
+                                <div className="flex-1" />
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="w-8 h-8 flex items-center justify-center bg-white/5">
+                                        <div className="w-3 h-3 rounded-full bg-white/40" />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">Bulkhead</span>
+                                </div>
                             </div>
-                            
-                            <div className="flex-1" />
-
-                            <div className="flex flex-col items-center gap-3">
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 mb-10">
                                 <div className="w-8 h-8 flex items-center justify-center bg-white/5">
                                     <div className="w-3 h-3 rounded-full bg-white/40" />
                                 </div>
                                 <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white/40 whitespace-nowrap">Bulkhead</span>
                             </div>
-                        </div>
+                        )}
                         
-                        <div style={{ width: TRUCK_L_CM * BASE_SCALE * zoom, height: TRUCK_W_CM * BASE_SCALE * zoom, position: 'relative' }} className="shadow-[0_120px_250px_-80px_rgba(0,0,0,0.8)] bg-transparent">
+                        <div style={{ 
+                            width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE * zoom, 
+                            height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE * zoom, 
+                            position: 'relative' 
+                        }} className="shadow-[0_120px_250px_-80px_rgba(0,0,0,0.8)] bg-transparent">
                             <div
                                 className="absolute inset-0 overflow-hidden"
-                                style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', width: TRUCK_L_CM * BASE_SCALE, height: TRUCK_W_CM * BASE_SCALE }}
+                                style={{ 
+                                    transform: `scale(${zoom})`, 
+                                    transformOrigin: 'top left', 
+                                    width: (isMobile ? TRUCK_W_CM : TRUCK_L_CM) * BASE_SCALE, 
+                                    height: (isMobile ? TRUCK_L_CM : TRUCK_W_CM) * BASE_SCALE 
+                                }}
                                 onClick={e => e.stopPropagation()}
                             >
-                                <CmGrid />
-                                {[0.2, 0.4, 0.6, 0.8].map(frac => (
-                                    <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM * BASE_SCALE }}>
-                                        <div className="absolute bottom-6 left-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
-                                            {Math.round(frac * TRUCK_L_CM)} CM
+                                <CmGrid isVertical={isMobile} />
+                                {isMobile ? (
+                                    [0.2, 0.4, 0.6, 0.8].map(frac => (
+                                        <div key={frac} className="absolute left-0 right-0 h-px bg-white/10 pointer-events-none" style={{ top: (1 - frac) * TRUCK_L_CM * BASE_SCALE }}>
+                                            <div className="absolute left-6 -top-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
+                                                {Math.round(frac * TRUCK_L_CM)} CM
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))
+                                ) : (
+                                    [0.2, 0.4, 0.6, 0.8].map(frac => (
+                                        <div key={frac} className="absolute top-0 bottom-0 w-px bg-white/10 pointer-events-none" style={{ left: frac * TRUCK_L_CM * BASE_SCALE }}>
+                                            <div className="absolute bottom-6 left-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-lg text-[10px] font-black text-white tracking-[0.2em]">
+                                                {Math.round(frac * TRUCK_L_CM)} CM
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                                 {truckCrates.filter(c => !!positions[c.id]).map(c => {
                                     const pos = positions[c.id];
                                     if (!pos) return null;
@@ -4268,16 +4398,26 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                                             onUpdatePos={(x, y) => handleUpdatePos(c.id, x, y)}
                                             onRotate={() => handleRotate(c.id)}
                                             onUnload={() => handleUnload(c.id)}
-                                            onNest={() => setNestingBoxId(c.id)} />
+                                            onNest={() => setNestingBoxId(c.id)}
+                                            isVertical={isMobile} />
                                     );
                                 })}
                             </div>
                         </div>
+
+                        {isMobile && (
+                            <div className="flex flex-col items-center gap-3 mt-10">
+                                <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/5">
+                                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)]" />
+                                </div>
+                                <span className="text-[11px] font-black uppercase tracking-[0.5em] text-emerald-500/80 whitespace-nowrap">Rear Deck</span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 )}
-                </div>
             </div>
+        </div>
 
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
