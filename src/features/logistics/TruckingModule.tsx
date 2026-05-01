@@ -26,6 +26,10 @@ import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl, getC
 import ExcelJS from 'exceljs';
 import { exportCrateManifesto, ManifestoItem, exportCombinedTruckManifesto, ManifestoMeta } from '../../lib/crateManifesto';
 
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import gsap from 'gsap';
+
 const TRUCK_L_CM = 1615;
 const TRUCK_W_CM = 244;
 const BASE_SCALE = 1.5; // px/cm — canvas is 2422 × 366 px at zoom=1
@@ -2001,14 +2005,18 @@ const TruckExportModal: React.FC<{
 };
 
 // ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
+// ── Interactive Truck Viewer (Local Preview) ──────────────────────────────────
 const InteractiveTruckViewer: React.FC<{
     truckCrates: any[];
     positions: Record<string, any>;
     allCrates: any[];
     allInventory: any[];
     truckNumbering: Record<string, number>;
-}> = ({ truckCrates, positions, allCrates, allInventory, truckNumbering }) => {
+    selectedId: string | null;
+    onSelect: (id: string | null) => void;
+}> = ({ truckCrates, positions, allCrates, allInventory, truckNumbering, selectedId, onSelect }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const sceneRef = useRef<{
         scene: THREE.Scene;
         camera: THREE.PerspectiveCamera;
@@ -2023,36 +2031,48 @@ const InteractiveTruckViewer: React.FC<{
         const height = containerRef.current.clientHeight;
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf8fafc);
+        scene.background = null; // Transparent for containerless feel
 
         const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
-        camera.position.set(22, 14, 22);
+        camera.position.set(30, 20, 30);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         containerRef.current.appendChild(renderer.domElement);
 
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2.1;
+        controls.minDistance = 5;
+        controls.maxDistance = 60;
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-        const sun = new THREE.DirectionalLight(0xffffff, 0.4);
-        sun.position.set(10, 20, 10);
+        // Lights
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(20, 40, 20);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
         scene.add(sun);
         
-        const grid = new THREE.GridHelper(40, 40, 0xe2e8f0, 0xf1f5f9);
-        grid.position.y = -0.06;
-        scene.add(grid);
-
-        const bed = new THREE.Mesh(
-            new THREE.BoxGeometry(16.15, 0.05, 2.44),
-            new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.1, roughness: 0.8 })
-        );
-        bed.position.y = -0.025;
+        // Trailer Bed
+        const bedGeo = new THREE.BoxGeometry(16.15, 0.1, 2.44);
+        const bedMat = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1c24, 
+            metalness: 0.8, 
+            roughness: 0.2,
+            envMapIntensity: 1.0
+        });
+        const bed = new THREE.Mesh(bedGeo, bedMat);
+        bed.receiveShadow = true;
+        bed.position.y = -0.05;
         scene.add(bed);
 
+        // Crates
         const cratesMap = new Map<string, THREE.Mesh>();
         truckCrates.forEach(c => {
             const pos = positions[c.id];
@@ -2062,15 +2082,18 @@ const InteractiveTruckViewer: React.FC<{
             const dh = (c.height_cm || 100) / 100;
             const isRotated = pos.r === 90;
 
-            const geo = new THREE.BoxGeometry(dl, dh, dw);
-            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#adb5bd';
-            const mat = new THREE.MeshPhongMaterial({ 
+            const geo = new THREE.BoxGeometry(isRotated ? dw : dl, dh, isRotated ? dl : dw);
+            const col = vendors[c.vendor_id as keyof typeof vendors]?.color || '#F97316';
+            const mat = new THREE.MeshStandardMaterial({ 
                 color: col, 
-                transparent: true, 
-                opacity: 0.85,
-                shininess: 30
+                metalness: 0.1, 
+                roughness: 0.6,
+                transparent: true,
+                opacity: 0.95
             });
             const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
             
             mesh.position.set(
                 (pos.x / 100) - (16.15 / 2) + (isRotated ? dw : dl) / 2, 
@@ -2078,46 +2101,117 @@ const InteractiveTruckViewer: React.FC<{
                 (pos.y / 100) - (2.44 / 2) + (isRotated ? dl : dw) / 2
             );
             
-            if (isRotated) mesh.rotation.y = Math.PI / 2;
             scene.add(mesh);
 
-            // Edges
+            // Edge highlighting
             const edges = new THREE.LineSegments(
                 new THREE.EdgesGeometry(geo),
-                new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 })
+                new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 })
             );
             edges.position.copy(mesh.position);
-            edges.rotation.copy(mesh.rotation);
             scene.add(edges);
 
             cratesMap.set(c.id, mesh);
         });
 
+        sceneRef.current = { scene, camera, renderer, controls, crates: cratesMap };
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        const handleClick = (event: MouseEvent) => {
+            if (!containerRef.current || !sceneRef.current) return;
+            const rect = containerRef.current.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, sceneRef.current.camera);
+            const meshes = Array.from(sceneRef.current.crates.values());
+            const intersects = raycaster.intersectObjects(meshes);
+
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object as THREE.Mesh;
+                let foundId = null;
+                for (const [id, m] of sceneRef.current.crates.entries()) {
+                    if (m === mesh) {
+                        foundId = id;
+                        break;
+                    }
+                }
+                if (foundId) {
+                    onSelect(foundId);
+                    
+                    // Animate camera focus
+                    const targetTarget = mesh.position.clone();
+                    const targetCam = targetTarget.clone().add(new THREE.Vector3(8, 6, 8));
+                    
+                    gsap.to(sceneRef.current.controls.target, {
+                        x: targetTarget.x, y: targetTarget.y, z: targetTarget.z,
+                        duration: 1.2, ease: "power3.inOut"
+                    });
+                    gsap.to(sceneRef.current.camera.position, {
+                        x: targetCam.x, y: targetCam.y, z: targetCam.z,
+                        duration: 1.2, ease: "power3.inOut"
+                    });
+
+                    // Deploy sidebar
+                    const sel = allCrates.find(c => c.id === foundId);
+                    if (sel) {
+                        const itemIds = sel.inventory_ids 
+                            ? sel.inventory_ids.split(',').filter(Boolean).map((e: string) => e.split(':')[0])
+                            : (sel.inventoryItems || []).map((i: any) => i.row);
+
+                        setInventoryArtifactConfig({
+                            isOpen: true,
+                            itemIds,
+                            title: `Crate: ${getCrateDisplayName(sel, allCrates, allInventory).label || sel.id}`,
+                            viewMode: 'sidebar'
+                        });
+                    }
+                }
+            } else {
+                onSelect(null);
+                // Reset camera?
+                gsap.to(sceneRef.current.controls.target, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power3.inOut" });
+                gsap.to(sceneRef.current.camera.position, { x: 30, y: 20, z: 30, duration: 1.2, ease: "power3.inOut" });
+                setInventoryArtifactConfig(prev => ({ ...prev, isOpen: false }));
+            }
+        };
+
+        containerRef.current.addEventListener('click', handleClick);
+
         const animate = () => {
+            if (!sceneRef.current) return;
             requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
+            sceneRef.current.controls.update();
+            sceneRef.current.renderer.render(sceneRef.current.scene, sceneRef.current.camera);
         };
         animate();
 
         const handleResize = () => {
-            if (!containerRef.current) return;
+            if (!containerRef.current || !sceneRef.current) return;
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
-            renderer.setSize(w, h);
+            sceneRef.current.camera.aspect = w / h;
+            sceneRef.current.camera.updateProjectionMatrix();
+            sceneRef.current.renderer.setSize(w, h);
         };
         window.addEventListener('resize', handleResize);
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            if (containerRef.current) {
+                containerRef.current.removeEventListener('click', handleClick);
+                if (renderer.domElement && containerRef.current.contains(renderer.domElement)) {
+                    containerRef.current.removeChild(renderer.domElement);
+                }
+            }
             renderer.dispose();
-            if (containerRef.current?.contains(renderer.domElement)) containerRef.current.removeChild(renderer.domElement);
+            sceneRef.current = null;
         };
     }, [truckCrates, positions]);
 
-    return <div ref={containerRef} className="w-full h-full" />;
+    return <div ref={containerRef} className="w-full h-full cursor-pointer" />;
 };
 
 // ─── Ready Truck Wizard ──────────────────────────────────────────────────────
@@ -2877,6 +2971,42 @@ const SaveDraftModal = ({ crateCount, onSave, onExport, onClose }: SaveDraftProp
                     >
                         Save
                     </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ── Floating Ready Truck HUD ──────────────────────────────────────────────────
+const ReadyTruckHUD: React.FC<{ metadata: any, stats: any }> = ({ metadata, stats }) => {
+    return (
+        <div className="absolute top-40 left-10 z-[50] p-8 rounded-[2.5rem] bg-black/40 backdrop-blur-[40px] border border-white/5 flex flex-col gap-6 shadow-2xl animate-in slide-in-from-left-10 duration-1000">
+            <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center text-white/30">
+                    <Shield size={22} strokeWidth={1.5} />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">Security Seal</span>
+                    <span className="text-lg font-black uppercase text-emerald-400 tracking-tighter">{metadata?.sealNumber || 'OPEN'}</span>
+                </div>
+            </div>
+            <div className="w-full h-px bg-white/5" />
+            <div className="grid grid-cols-2 gap-x-10 gap-y-4">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Tractor</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.tractorNumber || '—'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Trailer</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{metadata?.trailerNumber || '—'}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Load Weight</span>
+                    <span className="text-[12px] font-black uppercase text-white/80">{Math.round(stats?.totalWeight || 0).toLocaleString()} KG</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                    <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Status</span>
+                    <span className="text-[12px] font-black uppercase text-emerald-500/60 font-mono tracking-tighter">{stats?.status || 'OPTIMAL'}</span>
                 </div>
             </div>
         </div>
@@ -4070,6 +4200,24 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                             onSelect={setSelectedId}
                         />
                     </div>
+                ) : viewMode === '3d' ? (
+                    <div className="w-full h-full relative group">
+                        <InteractiveTruckViewer
+                            truckCrates={truckCrates}
+                            positions={positions}
+                            allCrates={allCrates}
+                            allInventory={allInventory}
+                            truckNumbering={truckNumbering}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                        />
+                        <div className="absolute top-10 right-10 pointer-events-none group-hover:opacity-100 opacity-0 transition-opacity">
+                            <div className="px-6 py-3 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center gap-3">
+                                <Globe size={16} className="text-emerald-500 animate-spin-slow" />
+                                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Interactive Orbit Active</span>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                 <div className="p-[3000px]" style={{ width: 'fit-content', height: 'fit-content' }}>
                     <div 
@@ -4207,12 +4355,12 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom duration-700">
                 <div className="flex items-center gap-2 px-6 py-3 backdrop-blur-3xl bg-black/60 border border-white/10 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                     <button
-                        onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : 'top')}
-                        title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Isometric View' : 'Overhead View'}
+                        onClick={() => setViewMode(v => v === 'top' ? 'side' : v === 'side' ? 'iso' : v === 'iso' ? '3d' : 'top')}
+                        title={viewMode === 'top' ? 'Lateral View' : viewMode === 'side' ? 'Isometric View' : viewMode === 'iso' ? '3D Orbit View' : 'Overhead View'}
                         className={`p-3 rounded-xl transition-all duration-300 ${viewMode !== 'top' ? 'bg-white text-black shadow-xl' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
                         style={viewMode !== 'top' ? { backgroundColor: 'var(--main-color)', color: 'black' } : {}}
                     >
-                        {viewMode === 'top' ? <Layers size={22} /> : viewMode === 'side' ? <Maximize2 size={22} /> : <Grid3x3 size={22} />}
+                        {viewMode === 'top' ? <Layers size={22} /> : viewMode === 'side' ? <Maximize2 size={22} /> : viewMode === 'iso' ? <Box size={22} /> : <Globe size={22} />}
                     </button>
                     
                     <div className="w-px h-8 bg-white/10 mx-2" />
