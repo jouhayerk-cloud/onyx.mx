@@ -374,13 +374,16 @@ const ActiveCrateHUD: React.FC<{
                                     if (isNaN(val)) return;
                                     const tid = toast.loading('Syncing weight...');
                                     try {
-                                        const payload = { brute_weight_kg: val, updated_at: new Date().toISOString() };
-                                        await supabase.from('logistics').update(payload).eq('id', crate.id);
+                                        // brute_weight_kg does NOT exist as a Supabase column.
                                         const db = (window as any).onyxDb;
                                         if (db) {
                                             const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
-                                            if (lDoc) await lDoc.patch(payload);
+                                            if (lDoc) await lDoc.patch({ brute_weight_kg: val, updated_at: new Date().toISOString() });
                                         }
+                                        const summary = (crate as any).contents_summary || '';
+                                        const cleaned = summary.replace(/\[BW:\d+\.?\d*\]/g, '').trim();
+                                        const newSummary = `${cleaned} [BW:${val}]`.trim();
+                                        await supabase.from('logistics').update({ contents_summary: newSummary, updated_at: new Date().toISOString() }).eq('id', crate.id);
                                         toast.success('Recorded', { id: tid });
                                     } catch (err) {
                                         toast.error('Sync failed', { id: tid });

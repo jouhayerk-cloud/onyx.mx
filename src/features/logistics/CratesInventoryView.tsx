@@ -525,13 +525,18 @@ const CrateCard = ({ crate, allCrates, allInventory, onPack, onDelete, onNest, o
                                                 if (isNaN(val)) return;
                                                 const tid = toast.loading('Saving weight...');
                                                 try {
-                                                    const payload = { brute_weight_kg: val, updated_at: new Date().toISOString() };
-                                                    await supabase.from('logistics').update(payload).eq('id', crate.id);
+                                                    // brute_weight_kg does NOT exist as a Supabase column.
+                                                    // Persist locally in RxDB only; embed in contents_summary for cloud backup.
                                                     const db = (window as any).onyxDb;
                                                     if (db) {
                                                         const lDoc = await db.logistics.findOne({ selector: { id: crate.id } }).exec();
-                                                        if (lDoc) await lDoc.patch(payload);
+                                                        if (lDoc) await lDoc.patch({ brute_weight_kg: val, updated_at: new Date().toISOString() });
                                                     }
+                                                    // Also persist in contents_summary so it survives Supabase syncs
+                                                    const summary = crate.contents_summary || '';
+                                                    const cleaned = summary.replace(/\[BW:\d+\.?\d*\]/g, '').trim();
+                                                    const newSummary = `${cleaned} [BW:${val}]`.trim();
+                                                    await supabase.from('logistics').update({ contents_summary: newSummary, updated_at: new Date().toISOString() }).eq('id', crate.id);
                                                     toast.success('Weight recorded', { id: tid });
                                                 } catch (err) {
                                                     toast.error('Failed to save', { id: tid });
