@@ -1,0 +1,247 @@
+[
+  {
+    "item_id": "AM-8G2L0X7H",
+    "price_mxn": 14500,
+    "quantity": 1,
+    "shape": "Deer",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-3M12HW2F",
+    "price_mxn": 12100,
+    "quantity": 1,
+    "shape": "Deer",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-JGMZ3SQ0",
+    "price_mxn": 11600,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-Q8HFRNGQ",
+    "price_mxn": 12900,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-PLYBDSKH",
+    "price_mxn": 10200,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-P6C89J4Y",
+    "price_mxn": 11800,
+    "quantity": 1,
+    "shape": "Bears",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-2J6WK20Y",
+    "price_mxn": 12400,
+    "quantity": 1,
+    "shape": "Climbers",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-47KG3XXU",
+    "price_mxn": 11800,
+    "quantity": 1,
+    "shape": "Deer",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-RNSDR9YF",
+    "price_mxn": 11500,
+    "quantity": 1,
+    "shape": "moose",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-RUMYY8UR",
+    "price_mxn": 10300,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-0W48Q8CN",
+    "price_mxn": 10700,
+    "quantity": 1,
+    "shape": "moose",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-F1VPCQ7X",
+    "price_mxn": 11200,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-T7OGV6XU",
+    "price_mxn": 11300,
+    "quantity": 1,
+    "shape": "Deer",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-OXOHA66I",
+    "price_mxn": 10500,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-GZ7VOJB3",
+    "price_mxn": 14699.88,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-KZ7HMXML",
+    "price_mxn": 12800,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-BMZ009CX",
+    "price_mxn": 11350,
+    "quantity": 1,
+    "shape": "moose",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-KSJHQRGC",
+    "price_mxn": 11200,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-APW4G35F",
+    "price_mxn": 11700,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-937KAGS7",
+    "price_mxn": 13700,
+    "quantity": 1,
+    "shape": "Bears",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-34L451L4",
+    "price_mxn": 12900,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-L2Z7FJ2K",
+    "price_mxn": 15000,
+    "quantity": 1,
+    "shape": "Deer",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-YH06QGX3",
+    "price_mxn": 11500,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-RQUFZKOS",
+    "price_mxn": 12100,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-E3DG7XO1",
+    "price_mxn": 11700,
+    "quantity": 1,
+    "shape": "moose",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-9WEEINRS",
+    "price_mxn": 10500,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-WLI9PWFH",
+    "price_mxn": 11100,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-81AQPV3L",
+    "price_mxn": 14000,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-MJLYQYR5",
+    "price_mxn": 6900,
+    "quantity": 1,
+    "shape": "Kumba Holdings ",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-8GCSEI8O",
+    "price_mxn": 10700,
+    "quantity": 1,
+    "shape": "moose",
+    "is_hidden": true
+  },
+  {
+    "item_id": "AM-4JX46IX7",
+    "price_mxn": 12100,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-2LGBHTOZ",
+    "price_mxn": 11200,
+    "quantity": 1,
+    "shape": "Horses",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-SGPS605W",
+    "price_mxn": 9900,
+    "quantity": 1,
+    "shape": "Elks",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-TDVVR1P4",
+    "price_mxn": 14700,
+    "quantity": 1,
+    "shape": "Elk",
+    "is_hidden": false
+  },
+  {
+    "item_id": "AM-2I3VJM7O",
+    "price_mxn": 10300,
+    "quantity": 1,
+    "shape": "Bears",
+    "is_hidden": false
+  }
+]

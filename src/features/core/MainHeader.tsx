@@ -82,7 +82,8 @@ import {
     truckShowExportModalAtom,
     truckShowReadyWizardAtom,
     truckShowPanelsAtom,
-    packingSelectedIdsAtom
+    packingSelectedIdsAtom,
+    isStudioSettingsOpenAtom
 } from '../../lib/atoms';
 import { vendors } from '../../lib/consts';
 import { calculateCodesAndPrices, normalizeInventoryData, formatDimensionsImperial, formatWeightImperial, formatDimensionsMetricOnly, formatDimensionsImperialOnly, formatWeightMetricOnly, formatWeightImperialOnly, getStatusClass } from '../../lib/utils';
@@ -1242,6 +1243,7 @@ export function MainHeader() {
         logout();
     };
 
+    const openSettingsPortal = useSetAtom(isStudioSettingsOpenAtom);
     const UserIcon = user ? userIcons[user.id as keyof typeof userIcons] : null;
 
     return (
@@ -1312,7 +1314,10 @@ export function MainHeader() {
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-4 ml-auto h-full">
-                    <div className="hidden md:flex flex-col items-end border-l border-white/5 pl-6">
+                    <div
+                        className="hidden md:flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer"
+                        onClick={() => openSettingsPortal(true)}
+                    >
                         <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1.5">WELCOME</span>
                         <span className="text-[18px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
                             {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
@@ -1337,76 +1342,6 @@ export function MainHeader() {
                         </div>
                     )}
 
-                    <div className="flex items-center relative h-full">
-                        <button
-                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                            className={`w-20 h-20 sm:h-24 flex items-center justify-center transition-all active:scale-95 group/sett ${
-                                isSettingsOpen ? 'text-(--main-color) bg-white/5' : 'text-(--text-color) opacity-30 hover:opacity-100 hover:bg-white/5'
-                            }`}
-                            title="Studio Settings"
-                        >
-                            <Settings size={32} strokeWidth={1.5} className={`transition-all duration-500 ${isSettingsOpen ? 'rotate-90' : ''}`} />
-                        </button>
-
-                        {isSettingsOpen && createPortal(
-                            <>
-                                <div className="fixed inset-0 z-9998" onClick={() => setIsSettingsOpen(false)} />
-                                <div className="fixed top-16 right-6 w-64 bg-black/40 backdrop-blur-3xl shadow-2xl flex flex-col gap-8 z-9999 animate-in fade-in slide-in-from-top-2 duration-200 p-8">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.5em] text-(--text-color) opacity-30">Settings</span>
-                                            <div className="flex items-center gap-4">
-                                                <button 
-                                                    onClick={() => setPerformanceMode(!performanceMode)} 
-                                                    className={`transition-all duration-300 ${performanceMode ? 'text-yellow-400 scale-125 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'text-(--text-color) opacity-20 hover:opacity-40'}`}
-                                                >
-                                                    <Zap size={16} strokeWidth={2.5} fill={performanceMode ? "currentColor" : "none"} />
-                                                </button>
-                                                <button onClick={() => setIsSettingsOpen(false)} className="text-(--text-color) opacity-20 hover:opacity-100 transition-all transform hover:rotate-90">
-                                                    <X size={14} strokeWidth={3} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <button 
-                                            onClick={handleRefresh} 
-                                            className="flex flex-col items-center justify-center p-8 bg-white/5 hover:bg-white/10 active:bg-blue-500/20 transition-all group"
-                                        >
-                                            <RefreshCw size={28} strokeWidth={1.5} className="text-(--text-color) opacity-40 group-hover:text-blue-400 group-hover:rotate-180 transition-all duration-1000 mb-4" />
-                                            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-(--text-color) opacity-60">Refresh Sync</span>
-                                        </button>
-
-                                        <div className="flex flex-col gap-4">
-                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-(--text-color) opacity-20 border-b border-white/5 pb-1 w-fit">Appearance</span>
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {themes.map(th => (
-                                                    <button key={th.name} onClick={() => setTheme(th.name)}
-                                                        className={`h-12 cursor-pointer transition-all hover:scale-110 relative group/th border border-white/5 overflow-hidden ${theme === th.name ? 'ring-2 ring-white/40 z-10 scale-110 shadow-xl' : 'opacity-40 hover:opacity-100'}`}
-                                                        style={{ 
-                                                            background: `url(${th.swatch})`,
-                                                            backgroundSize: 'cover',
-                                                            backgroundPosition: 'center'
-                                                        }} 
-                                                        title={th.name} 
-                                                    >
-                                                        <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/th:opacity-100 bg-black/40 transition-opacity">
-                                                            <span className="text-[6px] font-black uppercase tracking-widest text-white drop-shadow-md">{th.name}</span>
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-auto">
-                                            <button onClick={logout} className="flex items-center gap-3 text-red-500/40 hover:text-red-500 transition-colors py-2 group">
-                                                <LogOut size={14} strokeWidth={2.5} className="group-hover:-translate-x-1 transition-transform" />
-                                                <span className="text-[9px] font-black uppercase tracking-[0.25em]">Session Exit</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                            </>,
-                            document.body
-                        )}
-                    </div>
                 </div>
             </div>
             <ShoppingBagDrawer isOpen={isBagOpen} onClose={() => setIsBagOpen(false)} />

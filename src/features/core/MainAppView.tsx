@@ -23,7 +23,8 @@ import {
     inventoryArtifactConfigAtom,
     paymentsArtifactConfigAtom,
     universalViewAtom,
-    tagIdAtom
+    tagIdAtom,
+    isStudioSettingsOpenAtom
 } from '../../lib/atoms';
 import React, { useEffect, useState } from 'react';
 import {
@@ -53,7 +54,7 @@ import { StoreView } from '../store/StoreView';
 import { PackingModule } from '../logistics/PackingModule';
 import { ProcessView } from '../process/ProcessView';
 import { DataSyncProvider } from '../../components/DataSyncProvider';
-import { AboutModal } from '../../components/AboutModal';
+import { StudioSettingsPortal } from './StudioSettingsPortal';
 import { InventoryArtifact } from '../inventory/InventoryArtifact';
 import { PaymentsArtifact } from '../finance/PaymentsArtifact';
 import { ViewerView } from '../viewer/ViewerView';
@@ -152,7 +153,7 @@ export function MainAppView() {
     const [logisticsSubTab, setLogisticsSubTab] = useAtom(logisticsSubTabAtom);
     const [financeSubTab, setFinanceSubTab] = useAtom(financeSubTabAtom);
     const [isDummyMode, setIsDummyMode] = useAtom(isDummyModeAtom);
-    const [isAboutOpen, setIsAboutOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useAtom(isStudioSettingsOpenAtom);
     
     const setInventoryArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
     const setPaymentsArtifactConfig = useSetAtom(paymentsArtifactConfigAtom);
@@ -433,22 +434,22 @@ export function MainAppView() {
                         )}
                     </ul>
 
-                    {/* Branding & Global Progress at bottom of sidebar — Clickable About Tag */}
+                    {/* Studio Settings Trigger at bottom of sidebar */}
                     <div 
-                        className="mt-auto flex flex-col items-center justify-center p-4 border-t border-(--border-color) shrink-0 relative overflow-hidden cursor-pointer hover:bg-white/5 active:bg-white/10 transition-all group"
-                        onClick={() => setIsAboutOpen(true)}
-                        title="About Onyx.mx Studio"
+                        className={`mt-auto flex flex-col items-center justify-center p-4 pb-8 border-t border-(--border-color) shrink-0 relative overflow-hidden cursor-pointer transition-all group ${isSettingsOpen ? 'bg-white/10' : 'hover:bg-white/5 active:bg-white/10'}`}
+                        onClick={() => setIsSettingsOpen(true)}
+                        title="Studio Settings & Manifesto"
                     >
                         {sidebarState === 'expanded' && (
                             <>
-                                <OnyxMiniLogo className="w-7 h-7 mb-2 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.2)] transition-all" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300 transition-colors">v{__APP_VERSION__}</span>
+                                <OnyxMiniLogo className={`w-8 h-8 mb-2 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.4em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300 transition-colors">STUDIO</span>
                             </>
                         )}
                         {sidebarState === 'compact' && (
                             <>
-                                <OnyxMiniLogo className="w-6 h-6 mb-2 group-hover:scale-110 transition-all" />
-                                <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300">v{__APP_VERSION__}</span>
+                                <OnyxMiniLogo className={`w-7 h-7 mb-1 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
+                                <span className="text-[8px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300">OPX</span>
                             </>
                         )}
                     </div>
@@ -464,7 +465,7 @@ export function MainAppView() {
 
             <BatchActionsModal />
             <UploadWizard />
-            <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
+            <StudioSettingsPortal />
             <InventoryArtifact />
             <PaymentsArtifact />
         </>
