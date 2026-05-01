@@ -1293,15 +1293,24 @@ export function MainHeader() {
             };
 
             // DIRECT ROW MAP from inventory atom (same data source as working vendor sheets)
+            // Key insight: pItem.itemId is a CALCULATED barcode like "AM32623NXM"
+            // We must calculate each atom item's barcode and index by it
             const rowMap = new Map<string, any>();
             (inventory || []).forEach(item => {
                 if (item && item.row != null) {
                     rowMap.set(String(item.row), item);
-                    // Also index by all known IDs
                     const d = item.data || {};
+                    // Index by all raw IDs
                     [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
                         if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
                     });
+                    // CRITICAL: Also index by CALCULATED barcode (what shipment payloads store as itemId)
+                    try {
+                        const calcResult = calculateCodesAndPrices(d, bookRate || 1, '326');
+                        if (calcResult.bookBarcode && calcResult.bookBarcode !== '-') {
+                            rowMap.set(calcResult.bookBarcode.toUpperCase(), item);
+                        }
+                    } catch (e) {}
                 }
             });
 
@@ -1387,7 +1396,7 @@ export function MainHeader() {
                     
                     try {
                         const [invBatch, prodBatch] = await Promise.all([
-                            supabase.from('inventory').select('*').or(`item_id.in.(${quotedList}),book_barcode.in.(${quotedList}),tag_id.in.(${quotedList}),id.in.(${quotedList})`),
+                            supabase.from('inventory').select('*').or(`item_id.in.(${quotedList}),book_barcode.in.(${quotedList}),tag_id.in.(${quotedList})`),
                             supabase.from('production').select('*').in('tag_id', chunk)
                         ]);
 
@@ -1403,6 +1412,19 @@ export function MainHeader() {
                         }
                     } catch (e) { console.error('Deep recovery batch failed:', e); }
                 }
+
+                // After Deep Recovery, rebuild rowMap from invMap with calculated barcodes
+                invMap.forEach((item, key) => {
+                    if (!rowMap.has(key.toUpperCase())) rowMap.set(key.toUpperCase(), item);
+                    const d = item.data || {};
+                    try {
+                        const calcResult = calculateCodesAndPrices(d, bookRate || 1, '326');
+                        if (calcResult.bookBarcode && calcResult.bookBarcode !== '-') {
+                            rowMap.set(calcResult.bookBarcode.toUpperCase(), item);
+                        }
+                    } catch (e) {}
+                });
+                console.log(`[Export] rowMap size after Deep Recovery: ${rowMap.size}`);
             }
 
             for (const ship of (shipments || [])) {
