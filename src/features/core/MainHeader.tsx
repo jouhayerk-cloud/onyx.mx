@@ -1292,6 +1292,19 @@ export function MainHeader() {
                 });
             };
 
+            // DIRECT ROW MAP from inventory atom (same data source as working vendor sheets)
+            const rowMap = new Map<string, any>();
+            (inventory || []).forEach(item => {
+                if (item && item.row != null) {
+                    rowMap.set(String(item.row), item);
+                    // Also index by all known IDs
+                    const d = item.data || {};
+                    [d.itemId, d.item_id, d.tag_id, d.book_barcode, d.bookBarcode].forEach(k => {
+                        if (k && k !== '-' && k !== '') rowMap.set(String(k).toUpperCase(), item);
+                    });
+                }
+            });
+
             // 1. Index from local atom (low priority fallback)
             (inventory || []).forEach(indexItem);
             (allProduction || []).forEach(indexItem);
@@ -1445,72 +1458,77 @@ export function MainHeader() {
 
                         (c.items || []).forEach((pItem: any) => {
                             try {
-                                // MULTI-LAYERED MATCHING logic (Prevents data loss for historical items)
-                                const matchKeys = new Set<string>();
-                                [
-                                    pItem.row, 
-                                    pItem.itemId, 
-                                    pItem.item_id, 
-                                    pItem.tag_id, 
-                                    pItem.itemNumber, 
-                                    pItem.item_number,
-                                    pItem.description,
-                                    pItem.shortDescription,
-                                    pItem.short_description
-                                ].forEach(k => {
-                                    if (k) {
-                                        const nk = normalizeKey(k);
-                                        const sk = stripKey(k);
-                                        if (nk && nk !== 'UNDEFINED' && nk !== 'NULL') matchKeys.add(nk);
-                                        if (sk && sk !== 'UNDEFINED' && sk !== 'NULL') matchKeys.add(sk);
-                                    }
-                                });
-
-                                let invDoc = null;
-                                for (const key of matchKeys) {
-                                    invDoc = invMap.get(key);
-                                    if (invDoc) break;
-                                }
-
                                 rowIndex++;
 
-                                // Use inventory doc if available, otherwise fallback to payload data
-                                // IMPORTANT: Merge payload data (pItem) into itemData for full recovery
-                                // Merge logic: Prioritize Registry (invDoc) over Payload (pItem)
-                                // This prevents historical payloads with 0/null prices from overwriting valid DB data
-                                const itemData = { ...pItem };
-                                const baseData = invDoc?.data || {};
-                                
-                                // Selective merge: overwrite with valid, non-empty database data
-                                // NOTE: Allow 0 through — it's valid for dimensions. Only block null/undefined/empty string.
-                                Object.entries(baseData).forEach(([k, v]) => {
-                                    if (v !== null && v !== undefined && v !== '') {
-                                        (itemData as any)[k] = v;
-                                    }
-                                });
-                                
-                                // Ensure price is the best available (registry > payload > fallback)
-                                const bestPrice = parseFloat(String(
-                                    baseData.price_mxn || baseData.acquisition_price_mxn || baseData.price ||
-                                    pItem.price || pItem.acquisition_price_mxn || 0
-                                )) || 0;
-                                if (bestPrice > 0) {
-                                    itemData.price = bestPrice;
-                                    itemData.price_mxn = bestPrice;
-                                    itemData.acquisition_price_mxn = bestPrice;
+                                // TRACE: Log for first 3 items to diagnose data resolution
+                                if (rowIndex <= 3) {
+                                    console.log(`[TRK-TRACE] Item #${rowIndex}:`, {
+                                        pItemRow: pItem.row,
+                                        pItemId: pItem.itemId,
+                                        pItemPrice: pItem.price,
+                                        pItemWidth: pItem.width_cm,
+                                        rowMapSize: rowMap.size,
+                                        rowMapHasRow: rowMap.has(String(pItem.row)),
+                                        invMapSize: invMap.size,
+                                        inventoryAtomSize: (inventory || []).length,
+                                    });
                                 }
+
+                                // PRIMARY LOOKUP: Direct row map from inventory atom
+                                // This is the SAME data source that vendor sheets use successfully
+                                let atomItem = rowMap.get(String(pItem.row));
+                                if (!atomItem) atomItem = rowMap.get(String(pItem.itemId || '').toUpperCase());
+                                if (!atomItem) {
+                                    // Fallback to invMap (Supabase registry)
+                                    const matchKeys = [pItem.row, pItem.itemId, pItem.item_id, pItem.tag_id];
+                                    for (const k of matchKeys) {
+                                        if (!k) continue;
+                                        const found = invMap.get(normalizeKey(k)) || invMap.get(stripKey(k));
+                                        if (found) { atomItem = found; break; }
+                                    }
+                                }
+
+                                // Use atom data as primary (same as vendor sheets), payload as fallback
+                                const atomData = atomItem?.data || {};
+                                const itemData = { ...pItem, ...atomData };
                                 
-                                // Ensure dimensions are recovered from best source
-                                if (!itemData.width_cm && !itemData.widthCm) itemData.width_cm = baseData.width_cm || baseData.widthCm || pItem.width_cm || 0;
-                                if (!itemData.height_cm && !itemData.heightCm) itemData.height_cm = baseData.height_cm || baseData.heightCm || pItem.height_cm || 0;
-                                if (!itemData.length_cm && !itemData.lengthCm) itemData.length_cm = baseData.length_cm || baseData.lengthCm || pItem.length_cm || 0;
-                                if (!itemData.weight_kg && !itemData.weightKg) itemData.weight_kg = baseData.weight_kg || baseData.weightKg || pItem.weight_kg || pItem.weightKg || 0;
-                                
+                                // Ensure price uses the best available source
+                                const priceChain = [
+                                    atomData.price, atomData.price_mxn, atomData.acquisition_price_mxn,
+                                    pItem.price, pItem.acquisition_price_mxn, pItem.price_mxn
+                                ];
+                                const resolvedPrice = priceChain.find(p => {
+                                    const v = parseFloat(String(p || '0'));
+                                    return v > 0;
+                                });
+                                if (resolvedPrice) {
+                                    const pVal = parseFloat(String(resolvedPrice));
+                                    itemData.price = pVal;
+                                    itemData.price_mxn = pVal;
+                                    itemData.acquisition_price_mxn = pVal;
+                                }
+
                                 // Normalize for utility calls
                                 const norm = normalizeInventoryData(itemData);
                                 
                                 // Price calculation logic using normalized data
                                 const costMxn = parseFloat(String(norm.price || '0')) || 0;
+
+                                // TRACE: Log resolved data for first 3 items
+                                if (rowIndex <= 3) {
+                                    console.log(`[TRK-RESOLVED] Item #${rowIndex}:`, {
+                                        atomFound: !!atomItem,
+                                        atomDataPrice: atomItem?.data?.price,
+                                        atomDataPriceMxn: atomItem?.data?.price_mxn,
+                                        atomDataWidth: atomItem?.data?.width_cm,
+                                        resolvedPrice: resolvedPrice,
+                                        normPrice: norm.price,
+                                        costMxn,
+                                        normWidthCm: norm.width_cm,
+                                        normHeightCm: norm.height_cm,
+                                        normLengthCm: norm.length_cm,
+                                    });
+                                }
                                 const qty = parseFloat(String(itemData.quantity || pItem.qty || '1')) || 1;
                                 
                                 const onyxRound = (n: number) => {
@@ -1528,13 +1546,11 @@ export function MainHeader() {
                                 const finalMaterial = itemData.material || '';
                                 const finalColor = itemData.color || '';
 
-                                // Calculated codes (Barcodes, Acquisition codes, etc.)
-                                // CRITICAL: Pass explicit costMxn to prevent silent dash returns
-                                // when calculateCodesAndPrices' internal price resolution fails
+                                // Calculated codes — pass explicit price to prevent silent dash returns
                                 const calculated = calculateCodesAndPrices({ ...norm, price: costMxn, price_mxn: costMxn }, bookRate || 1, '326');
                                 
-                                // Payment Status — use row ID that matches the payment sets
-                                const statusLookupItem = { ...norm, id: String(invDoc?.row || pItem.row || norm.id || norm.itemId || '') };
+                                // Payment Status — use atom row ID that matches the payment sets
+                                const statusLookupItem = { ...norm, id: String(atomItem?.row || pItem.row || norm.id || norm.itemId || '') };
                                 const payStatusClass = getStatusClass(statusLookupItem, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
                                 
                                 const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
@@ -1549,8 +1565,8 @@ export function MainHeader() {
 
                                 let formattedPayDate = 'N/A';
                                 try {
-                                    // Use invDoc.row (atom row ID) to match paymentDateMap keys
-                                    const pId = invDoc?.row || pItem.row || itemData.id || pItem.itemId;
+                                    // Use atom row ID to match paymentDateMap keys
+                                    const pId = atomItem?.row || pItem.row || itemData.id || pItem.itemId;
                                     const pDateVal = paymentDateMap.get(String(pId)) || paymentDateMap.get(String(itemData.itemId)) || paymentDateMap.get(String(pItem.itemId)) || itemData.pay_date || itemData.payDate || pItem.pay_date;
                                     if (pDateVal && pDateVal !== 'N/A' && pDateVal !== '') {
                                         const d = new Date(pDateVal);
@@ -1620,28 +1636,6 @@ export function MainHeader() {
                 }
             }
 
-
-            // DIAGNOSTIC LOG (Single sheet, after all TRK sheets)
-            const logSheet = workbook.addWorksheet('System Log');
-            logSheet.columns = [
-                { header: 'COMPONENT', key: 'component', width: 25 },
-                { header: 'STATUS', key: 'status', width: 15 },
-                { header: 'COUNT', key: 'count', width: 15 },
-                { header: 'MESSAGE', key: 'message', width: 60 }
-            ];
-            logSheet.addRow({ component: 'Registry (Inventory)', status: allInventory.length > 0 ? 'OK' : 'EMPTY', count: allInventory.length });
-            logSheet.addRow({ component: 'Registry (Production)', status: allProduction.length > 0 ? 'OK' : 'EMPTY', count: allProduction.length });
-            logSheet.addRow({ component: 'Super-Index (invMap)', status: invMap.size > 0 ? 'OK' : 'EMPTY', count: invMap.size });
-            logSheet.addRow({ component: 'Exchange Rate (Book)', status: bookRate > 0 ? 'OK' : 'MISSING', count: bookRate });
-            logSheet.addRow({ component: 'Exchange Rate (Internet)', status: internetRate > 0 ? 'OK' : 'MISSING', count: internetRate });
-            logSheet.addRow({ component: 'Payment Sets (Full)', status: fullPayIds.size > 0 ? 'OK' : 'EMPTY', count: fullPayIds.size });
-            logSheet.addRow({ component: 'Payment Sets (Partial)', status: partialPayIds.size > 0 ? 'OK' : 'EMPTY', count: partialPayIds.size });
-            logSheet.addRow({ component: 'Payment Sets (Requested)', status: requestedAcqIds.size > 0 ? 'OK' : 'EMPTY', count: requestedAcqIds.size });
-            logSheet.addRow({ component: 'Shipments Found', status: shipments.length > 0 ? 'OK' : 'EMPTY', count: shipments.length });
-            logSheet.getRow(1).eachCell(cell => {
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
-            });
 
             // 5. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
             Object.entries(vendorGroups).forEach(([vid, items]) => {
