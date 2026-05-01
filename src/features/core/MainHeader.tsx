@@ -849,6 +849,29 @@ export function MainHeader() {
                 }
             });
 
+            // CRITICAL: Expand payment sets with alternate keys (tag_id, book_barcode, itemId)
+            // so that TRK manifest items (keyed by tag_id) can be matched
+            inventory.forEach(item => {
+                const id = String(item.data.id || item.row);
+                const norm = normalizeInventoryData(item.data);
+                let targetSet: Set<string> | null = null;
+                if (fullPayIds.has(id)) targetSet = fullPayIds;
+                else if (partialPayIds.has(id)) targetSet = partialPayIds;
+                else if (requestedAcqIds.has(id)) targetSet = requestedAcqIds;
+                
+                if (targetSet) {
+                    // Add all known identifiers so manifest items can match
+                    [String(item.row), norm.itemId, norm.tag_id, norm.book_barcode, norm.item_id,
+                     item.data?.itemId, item.data?.tag_id, item.data?.book_barcode, item.data?.item_id
+                    ].forEach(k => {
+                        if (k && k !== '-' && k !== '' && k !== 'undefined' && k !== 'null') {
+                            targetSet!.add(String(k));
+                            targetSet!.add(String(k).toUpperCase());
+                        }
+                    });
+                }
+            });
+
             const internetRate = liveExchangeRateValue || exchangeRate;
             const bookRate = exchangeRate || 20;
 
@@ -1458,16 +1481,30 @@ export function MainHeader() {
                                 const itemData = { ...pItem };
                                 const baseData = invDoc?.data || {};
                                 
-                                // Selective merge: only overwrite with valid, non-empty database data
+                                // Selective merge: overwrite with valid, non-empty database data
+                                // NOTE: Allow 0 through — it's valid for dimensions. Only block null/undefined/empty string.
                                 Object.entries(baseData).forEach(([k, v]) => {
-                                    if (v !== null && v !== undefined && v !== '' && v !== 0 && v !== '0') {
+                                    if (v !== null && v !== undefined && v !== '') {
                                         (itemData as any)[k] = v;
                                     }
                                 });
                                 
-                                // Final fallback check for price and weight
-                                if (!itemData.price || itemData.price === '0') itemData.price = pItem.price || baseData.price || baseData.price_mxn;
-                                if (!itemData.weightKg) itemData.weightKg = pItem.weightKg || baseData.weight_kg;
+                                // Ensure price is the best available (registry > payload > fallback)
+                                const bestPrice = parseFloat(String(
+                                    baseData.price_mxn || baseData.acquisition_price_mxn || baseData.price ||
+                                    pItem.price || pItem.acquisition_price_mxn || 0
+                                )) || 0;
+                                if (bestPrice > 0) {
+                                    itemData.price = bestPrice;
+                                    itemData.price_mxn = bestPrice;
+                                    itemData.acquisition_price_mxn = bestPrice;
+                                }
+                                
+                                // Ensure dimensions are recovered from best source
+                                if (!itemData.width_cm && !itemData.widthCm) itemData.width_cm = baseData.width_cm || baseData.widthCm || pItem.width_cm || 0;
+                                if (!itemData.height_cm && !itemData.heightCm) itemData.height_cm = baseData.height_cm || baseData.heightCm || pItem.height_cm || 0;
+                                if (!itemData.length_cm && !itemData.lengthCm) itemData.length_cm = baseData.length_cm || baseData.lengthCm || pItem.length_cm || 0;
+                                if (!itemData.weight_kg && !itemData.weightKg) itemData.weight_kg = baseData.weight_kg || baseData.weightKg || pItem.weight_kg || pItem.weightKg || 0;
                                 
                                 // Normalize for utility calls
                                 const norm = normalizeInventoryData(itemData);
@@ -1492,10 +1529,13 @@ export function MainHeader() {
                                 const finalColor = itemData.color || '';
 
                                 // Calculated codes (Barcodes, Acquisition codes, etc.)
-                                const calculated = calculateCodesAndPrices(norm, bookRate || 1, '326');
+                                // CRITICAL: Pass explicit costMxn to prevent silent dash returns
+                                // when calculateCodesAndPrices' internal price resolution fails
+                                const calculated = calculateCodesAndPrices({ ...norm, price: costMxn, price_mxn: costMxn }, bookRate || 1, '326');
                                 
-                                // Payment Status
-                                const payStatusClass = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
+                                // Payment Status — use row ID that matches the payment sets
+                                const statusLookupItem = { ...norm, id: String(invDoc?.row || pItem.row || norm.id || norm.itemId || '') };
+                                const payStatusClass = getStatusClass(statusLookupItem, partialPayIds, fullPayIds, requestedAcqIds) || 'BLUE';
                                 
                                 const payStatusText = payStatusClass === 'GREEN' ? 'PAID' : 
                                                     payStatusClass === 'YELLOW' ? 'REQUESTED' : 
@@ -1509,8 +1549,9 @@ export function MainHeader() {
 
                                 let formattedPayDate = 'N/A';
                                 try {
-                                    const pId = itemData.id || itemData.row || pItem.itemId;
-                                    const pDateVal = paymentDateMap.get(String(pId)) || itemData.pay_date || itemData.payDate;
+                                    // Use invDoc.row (atom row ID) to match paymentDateMap keys
+                                    const pId = invDoc?.row || pItem.row || itemData.id || pItem.itemId;
+                                    const pDateVal = paymentDateMap.get(String(pId)) || paymentDateMap.get(String(itemData.itemId)) || paymentDateMap.get(String(pItem.itemId)) || itemData.pay_date || itemData.payDate || pItem.pay_date;
                                     if (pDateVal && pDateVal !== 'N/A' && pDateVal !== '') {
                                         const d = new Date(pDateVal);
                                         if (!isNaN(d.getTime())) formattedPayDate = d.toISOString().split('T')[0];
@@ -1574,34 +1615,33 @@ export function MainHeader() {
                         });
                     });
 
-                    // FINAL DIAGNOSTIC LOG (Hidden/System Sheet)
-                    const logSheet = workbook.addWorksheet('System Log');
-                    logSheet.columns = [
-                        { header: 'COMPONENT', key: 'component', width: 20 },
-                        { header: 'STATUS', key: 'status', width: 15 },
-                        { header: 'COUNT', key: 'count', width: 15 },
-                        { header: 'MESSAGE', key: 'message', width: 50 }
-                    ];
-                    logSheet.addRow({ component: 'Registry (Inventory)', status: allInventory.length > 0 ? 'OK' : 'EMPTY', count: allInventory.length });
-                    logSheet.addRow({ component: 'Registry (Production)', status: allProduction.length > 0 ? 'OK' : 'EMPTY', count: allProduction.length });
-                    logSheet.addRow({ component: 'Super-Index (invMap)', status: invMap.size > 0 ? 'OK' : 'EMPTY', count: invMap.size });
-                    logSheet.addRow({ component: 'Exchange Rate', status: bookRate > 0 ? 'OK' : 'MISSING', count: bookRate });
-
-                    // Auto-style log header
-                    logSheet.getRow(1).eachCell(cell => {
-                        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
-                    });
-
-                    tSheet.getRow(1).eachCell(cell => {
-                        cell.font = EXCEL_STYLES.fonts.header;
-                        cell.fill = EXCEL_STYLES.fills.header;
-                        cell.alignment = { horizontal: 'center' };
-                    });   } catch (err) {
+                } catch (err) {
                     console.error('[Export] TRK sheet failure:', err);
                 }
             }
 
+
+            // DIAGNOSTIC LOG (Single sheet, after all TRK sheets)
+            const logSheet = workbook.addWorksheet('System Log');
+            logSheet.columns = [
+                { header: 'COMPONENT', key: 'component', width: 25 },
+                { header: 'STATUS', key: 'status', width: 15 },
+                { header: 'COUNT', key: 'count', width: 15 },
+                { header: 'MESSAGE', key: 'message', width: 60 }
+            ];
+            logSheet.addRow({ component: 'Registry (Inventory)', status: allInventory.length > 0 ? 'OK' : 'EMPTY', count: allInventory.length });
+            logSheet.addRow({ component: 'Registry (Production)', status: allProduction.length > 0 ? 'OK' : 'EMPTY', count: allProduction.length });
+            logSheet.addRow({ component: 'Super-Index (invMap)', status: invMap.size > 0 ? 'OK' : 'EMPTY', count: invMap.size });
+            logSheet.addRow({ component: 'Exchange Rate (Book)', status: bookRate > 0 ? 'OK' : 'MISSING', count: bookRate });
+            logSheet.addRow({ component: 'Exchange Rate (Internet)', status: internetRate > 0 ? 'OK' : 'MISSING', count: internetRate });
+            logSheet.addRow({ component: 'Payment Sets (Full)', status: fullPayIds.size > 0 ? 'OK' : 'EMPTY', count: fullPayIds.size });
+            logSheet.addRow({ component: 'Payment Sets (Partial)', status: partialPayIds.size > 0 ? 'OK' : 'EMPTY', count: partialPayIds.size });
+            logSheet.addRow({ component: 'Payment Sets (Requested)', status: requestedAcqIds.size > 0 ? 'OK' : 'EMPTY', count: requestedAcqIds.size });
+            logSheet.addRow({ component: 'Shipments Found', status: shipments.length > 0 ? 'OK' : 'EMPTY', count: shipments.length });
+            logSheet.getRow(1).eachCell(cell => {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+            });
 
             // 5. VENDOR WORKBOOKS (INDIVIDUAL SHEETS)
             Object.entries(vendorGroups).forEach(([vid, items]) => {
