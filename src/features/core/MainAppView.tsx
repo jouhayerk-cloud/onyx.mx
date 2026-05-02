@@ -64,6 +64,7 @@ import { UniversalToolsBar } from './UniversalToolsBar';
 import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
 import { PackingWizard } from '../logistics/PackingWizard';
 import { PaymentWizard } from '../finance/PaymentWizard';
+import { InventorySelectionDock } from './InventorySelectionDock';
 
 
 declare const __APP_VERSION__: string;
@@ -453,6 +454,7 @@ export function MainAppView() {
                     <NFCWizard />
                     <PackingWizard />
                     <PaymentWizard />
+                    <InventorySelectionDock />
                 </div>
             </div>
 
