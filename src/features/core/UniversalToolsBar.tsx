@@ -24,7 +24,7 @@ import {
 } from '../../lib/atoms';
 import { 
     Layers, SlidersHorizontal, Filter, SquareCheckBig, Tag, Box, ChevronRight, X, Search, ArrowUpDown, Plus,
-    Printer, Nfc, Package, DollarSign, MoreHorizontal
+    Printer, Nfc, Package, DollarSign, MoreHorizontal, Copy
 } from 'lucide-react';
 import { vendors } from '../../lib/consts';
 
@@ -211,37 +211,47 @@ export const UniversalToolsBar: React.FC = () => {
                 </div>
             )}
 
-            {/* SELECTION WORKFLOW DOCK (Floating at bottom) */}
+            {/* SELECTION WORKFLOW DOCK (Attached to bottom) */}
             {selectedIds.length > 0 && (
-                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-bottom-12 duration-500">
-                    <div className="bg-black/60 backdrop-blur-3xl rounded-full px-8 py-3 border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex items-center gap-8 ring-1 ring-white/10">
-                        <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-                            <div className="bg-(--main-color) text-black font-black text-sm w-7 h-7 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(var(--main-color-rgb),0.4)]">
+                <div className="fixed bottom-0 left-0 right-0 z-[1000] animate-in slide-in-from-bottom duration-500">
+                    <div className="bg-black/10 backdrop-blur-3xl border-t border-white/5 px-8 py-4 flex items-center justify-center gap-12 shadow-[0_-20px_50px_rgba(0,0,0,0.3)]">
+                        <div className="flex items-center gap-4 pr-10 border-r border-white/10">
+                            <span className="text-[12px] font-black text-white/20 tracking-[0.4em] uppercase">SELECTED</span>
+                            <div className="text-(--main-color) font-black text-4xl drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]">
                                 {selectedIds.length}
                             </div>
-                            <span className="text-[10px] font-black text-white/40 tracking-[0.2em] uppercase">SELECTED</span>
                         </div>
 
-                        <div className="flex items-center gap-6">
-                            <button className="text-white/60 hover:text-(--main-color) transition-all hover:scale-125 group relative" title="Print Labels">
-                                <Printer size={26} strokeWidth={2} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">PRINT</span>
+                        <div className="flex items-center gap-12">
+                            <button className="text-white/40 hover:text-white transition-all hover:scale-125 group relative" title="Print Labels">
+                                <Printer size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">PRINT</span>
                             </button>
-                            <button className="text-white/60 hover:text-(--main-color) transition-all hover:scale-125 group relative" title="Write NFC">
-                                <Nfc size={26} strokeWidth={2} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">NFC</span>
+                            <button className="text-white/40 hover:text-white transition-all hover:scale-125 group relative" title="Write NFC">
+                                <Nfc size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">NFC</span>
                             </button>
-                            <button className="text-white/60 hover:text-(--main-color) transition-all hover:scale-125 group relative" title="Pack Items">
-                                <Package size={26} strokeWidth={2} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">PACK</span>
+                            <button className="text-white/40 hover:text-white transition-all hover:scale-125 group relative" title="Pack Items">
+                                <Package size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">PACK</span>
                             </button>
-                            <button className="text-white/60 hover:text-green-400 transition-all hover:scale-125 group relative" title="Payment Workflow">
-                                <DollarSign size={26} strokeWidth={2} />
-                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">PAY</span>
+                            <button className="text-white/40 hover:text-green-400 transition-all hover:scale-125 group relative" title="Payment Workflow">
+                                <DollarSign size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">PAY</span>
                             </button>
-                            <div className="w-px h-6 bg-white/10 mx-2" />
-                            <button className="text-white/40 hover:text-white transition-all hover:rotate-90">
-                                <MoreHorizontal size={24} strokeWidth={2} />
+                            <button className="text-white/40 hover:text-(--main-color) transition-all hover:scale-125 group relative" title="Manage Tags">
+                                <Tag size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">TAGS</span>
+                            </button>
+                            <button className="text-white/40 hover:text-blue-400 transition-all hover:scale-125 group relative" title="Copy Tag IDs">
+                                <Copy size={32} strokeWidth={2} />
+                                <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-[10px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap tracking-widest border border-white/10">COPY</span>
+                            </button>
+                            
+                            <div className="w-px h-10 bg-white/10 mx-4" />
+                            
+                            <button className="text-white/20 hover:text-white transition-all hover:rotate-90">
+                                <MoreHorizontal size={32} strokeWidth={2} />
                             </button>
                         </div>
                     </div>
