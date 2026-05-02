@@ -1900,15 +1900,15 @@ export function MainHeader() {
                         className="flex flex-col items-end border-l border-white/5 pl-6 cursor-pointer shrink-0"
                         onClick={() => openSettingsPortal(true)}
                     >
-                        <div className="mb-1">
-                            <SyncStatusBadge />
-                        </div>
                         <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-(--main-color) opacity-40 leading-none mb-1.5">WELCOME</span>
-                        <span className="text-[18px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
-                            {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
-                                ? user.name.split(' ')[0]
-                                : user?.email?.split('@')[0] || 'User'}
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                            <SyncStatusBadge />
+                            <span className="text-[18px] font-black text-(--text-color) opacity-90 tracking-tight leading-none capitalize">
+                                {(user?.name && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.name))
+                                    ? user.name.split(' ')[0]
+                                    : user?.email?.split('@')[0] || 'User'}
+                            </span>
+                        </div>
                     </div>
 
                     {activeView === 'store' && (
