@@ -112,7 +112,8 @@ import {
     Globe, Languages, Cpu, Clock, ArrowRight, Lock, Unlock, Printer,
     Landmark, Wallet, Play, Store, Package, MapPin, LayoutList,
     Target, Library, FolderKanban, FileJson, FileSpreadsheet, Nfc, ListFilter,
-    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig
+    Grid3x3, PanelTop, PanelTopClose, FolderOpen, Save, SlidersHorizontal, SquareCheckBig,
+    Layout
 } from 'lucide-react';
 
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -342,6 +343,9 @@ const InventoryBar: React.FC = () => {
         if (isSelectionMode) setSelectedIds([]);
     };
 
+    const [viewSlider] = useAtom(inventoryViewSliderAtom);
+    const ViewIcon = viewSlider < 33 ? LayoutList : viewSlider < 66 ? Grid3x3 : Layout;
+
     return (
         <div className="flex items-center justify-between w-full gap-4 sm:gap-8">
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 animate-in fade-in duration-300">
@@ -350,7 +354,7 @@ const InventoryBar: React.FC = () => {
                     className={`flex items-center justify-center transition-all duration-300 group hover:scale-110 ${isViewSliderOpen ? 'text-(--color-inventory) drop-shadow-[0_0_10px_rgba(var(--color-inventory-rgb),0.5)]' : 'text-white/50 hover:text-white'}`}
                     title="View"
                 >
-                    <SlidersHorizontal size={22} strokeWidth={2} />
+                    <ViewIcon size={22} strokeWidth={2.5} className={isViewSliderOpen ? 'animate-pulse' : ''} />
                 </button>
                 <button 
                     onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsViewSliderOpen(false); setIsSearchOpen(false); }}
