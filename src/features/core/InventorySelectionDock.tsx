@@ -75,14 +75,11 @@ export const InventorySelectionDock: React.FC = () => {
         <div className="fixed bottom-0 left-[var(--sidebar-width,0px)] right-0 z-[1000] animate-in slide-in-from-bottom duration-500 pointer-events-none">
             <div className="bg-black/10 backdrop-blur-3xl border-t border-white/5 px-6 md:px-10 py-4 md:py-6 flex items-center justify-between shadow-[0_-20px_80px_rgba(0,0,0,0.4)] pointer-events-auto overflow-x-auto scrollbar-hide">
                 <div className="flex items-center gap-6 group transition-all flex-shrink-0">
-                    <div className="flex flex-col">
-                        <span className="text-[8px] md:text-[10px] font-black text-white/20 tracking-[0.5em] leading-none mb-1">RECORD_SELECTION</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-(--main-color) font-black text-2xl md:text-4xl leading-none drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]">
-                                {selectedIds.length}
-                            </span>
-                            <span className="text-[10px] md:text-[14px] font-black text-white/40 tracking-widest uppercase">ITEMS</span>
-                        </div>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-(--main-color) font-black text-2xl md:text-4xl leading-none drop-shadow-[0_0_15px_rgba(var(--main-color-rgb),0.5)]">
+                            {selectedIds.length}
+                        </span>
+                        <span className="text-[10px] md:text-[14px] font-black text-white/40 tracking-widest uppercase">ITEMS</span>
                     </div>
                 </div>
 

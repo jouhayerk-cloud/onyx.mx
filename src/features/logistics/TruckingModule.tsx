@@ -3385,7 +3385,8 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
         
         return live;
     }, [docs, recalledShipment]);
-    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id), [allCrates, positions]);
+    // Deployed (In Transit) crates are locked — excluded from dock, cannot be re-loaded
+    const dockCrates = useMemo(() => allCrates.filter(c => !positions[c.id] && !c.parent_id && c.status !== 'In Transit'), [allCrates, positions]);
     const truckCrates = useMemo(() => allCrates.filter(c => !!positions[c.id]), [allCrates, positions]);
     const truckNumbering = useMemo(() => getTruckCrateNumbering(truckCrates, positions), [truckCrates, positions]);
 
@@ -3748,7 +3749,11 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
             }
 
             toast.loading('Synchronizing shipment data...', { id: tid });
-            // 1. Sync positions to DB
+            const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+            const dispatchTs = new Date().toISOString();
+            const ts = new Date().toLocaleString();
+
+            // 1. Sync crate positions + statuses to DB
             if (!isDummyMode) {
                 for (const c of allCrates) {
                     const pos = positions[c.id];
@@ -3758,16 +3763,36 @@ export const TruckingModule: React.FC<{ docs: any[]; onRefresh: () => void }> = 
                     const { error } = await supabase.from('logistics').update({ 
                         status: newStatus, 
                         description: finalDesc, 
-                        updated_at: new Date().toISOString() 
+                        updated_at: dispatchTs 
                     }).eq('id', c.id);
                     if (error) throw error;
                     if (db) { const lDoc = await db.logistics.findOne({ selector: { id: c.id } }).exec(); if (lDoc) await lDoc.patch({ status: newStatus, description: finalDesc }); }
                 }
+
+                // 1b. Stamp sent_date + manifest on all inventory items in dispatched crates
+                const deployedCrates = allCrates.filter(c => !!positions[c.id]);
+                const deployedInventoryIds: string[] = [];
+                for (const c of deployedCrates) {
+                    (c.inventory_ids || '').split(',').filter(Boolean).forEach((entry: string) => {
+                        const [id] = entry.split(':');
+                        if (id) deployedInventoryIds.push(id);
+                    });
+                }
+                if (deployedInventoryIds.length > 0) {
+                    // Batch update in chunks of 50 to avoid URL length limits
+                    const chunkSize = 50;
+                    for (let i = 0; i < deployedInventoryIds.length; i += chunkSize) {
+                        const chunk = deployedInventoryIds.slice(i, i + chunkSize);
+                        await supabase.from('inventory').update({
+                            sent_date: dispatchTs,
+                            sent_manifest_id: manifestId,
+                        }).in('id', chunk);
+                    }
+                }
+
                 onRefresh(); setCratesVersion(v => v + 1);
             }
 
-            const manifestId = `TRK-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-            const ts = new Date().toLocaleString();
 
             // Calculate stats locally to avoid stale state
             const totalWeight = truckCrates.reduce((sum, c) => {
