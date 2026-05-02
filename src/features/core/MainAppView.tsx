@@ -427,14 +427,12 @@ export function MainAppView() {
                     >
                         {sidebarState === 'expanded' && (
                             <>
-                                <OnyxMiniLogo className={`w-8 h-8 mb-2 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
-                                <span className="text-[10px] font-black uppercase tracking-[0.4em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300 transition-colors">STUDIO</span>
+                                <OnyxMiniLogo className={`w-8 h-8 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
                             </>
                         )}
                         {sidebarState === 'compact' && (
                             <>
-                                <OnyxMiniLogo className={`w-7 h-7 mb-1 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
-                                <span className="text-[8px] font-black uppercase tracking-[0.2em] font-mono leading-none text-(--text-color-secondary) group-hover:text-blue-300">OPX</span>
+                                <OnyxMiniLogo className={`w-7 h-7 transition-all duration-500 group-hover:scale-110 ${isSettingsOpen ? 'rotate-90 text-blue-400' : 'text-white/40'}`} />
                             </>
                         )}
                     </div>
