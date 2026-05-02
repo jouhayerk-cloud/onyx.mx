@@ -16,7 +16,7 @@ import {
     ImageSrcAtom,
     InventoryVersionAtom,
     userAtom,
-    inventoryViewModeAtom,
+    inventoryViewSliderAtom,
     filteredInventoryCountAtom,
     filteredInventoryTotalQtyAtom,
     filteredInventoryTotalValueAtom,
@@ -39,7 +39,11 @@ import {
     selectedInventoryIdsAtom,
     inventoryArtifactConfigAtom,
     themeAtom,
-    storeShoppingBagAtom
+    storeShoppingBagAtom,
+    isPackingPrintWizardOpenAtom,
+    isPackingNFCWizardOpenAtom,
+    isPackingCrateWizardOpenAtom,
+    isPaymentWizardOpenAtom
 } from '../../lib/atoms';
 import { useDatabase, useTranslation } from '../../lib/hooks';
 import { calculateCodesAndPrices, normalizeInventoryData, handleFileUpload, readFileAsDataURL, getCleanImageUrl, isVideoFile, formatWeightImperial, formatDimensionsImperial, getStatusClass } from '../../lib/utils';
@@ -49,7 +53,7 @@ import toast from 'react-hot-toast';
 import { vendors } from '../../lib/consts';
 import { InventorySkeletonGrid, InventorySkeletonList } from './InventorySkeleton';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
-import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode } from 'lucide-react';
+import { X, Edit2, ChevronDown, Menu, Filter, Upload, Video, Pencil, Maximize2, Trash2, ChevronLeft, ChevronRight, CheckCircle, ArrowUpDown, ArrowUp, ArrowDown, Layers, Box, Tag, FileText, CloudUpload, Check, Share2, Copy, LayoutList, LayoutGrid, Layout, QrCode, ScanBarcode, Printer, Nfc, Package, CreditCard, Link } from 'lucide-react';
 
 
 const lbl = "text-[11px] font-black text-(--text-color) opacity-30 uppercase tracking-[0.2em] block ml-1 opacity-60 mb-2";
@@ -846,7 +850,11 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
 export const UnifiedInventoryView = () => {
     const t = useTranslation(); const db = useDatabase(); const items = useAtomValue(inventoryAtom); const financeDocs = useAtomValue(financeDataAtom);
     const [isLoading, setIsLoading] = useState(true); const [expandedCards, setExpandedCards] = useState<Record<string, number>>({});
-    const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); const [viewMode, setViewMode] = useAtom(inventoryViewModeAtom);
+    const [isFiltersOpen] = useAtom(isInventoryFiltersPanelOpenAtom); 
+    const viewSlider = useAtomValue(inventoryViewSliderAtom);
+    const viewMode = viewSlider < 50 ? 'list' : viewSlider < 100 ? 'grid' : 'gallery';
+    const listScale = viewSlider < 50 ? 1 + (viewSlider / 49) * 0.5 : 1;
+    const gridScale = viewSlider >= 50 && viewSlider < 100 ? 1 + ((viewSlider - 50) / 49) * 0.5 : 1;
     const [isVendorFilterOpen, setIsVendorFilterOpen] = useAtom(isInventoryVendorFilterOpenAtom);
     const setGlobalActiveVendors = useSetAtom(activeVendorsAtom); const exchangeRate = useAtomValue(exchangeRateAtom); const showFinancials = useAtomValue(showFinancialsAtom);
     const [itemData, setSelectedItemData] = useAtom(SelectedItemDataAtom); const [itemRow, setSelectedItemRow] = useAtom(SelectedItemRowAtom);
@@ -866,6 +874,10 @@ export const UnifiedInventoryView = () => {
     const [isSelectionMode, setIsSelectionMode] = useAtom(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const setArtifactConfig = useSetAtom(inventoryArtifactConfigAtom);
+    const setIsPrintWizardOpen = useSetAtom(isPackingPrintWizardOpenAtom);
+    const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
+    const setIsPackingCrateWizardOpen = useSetAtom(isPackingCrateWizardOpenAtom);
+    const setIsPaymentWizardOpen = useSetAtom(isPaymentWizardOpenAtom);
 
     useEffect(() => {
         if (!user || (user.role !== 'Admin' && user.role !== 'Developer')) return;
@@ -1104,11 +1116,16 @@ export const UnifiedInventoryView = () => {
                 }
             }
             if (user?.role === 'Vendor' && vPre !== user?.name) return false;
-            if (vendorFilter !== 'All' && vPre !== vendorFilter) return false;
-            const cat = `${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.trim();
-            if (categoryFilter !== 'All' && cat !== categoryFilter) return false;
-            const matRaw = `${(item.data.color || '').trim()} ${(item.data.material || '').trim()}`.trim();
-            if (materialFilter !== 'All' && matRaw.toLowerCase() !== materialFilter.toLowerCase()) return false;
+            
+            // Stackable Vendor Filter
+            if (!vendorFilter.includes('All') && !vendorFilter.includes(vPre)) return false;
+            
+            const catNormalized = Array.from(new Set(`${item.data.shape || ''} ${item.data.shortDescription || item.data.short_description || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
+            const matNormalized = Array.from(new Set(`${item.data.color || ''} ${item.data.material || ''}`.toUpperCase().split(/\s+/).filter(Boolean))).join(' ');
+
+            // Independent Attribute Filters
+            if (categoryFilter !== 'All' && catNormalized !== categoryFilter.toUpperCase()) return false;
+            if (materialFilter !== 'All' && matNormalized !== materialFilter.toUpperCase()) return false;
             if (searchTerm) {
                 const itemId = String(item.data.itemId || item.data.item_id || '').toLowerCase();
                 // Build a wide search string including all relevant fields
@@ -1261,202 +1278,24 @@ export const UnifiedInventoryView = () => {
         <div className="flex-1 flex flex-col relative m-0 gap-0">
             {/* ── INFO PANEL ── */}
             <div className="flex-1 relative">
-                {/* ── STICKY INDUSTRIAL HEADER (Tools + Filters) ── */}
-                <div className="sticky top-20 sm:top-24 z-[90] flex flex-col bg-black/40 backdrop-blur-3xl border-b border-white/10 shadow-2xl animate-in fade-in slide-in-from-top duration-700">
-                    {/* Row 1: Primary Tools & Stats */}
-                    <div className="flex items-center justify-between px-4 sm:px-10 py-4 gap-3 overflow-x-auto no-scrollbar">
-                        {/* Status Filter Indicator */}
-                        <div className="flex items-center gap-6 shrink-0">
-                            <button
-                                onClick={() => setStatusFilter(statusFilter === 'All' ? 'New' : statusFilter === 'New' ? 'Partial' : statusFilter === 'Partial' ? 'Requested' : statusFilter === 'Requested' ? 'Paid' : 'All')}
-                                className="flex items-center gap-4 transition-all group py-1.5 pr-4 border-r border-white/5"
-                                title="Cycle payment status filter"
-                            >
-                                <div className={`w-3.5 h-3.5 rounded-full border border-white/20 transition-all duration-500 shadow-lg ${statusFilter === 'All' ? 'bg-white/20' : statusFilter === 'Partial' ? 'bg-red-500 shadow-red-500/50' : statusFilter === 'Requested' ? 'bg-yellow-500 shadow-yellow-500/50' : statusFilter === 'Paid' ? 'bg-green-500 shadow-green-500/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
-                                <span className="text-[11px] font-black tracking-[0.2em] text-white/40 uppercase group-hover:text-white group-hover:tracking-[0.25em] transition-all">{statusFilter === 'Paid' ? 'PAID / PREPAID' : statusFilter}</span>
-                            </button>
-                        </div>
-
-                        {/* Central Sort Parameter (Only when closed) */}
-                        <div className={`hidden lg:flex items-center gap-6 flex-1 justify-center transition-all duration-500 ${isFiltersOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
-                            <div className="flex items-center gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
-                                {[{ key: 'Date', label: 'Date' }, { key: 'Status', label: 'Status' }, { key: 'Vendor', label: 'Vendor' }, { key: 'Number', label: '#' }].map((o) => (
-                                    <button key={o.key}
-                                        onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${sortKey === o.key ? 'bg-(--main-color) text-black shadow-lg shadow-(--main-color)/20' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
-                                        {o.label}
-                                        {sortKey === o.key && (
-                                            <div className="flex flex-col -space-y-1">
-                                                <ChevronRight size={8} className={`-rotate-90 transition-opacity ${sortOrder === 'asc' ? 'opacity-100' : 'opacity-20'}`} />
-                                                <ChevronRight size={8} className={`rotate-90 transition-opacity ${sortOrder === 'desc' ? 'opacity-100' : 'opacity-20'}`} />
-                                            </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Right: Selection & View Actions */}
-                        <div className="flex items-center gap-5 shrink-0">
-                            {isSelectionMode && (
-                                <div className="flex items-center gap-3 animate-in slide-in-from-right duration-500">
-                                    <div className="flex flex-col items-end mr-4">
-                                        <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.2em] leading-none">{selectedIds.length} SELECTED</span>
-                                        <button onClick={handleSelectAll} className="text-[8px] font-bold text-white/30 uppercase tracking-tighter hover:text-white transition-colors mt-1">
-                                            {filteredItems.length > 0 && filteredItems.every(i => selectedIds.includes(i.row ?? i.data?.id)) ? 'Deselect All' : 'Select All'}
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/10 shadow-2xl">
-                                        <button onClick={handleCopyTags} className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group" title="Copy Selected Tags">
-                                            <ScanBarcode size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                                        </button>
-                                        <button onClick={handleBulkRemove} className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group" title="Remove Selected">
-                                            <Trash2 size={18} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            <button
-                                onClick={handleCopyShareLink}
-                                className={`flex items-center gap-2 h-10 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isSelectionMode ? 'bg-(--main-color) text-black shadow-lg' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
-                                <Share2 size={16} strokeWidth={2.5} />
-                                <span className="hidden sm:inline">{isSelectionMode ? 'Copy Link' : 'Share'}</span>
-                            </button>
-                            <button
-                                onClick={() => { setIsSelectionMode(!isSelectionMode); if (!isSelectionMode) setSelectedIds([]); }}
-                                className={`w-10 h-10 flex items-center justify-center rounded-xl border border-white/5 transition-all ${isSelectionMode ? 'bg-white text-black border-transparent' : 'text-white/20 hover:text-white hover:bg-white/5'}`}
-                                title={isSelectionMode ? "Exit Selection Mode" : "Select Items"}>
-                                {isSelectionMode ? <X size={20} /> : <Check size={20} strokeWidth={3} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Row 2: HORIZONTALLY SCROLLABLE TOOLBARS (Expanding Panel) */}
-                    <div className={`overflow-hidden transition-all duration-700 ease-in-out border-t border-white/5 ${isFiltersOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-                        <div className="flex flex-col bg-white/[0.02]">
-                            
-                            {/* Toolbar 1: Config Panels + Sort Parameters (Single Row) */}
-                            <div className="flex items-center gap-10 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar">
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setIsVendorFilterOpen(!isVendorFilterOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isVendorFilterOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
-                                            <Tag size={14} strokeWidth={2.5} /> Vendor
-                                        </button>
-                                        <button onClick={() => setIsCategoryOpen(!isCategoryOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isCategoryOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
-                                            <Layers size={14} strokeWidth={2.5} /> Type
-                                        </button>
-                                        <button onClick={() => setIsMaterialOpen(!isMaterialOpen)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${isMaterialOpen ? 'bg-(--main-color) text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/30 hover:text-white hover:bg-white/10'}`}>
-                                            <Box size={14} strokeWidth={2.5} /> Material
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="w-px h-8 bg-white/10 shrink-0" />
-
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        {[{ key: 'Date', label: 'DATE' }, { key: 'Status', label: 'STATUS' }, { key: 'Vendor', label: 'VENDOR' }, { key: 'Number', label: '#' }].map((o) => (
-                                            <button key={o.key}
-                                                onClick={() => sortKey === o.key ? setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') : setSortKey(o.key as any)}
-                                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 border ${sortKey === o.key ? 'bg-white text-black border-transparent shadow-lg' : 'bg-white/5 border-white/5 text-white/20 hover:text-white hover:bg-white/10'}`}>
-                                                {o.label}
-                                                {sortKey === o.key && (
-                                                    <div className="flex flex-col -space-y-1">
-                                                        <ChevronRight size={9} className={`-rotate-90 transition-opacity ${sortOrder === 'asc' ? 'opacity-100' : 'opacity-20'}`} />
-                                                        <ChevronRight size={9} className={`rotate-90 transition-opacity ${sortOrder === 'desc' ? 'opacity-100' : 'opacity-20'}`} />
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Toolbar 2: Vendor Selection (Horizontally Scrollable) */}
-                            {isVendorFilterOpen && (
-                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={() => setVendorFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${vendorFilter === 'All' ? 'bg-white text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
-                                        {activeVendors.map(v => {
-                                            const color = vendors[v as keyof typeof vendors]?.color || '#ccc';
-                                            const isActive = vendorFilter === v;
-                                            return (
-                                                <button key={v} onClick={() => setVendorFilter(v)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2.5 ${isActive ? 'text-black border-transparent shadow-lg' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`} style={isActive ? { backgroundColor: color } : { borderColor: color + '40' }}>
-                                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                                                    {v}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Toolbar 3: Category Selection (Horizontally Scrollable) */}
-                            {isCategoryOpen && (
-                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={() => setCategoryFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${categoryFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
-                                        {activeCategories.map(c => (
-                                            <button key={c} onClick={() => setCategoryFilter(c)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${categoryFilter === c ? 'bg-white text-black border-transparent shadow-xl' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`}>{c}</button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Toolbar 4: Material Selection (Horizontally Scrollable) */}
-                            {isMaterialOpen && (
-                                <div className="flex items-center gap-6 px-10 py-5 border-b border-white/5 overflow-x-auto no-scrollbar animate-in slide-in-from-top-1 duration-500">
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={() => setMaterialFilter('All')} className={`px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all ${materialFilter === 'All' ? 'bg-(--main-color) text-black' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}>ALL</button>
-                                        {activeMaterials.map(m => (
-                                            <button key={m} onClick={() => setMaterialFilter(m)} className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${materialFilter.toLowerCase() === m.toLowerCase() ? 'bg-white text-black border-transparent shadow-xl' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white'}`}>{m}</button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Row 3: ACTIVE FILTERS PILLS (Always visible if filters exist) */}
-                    {(vendorFilter !== 'All' || categoryFilter !== 'All' || materialFilter !== 'All') && (
-                        <div className="flex items-center gap-6 px-10 py-3 border-t border-white/5 bg-white/[0.01] animate-in slide-in-from-top-1 duration-500 overflow-x-auto no-scrollbar">
-                            <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 shrink-0">Active</span>
-                            <div className="flex items-center gap-2">
-                                {vendorFilter !== 'All' && (
-                                    <button onClick={() => setVendorFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: vendors[vendorFilter as keyof typeof vendors]?.color || '#ccc' }} />
-                                        {vendorFilter}
-                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                                    </button>
-                                )}
-                                {categoryFilter !== 'All' && (
-                                    <button onClick={() => setCategoryFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <Layers size={10} className="opacity-40 group-hover:opacity-100" />
-                                        {categoryFilter}
-                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                                    </button>
-                                )}
-                                {materialFilter !== 'All' && (
-                                    <button onClick={() => setMaterialFilter('All')} className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-widest text-white/60 hover:border-red-500/50 hover:text-red-400 transition-all group">
-                                        <Box size={10} className="opacity-40 group-hover:opacity-100" />
-                                        {materialFilter}
-                                        <X size={10} strokeWidth={3} className="opacity-30 group-hover:opacity-100" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
                 {/* ── MAIN INVENTORY CONTENT ── */}
                 <div className="px-1 sm:px-6 pt-0 pb-32">
-                    <div className={
-                        viewMode === 'grid' 
-                            ? "grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-8 pb-32" 
-                            : viewMode === 'gallery' 
-                                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 pb-32 auto-rows-max" 
-                                : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
-                    }>
+                    <div 
+                        className={
+                            viewMode === 'grid' 
+                                ? "grid gap-8 pb-32" 
+                                : viewMode === 'gallery' 
+                                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 pb-32 auto-rows-max" 
+                                    : "flex flex-col gap-4 pb-32 max-w-[1600px] mx-auto w-full"
+                        }
+                        style={
+                            viewMode === 'grid' 
+                                ? { gridTemplateColumns: `repeat(auto-fill, minmax(${200 * gridScale}px, 1fr))` } 
+                                : viewMode === 'list' 
+                                    ? { zoom: listScale } as React.CSSProperties
+                                    : undefined
+                        }
+                    >
 
                     {isLoading && items.length === 0 ? (
                         <div className="col-span-full py-12 text-center text-white/20 font-black tracking-widest text-[10px] uppercase">Loading Artifacts...</div>
@@ -1667,6 +1506,91 @@ export const UnifiedInventoryView = () => {
                         <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] animate-pulse text-center">
                             {savingProgress < 80 ? 'Uploading Media...' : savingProgress < 100 ? 'Updating Registry...' : 'Artifact Synced'}
                         </p>
+                    </div>
+                </div>
+            )}
+            {/* Dynamic Glassmorphic Bottom Actions Bar */}
+            {isSelectionMode && selectedIds.length > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[500] animate-in slide-in-from-bottom-10 fade-in duration-500">
+                    <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+                        <div className="flex items-center justify-center px-4">
+                            <span className="text-[11px] font-black text-(--main-color) uppercase tracking-[0.2em]">{selectedIds.length} ITEMS</span>
+                        </div>
+                        
+                        <div className="w-px h-8 bg-white/10 mx-2" />
+                        
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <button 
+                                onClick={() => setIsPrintWizardOpen(true)}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="Labels"
+                            >
+                                <Printer size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Labels</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setIsNFCWizardOpen(true)}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="NFC"
+                            >
+                                <Nfc size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">NFC</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setIsPackingCrateWizardOpen(true)}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="Pack"
+                            >
+                                <Package size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Pack</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setIsPaymentWizardOpen(true)}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="Pay"
+                            >
+                                <CreditCard size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Pay</span>
+                            </button>
+                        </div>
+                        
+                        <div className="w-px h-8 bg-white/10 mx-2" />
+                        
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <button 
+                                onClick={handleCopyTags}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="Copy Tags"
+                            >
+                                <ScanBarcode size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Copy Tags</span>
+                            </button>
+
+                            <button 
+                                onClick={handleCopyShareLink}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white hover:bg-(--main-color) hover:text-black transition-all group relative"
+                                title="Copy Link"
+                            >
+                                <Link size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Copy Link</span>
+                            </button>
+                        </div>
+                        
+                        <div className="w-px h-8 bg-white/10 mx-2" />
+                        
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            <button 
+                                onClick={() => setSelectedIds([])}
+                                className="flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 text-white/40 hover:bg-red-500 hover:text-white transition-all group relative"
+                                title="Clear Selection"
+                            >
+                                <X size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                                <span className="absolute -top-10 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all bg-black px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-white/10 whitespace-nowrap">Clear</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
