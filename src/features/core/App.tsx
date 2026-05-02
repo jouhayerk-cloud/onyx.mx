@@ -16,6 +16,7 @@ import { PullToRefresh } from '../../components/ui/PullToRefresh';
 import { sentTruckIdAtom } from '../../lib/atoms';
 import { useSyncEngine } from '../../lib/syncEngine';
 import { SyncProgressBar } from '../../components/SyncProgressBar';
+import { CheckCircle, AlertCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useAtom(userAtom);
@@ -267,7 +268,19 @@ export default function App() {
         position="bottom-right"
         toastOptions={{
           duration: 5000,
-          className: 'toast-liquid-glass'
+          className: 'toast-liquid-glass',
+          style: {
+            maxWidth: '500px',
+          },
+          success: {
+            icon: <CheckCircle className="text-emerald-400 shrink-0" size={24} strokeWidth={2.5} />
+          },
+          error: {
+            icon: <AlertCircle className="text-rose-400 shrink-0" size={24} strokeWidth={2.5} />
+          },
+          loading: {
+            icon: <Loader2 className="text-blue-400 animate-spin shrink-0" size={24} strokeWidth={2.5} />
+          }
         }}
       />
     </>

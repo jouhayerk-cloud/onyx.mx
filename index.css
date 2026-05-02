@@ -539,6 +539,9 @@ body {
   margin-right: 30px !important;
   margin-bottom: 30px !important;
   max-width: 500px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 20px !important;
 }
 
 .toast-liquid-glass::after {
