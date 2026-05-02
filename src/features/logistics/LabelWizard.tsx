@@ -144,77 +144,80 @@ export const NFCWizard: React.FC = () => {
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 z-[20000] flex justify-end pointer-events-none animate-in fade-in duration-500 overflow-hidden">
+        <div className="fixed inset-0 z-[20000] flex justify-end pointer-events-none animate-in fade-in duration-500 overflow-hidden">
             <div className="relative w-full max-w-[1400px] flex flex-col bg-black/60 backdrop-blur-[120px] pointer-events-auto shadow-[-80px_0_150px_rgba(0,0,0,0.8)] border-l border-white/5">
                 {/* Header HUD - Minimal & Precise */}
-                <div className="flex justify-between items-center px-8 py-6 border-b border-white/5 shrink-0 bg-white/[0.02] backdrop-blur-3xl">
-                    <div className="flex items-center gap-6">
-                        <Nfc size={28} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
+                <div className="flex justify-between items-center px-6 sm:px-8 py-4 sm:py-6 border-b border-white/5 shrink-0 bg-white/[0.02] backdrop-blur-3xl">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <Nfc size={24} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
                         <div className="flex flex-col">
-                            <h3 className="text-xl font-black text-white tracking-[0.3em] uppercase leading-none">NFC CORE</h3>
-                            <span className="text-[8px] font-black text-white/20 tracking-[0.5em] uppercase mt-1">Tactical Provisioning</span>
+                            <h3 className="text-sm sm:text-xl font-black text-white tracking-[0.2em] sm:tracking-[0.3em] uppercase leading-none">NFC CORE</h3>
+                            <span className="text-[7px] sm:text-[8px] font-black text-white/20 tracking-[0.5em] uppercase mt-1">Tactical Provisioning</span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-10">
-                        {/* Navigation Pulse */}
-                        <div className="flex items-center gap-4 px-6 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
+                    <div className="flex items-center gap-4 sm:gap-10">
+                        {/* Navigation Pulse (Hidden on mobile header if space is tight, or just small) */}
+                        <div className="hidden sm:flex items-center gap-4 px-6 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
                             <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">PRC_UNIT_01</span>
                             <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
                             <span className="text-[10px] font-mono text-white/40 tracking-widest ml-4">{currentIndex + 1} / {selectedItems.length}</span>
                         </div>
+                        
+                        {/* Mobile Close Button */}
+                        <button onClick={() => setIsOpen(false)} className="sm:hidden w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
+                            <X size={20} />
+                        </button>
                     </div>
                 </div>
 
-                {/* LARGE FLOATING CLOSE BUTTON */}
-                <div className="absolute top-8 right-8 z-[20050]">
+                {/* LARGE FLOATING CLOSE BUTTON (Desktop only) */}
+                <div className="hidden sm:block absolute top-8 right-8 z-[20050]">
                     <button onClick={() => setIsOpen(false)} className="flex items-center justify-center group cursor-pointer">
                         <X size={64} strokeWidth={1} className="text-white/20 group-hover:text-white group-hover:rotate-90 transition-all duration-500 drop-shadow-xl" />
                     </button>
                 </div>
 
-                {/* LARGE FLOATING NAVIGATION CHEVRONS */}
-                <div className="absolute inset-y-0 left-8 flex items-center z-[20050] pointer-events-none">
+                {/* NAVIGATION CHEVRONS (Desktop only) */}
+                <div className="hidden sm:flex absolute inset-y-0 left-8 items-center z-[20050] pointer-events-none">
                     <button 
                         onClick={() => setCurrentIndex(p => Math.max(0, p - 1))}
                         disabled={currentIndex === 0}
                         className="pointer-events-auto group cursor-pointer w-20 h-40 flex items-center justify-center text-(--main-color) hover:text-white disabled:opacity-0 transition-all duration-500 hover:scale-105 bg-(--main-color)/5 hover:bg-(--main-color)/20 rounded-3xl border border-(--main-color)/20 hover:border-(--main-color)/50 backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent pointer-events-none" />
                         <ChevronLeft size={64} strokeWidth={1.5} className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-500" />
                     </button>
                 </div>
-                <div className="absolute inset-y-0 right-8 flex items-center z-[20050] pointer-events-none">
+                <div className="hidden sm:flex absolute inset-y-0 right-8 items-center z-[20050] pointer-events-none">
                     <button 
                         onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))}
                         disabled={currentIndex === selectedItems.length - 1}
                         className="pointer-events-auto group cursor-pointer w-20 h-40 flex items-center justify-center text-(--main-color) hover:text-white disabled:opacity-0 transition-all duration-500 hover:scale-105 bg-(--main-color)/5 hover:bg-(--main-color)/20 rounded-3xl border border-(--main-color)/20 hover:border-(--main-color)/50 backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden">
-                        <div className="absolute inset-0 bg-linear-to-b from-white/5 to-transparent pointer-events-none" />
                         <ChevronRight size={64} strokeWidth={1.5} className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-500" />
                     </button>
                 </div>
 
-                <div className="flex-1 flex overflow-hidden">
-                    {/* TACTICAL ENGINE VIEW - Focused Horizontal Workstation */}
-                    <div className="flex-1 flex flex-col relative overflow-hidden bg-white/[0.01]">
-                        {/* HUD Overlays */}
-                        <div className="absolute top-8 left-8 flex flex-col gap-2">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">ARTIFACT_VISUAL_0{currentIndex + 1}</span>
-                            <div className="h-px w-24 bg-(--main-color)/30" />
+                <div className="flex-1 flex overflow-y-auto custom-scrollbar">
+                    {/* TACTICAL ENGINE VIEW */}
+                    <div className="flex-1 flex flex-col relative bg-white/[0.01]">
+                        {/* HUD Overlays (Desktop only or adjusted) */}
+                        <div className="absolute top-4 sm:top-8 left-4 sm:left-8 flex flex-col gap-1 sm:gap-2">
+                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">ARTIFACT_VISUAL_0{currentIndex + 1}</span>
+                            <div className="h-px w-12 sm:w-24 bg-(--main-color)/30" />
                         </div>
                         
-                        <div className="absolute top-28 right-12 flex flex-col items-end gap-2">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">PROTOCOL_IDENT_S3</span>
+                        <div className="absolute top-4 sm:top-28 right-4 sm:right-12 flex flex-col items-end gap-1 sm:gap-2">
+                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">PROTOCOL_IDENT_S3</span>
                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-mono text-white/40">{currentItem.codes.bookBarcode}</span>
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: currentItem.codes.vendorColor }} />
+                                <span className="text-[8px] sm:text-[10px] font-mono text-white/40">{currentItem.codes.bookBarcode}</span>
+                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: currentItem.codes.vendorColor }} />
                             </div>
                         </div>
 
-                        {/* Main Interaction Plane - Side by Side */}
-                        <div className="flex-1 flex items-center justify-center p-12 lg:p-20">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full max-w-7xl animate-in fade-in zoom-in duration-700">
+                        {/* Main Interaction Plane */}
+                        <div className="flex-1 flex flex-col items-center p-4 sm:p-20 gap-8 sm:gap-16">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-16 items-center w-full max-w-7xl animate-in fade-in zoom-in duration-700">
                                 {/* Left: Large Focused Image */}
-                                <div className="aspect-[4/3] lg:aspect-square flex items-center justify-center relative group bg-black/20 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl rounded-sm">
+                                <div className="aspect-square flex items-center justify-center relative group bg-black/20 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl rounded-sm w-full max-w-[500px] mx-auto lg:max-w-none">
                                     <img 
                                         src={getCleanImageUrl(currentItem.normData.generatedPngUrl || currentItem.normData.mediaUrls?.split(',')[0])} 
                                         className="max-h-[90%] max-w-[90%] object-contain drop-shadow-[0_0_120px_rgba(255,255,255,0.1)] transition-all duration-1000 group-hover:scale-110" 
@@ -223,31 +226,54 @@ export const NFCWizard: React.FC = () => {
                                 </div>
 
                                 {/* Right: High-Density Label & Metrics */}
-                                <div className="flex flex-col gap-10">
+                                <div className="flex flex-col gap-6 sm:gap-10">
                                     {/* Color Coded Tag ID Card */}
-                                    <div className="relative group">
-                                        <NFCTagCard item={currentItem} scale={1.0} className="!bg-transparent !text-white !p-0 shadow-[0_40px_120px_rgba(0,0,0,0.6)]" />
+                                    <div className="relative group flex justify-center">
+                                        <NFCTagCard item={currentItem} scale={window.innerWidth < 640 ? 0.7 : 1.0} className="!bg-transparent !text-white !p-0 shadow-[0_40px_120px_rgba(0,0,0,0.6)]" />
                                     </div>
 
-                                    {/* Inline Metrics - High Density */}
-                                    <div className="grid grid-cols-3 gap-8 p-8 bg-white/[0.02] border border-white/5 backdrop-blur-3xl rounded-sm">
+                                    {/* Inline Metrics */}
+                                    <div className="grid grid-cols-3 gap-4 sm:gap-8 p-4 sm:p-8 bg-white/[0.02] border border-white/5 backdrop-blur-3xl rounded-sm">
                                         {[
                                             { label: 'LAND_CODE', value: currentItem.codes.bookLandCode },
                                             { label: 'WORKBOOK', value: `VV${currentItem.normData.workbook}` },
                                             { label: 'MATERIAL', value: currentItem.normData.material }
                                         ].map((m, i) => (
                                             <div key={i} className="flex flex-col gap-1">
-                                                <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em]">{m.label}</span>
-                                                <span className="text-base font-black text-white uppercase tracking-tight truncate leading-tight">{m.value || '---'}</span>
+                                                <span className="text-[6px] sm:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.4em]">{m.label}</span>
+                                                <span className="text-[10px] sm:text-base font-black text-white uppercase tracking-tight truncate leading-tight">{m.value || '---'}</span>
                                             </div>
                                         ))}
+                                    </div>
+
+                                    {/* Mobile Navigation Controls */}
+                                    <div className="flex sm:hidden items-center justify-between gap-4 h-16">
+                                        <button 
+                                            onClick={() => setCurrentIndex(p => Math.max(0, p - 1))}
+                                            disabled={currentIndex === 0}
+                                            className="flex-1 h-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 disabled:opacity-10 active:scale-95 transition-all"
+                                        >
+                                            <ChevronLeft size={32} />
+                                        </button>
+                                        <div className="flex flex-col items-center min-w-[60px]">
+                                            <span className="text-[10px] font-mono text-(--main-color) font-black">{currentIndex + 1}</span>
+                                            <div className="h-px w-4 bg-white/10 my-1" />
+                                            <span className="text-[8px] font-mono text-white/20">{selectedItems.length}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))}
+                                            disabled={currentIndex === selectedItems.length - 1}
+                                            className="flex-1 h-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 disabled:opacity-10 active:scale-95 transition-all"
+                                        >
+                                            <ChevronRight size={32} />
+                                        </button>
                                     </div>
 
                                     {/* WRITE NFC BUTTON */}
                                     <button 
                                         onClick={isSupported ? handleWrite : handleSimulate}
                                         disabled={isWriting}
-                                        className="group relative w-full h-24 mt-2 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
+                                        className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
                                         <div className="absolute inset-0 bg-white/5 backdrop-blur-3xl group-hover:bg-white/10 transition-colors" />
                                         {status === 'success' ? (
                                             <div className="absolute inset-0 bg-green-500/10" />
@@ -256,11 +282,11 @@ export const NFCWizard: React.FC = () => {
                                         )}
                                         <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                                         
-                                        <span className={`relative z-10 text-2xl font-black uppercase tracking-[0.5em] flex items-center justify-center gap-6 ${
+                                        <span className={`relative z-10 text-lg sm:text-2xl font-black uppercase tracking-[0.2em] sm:tracking-[0.5em] flex items-center justify-center gap-4 sm:gap-6 ${
                                             status === 'success' ? 'text-green-400' : 'text-white'
                                         }`}>
-                                            {isWriting ? 'COMMUNICATING...' : status === 'success' ? 'TAG WRITTEN' : 'WRITE NFC TAG'}
-                                            <Nfc size={36} className={status === 'success' ? 'text-green-400' : 'text-(--main-color)'} />
+                                            {isWriting ? 'PENDING...' : status === 'success' ? 'SUCCESS' : 'WRITE TAG'}
+                                            <Nfc size={window.innerWidth < 640 ? 24 : 36} className={status === 'success' ? 'text-green-400' : 'text-(--main-color)'} />
                                         </span>
                                     </button>
                                 </div>
