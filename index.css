@@ -9,6 +9,15 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 /* CodePen styles adapted for the app */
 
 .app-container {
