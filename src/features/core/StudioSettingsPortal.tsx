@@ -7,11 +7,14 @@ import {
     studioSettingsViewModeAtom, 
     themeAtom, 
     performanceModeAtom, 
-    userAtom
+    userAtom,
+    isOfflineModeAtom
 } from '../../lib/atoms';
+import { useSyncEngine } from '../../lib/syncEngine';
 import { 
     X, AlertCircle, LogOut, 
-    Shield, Activity, Palette, Zap, Terminal
+    Shield, Activity, Palette, Zap, Terminal,
+    Wifi, WifiOff
 } from 'lucide-react';
 import { OnyxLogo, OnyxMiniLogo } from '../../components/OnyxLogo';
 import { THEME_ASSETS } from '../../lib/themes-assets';
@@ -35,6 +38,8 @@ export const StudioSettingsPortal: React.FC = () => {
     const [theme, setTheme]               = useAtom(themeAtom);
     const [performanceMode, setPerf]      = useAtom(performanceModeAtom);
     const [user]                          = useAtom(userAtom);
+    const [isOffline]                     = useAtom(isOfflineModeAtom);
+    const { goOffline, goOnline }         = useSyncEngine();
     const logout                          = useLogout();
     const { t }                           = useTranslation();
 
@@ -246,6 +251,16 @@ export const StudioSettingsPortal: React.FC = () => {
                                                     <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">{user?.email}</span>
                                                 </div>
                                                 <div className={`pt-8 border-t flex flex-wrap gap-10 ${L ? 'border-black/10' : 'border-white/10'}`}>
+                                                    <button 
+                                                        onClick={isOffline ? goOnline : goOffline} 
+                                                        className={`flex items-center gap-4 transition-all duration-150 group ${isOffline ? 'text-green-500' : 'text-amber-500/60 hover:text-amber-500'}`}
+                                                    >
+                                                        {isOffline ? <Wifi size={14} /> : <WifiOff size={14} />}
+                                                        <span className="text-[9px] font-black uppercase tracking-[0.4em]">
+                                                            {isOffline ? 'ESTABLISH LINK (ONLINE)' : 'FORCE OFFLINE'}
+                                                        </span>
+                                                    </button>
+
                                                     <button onClick={logout} className="flex items-center gap-4 text-red-500/60 hover:text-red-500 transition-all duration-150 group">
                                                         <LogOut size={14} className="group-hover:-translate-x-1 transition-transform duration-150" />
                                                         <span className="text-[9px] font-black uppercase tracking-[0.4em]">TERMINATE LINK</span>
