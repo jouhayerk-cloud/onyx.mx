@@ -351,13 +351,18 @@ export const LabelWizard: React.FC = () => {
                 return [c.bookBarcode, desc, matColor, sizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
             });
 
-            await exportToXLSX(`Labels_${name}`, [{
+            const blob = await exportToXLSX(`Labels_${name}`, [{
                 name: 'Packing List',
                 data: [['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
-            }]);
+            }], {}, 'blob');
             
-            setProgress(p => ({ ...p, xlsx: 100 }));
-            toast.success('XLSX generated');
+            if (blob instanceof Blob) {
+                setUrls(u => ({ ...u, xlsx: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, xlsx: 100 }));
+                toast.success('XLSX generated');
+            } else {
+                throw new Error('XLSX generation failed');
+            }
         } catch (error: any) {
             toast.error(`XLSX failed: ${error.message}`);
             setProgress(p => ({ ...p, xlsx: -1 }));
@@ -427,16 +432,21 @@ export const LabelWizard: React.FC = () => {
                 exportType: 'catalog'
             }));
 
-            await exportCatalogPdf(results, {
+            const blob = await exportCatalogPdf(results, {
                 title: name,
                 method: catalogMethod,
                 exportType: 'catalog'
             }, (pct) => {
                 setProgress(p => ({ ...p, catalog: pct }));
-            });
+            }, 'blob');
 
-            setProgress(p => ({ ...p, catalog: 100 }));
-            toast.success('Catalog generated');
+            if (blob instanceof Blob) {
+                setUrls(u => ({ ...u, catalog: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, catalog: 100 }));
+                toast.success('Catalog generated');
+            } else {
+                throw new Error('Catalog generation failed');
+            }
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, catalog: -1 }));
@@ -488,44 +498,137 @@ export const LabelWizard: React.FC = () => {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-16 lg:gap-24">
-                    <button onClick={handleGenerateXLSX} disabled={progress.xlsx >= 0} className="group flex flex-col items-center gap-10 transition-all active:scale-95">
-                        <div className="relative flex items-center justify-center">
-                            <FileSpreadsheet size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.xlsx === 100 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)]' : 'text-emerald-500/40 group-hover:text-emerald-400'}`} />
-                            {progress.xlsx > 0 && progress.xlsx < 100 && <div className="absolute -inset-4 border-4 border-emerald-500/10 animate-spin rounded-full" />}
-                        </div>
-                        <div className="flex flex-col items-center gap-2">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CSV_GEN</span>
-                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400">Export Labels</span>
-                        </div>
-                    </button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-12 lg:gap-16">
+                    {/* XLSX Export Module */}
+                    <div className="flex flex-col items-center gap-6 group">
+                        <button 
+                            onClick={handleGenerateXLSX} 
+                            disabled={progress.xlsx > 0 && progress.xlsx < 100} 
+                            className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <FileSpreadsheet size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.xlsx === 100 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)]' : 'text-emerald-500/20 group-hover:text-emerald-400'}`} />
+                            {progress.xlsx > 0 && progress.xlsx < 100 && (
+                                <div className="absolute -inset-4 border-2 border-emerald-500/20 border-t-emerald-500 animate-spin rounded-full" />
+                            )}
+                        </button>
+                        
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CSV_BUFFER</span>
+                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">Export Labels</span>
+                            
+                            {/* Progress Bar */}
+                            {progress.xlsx > 0 && (
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-3 relative">
+                                    <div 
+                                        className={`h-full transition-all duration-500 ${progress.xlsx === 100 ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]' : 'bg-emerald-500/50'}`} 
+                                        style={{ width: `${progress.xlsx}%` }}
+                                    />
+                                </div>
+                            )}
 
-                    <button onClick={progress.pdf === 100 ? () => { const a = document.createElement('a'); a.href = urls.pdf; a.download = `ControlPage_${name}.pdf`; a.click(); } : handleGeneratePDF} disabled={progress.pdf > 0 && progress.pdf < 100} className="group flex flex-col items-center gap-10 transition-all active:scale-95">
-                        <div className="relative flex items-center justify-center">
-                            <FileText size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.pdf === 100 ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.4)]' : 'text-red-500/40 group-hover:text-red-400'}`} />
-                            {progress.pdf > 0 && progress.pdf < 100 && <div className="absolute -inset-4 border-4 border-red-500/10 animate-spin rounded-full" />}
+                            {/* Download Trigger */}
+                            {progress.xlsx === 100 && urls.xlsx && (
+                                <button 
+                                    onClick={() => { const a = document.createElement('a'); a.href = urls.xlsx; a.download = `Labels_${name}.xlsx`; a.click(); }}
+                                    className="mt-4 w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+                                >
+                                    <Download size={12} />
+                                    RETRIEVE_FILE
+                                </button>
+                            )}
                         </div>
-                        <div className="flex flex-col items-center gap-2">
+                    </div>
+
+                    {/* PDF Control Page Module */}
+                    <div className="flex flex-col items-center gap-6 group">
+                        <button 
+                            onClick={handleGeneratePDF} 
+                            disabled={progress.pdf > 0 && progress.pdf < 100} 
+                            className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            <FileText size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.pdf === 100 ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.4)]' : 'text-red-500/20 group-hover:text-red-400'}`} />
+                            {progress.pdf > 0 && progress.pdf < 100 && (
+                                <div className="absolute -inset-4 border-2 border-red-500/20 border-t-red-500 animate-spin rounded-full" />
+                            )}
+                        </button>
+                        
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
                             <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">PDF_RENDER</span>
-                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400">Control Page</span>
-                        </div>
-                    </button>
+                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400 transition-colors">Control Page</span>
+                            
+                            {/* Progress Bar */}
+                            {progress.pdf > 0 && (
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-3 relative">
+                                    <div 
+                                        className={`h-full transition-all duration-500 ${progress.pdf === 100 ? 'bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.5)]' : 'bg-red-500/50'}`} 
+                                        style={{ width: `${progress.pdf}%` }}
+                                    />
+                                </div>
+                            )}
 
-                    <div className="flex flex-col items-center gap-10 group transition-all">
-                        <div className="flex flex-col items-center gap-10">
-                            <button onClick={handleGenerateCatalog} disabled={progress.catalog >= 0 && progress.catalog < 100} className="relative flex items-center justify-center active:scale-95 transition-all">
-                                <BookOpen size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.catalog === 100 ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.4)]' : 'text-blue-500/40 group-hover:text-blue-400'}`} />
-                                {progress.catalog > 0 && progress.catalog < 100 && <div className="absolute -inset-4 border-4 border-blue-500/10 animate-spin rounded-full" />}
+                            {/* Download Trigger */}
+                            {progress.pdf === 100 && urls.pdf && (
+                                <button 
+                                    onClick={() => { const a = document.createElement('a'); a.href = urls.pdf; a.download = `ControlPage_${name}.pdf`; a.click(); }}
+                                    className="mt-4 w-full py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+                                >
+                                    <Download size={12} />
+                                    RETRIEVE_FILE
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Sales Catalog Module */}
+                    <div className="flex flex-col items-center gap-6 group">
+                        <div className="flex flex-col items-center gap-4">
+                            <button 
+                                onClick={handleGenerateCatalog} 
+                                disabled={progress.catalog > 0 && progress.catalog < 100} 
+                                className="relative flex items-center justify-center transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                <BookOpen size={64} strokeWidth={1} className={`transition-all duration-500 ${progress.catalog === 100 ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.4)]' : 'text-blue-500/20 group-hover:text-blue-400'}`} />
+                                {progress.catalog > 0 && progress.catalog < 100 && (
+                                    <div className="absolute -inset-4 border-2 border-blue-500/20 border-t-blue-500 animate-spin rounded-full" />
+                                )}
                             </button>
-                            <div className="flex gap-6">
+                            <div className="flex gap-4">
                                 {['grid', 'single'].map(m => (
-                                    <button key={m} onClick={() => setCatalogMethod(m as any)} className={`text-[10px] font-black uppercase tracking-[0.4em] transition-all ${catalogMethod === m ? 'text-blue-400' : 'text-white/10 hover:text-white/30'}`}>{m}</button>
+                                    <button 
+                                        key={m} 
+                                        onClick={() => setCatalogMethod(m as any)} 
+                                        className={`text-[8px] font-black uppercase tracking-[0.4em] transition-all px-2 py-1 rounded-sm border ${catalogMethod === m ? 'text-blue-400 border-blue-500/40 bg-blue-500/10' : 'text-white/10 border-transparent hover:text-white/30'}`}
+                                    >
+                                        {m}
+                                    </button>
                                 ))}
                             </div>
                         </div>
-                        <div className="flex flex-col items-center gap-2">
-                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">BOOKS_GEN</span>
-                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400">Sales Catalog</span>
+                        
+                        <div className="flex flex-col items-center gap-1 w-full max-w-[160px]">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CATALOG_ENGINE</span>
+                            <span className="text-sm font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">Sales Catalog</span>
+                            
+                            {/* Progress Bar */}
+                            {progress.catalog > 0 && (
+                                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-3 relative">
+                                    <div 
+                                        className={`h-full transition-all duration-500 ${progress.catalog === 100 ? 'bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.5)]' : 'bg-blue-500/50'}`} 
+                                        style={{ width: `${progress.catalog}%` }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Download Trigger */}
+                            {progress.catalog === 100 && urls.catalog && (
+                                <button 
+                                    onClick={() => { const a = document.createElement('a'); a.href = urls.catalog; a.download = `Catalog_${name}.pdf`; a.click(); }}
+                                    className="mt-4 w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+                                >
+                                    <Download size={12} />
+                                    RETRIEVE_FILE
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

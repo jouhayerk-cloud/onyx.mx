@@ -134,8 +134,9 @@ const createStylesXml = (styles: { [key: string]: {bgColor?: string, bold?: bool
 export const exportToXLSX = async (
     fileName: string, 
     sheets: { name: string, data: any[][] }[],
-    styles: { [key: string]: {bgColor?: string, bold?: boolean, textColor?: string} } = {}
-): Promise<void> => {
+    styles: { [key: string]: {bgColor?: string, bold?: boolean, textColor?: string} } = {},
+    output: 'download' | 'blob' = 'download'
+): Promise<Blob | void> => {
     const zip = new JSZip();
 
     const sheet = sheets[0];
@@ -159,7 +160,9 @@ export const exportToXLSX = async (
     worksheets!.file('sheet1.xml', createSheetXml(sheet.data, styleMap));
 
     const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
+    
+    if (output === 'blob') return blob;
+    
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${fileName}.xlsx`;

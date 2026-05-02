@@ -123,7 +123,8 @@ function drawHeaderCompact(doc: any, item: CatalogArtifact, M: number, PW: numbe
 export async function exportCatalogPdf(
     results: CatalogArtifact[], 
     config: { title: string; method: 'grid' | 'single'; exportType?: 'regular' | 'catalog' },
-    onProgress?: (p: number, s: string) => void
+    onProgress?: (p: number, s: string) => void,
+    output: 'download' | 'blob' = 'download'
 ) {
     onProgress?.(5, 'Preparing Catalog...');
     const exportType = config.exportType || 'regular';
@@ -291,7 +292,13 @@ export async function exportCatalogPdf(
         }
     }
     onProgress?.(95, 'Finalizing Catalogue...');
-    // Sanitize filename: remove characters that break OS file saving
+    
+    if (output === 'blob') {
+        const blob = doc.output('blob');
+        onProgress?.(100, 'Catalogue Ready');
+        return blob;
+    }
+
     const safeTitle = (config.title || 'ArtOfDecor').replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
     doc.save(`${safeTitle}_${new Date().toISOString().slice(0, 10)}.pdf`);
     onProgress?.(100, 'Catalogue Downloaded');
