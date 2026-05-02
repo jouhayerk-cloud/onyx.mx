@@ -894,6 +894,7 @@ export const normalizeInventoryData = (data: any): any => {
     payReq: d.pay_req || d.payReq,
     payment_ids: d.payment_ids || d.paymentIds,
     sentDate: d.sent_date || d.sentDate,
+    sentManifestId: d.sent_manifest_id || d.sentManifestId,
     printDate: d.print_date || d.printDate,
     isClientVisible: d.is_client_visible || d.isClientVisible,
     rating: d.rating ?? 0,

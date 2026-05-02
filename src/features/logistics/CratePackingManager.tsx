@@ -19,6 +19,7 @@ import { vendors } from '../../lib/consts';
 import { OnyxMiniLogo } from '../../components/OnyxLogo';
 import { WireframeCrate } from '../../components/CrateVisuals';
 import { NFCTagCard } from '../../components/LabelVisuals';
+import { CratePackingWorkspace } from './CratePackingWorkspace';
 
 // ─── Serialization helpers: inventory_ids stores "id:qty,id:qty" ──────────────────
 // Backward compat: entries without ":qty" default to full quantity
@@ -228,7 +229,9 @@ const ActiveCrateHUD: React.FC<{
     isSaving: boolean;
     itemCount: number;
     crates: CrateRecord[];
-}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount, crates }) => {
+    selectedItemsWithPos: { item: InventoryItem; position: any }[];
+    onUpdatePosition: (id: string, pos: any) => void;
+}> = ({ crate, selectedItemIds, selectedQtys, allInventory, nestedUnits, exchangeRate, onClear, onPack, onUnpack, onUnnest, onDelete, isSaving, itemCount, crates, selectedItemsWithPos, onUpdatePosition }) => {
     const selectedItems = useMemo(() =>
         Array.from(selectedItemIds).flatMap(id => {
             const inv = allInventory.find((i: any) => String(i.row) === id);
@@ -413,6 +416,77 @@ const ActiveCrateHUD: React.FC<{
                     </div>
                 </div>
             </div>
+
+            {/* TRANSFORM CONTROLS HUD (Floating below main HUD) */}
+            {selectedItemsWithPos.length > 0 && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 px-6 py-3 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl flex items-center gap-8 shadow-2xl animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex flex-col">
+                        <span className="text-[8px] font-black text-(--main-color) uppercase tracking-widest">Active Transforms</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-tighter">{selectedItemsWithPos.length} Selected</span>
+                    </div>
+
+                    <div className="h-8 w-px bg-white/10" />
+
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => {
+                                selectedItemsWithPos.forEach(({ item, position }) => {
+                                    onUpdatePosition(String(item.row), { ...position, rotation: (position.rotation + 90) % 360 });
+                                });
+                            }}
+                            className="p-3 bg-white/5 hover:bg-(--main-color) hover:text-black border border-white/10 rounded-xl transition-all group"
+                            title="Rotate 90°"
+                        >
+                            <ArrowUpDown size={18} className="rotate-90 group-active:rotate-180 transition-transform" />
+                        </button>
+                        <button 
+                            onClick={() => {
+                                selectedItemsWithPos.forEach(({ item, position }) => {
+                                    onUpdatePosition(String(item.row), { ...position, isFlipped: !position.isFlipped });
+                                });
+                            }}
+                            className="p-3 bg-white/5 hover:bg-(--main-color) hover:text-black border border-white/10 rounded-xl transition-all group"
+                            title="Flip Upside Down"
+                        >
+                            <ArrowUpDown size={18} className="group-active:scale-y-[-1] transition-transform" />
+                        </button>
+                    </div>
+
+                    <div className="h-8 w-px bg-white/10" />
+
+                    {/* Quick Move Sliders for Fine-Tuning */}
+                    <div className="flex items-center gap-6">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">X-AXIS</span>
+                            <input 
+                                type="range" 
+                                min="0" max={crate.width_cm || 60} 
+                                className="w-24 accent-(--main-color)" 
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    selectedItemsWithPos.forEach(({ item, position }) => {
+                                        onUpdatePosition(String(item.row), { ...position, x: val });
+                                    });
+                                }}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[7px] font-black text-white/20 uppercase tracking-widest">Y-AXIS</span>
+                            <input 
+                                type="range" 
+                                min="0" max={crate.length_cm || 60} 
+                                className="w-24 accent-(--main-color)" 
+                                onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    selectedItemsWithPos.forEach(({ item, position }) => {
+                                        onUpdatePosition(String(item.row), { ...position, y: val });
+                                    });
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -644,6 +718,9 @@ export const CratePackingManager: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
     const [nestingUnit, setNestingUnit] = useState<CrateRecord | null>(null);
+
+    // 3D Positioning State
+    const [itemPositions, setItemPositions] = useState<Record<string, { x: number, y: number, z: number, rotation: number, isFlipped: boolean }>>({});
 
     const handleSelectCrate = useCallback((id: string | null) => {
         setSelectedCrateId(id);
@@ -1128,27 +1205,20 @@ export const CratePackingManager: React.FC = () => {
         crates.filter(c => c.parent_id === selectedCrateId),
     [crates, selectedCrateId]);
 
+    const itemsWithPositions = useMemo(() => {
+        return Array.from(selectedItemIds).map(id => {
+            const inv = allInventory.find(i => String(i.row) === id);
+            return {
+                item: inv as InventoryItem,
+                position: itemPositions[id] || { x: 0, y: 0, z: 0, rotation: 0, isFlipped: false }
+            };
+        }).filter(entry => entry.item);
+    }, [selectedItemIds, allInventory, itemPositions]);
+
     return (
         <div className="flex-1 flex flex-col relative m-0 p-0 overflow-hidden bg-black select-none">
             {/* ─── Top Panel: HUD (Sticky when active) ─── */}
-            {selectedCrate && (
-                <ActiveCrateHUD
-                    crate={selectedCrate}
-                    selectedItemIds={selectedItemIds}
-                    selectedQtys={selectedQtys}
-                    allInventory={allInventory}
-                    nestedUnits={nestedUnits}
-                    exchangeRate={exchangeRate}
-                    onClear={() => handleSelectCrate(null)}
-                    onPack={handlePackItems}
-                    onUnpack={handleUnpackAll}
-                    onUnnest={handleUnnestUnit}
-                    onDelete={handleDeleteCrate}
-                    isSaving={isSaving}
-                    itemCount={filteredInventory.length}
-                    crates={crates}
-                />
-            )}
+            {/* HUD is now rendered inside the workspace area for better focus */}
 
             {/* ─── Unit Picker (Full screen if no crate selected) ─── */}
             {!selectedCrate && (
@@ -1348,13 +1418,63 @@ export const CratePackingManager: React.FC = () => {
                                     </p>
                                 </div>
                             </div>
-                        ) : filteredInventory.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 gap-4">
-                                <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
-                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
-                            </div>
                         ) : (
-                            <div className="flex flex-col gap-4 w-full">
+                            <div className="flex flex-col w-full h-full">
+                                {/* 3D WORKSPACE VIEW */}
+                                <div className="w-full flex-1 min-h-[400px] flex flex-col items-center justify-center relative p-12">
+                                    <div className="absolute top-12 left-12 flex flex-col gap-2">
+                                        <h2 className="text-2xl font-black text-white/80 uppercase tracking-tighter italic leading-none">Logistics <span className="text-(--main-color)">Digital Twin</span></h2>
+                                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] font-mono">Live 1:1 Volumetric Simulation</p>
+                                    </div>
+                                    
+                                    <ActiveCrateHUD
+                                        crate={selectedCrate}
+                                        selectedItemIds={selectedItemIds}
+                                        selectedQtys={selectedQtys}
+                                        allInventory={allInventory}
+                                        nestedUnits={nestedUnits}
+                                        exchangeRate={exchangeRate}
+                                        onClear={() => handleSelectCrate(null)}
+                                        onPack={handlePackItems}
+                                        onUnpack={handleUnpackAll}
+                                        onUnnest={handleUnnestUnit}
+                                        onDelete={handleDeleteCrate}
+                                        isSaving={isSaving}
+                                        itemCount={filteredInventory.length}
+                                        crates={crates}
+                                        selectedItemsWithPos={itemsWithPositions.filter(i => selectedItemIds.has(String(i.item.row)))}
+                                        onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                    />
+                                    
+                                    <CratePackingWorkspace 
+                                        width={selectedCrate.width_cm || 60}
+                                        length={selectedCrate.length_cm || 60}
+                                        height={selectedCrate.height_cm || 60}
+                                        items={itemsWithPositions}
+                                        onUpdatePosition={(id, pos) => setItemPositions(prev => ({ ...prev, [id]: pos }))}
+                                    />
+
+                                    {/* Workspace Tooltip */}
+                                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 px-6 py-3 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-6 shadow-2xl">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                            <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Interactive Grid</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-white/10" />
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">ISO View: <span className="text-white">Active</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* INVENTORY LISTING */}
+                                {filteredInventory.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 gap-4">
+                                        <ListFilter size={48} className="text-white/10" strokeWidth={0.5} />
+                                        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/30">No items match current filters</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-4 w-full border-t border-white/5 bg-white/[0.01]">
                                 <div className="flex items-center justify-end mb-8 px-6 pt-8">
                                     <button
                                         onClick={() => {

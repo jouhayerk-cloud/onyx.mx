@@ -62,7 +62,7 @@ import { ThreeDAppView } from '../threed/ThreeDView';
 import { PaymentsFilterBar } from '../finance/PaymentsFilterBar';
 import { UniversalToolsBar } from './UniversalToolsBar';
 import { LabelWizard, NFCWizard } from '../logistics/LabelWizard';
-import { PackingWizard } from '../logistics/PackingWizard';
+import { PackWizard } from '../logistics/PackWizard';
 import { PaymentWizard } from '../finance/PaymentWizard';
 import { InventorySelectionDock } from './InventorySelectionDock';
 
@@ -455,7 +455,7 @@ export function MainAppView() {
                     <UploadWizard />
                     <LabelWizard />
                     <NFCWizard />
-                    <PackingWizard />
+                    <PackWizard />
                     <PaymentWizard />
                     <InventorySelectionDock />
                 </div>

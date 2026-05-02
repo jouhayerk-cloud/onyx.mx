@@ -145,7 +145,7 @@ const FullscreenImageViewer = ({ src, mediaUrls = [], initialIdx = 0, onClose }:
     );
 };
 
-const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs }: any) => {
+const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRate, showFinancials, viewMode, partialPayIds, fullPayIds, requestedAcqIds, onEdit, financeDocs, deployedItemsMap }: any) => {
     const isSelectionMode = useAtomValue(isInventorySelectionModeAtom);
     const [selectedIds, setSelectedIds] = useAtom(selectedInventoryIdsAtom);
     const theme = useAtomValue(themeAtom);
@@ -198,6 +198,10 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
     const payStatus = getStatusClass(norm, partialPayIds, fullPayIds, requestedAcqIds);
     const col = payStatus === 'GREEN' ? '#22c55e' : payStatus === 'YELLOW' ? '#eab308' : payStatus === 'RED' ? '#ef4444' : payStatus === 'BLUE' ? '#38bdf8' : payStatus === 'PURPLE' ? '#a855f7' : 'transparent';
     const accentColor = col;
+
+    // Derive deployed status from crates data (independent of payment)
+    const itemKey = String(item.row ?? item.data?.id ?? '');
+    const deployedInfo = deployedItemsMap?.get(itemKey) || null;
 
     const itemPriceMXN = Math.round(Number(norm.price || 0));
     const itemTotalMXN = itemPriceMXN * Number(norm.quantity || 1);
@@ -366,12 +370,23 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                         <div className="flex flex-col min-w-[90px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">Total MXN</span><span className="text-sm font-black text-(--main-color)">{showFinancials ? `$${itemTotalMXN.toLocaleString()}` : '***'}</span></div>
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">AQ Code</span><span className="text-[13px] text-(--text-color)/80 font-mono">{calculated.bookAqCode || '—'}</span></div>
                         <div className="flex flex-col min-w-[70px] shrink-0"><span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none">LD Code</span><span className="text-[13px] text-yellow-500/80 font-mono">{calculated.bookLandCode || '—'}</span></div>
-                        <div className="flex flex-col min-w-[90px] shrink-0 ml-auto items-end pr-4">
+                        <div className="flex flex-col min-w-[90px] shrink-0 ml-auto items-end pr-4 gap-1">
                             <span className="text-[10px] font-black text-(--text-color)/30 uppercase tracking-widest leading-none mb-1">Status</span>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wide w-fit" style={{ color: accentColor || '#38bdf8', backgroundColor: accentColor ? `color-mix(in srgb, ${accentColor} 12%, transparent)` : '#38bdf810' }}>
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor || '#38bdf8' }} />
                                 {getPayLabel()}
                             </span>
+                            {deployedInfo && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide w-fit bg-teal-500/10 border border-teal-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                                    <span className="text-teal-400">
+                                        {deployedInfo.manifestId
+                                            ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
+                                            : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`
+                                        }
+                                    </span>
+                                </span>
+                            )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0 border-l border-white/5 pl-4 ml-2 opacity-10">
                              {/* Expanded via row click */}
@@ -735,6 +750,17 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
                             <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: col }}>{getPayLabel()}</span>
                         </div>
+                        {deployedInfo && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded">
+                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
+                                    {deployedInfo.manifestId
+                                        ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
+                                        : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}`
+                                    }
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 
@@ -831,6 +857,17 @@ const UnifiedInventoryCard = ({ item, isExpanded = 0, onToggleExpand, exchangeRa
                 </div>
                 <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
                     <div className="flex items-center gap-1.5">{payStatus && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />}<span className="text-[11px] font-black uppercase tracking-widest text-(--text-color)/40" style={{ color: payStatus ? col : '#38bdf8' }}>{getPayLabel()}</span></div>
+                {deployedInfo && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-teal-400 leading-none">
+                                {deployedInfo.manifestId
+                                    ? deployedInfo.manifestId.replace('TRK-', 'TRK·')
+                                    : `TRK·${new Date(deployedInfo.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}`
+                                }
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
             {isSelectionMode && (
@@ -878,6 +915,35 @@ export const UnifiedInventoryView = () => {
     const setIsNFCWizardOpen = useSetAtom(isPackingNFCWizardOpenAtom);
     const setIsPackingCrateWizardOpen = useSetAtom(isPackingCrateWizardOpenAtom);
     const setIsPaymentWizardOpen = useSetAtom(isPaymentWizardOpenAtom);
+
+    // Load deployed crates to derive TRK-DATE tags on inventory items
+    const [deployedCrates, setDeployedCrates] = useState<any[]>([]);
+    useEffect(() => {
+        supabase
+            .from('logistics')
+            .select('id, inventory_ids, updated_at, description')
+            .eq('status', 'In Transit')
+            .then(({ data }) => { if (data) setDeployedCrates(data); });
+    }, []);
+
+    // Map each inventory item row ID → deployed crate info for TRK tag
+    const deployedItemsMap = useMemo(() => {
+        const map = new Map<string, { crateId: string; date: string; manifestId: string }>();
+        deployedCrates.forEach(crate => {
+            if (!crate.inventory_ids) return;
+            // Extract manifest ID from description field (POS:... pattern) or use crate id
+            const manifestMatch = (crate.description || '').match(/(TRK-[\w-]+)/);
+            const manifestId = manifestMatch ? manifestMatch[1] : '';
+            const date = crate.updated_at || '';
+            crate.inventory_ids.split(',').filter(Boolean).forEach((entry: string) => {
+                const itemId = entry.split(':')[0].trim();
+                if (itemId && !map.has(itemId)) {
+                    map.set(itemId, { crateId: crate.id, date, manifestId });
+                }
+            });
+        });
+        return map;
+    }, [deployedCrates]);
 
     useEffect(() => {
         if (!user || (user.role !== 'Admin' && user.role !== 'Developer')) return;
@@ -1322,7 +1388,8 @@ export const UnifiedInventoryView = () => {
                                         fullPayIds={fullPayIds} 
                                         requestedAcqIds={requestedAcqIds}
                                         onEdit={handleEditItem} 
-                                        financeDocs={financeDocs} 
+                                        financeDocs={financeDocs}
+                                        deployedItemsMap={deployedItemsMap}
                                     />
                                 </div>
                             );

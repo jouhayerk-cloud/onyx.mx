@@ -18,6 +18,38 @@ html, body, #root {
     scrollbar-width: none;
 }
 
+/* 3D Logistics Workspace Utilities */
+.logistics-3d-container {
+    perspective: 2000px;
+    perspective-origin: 50% 50%;
+}
+
+.isometric-workspace {
+    transform-style: preserve-3d;
+    transform: rotateX(55deg) rotateZ(45deg);
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.face-3d {
+    position: absolute;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+.cm-grid-panel {
+    background-size: 10px 10px;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+.cm-grid-panel-heavy {
+    background-size: 50px 50px;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
 /* CodePen styles adapted for the app */
 
 .app-container {
