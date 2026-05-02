@@ -907,6 +907,7 @@ export const normalizeInventoryData = (data: any): any => {
     height_cm: d.height_cm || d.heightCm || d.height || d.h,
     length_cm: d.length_cm || d.lengthCm || d.length || d.l,
     weight_kg: d.weight_kg || d.weightKg || d.weight || d.wt,
+    dims: d.dims || [d.width_cm || d.widthCm || d.width || d.w, d.height_cm || d.heightCm || d.height || d.h, d.length_cm || d.lengthCm || d.length || d.l].filter(Boolean).join('×'),
     // Add camelCase aliases for backward compatibility
     widthCm: d.width_cm || d.widthCm || d.width || d.w,
     heightCm: d.height_cm || d.heightCm || d.height || d.h,

@@ -28,7 +28,7 @@ import {
     Dna, Ruler, Upload, CheckCircle2, Trash2, ChevronLeft, 
     ChevronRight, CloudUpload, Check, Box, Info, Sparkles,
     FileSpreadsheet, Zap, Scan, LayoutGrid, FileText, Camera,
-    BookOpen, AlertTriangle, RefreshCw, ChevronDown
+    BookOpen, AlertTriangle, RefreshCw, ChevronDown, Save
 } from 'lucide-react';
 
 type EntryStatus = 'Available' | 'Production' | 'Acquisition';
@@ -373,13 +373,30 @@ export const UploadWizard: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isOpen) return;
+            
+            if (e.key === 'Escape') {
+                setIsOpen(false);
+            }
+
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'Enter')) {
+                e.preventDefault();
+                doSave();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, setIsOpen, doSave]);
+
     const isDuplicate = state.existingNumbers.includes(state.itemNumber);
 
     if (!isOpen) return null;
 
     return (
         <div 
-            className="absolute inset-0 z-[6000] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-hidden select-none"
+            className="fixed inset-0 z-[6000] flex items-center justify-center p-0 md:p-8 animate-in fade-in duration-300 overflow-hidden"
             onClick={handleGlobalClick}
         >
             <div className="absolute inset-0 bg-black/10 backdrop-blur-[200px]" onClick={() => setIsOpen(false)} />
@@ -559,9 +576,17 @@ export const UploadWizard: React.FC = () => {
                         <button onClick={() => setIsOpen(false)} className="px-10 py-4 text-white/40 hover:text-white hover:underline text-[11px] font-black uppercase tracking-[0.5em] transition-all">
                             Discard
                         </button>
-                        <button onClick={doSave} disabled={saving} className="flex-1 md:flex-none px-16 py-5 bg-(--main-color) text-black rounded-xl text-[13px] font-black uppercase tracking-[0.4em] hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-4">
-                            {saving ? 'Syncing...' : 'Sync Registry'}
-                            {!saving && <ArrowRight size={22} strokeWidth={5} />}
+                        <button 
+                            onClick={doSave} 
+                            disabled={saving} 
+                            className="flex items-center justify-center transition-all active:scale-90"
+                            title="Save"
+                        >
+                            {saving ? (
+                                <RefreshCw size={48} strokeWidth={3} className="text-(--main-color) animate-spin" />
+                            ) : (
+                                <Save size={64} strokeWidth={2} className="text-(--main-color) hover:scale-110 transition-all drop-shadow-[0_0_20px_rgba(var(--main-color-rgb),0.3)]" />
+                            )}
                         </button>
                     </div>
                 </div>

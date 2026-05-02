@@ -15,18 +15,20 @@ import {
 import { 
     X, Printer, Nfc, FileSpreadsheet, FileText, Download, 
     CheckCircle2, ChevronRight, ChevronLeft, Zap, Info, Package,
-    ShieldAlert, CheckCircle, Edit3, Check
+    ShieldAlert, CheckCircle, Edit3, Check, BookOpen, Layers,
+    Sparkles, ArrowRight, Activity, Terminal, ExternalLink,
+    Smartphone, Cpu, Waves, QrCode, Tag, DollarSign, Barcode,
+    Maximize2, Search, ZapOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { calculateCodesAndPrices, normalizeInventoryData, getCleanImageUrl } from '../../lib/utils';
 import { exportToXLSX } from '../../lib/xlsxUtils';
 import { exportCrateManifesto, ManifestoItem } from '../../lib/crateManifesto';
-import ExcelJS from 'exceljs';
+import { exportCatalogPdf, CatalogArtifact } from '../../lib/pdfExport';
 import { vendors } from '../../lib/consts';
 import { NFCTagCard } from '../../components/LabelVisuals';
-import { OnyxMiniLogo } from '../../components/OnyxLogo';
 
-/* ─── NFC Wizard Sub-component ─── */
+/* ─── NFC Tags HUD Component ─── */
 export const NFCWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingNFCWizardOpenAtom);
     const invIds = useAtomValue(selectedInventoryIdsAtom);
@@ -50,7 +52,6 @@ export const NFCWizard: React.FC = () => {
     }, [isOpen]);
 
     const selectedItems = useMemo(() => {
-        // Context-aware selection source
         const usePacking = activeView === 'logistics' && logisticsSubTab === 'packing';
         const idsArray = usePacking 
             ? Array.from(packingIds) 
@@ -75,12 +76,19 @@ export const NFCWizard: React.FC = () => {
     const currentItem = selectedItems[currentIndex];
     const isSupported = typeof window !== 'undefined' && 'NDEFReader' in window;
 
+    const mediaUrls = currentItem?.normData.mediaUrls?.split(',').filter(Boolean) || [];
+
+    const vendorPrefix = currentItem ? String(currentItem.normData.itemId || currentItem.codes.bookBarcode || '').split('-')[0].toUpperCase() : '';
+    const vendorColor = (vendors as any)[vendorPrefix]?.color || '#FFFFFF';
+    
+    const qrUrl = currentItem ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${currentItem.codes.bookBarcode}&color=000000&bgcolor=FFFFFF` : '';
+    const barcodeUrl = currentItem ? `https://bwipjs-api.metafloor.com/?bcid=code128&text=${currentItem.codes.bookBarcode}&scale=3&rotate=N&includetext=false&backgroundcolor=FFFFFF` : '';
+
     const handleSimulate = () => {
         setIsWriting(true);
         setStatus('writing');
         setTimeout(() => {
             setStatus('success');
-            toast.success(`SIMULATED: Tag Written`);
             setIsWriting(false);
             if (currentIndex < selectedItems.length - 1) {
                 setTimeout(() => {
@@ -88,14 +96,12 @@ export const NFCWizard: React.FC = () => {
                     setStatus('idle');
                 }, 1000);
             }
-        }, 2000);
+        }, 1500);
     };
 
     const handleWrite = async () => {
-        console.log('[NFC] Initializing Write sequence...');
         if (!isSupported) {
-            console.error('[NFC] NDEFReader not found in window');
-            toast.error("Web NFC is not supported on this browser.");
+            handleSimulate();
             return;
         }
 
@@ -113,16 +119,13 @@ export const NFCWizard: React.FC = () => {
             const retailTag = `${codes.bookAqCode || ''}${wbStr}${codes.bookRetail || ''}`;
             
             const nfcData = `${tagId}|${materialColor}|${description}|${retailTag}`;
-            console.log(`[NFC] Preparing payload for ${tagId}:`, nfcData);
 
             // @ts-ignore
             const ndef = new NDEFReader();
-            console.log('[NFC] Calling ndef.write()...');
             await ndef.write({
                 records: [{ recordType: "text", data: nfcData }]
             });
             
-            console.log('[NFC] Write successful!');
             setStatus('success');
             toast.success(`NFC Tag Written: ${tagId}`);
             
@@ -133,7 +136,6 @@ export const NFCWizard: React.FC = () => {
                 }, 2000);
             }
         } catch (error: any) {
-            console.error('[NFC] Write Error:', error);
             setStatus('error');
             toast.error(`Write Failed: ${error.message || 'Unknown Error'}`);
         } finally {
@@ -143,155 +145,160 @@ export const NFCWizard: React.FC = () => {
 
     if (!isOpen) return null;
 
+    const bookV = String(currentItem?.normData.workbook || workbookPrefix || '326').toLowerCase();
+    const cleanBookV = bookV.startsWith('v') ? bookV : `v${bookV}`;
+
     return (
-        <div className="fixed inset-0 z-[20000] flex justify-end pointer-events-none animate-in fade-in duration-500 overflow-hidden">
-            <div className="relative w-full max-w-[1400px] flex flex-col bg-black/60 backdrop-blur-[120px] pointer-events-auto shadow-[-80px_0_150px_rgba(0,0,0,0.8)] border-l border-white/5">
-                {/* Header HUD - Minimal & Precise */}
-                <div className="flex justify-between items-center px-6 sm:px-8 py-4 sm:py-6 border-b border-white/5 shrink-0 bg-white/[0.02] backdrop-blur-3xl">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                        <Nfc size={24} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                        <div className="flex flex-col">
-                            <h3 className="text-sm sm:text-xl font-black text-white tracking-[0.2em] sm:tracking-[0.3em] uppercase leading-none">NFC CORE</h3>
-                            <span className="text-[7px] sm:text-[8px] font-black text-white/20 tracking-[0.5em] uppercase mt-1">Tactical Provisioning</span>
-                        </div>
-                    </div>
+        <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
+            <div 
+                className="absolute inset-0 backdrop-blur-[120px] bg-black/35 pointer-events-auto" 
+                onClick={() => setIsOpen(false)} 
+            />
+            
+            <div className="relative w-full h-full flex flex-col lg:flex-row pointer-events-none overflow-y-auto lg:overflow-hidden no-scrollbar">
+                
+                {/* Floating LARGE Close Button */}
+                <button 
+                    onClick={() => setIsOpen(false)} 
+                    className="fixed top-8 right-8 z-[20002] flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-2xl rounded-full border border-white/20 text-white/40 hover:text-white hover:bg-white/20 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
+                >
+                    <X size={40} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                </button>
 
-                    <div className="flex items-center gap-4 sm:gap-10">
-                        {/* Navigation Pulse (Hidden on mobile header if space is tight, or just small) */}
-                        <div className="hidden sm:flex items-center gap-4 px-6 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
-                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">PRC_UNIT_01</span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                            <span className="text-[10px] font-mono text-white/40 tracking-widest ml-4">{currentIndex + 1} / {selectedItems.length}</span>
-                        </div>
-                        
-                        {/* Mobile Close Button */}
-                        <button onClick={() => setIsOpen(false)} className="sm:hidden w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
-                            <X size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* LARGE FLOATING CLOSE BUTTON (Desktop only) */}
-                <div className="hidden sm:block absolute top-8 right-8 z-[20050]">
-                    <button onClick={() => setIsOpen(false)} className="flex items-center justify-center group cursor-pointer">
-                        <X size={64} strokeWidth={1} className="text-white/20 group-hover:text-white group-hover:rotate-90 transition-all duration-500 drop-shadow-xl" />
-                    </button>
-                </div>
-
-                {/* NAVIGATION CHEVRONS (Desktop only) */}
-                <div className="hidden sm:flex absolute inset-y-0 left-8 items-center z-[20050] pointer-events-none">
-                    <button 
-                        onClick={() => setCurrentIndex(p => Math.max(0, p - 1))}
-                        disabled={currentIndex === 0}
-                        className="pointer-events-auto group cursor-pointer w-20 h-40 flex items-center justify-center text-(--main-color) hover:text-white disabled:opacity-0 transition-all duration-500 hover:scale-105 bg-(--main-color)/5 hover:bg-(--main-color)/20 rounded-3xl border border-(--main-color)/20 hover:border-(--main-color)/50 backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden">
-                        <ChevronLeft size={64} strokeWidth={1.5} className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-500" />
-                    </button>
-                </div>
-                <div className="hidden sm:flex absolute inset-y-0 right-8 items-center z-[20050] pointer-events-none">
-                    <button 
-                        onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))}
-                        disabled={currentIndex === selectedItems.length - 1}
-                        className="pointer-events-auto group cursor-pointer w-20 h-40 flex items-center justify-center text-(--main-color) hover:text-white disabled:opacity-0 transition-all duration-500 hover:scale-105 bg-(--main-color)/5 hover:bg-(--main-color)/20 rounded-3xl border border-(--main-color)/20 hover:border-(--main-color)/50 backdrop-blur-3xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden">
-                        <ChevronRight size={64} strokeWidth={1.5} className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-500" />
-                    </button>
-                </div>
-
-                <div className="flex-1 flex overflow-y-auto custom-scrollbar">
-                    {/* TACTICAL ENGINE VIEW */}
-                    <div className="flex-1 flex flex-col relative bg-white/[0.01]">
-                        {/* HUD Overlays (Desktop only or adjusted) */}
-                        <div className="absolute top-4 sm:top-8 left-4 sm:left-8 flex flex-col gap-1 sm:gap-2">
-                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">ARTIFACT_VISUAL_0{currentIndex + 1}</span>
-                            <div className="h-px w-12 sm:w-24 bg-(--main-color)/30" />
-                        </div>
-                        
-                        <div className="absolute top-4 sm:top-28 right-4 sm:right-12 flex flex-col items-end gap-1 sm:gap-2">
-                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">PROTOCOL_IDENT_S3</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[8px] sm:text-[10px] font-mono text-white/40">{currentItem.codes.bookBarcode}</span>
-                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" style={{ backgroundColor: currentItem.codes.vendorColor }} />
-                            </div>
-                        </div>
-
-                        {/* Main Interaction Plane */}
-                        <div className="flex-1 flex flex-col items-center p-4 sm:p-20 gap-8 sm:gap-16">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-16 items-center w-full max-w-7xl animate-in fade-in zoom-in duration-700">
-                                {/* Left: Large Focused Image */}
-                                <div className="aspect-square flex items-center justify-center relative group bg-black/20 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl rounded-sm w-full max-w-[500px] mx-auto lg:max-w-none">
+                {/* Left Panel: Primary Artifact Visual (Expanded + Multi-Image Grid) */}
+                <div className="w-full lg:w-[50%] min-h-[50vh] lg:h-full flex items-center justify-center p-6 md:p-12 lg:p-16 relative group pointer-events-auto overflow-hidden">
+                    {mediaUrls.length > 1 ? (
+                        <div className={`grid gap-4 w-full h-full max-h-[85%] ${mediaUrls.length === 2 ? 'grid-cols-2' : 'grid-cols-2 grid-rows-2'}`}>
+                            {mediaUrls.slice(0, 4).map((url, i) => (
+                                <div key={i} className="relative overflow-hidden rounded-sm bg-white/[0.02] border border-white/5 shadow-2xl transition-all duration-700 hover:scale-[1.02]">
                                     <img 
-                                        src={getCleanImageUrl(currentItem.normData.generatedPngUrl || currentItem.normData.mediaUrls?.split(',')[0])} 
-                                        className="max-h-[90%] max-w-[90%] object-contain drop-shadow-[0_0_120px_rgba(255,255,255,0.1)] transition-all duration-1000 group-hover:scale-110" 
+                                        src={getCleanImageUrl(url)} 
+                                        className="w-full h-full object-contain" 
+                                        alt={`View ${i + 1}`}
                                     />
-                                    <div className="absolute inset-0 bg-linear-to-tr from-black/40 via-transparent to-white/5 pointer-events-none" />
                                 </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <img 
+                            src={getCleanImageUrl(mediaUrls[0])} 
+                            className="max-w-[95%] max-h-[95%] object-contain drop-shadow-[0_0_150px_rgba(255,255,255,0.05)] transition-all duration-1000 group-hover:scale-105" 
+                        />
+                    )}
+                    <div className="absolute bottom-6 right-8 opacity-20 pointer-events-none flex items-center gap-4">
+                        <Layers size={14} className="text-white" />
+                        <span className="text-xl font-black text-white tracking-tighter tabular-nums">{currentIndex + 1} / {selectedItems.length}</span>
+                    </div>
+                </div>
 
-                                {/* Right: High-Density Label & Metrics */}
-                                <div className="flex flex-col gap-6 sm:gap-10">
-                                    {/* Color Coded Tag ID Card */}
-                                    <div className="relative group flex justify-center">
-                                        <NFCTagCard item={currentItem} scale={window.innerWidth < 640 ? 0.7 : 1.0} className="!bg-transparent !text-white !p-0 shadow-[0_40px_120px_rgba(0,0,0,0.6)]" />
-                                    </div>
+                {/* Right Panel: Rebalanced Tactical HUB */}
+                <div className="w-full lg:w-[50%] h-auto lg:h-full flex flex-col p-6 md:p-10 lg:p-12 pt-24 bg-white/[0.01] backdrop-blur-3xl lg:border-l border-white/5 pointer-events-auto relative">
+                    
+                    {/* Top Protocol Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-8 mb-10">
+                        <div className="flex flex-col gap-3 flex-1 w-full">
+                            <div className="flex items-center gap-3 mb-1 opacity-20">
+                                <Terminal size={12} className="text-(--main-color)" />
+                                <span className="text-[9px] md:text-[10px] font-black text-white uppercase tracking-[1em]">SYSTEM_PROTOCOL</span>
+                            </div>
 
-                                    {/* Inline Metrics */}
-                                    <div className="grid grid-cols-3 gap-4 sm:gap-8 p-4 sm:p-8 bg-white/[0.02] border border-white/5 backdrop-blur-3xl rounded-sm">
-                                        {[
-                                            { label: 'LAND_CODE', value: currentItem.codes.bookLandCode },
-                                            { label: 'WORKBOOK', value: `VV${currentItem.normData.workbook}` },
-                                            { label: 'MATERIAL', value: currentItem.normData.material }
-                                        ].map((m, i) => (
-                                            <div key={i} className="flex flex-col gap-1">
-                                                <span className="text-[6px] sm:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.4em]">{m.label}</span>
-                                                <span className="text-[10px] sm:text-base font-black text-white uppercase tracking-tight truncate leading-tight">{m.value || '---'}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Mobile Navigation Controls */}
-                                    <div className="flex sm:hidden items-center justify-between gap-4 h-16">
-                                        <button 
-                                            onClick={() => setCurrentIndex(p => Math.max(0, p - 1))}
-                                            disabled={currentIndex === 0}
-                                            className="flex-1 h-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 disabled:opacity-10 active:scale-95 transition-all"
-                                        >
-                                            <ChevronLeft size={32} />
-                                        </button>
-                                        <div className="flex flex-col items-center min-w-[60px]">
-                                            <span className="text-[10px] font-mono text-(--main-color) font-black">{currentIndex + 1}</span>
-                                            <div className="h-px w-4 bg-white/10 my-1" />
-                                            <span className="text-[8px] font-mono text-white/20">{selectedItems.length}</span>
+                            <div className="flex flex-col gap-2 w-full">
+                                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none" style={{ color: vendorColor }}>
+                                    {currentItem?.codes.bookBarcode}
+                                </h1>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {[
+                                        { label: 'LND', value: currentItem?.codes.bookLandCode },
+                                        { label: 'ACQ', value: currentItem?.codes.bookAqCode },
+                                        { label: 'BOOK', value: cleanBookV }
+                                    ].map((t, i) => (
+                                        <div key={i} className="flex items-center gap-3 bg-white/[0.04] px-3 py-2 rounded-sm border border-white/10">
+                                            <span className="text-[8px] md:text-[10px] font-black text-white/40 uppercase tracking-widest">{t.label}</span>
+                                            <span className="text-[14px] md:text-[18px] font-black text-white uppercase tracking-tighter">{t.value}</span>
                                         </div>
-                                        <button 
-                                            onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))}
-                                            disabled={currentIndex === selectedItems.length - 1}
-                                            className="flex-1 h-full rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 disabled:opacity-10 active:scale-95 transition-all"
-                                        >
-                                            <ChevronRight size={32} />
-                                        </button>
-                                    </div>
-
-                                    {/* WRITE NFC BUTTON */}
-                                    <button 
-                                        onClick={isSupported ? handleWrite : handleSimulate}
-                                        disabled={isWriting}
-                                        className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
-                                        <div className="absolute inset-0 bg-white/5 backdrop-blur-3xl group-hover:bg-white/10 transition-colors" />
-                                        {status === 'success' ? (
-                                            <div className="absolute inset-0 bg-green-500/10" />
-                                        ) : (
-                                            <div className="absolute inset-0 bg-(--main-color)/10" />
-                                        )}
-                                        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                                        
-                                        <span className={`relative z-10 text-lg sm:text-2xl font-black uppercase tracking-[0.2em] sm:tracking-[0.5em] flex items-center justify-center gap-4 sm:gap-6 ${
-                                            status === 'success' ? 'text-green-400' : 'text-white'
-                                        }`}>
-                                            {isWriting ? 'PENDING...' : status === 'success' ? 'SUCCESS' : 'WRITE TAG'}
-                                            <Nfc size={window.innerWidth < 640 ? 24 : 36} className={status === 'success' ? 'text-green-400' : 'text-(--main-color)'} />
-                                        </span>
-                                    </button>
+                                    ))}
+                                </div>
+                                <div className="bg-white p-0.5 rounded-sm shadow-2xl w-[35%] h-7 flex items-center justify-center overflow-hidden border-b border-black/10 transition-all hover:scale-[1.01]">
+                                    <img src={barcodeUrl} className="w-full h-full object-fill mix-blend-multiply" alt="Barcode" />
                                 </div>
                             </div>
                         </div>
+
+                        {/* Rebalanced QR Protocol */}
+                        <div className="flex flex-row sm:flex-col gap-4 items-center sm:items-end shrink-0 mt-2 sm:mt-16">
+                            <div className="bg-white p-2 rounded-sm shadow-2xl w-24 h-24 md:w-32 md:h-32 flex items-center justify-center overflow-hidden transition-all hover:scale-105">
+                                <img src={qrUrl} className="max-w-full max-h-full object-contain" alt="QR" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Specification Matrix */}
+                    <div className="grid grid-cols-2 gap-y-8 gap-x-12 mb-10 border-t border-white/5 pt-10">
+                        <div className="flex flex-col">
+                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">CORE_SPEC</span>
+                            <div className="flex flex-col">
+                                <span className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.color || 'CLR_NULL'}</span>
+                                <span className="text-sm md:text-base font-bold text-white/40 uppercase tracking-widest leading-none mt-0.5">{currentItem?.normData.material || 'MAT_NULL'}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col">
+                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">DESCRIPTOR</span>
+                            <div className="flex flex-col">
+                                <span className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">{currentItem?.normData.shape || 'SHAPE_NULL'}</span>
+                                <span className="text-xs md:text-base font-medium text-white/30 uppercase tracking-tight truncate">{currentItem?.normData.shortDescription || '---'}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col col-span-2 group">
+                            <span className="text-[8px] md:text-[9px] font-black text-white/20 uppercase tracking-[0.6em] mb-2">GEOMETRY_PROTO</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-baseline gap-3 md:gap-5">
+                                    <span className="text-3xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none group-hover:text-(--main-color) transition-colors">{currentItem?.normData.dims || '0×0×0'}</span>
+                                    <span className="text-lg md:text-2xl font-black text-(--main-color) uppercase tracking-tighter opacity-30">CM</span>
+                                </div>
+                                <div className="flex flex-col items-end border-l border-white/10 pl-6">
+                                    <span className="text-[7px] md:text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">WEIGHT</span>
+                                    <span className="text-2xl md:text-3xl lg:text-4xl font-black text-white tabular-nums tracking-tighter">{currentItem?.normData.weightKg || 0}KG</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Zone: Large Ergonomic Trigger */}
+                    <div className="mt-auto pt-8 flex flex-col sm:flex-row items-center gap-4 lg:gap-6">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5">
+                                <ChevronLeft size={24} className="text-white/20" />
+                            </button>
+                            <button onClick={() => setCurrentIndex(p => Math.min(selectedItems.length - 1, p + 1))} disabled={currentIndex === selectedItems.length - 1} className="flex-1 sm:h-20 sm:w-16 h-14 flex items-center justify-center bg-white/[0.03] hover:bg-white/10 transition-all disabled:opacity-0 border border-white/5">
+                                <ChevronRight size={24} className="text-white/20" />
+                            </button>
+                        </div>
+
+                        <button 
+                            onClick={handleWrite}
+                            disabled={isWriting}
+                            className={`w-full sm:flex-1 h-20 md:h-28 rounded-sm flex flex-col items-center justify-center gap-2 group transition-all relative overflow-hidden backdrop-blur-3xl border border-white/10 ${
+                                status === 'success' ? 'bg-green-500 shadow-[0_0_100px_rgba(34,197,94,0.3)]' : 'bg-(--main-color)/10 hover:bg-(--main-color)/20 shadow-inner'
+                            }`}
+                        >
+                            {!isSupported && status !== 'success' && status !== 'writing' ? (
+                                <>
+                                    <ZapOff size={44} className="text-white/20 mb-1" />
+                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[1em]">NO_HARDWARE</span>
+                                </>
+                            ) : status === 'success' ? (
+                                <><CheckCircle size={36} className="text-black" /><span className="text-[10px] font-black text-black uppercase tracking-[1em]">LOCKED</span></>
+                            ) : (
+                                <>
+                                    <Nfc size={44} className={`transition-all duration-700 ${isWriting ? 'animate-pulse scale-110 text-white' : 'text-(--main-color) group-hover:scale-110'}`} />
+                                    <span className={`text-[8px] md:text-[10px] font-black uppercase tracking-[1.5em] mt-2 ${isWriting ? 'text-white' : 'text-(--main-color) opacity-60'}`}>
+                                        {isWriting ? 'INITIALIZING...' : 'ENCODE_NFC'}
+                                    </span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -299,7 +306,7 @@ export const NFCWizard: React.FC = () => {
     );
 };
 
-/* ─── Printables Wizard Sub-component ─── */
+/* ─── Printables Engine HUB Sub-component (LARGE Mode) ─── */
 export const LabelWizard: React.FC = () => {
     const [isOpen, setIsOpen] = useAtom(isPackingPrintWizardOpenAtom);
     const selectedIds = useAtomValue(selectedInventoryIdsAtom);
@@ -307,10 +314,11 @@ export const LabelWizard: React.FC = () => {
     const exchangeRate = useAtomValue(exchangeRateAtom);
     const workbookPrefix = useAtomValue(workbookVersionAtom);
 
-    const [name, setName] = useState(`ONYX_LABELS_${new Date().toISOString().split('T')[0]}`);
+    const [name, setName] = useState(`BATCH_${new Date().toISOString().split('T')[0]}`);
     const [includeImages, setIncludeImages] = useState(true);
-    const [progress, setProgress] = useState({ xlsx: -1, pdf: -1 });
-    const [urls, setUrls] = useState({ xlsx: '', pdf: '' });
+    const [catalogMethod, setCatalogMethod] = useState<'grid' | 'single'>('grid');
+    const [progress, setProgress] = useState({ xlsx: -1, pdf: -1, catalog: -1 });
+    const [urls, setUrls] = useState({ xlsx: '', pdf: '', catalog: '' });
 
     const selectedItems = useMemo(() => {
         return inventory.filter(item => selectedIds.includes(item.row)).map(item => {
@@ -322,8 +330,8 @@ export const LabelWizard: React.FC = () => {
 
     useEffect(() => {
         if (isOpen) {
-            setProgress({ xlsx: -1, pdf: -1 });
-            setUrls({ xlsx: '', pdf: '' });
+            setProgress({ xlsx: -1, pdf: -1, catalog: -1 });
+            setUrls({ xlsx: '', pdf: '', catalog: '' });
         }
     }, [isOpen, selectedIds.length]);
 
@@ -343,7 +351,7 @@ export const LabelWizard: React.FC = () => {
                 return [c.bookBarcode, desc, matColor, sizes, d.quantity || 1, c.bookLandCode, c.bookAqCode, bookRetailTag, qrUrl];
             });
 
-            await exportToXLSX(name, [{
+            await exportToXLSX(`Labels_${name}`, [{
                 name: 'Packing List',
                 data: [['TAGID', 'DESCRIPTION', 'MATERIAL COLOR', 'SIZES', 'QUANTITY', 'LANDED CODE', 'ACQ CODE', 'BOOK RETAIL', 'QR URL'], ...rows]
             }]);
@@ -390,178 +398,139 @@ export const LabelWizard: React.FC = () => {
                 crateType: 'Labels Batch', 
                 fillPct: 100, 
                 exportedAt: new Date().toLocaleString(),
-                customTitle: 'LABELS PACKING LIST',
+                customTitle: 'CONTROL PAGE MANIFESTO',
                 excludeImages: !includeImages,
                 excludeHeader: true
-            }, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) }))) as Blob;
+            }, pct => setProgress(p => ({ ...p, pdf: 5 + Math.round(pct * 0.9) })), 'blob');
             
-            setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
-            setProgress(p => ({ ...p, pdf: 100 }));
-            toast.success('PDF generated');
+            if (blob instanceof Blob) {
+                setUrls(u => ({ ...u, pdf: URL.createObjectURL(blob) }));
+                setProgress(p => ({ ...p, pdf: 100 }));
+                toast.success('Control Page generated');
+            } else {
+                throw new Error('PDF generation failed to produce a valid file');
+            }
         } catch (e) {
             console.error(e);
             setProgress(p => ({ ...p, pdf: -1 }));
-            toast.error('PDF generation failed');
+            toast.error('Control Page failed');
+        }
+    };
+
+    const handleGenerateCatalog = async () => {
+        setProgress(p => ({ ...p, catalog: 5 }));
+        try {
+            const results: CatalogArtifact[] = selectedItems.map(item => ({
+                data: item.data,
+                codes: item.codes,
+                images: item.normData.mediaUrls?.split(',').filter(Boolean) || [],
+                exportType: 'catalog'
+            }));
+
+            await exportCatalogPdf(results, {
+                title: name,
+                method: catalogMethod,
+                exportType: 'catalog'
+            }, (pct) => {
+                setProgress(p => ({ ...p, catalog: pct }));
+            });
+
+            setProgress(p => ({ ...p, catalog: 100 }));
+            toast.success('Catalog generated');
+        } catch (e) {
+            console.error(e);
+            setProgress(p => ({ ...p, catalog: -1 }));
+            toast.error('Catalog generation failed');
         }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[20000] flex justify-end pointer-events-none animate-in fade-in duration-500 overflow-hidden">
-            <div className="relative w-full max-w-[1400px] flex flex-col bg-black/60 backdrop-blur-[120px] pointer-events-auto shadow-[-80px_0_150px_rgba(0,0,0,0.8)] border-l border-white/5">
-                {/* Header HUD */}
-                <div className="flex justify-between items-center px-6 sm:px-8 py-4 sm:py-6 border-b border-white/5 shrink-0 bg-white/[0.02] backdrop-blur-3xl">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                        <Printer size={24} className="text-(--main-color) drop-shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                        <div className="flex flex-col">
-                            <h3 className="text-sm sm:text-xl font-black text-white tracking-[0.2em] sm:tracking-[0.3em] uppercase leading-none">LABEL ENGINE</h3>
-                            <span className="text-[7px] sm:text-[8px] font-black text-white/20 tracking-[0.5em] uppercase mt-1">Matrix Document Generation</span>
-                        </div>
-                    </div>
+        <div className="fixed inset-0 z-[20000] flex flex-col pointer-events-none animate-in fade-in duration-500 overflow-hidden">
+            <div className="absolute inset-0 backdrop-blur-[100px] bg-black/55 pointer-events-auto" onClick={() => setIsOpen(false)} />
+            
+            <div className="relative w-full h-full flex flex-col pointer-events-auto p-8 md:p-12 lg:p-16 overflow-y-auto no-scrollbar max-w-7xl mx-auto">
+                
+                {/* Floating LARGE Close Button */}
+                <button 
+                    onClick={() => setIsOpen(false)} 
+                    className="fixed top-8 right-8 z-[20002] flex items-center justify-center w-24 h-24 bg-white/5 backdrop-blur-3xl rounded-full border border-white/10 text-white/20 hover:text-white hover:bg-white/10 hover:scale-110 transition-all pointer-events-auto shadow-[0_0_60px_rgba(0,0,0,0.6)] group"
+                >
+                    <X size={48} strokeWidth={1} className="group-hover:rotate-90 transition-transform duration-500" />
+                </button>
 
-                    <div className="flex items-center gap-4 sm:gap-10">
-                        <div className="hidden sm:flex items-center gap-4 px-6 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
-                            <span className="text-[10px] font-black text-(--main-color) uppercase tracking-[0.3em]">PRNT_SVC_01</span>
-                            <div className="w-1.5 h-1.5 rounded-full bg-(--main-color) animate-pulse shadow-[0_0_10px_rgba(var(--main-color-rgb),0.5)]" />
-                            <span className="text-[10px] font-mono text-white/40 tracking-widest ml-4">{selectedItems.length} ARTIFACTS</span>
+                <div className="flex justify-between items-start mb-16 shrink-0">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-6">
+                            <Terminal size={24} className="text-(--main-color)" />
+                            <h3 className="text-2xl font-black text-white tracking-[0.5em] uppercase leading-none">PRINT_ENGINE</h3>
                         </div>
-                        
-                        <button onClick={() => setIsOpen(false)} className="sm:hidden w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40">
-                            <X size={20} />
-                        </button>
+                        <span className="text-[10px] font-black text-white/10 tracking-[1em] uppercase ml-12">SYSTEM_TACTICAL_OUTPUT_HUB</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-white/20 uppercase tracking-[1em] mb-2">BUFFER_COUNT</span>
+                        <span className="text-6xl font-black text-(--main-color) leading-none tabular-nums tracking-tighter">{selectedItems.length}</span>
                     </div>
                 </div>
 
-                {/* Desktop Close Button */}
-                <div className="hidden sm:block absolute top-8 right-8 z-[20050]">
-                    <button onClick={() => setIsOpen(false)} className="flex items-center justify-center group cursor-pointer">
-                        <X size={64} strokeWidth={1} className="text-white/20 group-hover:text-white group-hover:rotate-90 transition-all duration-500 drop-shadow-xl" />
+                <div className="flex flex-col mb-20 shrink-0 max-w-2xl">
+                    <div className="flex items-center gap-3 mb-4 opacity-30">
+                        <Activity size={12} className="text-(--main-color)" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.8em]">MANIFEST_ID_PROTOCOL</span>
+                    </div>
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="bg-transparent border-none outline-none w-full text-5xl font-black text-white uppercase tracking-tighter placeholder:text-white/5 focus:text-(--main-color) transition-all"
+                        placeholder="ID_NULL"
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-16 lg:gap-24">
+                    <button onClick={handleGenerateXLSX} disabled={progress.xlsx >= 0} className="group flex flex-col items-center gap-10 transition-all active:scale-95">
+                        <div className="relative flex items-center justify-center">
+                            <FileSpreadsheet size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.xlsx === 100 ? 'text-emerald-400 drop-shadow-[0_0_20px_rgba(52,211,153,0.4)]' : 'text-emerald-500/40 group-hover:text-emerald-400'}`} />
+                            {progress.xlsx > 0 && progress.xlsx < 100 && <div className="absolute -inset-4 border-4 border-emerald-500/10 animate-spin rounded-full" />}
+                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">CSV_GEN</span>
+                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-emerald-400">Export Labels</span>
+                        </div>
                     </button>
-                </div>
 
-                <div className="flex-1 flex overflow-y-auto custom-scrollbar">
-                    <div className="flex-1 flex flex-col relative bg-white/[0.01]">
-                        <div className="absolute top-4 sm:top-8 left-4 sm:left-8 flex flex-col gap-1 sm:gap-2">
-                            <span className="text-[6px] sm:text-[8px] font-black text-white/10 uppercase tracking-[0.5em]">SYSTEM_PROCESS_V1</span>
-                            <div className="h-px w-12 sm:w-24 bg-(--main-color)/30" />
+                    <button onClick={progress.pdf === 100 ? () => { const a = document.createElement('a'); a.href = urls.pdf; a.download = `ControlPage_${name}.pdf`; a.click(); } : handleGeneratePDF} disabled={progress.pdf > 0 && progress.pdf < 100} className="group flex flex-col items-center gap-10 transition-all active:scale-95">
+                        <div className="relative flex items-center justify-center">
+                            <FileText size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.pdf === 100 ? 'text-red-400 drop-shadow-[0_0_20px_rgba(248,113,113,0.4)]' : 'text-red-500/40 group-hover:text-red-400'}`} />
+                            {progress.pdf > 0 && progress.pdf < 100 && <div className="absolute -inset-4 border-4 border-red-500/10 animate-spin rounded-full" />}
                         </div>
+                        <div className="flex flex-col items-center gap-2">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">PDF_RENDER</span>
+                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-red-400">Control Page</span>
+                        </div>
+                    </button>
 
-                        <div className="flex-1 flex flex-col items-center p-4 sm:p-20 gap-8 sm:gap-16">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-24 items-center w-full max-w-7xl animate-in fade-in zoom-in duration-700">
-                                
-                                {/* Left: Visual Batch Preview */}
-                                <div className="flex flex-col gap-8 w-full max-w-[500px] mx-auto lg:max-w-none order-2 lg:order-1">
-                                    <div className="aspect-square flex items-center justify-center relative group bg-black/20 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl rounded-sm">
-                                        {selectedItems[0] ? (
-                                            <img 
-                                                src={getCleanImageUrl(selectedItems[0].normData.generatedPngUrl || selectedItems[0].normData.mediaUrls?.split(',')[0])} 
-                                                className="max-h-[80%] max-w-[80%] object-contain drop-shadow-[0_0_120px_rgba(255,255,255,0.1)] transition-all duration-1000 group-hover:scale-110" 
-                                            />
-                                        ) : (
-                                            <Printer size={120} className="text-white/5" />
-                                        )}
-                                        <div className="absolute inset-0 bg-linear-to-tr from-black/40 via-transparent to-white/5 pointer-events-none" />
-                                        
-                                        {/* Overlay Grid Info */}
-                                        <div className="absolute bottom-6 left-6 flex flex-col gap-1">
-                                            <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.3em]">PRIMARY_REFERENCE</span>
-                                            <span className="text-xl font-black text-white uppercase">{selectedItems[0]?.codes.bookBarcode || 'PENDING'}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Batch Metrics Grid */}
-                                    <div className="grid grid-cols-3 gap-4 sm:gap-6 p-6 sm:p-8 bg-white/[0.02] border border-white/5 backdrop-blur-3xl rounded-sm">
-                                        {[
-                                            { label: 'BATCH_SIZE', value: selectedItems.length },
-                                            { label: 'UNIT_TYPE', value: 'LABELS' },
-                                            { label: 'WORKBOOK', value: `VV${selectedItems[0]?.normData.workbook || '---'}` }
-                                        ].map((m, i) => (
-                                            <div key={i} className="flex flex-col gap-1">
-                                                <span className="text-[6px] sm:text-[8px] font-black text-white/20 uppercase tracking-[0.2em] sm:tracking-[0.4em]">{m.label}</span>
-                                                <span className="text-[10px] sm:text-base font-black text-white uppercase tracking-tight truncate leading-tight">{m.value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Right: Tactical Controls */}
-                                <div className="flex flex-col gap-8 sm:gap-12 order-1 lg:order-2">
-                                    <div className="space-y-4">
-                                        <span className="text-[8px] sm:text-[10px] font-black text-(--main-color) uppercase tracking-[0.4em] ml-1">DEPLOYMENT_PARAMETERS</span>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                value={name}
-                                                onChange={e => setName(e.target.value)}
-                                                className="w-full bg-white/5 border-b-2 border-white/10 px-0 py-4 text-xl sm:text-3xl font-black text-white focus:outline-none focus:border-(--main-color) transition-all placeholder:text-white/10 tracking-tighter"
-                                                placeholder="BATCH_NAME_01"
-                                            />
-                                            <div className="absolute bottom-0 right-0 py-4">
-                                                <Edit3 size={20} className="text-white/20" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-6">
-                                        {/* XLSX Tactical Button */}
-                                        <button 
-                                            onClick={handleGenerateXLSX}
-                                            disabled={progress.xlsx >= 0}
-                                            className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
-                                            <div className="absolute inset-0 bg-emerald-500/5 backdrop-blur-3xl group-hover:bg-emerald-500/10 transition-colors" />
-                                            {progress.xlsx > 0 && progress.xlsx < 100 && (
-                                                <div className="absolute inset-0 bg-emerald-500/20 transition-all" style={{ width: `${progress.xlsx}%` }} />
-                                            )}
-                                            {progress.xlsx === 100 && <div className="absolute inset-0 bg-emerald-500/10" />}
-                                            
-                                            <span className="relative z-10 text-sm sm:text-lg font-black uppercase tracking-[0.4em] flex items-center justify-center gap-4 text-white">
-                                                {progress.xlsx === 100 ? 'SPREADSHEET_READY' : progress.xlsx > 0 ? 'COMPILING_DATA...' : 'GENERATE_XLSX'}
-                                                <FileSpreadsheet size={24} className="text-emerald-400" />
-                                            </span>
-                                        </button>
-
-                                        {/* PDF Tactical Button */}
-                                        <div className="flex flex-col gap-4">
-                                            <button 
-                                                onClick={progress.pdf === 100 ? () => {
-                                                    const a = document.createElement('a'); a.href = urls.pdf; a.download = `${name}.pdf`; a.click();
-                                                } : handleGeneratePDF}
-                                                disabled={progress.pdf > 0 && progress.pdf < 100}
-                                                className="group relative w-full h-20 sm:h-24 overflow-hidden transition-all duration-500 hover:scale-[1.02] active:scale-95 disabled:opacity-30 rounded-xl border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] cursor-pointer">
-                                                <div className="absolute inset-0 bg-red-500/5 backdrop-blur-3xl group-hover:bg-red-500/10 transition-colors" />
-                                                {progress.pdf > 0 && progress.pdf < 100 && (
-                                                    <div className="absolute inset-0 bg-red-500/20 transition-all" style={{ width: `${progress.pdf}%` }} />
-                                                )}
-                                                {progress.pdf === 100 && <div className="absolute inset-0 bg-red-500/10" />}
-                                                
-                                                <span className="relative z-10 text-sm sm:text-lg font-black uppercase tracking-[0.4em] flex items-center justify-center gap-4 text-white">
-                                                    {progress.pdf === 100 ? 'DOWNLOAD_MANIFEST' : progress.pdf > 0 ? 'RENDERING_VISUALS...' : 'GENERATE_PDF'}
-                                                    {progress.pdf === 100 ? <Download size={24} className="text-red-400" /> : <FileText size={24} className="text-red-400" />}
-                                                </span>
-                                            </button>
-                                            
-                                            <div className="flex items-center gap-4 px-4">
-                                                <label className="flex items-center gap-3 cursor-pointer group">
-                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${includeImages ? 'bg-(--main-color) border-(--main-color)' : 'border-white/20 group-hover:border-white/40'}`}>
-                                                        <input 
-                                                            type="checkbox" 
-                                                            className="hidden" 
-                                                            checked={includeImages} 
-                                                            onChange={e => setIncludeImages(e.target.checked)} 
-                                                        />
-                                                        {includeImages && <Check size={14} className="text-black" />}
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Include Visual Assets</span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div className="flex flex-col items-center gap-10 group transition-all">
+                        <div className="flex flex-col items-center gap-10">
+                            <button onClick={handleGenerateCatalog} disabled={progress.catalog >= 0 && progress.catalog < 100} className="relative flex items-center justify-center active:scale-95 transition-all">
+                                <BookOpen size={80} strokeWidth={1} className={`transition-all duration-500 ${progress.catalog === 100 ? 'text-blue-400 drop-shadow-[0_0_20px_rgba(96,165,250,0.4)]' : 'text-blue-500/40 group-hover:text-blue-400'}`} />
+                                {progress.catalog > 0 && progress.catalog < 100 && <div className="absolute -inset-4 border-4 border-blue-500/10 animate-spin rounded-full" />}
+                            </button>
+                            <div className="flex gap-6">
+                                {['grid', 'single'].map(m => (
+                                    <button key={m} onClick={() => setCatalogMethod(m as any)} className={`text-[10px] font-black uppercase tracking-[0.4em] transition-all ${catalogMethod === m ? 'text-blue-400' : 'text-white/10 hover:text-white/30'}`}>{m}</button>
+                                ))}
                             </div>
                         </div>
+                        <div className="flex flex-col items-center gap-2">
+                            <span className="text-[8px] font-black text-white/10 uppercase tracking-[0.6em]">BOOKS_GEN</span>
+                            <span className="text-xl font-black text-white uppercase tracking-[0.2em] group-hover:text-blue-400">Sales Catalog</span>
+                        </div>
                     </div>
                 </div>
+
+                <div className="mt-auto pt-16 flex justify-between items-end opacity-5"><Cpu size={16} strokeWidth={1} /></div>
             </div>
         </div>
     );
